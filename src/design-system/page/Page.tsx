@@ -162,10 +162,6 @@ const sharedStyles = stylex.create({
   },
   icon: {
     borderRadius: radius.lg,
-    gridColumnEnd: "icon",
-    gridColumnStart: "icon",
-    gridRowEnd: "icon",
-    gridRowStart: "icon",
     // eslint-disable-next-line @stylexjs/valid-styles, @stylexjs/sort-keys
     cornerShape: "squircle",
     alignItems: "center",
@@ -173,6 +169,10 @@ const sharedStyles = stylex.create({
     boxShadow: shadow["lg"],
     color: primaryColor.textContrast,
     display: "flex",
+    gridColumnEnd: "icon",
+    gridColumnStart: "icon",
+    gridRowEnd: "icon",
+    gridRowStart: "icon",
     justifyContent: "center",
     height: sizeSpace["4xl"],
     width: sizeSpace["4xl"],

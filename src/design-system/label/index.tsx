@@ -24,8 +24,8 @@ import {
 const styles = stylex.create({
   label: {
     color: uiColor.text1,
-    fontWeight: fontWeight["semibold"],
     fontFamily: fontFamily["sans"],
+    fontWeight: fontWeight["semibold"],
 
     fontSize: {
       ":is([data-size=lg])": fontSize["sm"],

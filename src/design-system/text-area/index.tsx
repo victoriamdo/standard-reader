@@ -39,8 +39,8 @@ const styles = stylex.create({
     },
   },
   textarea: {
-    fontFamily: fontFamily["sans"],
     boxSizing: "border-box",
+    fontFamily: fontFamily["sans"],
     lineHeight: {
       ":is([data-size=lg])": lineHeight["lg"],
       ":is([data-size=md])": lineHeight["base"],

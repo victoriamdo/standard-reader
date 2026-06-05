@@ -3,6 +3,7 @@
     {
       "files": ["**/*.ts", "**/*.tsx"],
       "plugins": ["typescript", "jsx-a11y", "react"],
+      "jsPlugins": ["@stylexjs/eslint-plugin"],
       "rules": {
         "@typescript-eslint/await-thenable": "error",
         "@typescript-eslint/ban-ts-comment": [
@@ -154,7 +155,92 @@
 
         "react/only-export-components": "error",
         "react-hooks/rules-of-hooks": "error",
-        "react-hooks/exhaustive-deps": "error"
+        "react-hooks/exhaustive-deps": "error",
+
+        "@stylexjs/valid-styles": [
+          "error",
+          {
+            "allowOuterPseudoAndMedia": true,
+            "propLimits": {
+              "transitionDuration": {
+                "reason": "Use the animationDuration tokens from the animations.stylex.tsx file",
+                "limit": [
+                  "animationDuration.fast",
+                  "animationDuration.default",
+                  "animationDuration.slow",
+                  "animationDuration.verySlow",
+                  "animationDuration.extremelySlow",
+                  "animationDuration.shimmer",
+                  "animationDuration.indeterminateCycle"
+                ]
+              },
+              "animationDuration": {
+                "reason": "Use the animationDuration tokens from the animations.stylex.tsx file",
+                "limit": [
+                  "animationDuration.fast",
+                  "animationDuration.default",
+                  "animationDuration.slow",
+                  "animationDuration.verySlow",
+                  "animationDuration.extremelySlow",
+                  "animationDuration.shimmer",
+                  "animationDuration.indeterminateCycle"
+                ]
+              }
+            }
+          }
+        ],
+        "@stylexjs/sort-keys": ["error", { "allowLineSeparatedGroups": true }],
+        "@stylexjs/valid-shorthands": "error",
+        "@stylexjs/enforce-extension": "error",
+        "@stylexjs/no-unused": "error",
+        "@stylexjs/no-legacy-contextual-styles": "error",
+        "@stylexjs/no-lookahead-selectors": "error"
+      }
+    },
+    {
+      "files": ["**/typography.stylex.tsx"],
+      "rules": {
+        "@stylexjs/valid-styles": "off"
+      }
+    },
+    {
+      "files": [
+        "src/design-system/theme/semantic-color.stylex.tsx",
+        "src/design-system/theme/typography.stylex.tsx",
+        "src/design-system/theme/spacing.stylex.tsx"
+      ],
+      "rules": {
+        "@stylexjs/enforce-extension": "off"
+      }
+    },
+    {
+      "files": [
+        "src/design-system/alert/index.tsx",
+        "src/design-system/badge/index.tsx",
+        "src/design-system/button/index.tsx",
+        "src/design-system/card/index.tsx",
+        "src/design-system/content/index.tsx",
+        "src/design-system/empty-state/index.tsx",
+        "src/design-system/footer/index.tsx",
+        "src/design-system/link/index.tsx",
+        "src/design-system/menubar/index.tsx",
+        "src/design-system/navbar/Navbar.tsx",
+        "src/design-system/navbar/NavbarMenu.tsx",
+        "src/design-system/number-field/index.tsx",
+        "src/design-system/page/Page.tsx",
+        "src/design-system/segmented-control/index.tsx",
+        "src/design-system/tag-group/index.tsx",
+        "src/design-system/theme/useButtonStyles.ts",
+        "src/design-system/theme/useInputStyles.ts",
+        "src/design-system/theme/useListBoxItemStyles.ts",
+        "src/design-system/toast/Toast.tsx",
+        "src/design-system/toggle-button-group/index.tsx",
+        "src/design-system/tree/index.tsx",
+        "src/design-system/typography/text.tsx"
+      ],
+      "rules": {
+        "@stylexjs/no-legacy-contextual-styles": "off",
+        "@stylexjs/valid-styles": "off"
       }
     },
     {

@@ -62,12 +62,12 @@ const styles = stylex.create({
     paddingTop: verticalSpace["xl"],
   },
   content: {
-    flexGrow: '1',
-    flexShrink: '1',
-    flexBasis: 'auto',
     gap: gap["lg"],
     display: "flex",
+    flexBasis: 'auto',
     flexDirection: "column",
+    flexGrow: '1',
+    flexShrink: '1',
     minWidth: 0,
   },
   title: {

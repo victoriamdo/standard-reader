@@ -56,13 +56,13 @@ const styles = stylex.create({
     },
   },
   column: {
+    borderBottomColor: uiColor.border1,
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
     paddingBottom: 0,
     paddingLeft: 0,
-    borderBottomColor: uiColor.border1,
     paddingRight: 0,
-    borderBottomStyle: "solid",
     paddingTop: 0,
-    borderBottomWidth: 1,
   },
   columnHeader: {
     alignItems: "center",

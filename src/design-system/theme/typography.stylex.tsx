@@ -65,157 +65,157 @@ export const typeramp = stylex.create({
     textBoxEdge: "cap alphabetic",
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxTrim: "trim-both",
-    marginBottom: 0,
-    marginLeft: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontFamily: fontFamily["title"],
-    marginRight: 0,
     fontSize: {
       default: fontSize["4xl"],
       [breakpoints.md]: fontSize["5xl"],
     },
-    marginTop: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontWeight: fontWeight["extrabold"],
     letterSpacing: tracking["tight"],
     lineHeight: lineHeight.sm,
     scrollMarginBlockStart: verticalSpace["12xl"],
+    marginBottom: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    marginTop: 0,
   },
   heading2: {
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxEdge: "cap alphabetic",
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxTrim: "trim-both",
-    marginBottom: 0,
-    marginLeft: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontFamily: fontFamily["title"],
-    marginRight: 0,
     fontSize: {
       default: fontSize["3xl"],
       [breakpoints.md]: fontSize["4xl"],
     },
-    marginTop: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontWeight: fontWeight.semibold,
     letterSpacing: tracking["tight"],
     lineHeight: lineHeight.sm,
     scrollMarginBlockStart: verticalSpace["12xl"],
     borderBottomWidth: 1,
+    marginBottom: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    marginTop: 0,
   },
   heading3: {
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxEdge: "cap alphabetic",
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxTrim: "trim-both",
-    marginBottom: 0,
-    marginLeft: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontFamily: fontFamily["title"],
-    marginRight: 0,
     fontSize: { default: fontSize["xl"], [breakpoints.md]: fontSize["2xl"] },
-    marginTop: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontWeight: fontWeight["semibold"],
     letterSpacing: tracking["tight"],
     lineHeight: lineHeight.sm,
     scrollMarginBlockStart: verticalSpace["12xl"],
+    marginBottom: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    marginTop: 0,
   },
   heading4: {
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxEdge: "cap alphabetic",
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxTrim: "trim-both",
-    marginBottom: 0,
-    marginLeft: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontFamily: fontFamily["title"],
-    marginRight: 0,
     fontSize: { default: fontSize["xl"] },
-    marginTop: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontWeight: fontWeight["semibold"],
     letterSpacing: tracking["tight"],
     lineHeight: lineHeight.sm,
     scrollMarginBlockStart: verticalSpace["12xl"],
+    marginBottom: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    marginTop: 0,
   },
   heading5: {
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxEdge: "cap alphabetic",
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxTrim: "trim-both",
-    marginBottom: 0,
-    marginLeft: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontFamily: fontFamily["title"],
-    marginRight: 0,
     fontSize: { default: fontSize["lg"] },
-    marginTop: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontWeight: fontWeight["semibold"],
     letterSpacing: tracking["tight"],
     lineHeight: lineHeight.sm,
     scrollMarginBlockStart: verticalSpace["12xl"],
+    marginBottom: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    marginTop: 0,
   },
   body: {
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxEdge: "cap alphabetic",
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxTrim: "trim-both",
-    marginBottom: 0,
-    marginLeft: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontFamily: fontFamily["sans"],
-    marginRight: 0,
     fontSize: { default: fontSize["base"] },
-    marginTop: 0,
     lineHeight: lineHeight.base,
+    marginBottom: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    marginTop: 0,
   },
   smallBody: {
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxEdge: "cap alphabetic",
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxTrim: "trim-both",
-    marginBottom: 0,
-    marginLeft: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontFamily: fontFamily["sans"],
-    marginRight: 0,
     fontSize: { default: fontSize["sm"] },
-    marginTop: 0,
     lineHeight: lineHeight.base,
+    marginBottom: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    marginTop: 0,
   },
   label: {
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxEdge: "cap alphabetic",
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxTrim: "trim-both",
-    marginBottom: 0,
-    marginLeft: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontFamily: fontFamily["sans"],
-    marginRight: 0,
     fontSize: { default: fontSize["sm"] },
-    marginTop: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontWeight: fontWeight["semibold"],
     letterSpacing: tracking["tight"],
     lineHeight: lineHeight.sm,
+    marginBottom: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    marginTop: 0,
   },
   sublabel: {
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxEdge: "cap alphabetic",
     // eslint-disable-next-line @stylexjs/valid-styles
     textBoxTrim: "trim-both",
-    marginBottom: 0,
-    marginLeft: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontFamily: fontFamily["sans"],
-    marginRight: 0,
     fontSize: { default: fontSize["xs"] },
-    marginTop: 0,
     // eslint-disable-next-line @stylexjs/valid-styles
     fontWeight: fontWeight["medium"],
     lineHeight: lineHeight.sm,
+    marginBottom: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    marginTop: 0,
   },
 });

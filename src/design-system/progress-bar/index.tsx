@@ -38,13 +38,13 @@ const styles = stylex.create({
     gridRowStart: 'label',
   },
   bar: {
+    borderRadius: radius.full,
+    overflow: "hidden",
+    backgroundColor: uiColor.component2,
     gridColumnEnd: 'bar',
     gridColumnStart: 'bar',
     gridRowEnd: 'bar',
     gridRowStart: 'bar',
-    borderRadius: radius.full,
-    overflow: "hidden",
-    backgroundColor: uiColor.component2,
     width: "100%",
 
     height: {
@@ -54,12 +54,12 @@ const styles = stylex.create({
     },
   },
   valueLabel: {
+    color: uiColor.text1,
+    fontVariantNumeric: "tabular-nums",
     gridColumnEnd: 'value-label',
     gridColumnStart: 'value-label',
     gridRowEnd: 'value-label',
     gridRowStart: 'value-label',
-    color: uiColor.text1,
-    fontVariantNumeric: "tabular-nums",
     justifySelf: "flex-end",
 
     fontSize: {

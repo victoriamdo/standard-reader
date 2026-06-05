@@ -35,12 +35,12 @@ const styles = stylex.create({
     gridRowStart: 'label',
   },
   valueLabel: {
+    color: uiColor.text1,
+    fontVariantNumeric: "tabular-nums",
     gridColumnEnd: 'value-label',
     gridColumnStart: 'value-label',
     gridRowEnd: 'value-label',
     gridRowStart: 'value-label',
-    color: uiColor.text1,
-    fontVariantNumeric: "tabular-nums",
     justifySelf: "flex-end",
 
     fontSize: {
@@ -55,12 +55,12 @@ const styles = stylex.create({
     },
   },
   track: {
+    borderRadius: radius.full,
+    cornerShape: "squircle",
     gridColumnEnd: 'track',
     gridColumnStart: 'track',
     gridRowEnd: 'track',
     gridRowStart: 'track',
-    borderRadius: radius.full,
-    cornerShape: "squircle",
     height: {
       ":is([data-size=lg] *)": sizeSpace["xl"],
       ":is([data-size=md] *)": sizeSpace["md"],

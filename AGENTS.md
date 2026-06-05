@@ -41,7 +41,9 @@ pnpm install                          # generates pnpm-lock.yaml
 - Intent version resolved: `@tanstack/intent@0.0.41` (via `@latest`).
 - Effective scaffold config (`.cta.json`): `framework: react`, `mode: file-router`,
   `typescript: true`, `tailwind: true`, `packageManager: pnpm`, `intent: true`, no add-ons
-  (`chosenAddOns: []`). (`packageManager` was originally `npm`; switched to `pnpm`.)
+  (`chosenAddOns: []`). (`packageManager` was originally `npm`; switched to `pnpm`. `.cta.json`
+  records `tailwind: true` as the original scaffold choice, but Tailwind has since been removed in
+  favor of StyleX — see "Stack & integrations".)
 
 > Note: the workspace was an essentially empty git repo (not a competing platform template), so
 > nothing from the CLI output had to be dropped. Every generated integration, dependency, script,
@@ -51,14 +53,72 @@ pnpm install                          # generates pnpm-lock.yaml
 
 - **Framework:** TanStack Start + TanStack Router (file-based routing), React 19.
 - **Build/toolchain (CLI default):** Vite 8, `@vitejs/plugin-react`, `@tanstack/router-plugin`.
-- **Styling:** Tailwind CSS v4 via `@tailwindcss/vite`, plus `@tailwindcss/typography`. Theme
-  tokens and a light/dark theme toggle ship in the starter.
+- **Design system:** [hip-ui](https://hip-ui.tngl.io) — a copy-and-own, StyleX + react-aria
+  component library vendored into `src/design-system/`. **Build UI from these components and
+  tokens** (see "Design system" below).
+- **Styling:** StyleX (`@stylexjs/stylex`) is the only styling layer, compiled by
+  `@stylexjs/unplugin` in `vite.config.ts`. **Tailwind has been removed** (no `@tailwindcss/vite`,
+  `tailwindcss`, or `@tailwindcss/typography`, and `styles.css` is now just a tiny reset). Build all
+  UI from design-system components + StyleX tokens.
 - **Devtools:** `@tanstack/react-devtools` + `@tanstack/devtools-vite` (stripped from production
   builds automatically).
 - **Icons:** `lucide-react` (used by the starter Header/Footer/ThemeToggle).
 - **Testing:** Vitest + Testing Library + jsdom (no tests authored yet).
 - **Lint/format:** oxlint (oxc) + oxfmt — see "Linting & formatting" below.
 - **Agent tooling:** TanStack Intent skill mappings (see the block at the top of this file).
+
+## Design system (hip-ui) — use it for all UI
+
+This project vendors the **hip-ui** design system into `src/design-system/` (a "copy-and-own"
+StyleX + [react-aria-components](https://react-spectrum.adobe.com/react-aria/) library). When
+building or changing UI, **use these components and tokens instead of hand-rolling markup, raw
+HTML elements, or ad-hoc CSS / inline styles.**
+
+### Rules
+
+- **Prefer design-system components.** Import from `src/design-system/<component>` (aliases `#/` and
+  `@/` both map to `./src`, e.g. `import { Button } from "#/design-system/button"`). Components are
+  named exports built on react-aria, so they're accessible by default (use their props rather than
+  re-implementing keyboard/ARIA behavior). Browse `src/design-system/*/index.tsx` for the catalog
+  (Button, Card, Dialog, Flex, Grid, TextField, Select, Menu, Toast, etc.).
+- **Use theme tokens, never hardcoded values.** Pull design tokens from the StyleX theme in
+  `src/design-system/theme/` (re-exported from `src/design-system/theme/index.ts`): colors and
+  `semantic-color`, `spacing` / `semantic-spacing` (`gap`), `radius`, `shadow`, `typography`,
+  `animations` (`animationDuration`), and `media-queries`. Reference them in `stylex.create(...)`
+  (e.g. `gap: gap["md"]`, `transitionDuration: animationDuration.fast`) instead of literal
+  px/hex/duration values.
+- **Style with StyleX**, following the existing component conventions (`stylex.create` +
+  `stylex.props`, `"use client"` where needed). Avoid introducing new Tailwind/inline styling for
+  design-system work.
+- **Layout tips (from hip-ui):** prefer `Flex` for layout (use `Grid` only for true 2D layouts) and
+  **always set a `gap`**; text uses `text-box-trim`, so bump the flex `gap` around text; use `Card`
+  sparingly.
+
+### Use the hip-ui MCP server before building UI
+
+The repo configures the hip-ui MCP server in `.cursor/mcp.json` (`npx hip-ui mcp` → server
+`hip-ui-docs`). **Consult it before adding or significantly changing UI** so you follow the current,
+shipped component patterns rather than guessing:
+
+1. **Load the resource `hip-ui://tips-and-tricks-for-llms`** ("tips & tricks for LLMs") first and
+   keep it in context.
+2. **`list-sections`** — discover the available docs (introduction, foundations, components,
+   showcase, ai).
+3. **`get-documentation`** — fetch full markdown for the component/section you're working with
+   (accepts a title, docs slug, or `/docs` URL path; single or array).
+
+If the MCP server isn't connected, the same docs are vendored at
+`node_modules/hip-ui/dist/mcp/docs/` and component source lives in `src/design-system/`.
+
+### StyleX build wiring
+
+StyleX is compiled by `@stylexjs/unplugin/vite` (first plugin in `vite.config.ts`, mirroring
+`~/Documents/at-store`). The plugin is configured with `treeshakeCompensation`, `dev` toggled by
+`NODE_ENV`, and the `#/*` + `@/*` aliases pointing at `./src/*`. In dev, `__root.tsx` imports
+`virtual:stylex:runtime` and links `/virtual:stylex.css` (typed via `src/stylex-env.d.ts`); the
+production build emits a real CSS asset. `pnpm build`, `pnpm dev`, and `pnpm typecheck` all pass with
+the design system in use. (The StyleX-aware `@stylexjs/eslint-plugin` lint rules are still not wired
+up — see "Linting & formatting".)
 
 ## Scripts
 
@@ -87,16 +147,22 @@ Linting uses [oxlint](https://oxc.rs) (pinned `oxlint@1.48.0`) and formatting us
 - `config/oxlint/overrides.json` — type-aware `@typescript-eslint`, `jsx-a11y`, and React /
   react-hooks rules for `*.ts`/`*.tsx`, a Node env override for `*.mjs`/`*.cjs`, and a general
   `*.js`/`*.ts`/`*.tsx` block (import hygiene + `@stylistic/spaced-comment`).
-  > Adapted from at-store: StyleX rules and at-store-specific file lists/lexicons were dropped
-  > (this project uses Tailwind, not StyleX). The import-resolution allowlist targets this repo's
-  > `#/` and `@/` aliases.
+  > Adapted from at-store: at-store-specific file lists/lexicons were dropped and the
+  > import-resolution allowlist targets this repo's `#/` and `@/` aliases. The `@stylexjs/eslint-plugin`
+  > rules from at-store are **not** wired up yet even though this project uses StyleX (via the
+  > hip-ui design system) — add `@stylexjs/eslint-plugin` and port that override block if you want
+  > StyleX-aware linting.
 - `.oxfmtrc.json` — oxfmt config: 2-space indent, 80 col, semicolons, double quotes,
   trailing commas (`all`), `lf`. Ignores generated files and lockfiles.
+- **`src/design-system/**`is excluded from both oxlint and oxfmt.** It's vendored copy-and-own
+code whose lint/format expectations are tuned to hip-ui/at-store (incl. the unconfigured StyleX
+rules), so we don't lint/format it here to avoid noise. Wire up`@stylexjs/eslint-plugin` and
+  remove the ignore if you want the design system linted in this repo.
 - oxlint JS plugins in use (devDependencies): `@eslint-community/eslint-plugin-eslint-comments`,
   `eslint-plugin-perfectionist`, `@stylistic/eslint-plugin`.
-- The starter source was brought to a clean state (`pnpm lint` → 0 errors, `pnpm format:check`
-  passes): `window.*` member access was switched to `globalThis.*` in `ThemeToggle.tsx`
-  (`prefer-global-this`), and imports were regrouped in `__root.tsx`.
+- App source is clean (`pnpm lint` → 0 errors, `pnpm format:check` passes). Note the
+  `unicorn/no-typeof-undefined` rule: use `globalThis.localStorage === undefined`, not
+  `typeof ... === "undefined"`, and `charSet: "utf8"` (not `"utf-8"`) in route `head`.
 
 ## Project structure
 
@@ -104,14 +170,16 @@ Linting uses [oxlint](https://oxc.rs) (pinned `oxlint@1.48.0`) and formatting us
 src/
   router.tsx          # getRouter() factory + Register module augmentation
   routes/
-    __root.tsx        # root document shell (HeadContent/Scripts, Header, Footer, devtools)
-    index.tsx         # "/" home route
-    about.tsx         # "/about" route
-  components/         # Header, Footer, ThemeToggle
-  styles.css          # Tailwind import + theme tokens + component styles
+    __root.tsx        # root shell: applies DS theme tokens to <body>, Header/Footer, devtools
+    index.tsx         # "/" home route — DS placeholder (Page/Content/Flex/Button)
+    about.tsx         # "/about" route — DS placeholder (Page/Content)
+  components/         # app-specific components (Header, Footer, ThemeToggle) — StyleX, no Tailwind
+  design-system/      # hip-ui (copy-and-own): components + StyleX theme tokens (theme/)
+  styles.css          # minimal global reset only (no Tailwind)
+  stylex-env.d.ts     # ambient types for the StyleX virtual modules
   routeTree.gen.ts    # GENERATED at dev/build time — do not edit (gitignored)
 public/               # static assets (favicon, logos, manifest, robots.txt)
-vite.config.ts        # devtools() -> tailwindcss() -> tanstackStart() -> viteReact()
+vite.config.ts        # stylexPlugin() -> devtools() -> tanstackStart() -> viteReact()
 tsconfig.json         # bundler resolution; "#/*" and "@/*" aliases -> ./src/*
 ```
 
@@ -137,8 +205,11 @@ tsconfig.json         # bundler resolution; "#/*" and "@/*" aliases -> ./src/*
   package manager from npm to pnpm (lockfile is `pnpm-lock.yaml`, pinned via `packageManager`).
 - Merged the CLI output into the pre-existing repo rather than scaffolding into a subfolder; the
   TanStack-specific `.gitignore` entries were appended to the repo's existing generic `.gitignore`.
-- `vite.config.ts` plugin order matters: `devtools()` must be first; `tanstackStart()` precedes
-  `viteReact()`.
+- `vite.config.ts` plugin order matters: `stylexPlugin()` runs first, then `devtools()`, and
+  `tanstackStart()` precedes `viteReact()`.
+- **Removed Tailwind** in favor of StyleX + the hip-ui design system: dropped the Tailwind deps and
+  Vite plugin, reduced `styles.css` to a reset, wired `@stylexjs/unplugin`, and rebuilt
+  `__root.tsx`, `Header`, `Footer`, `ThemeToggle`, and the route pages on design-system components.
 
 ## Known gotchas
 

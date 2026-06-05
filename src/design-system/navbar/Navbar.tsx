@@ -173,18 +173,14 @@ const styles = stylex.create({
     width: "auto",
   },
   separator: {
+    // eslint-disable-next-line @stylexjs/valid-styles
+    display: "var(--separator-visibility, none)",
     gridColumnEnd: 'separator',
     gridColumnStart: 'separator',
     gridRowEnd: 'separator',
     gridRowStart: 'separator',
-    // eslint-disable-next-line @stylexjs/valid-styles
-    display: "var(--separator-visibility, none)",
   },
   navigation: {
-    gridColumnEnd: 'navigation',
-    gridColumnStart: 'navigation',
-    gridRowEnd: 'navigation',
-    gridRowStart: 'navigation',
     gap: {
       default: gap["5xl"],
       [containerBreakpoints.sm]: sizeSpace["3xl"],
@@ -203,6 +199,10 @@ const styles = stylex.create({
       [containerBreakpoints.sm]: "row",
     },
     flexGrow: 1,
+    gridColumnEnd: 'navigation',
+    gridColumnStart: 'navigation',
+    gridRowEnd: 'navigation',
+    gridRowStart: 'navigation',
   },
   navigationJustifyLeft: {
     justifyContent: "flex-start",
@@ -214,10 +214,6 @@ const styles = stylex.create({
     justifyContent: "flex-end",
   },
   action: {
-    gridColumnEnd: 'action',
-    gridColumnStart: 'action',
-    gridRowEnd: 'action',
-    gridRowStart: 'action',
     gap: gap["md"],
     alignItems: "center",
     display: {
@@ -226,17 +222,21 @@ const styles = stylex.create({
       [containerBreakpoints.sm]: "flex",
       ":is([data-always-visible])": "flex",
     },
+    gridColumnEnd: 'action',
+    gridColumnStart: 'action',
+    gridRowEnd: 'action',
+    gridRowStart: 'action',
   },
   hamburgerButton: {
-    gridColumnEnd: 'hamburger',
-    gridColumnStart: 'hamburger',
-    gridRowEnd: 'hamburger',
-    gridRowStart: 'hamburger',
     alignItems: "center",
     display: {
       default: "flex",
       [containerBreakpoints.sm]: "none",
     },
+    gridColumnEnd: 'hamburger',
+    gridColumnStart: 'hamburger',
+    gridRowEnd: 'hamburger',
+    gridRowStart: 'hamburger',
   },
   link: {
     "--underline-opacity": {

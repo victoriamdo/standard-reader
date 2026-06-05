@@ -1,7 +1,6 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useRef, useState } from "react";
 import {
   MediaCaptionsButton,
   MediaControlBar,
@@ -16,6 +15,7 @@ import {
   MediaTimeRange,
   MediaVolumeRange,
 } from "media-chrome/react";
+import { useEffect, useRef, useState } from "react";
 
 import type { StyleXComponentProps } from "../theme/types";
 
@@ -109,34 +109,34 @@ const styles = stylex.create({
     aspectRatio,
   }),
   subtitleOverlay: (subtitleOffset: string) => ({
-    position: "absolute",
-    left: horizontalSpace["2xl"],
-    right: horizontalSpace["2xl"],
-    bottom: 0,
     display: "flex",
     justifyContent: "center",
     pointerEvents: "none",
+    position: "absolute",
     transform: `translateY(calc(-1 * ${subtitleOffset}))`,
     transitionDelay: "0.05s",
     transitionDuration: "0.15s",
     transitionProperty: "transform",
     transitionTimingFunction: "linear",
     zIndex: 1,
+    bottom: 0,
+    left: horizontalSpace["2xl"],
+    right: horizontalSpace["2xl"],
   }),
   subtitleText: {
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
     borderRadius: radius.sm,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
     color: "white",
-    fontSize: size.lg,
     fontFamily: fontFamily["sans"],
+    fontSize: size.lg,
     lineHeight: 1.4,
+    textAlign: "center",
+    whiteSpace: "pre-wrap",
     maxWidth: "100%",
+    paddingBottom: verticalSpace.sm,
     paddingLeft: horizontalSpace.lg,
     paddingRight: horizontalSpace.lg,
     paddingTop: verticalSpace.sm,
-    paddingBottom: verticalSpace.sm,
-    textAlign: "center",
-    whiteSpace: "pre-wrap",
   },
 });
 
@@ -336,7 +336,7 @@ function getActiveCueText(track: TextTrack): string {
     return "";
   }
 
-  return Array.from(activeCues)
+  return [...activeCues]
     .map((cue) => {
       if ("text" in cue && typeof cue.text === "string") {
         return cue.text.trim();
@@ -365,7 +365,7 @@ function useVideoSubtitles({
     (track) => track.default,
   );
   const selectedSubtitleTrackIndex =
-    defaultSubtitleTrackIndex >= 0 ? defaultSubtitleTrackIndex : 0;
+    Math.max(defaultSubtitleTrackIndex, 0);
 
   useEffect(() => {
     setCaptionsEnabled(hasSubtitleTracks && defaultCaptionsEnabled);
@@ -491,7 +491,7 @@ function useVideoSubtitles({
 
     const syncSubtitleState = () => {
       const availableSubtitleTracks =
-        Array.from(textTracks).filter(isSubtitleTrack);
+        [...textTracks].filter(isSubtitleTrack);
       const selectedTrack =
         captionsEnabled &&
         selectedSubtitleTrackIndex < availableSubtitleTracks.length
@@ -510,7 +510,7 @@ function useVideoSubtitles({
     const bindCueListeners = () => {
       removeCueListeners();
 
-      for (const track of Array.from(textTracks).filter(isSubtitleTrack)) {
+      for (const track of [...textTracks].filter(isSubtitleTrack)) {
         track.addEventListener("cuechange", syncSubtitleState);
         cueListeners.set(track, syncSubtitleState);
       }

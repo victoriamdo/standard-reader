@@ -10,6 +10,7 @@
   },
   "ignorePatterns": [
     "**/routeTree.gen.ts",
+    "eslint.stylex-autofix.mjs",
     "**/public/**/*.js",
     "**/node_modules",
     "**/.DS_Store",

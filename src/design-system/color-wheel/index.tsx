@@ -21,11 +21,11 @@ const styles = stylex.create({
     width: "fit-content",
   },
   track: {
+    borderRadius: radius.full,
     gridColumnEnd: 'track',
     gridColumnStart: 'track',
     gridRowEnd: 'track',
     gridRowStart: 'track',
-    borderRadius: radius.full,
     height: {
       ":is([data-size=lg] *)": sizeSpace["xl"],
       ":is([data-size=md] *)": sizeSpace["md"],

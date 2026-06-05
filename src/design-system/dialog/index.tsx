@@ -20,7 +20,6 @@ import { uiColor } from "../theme/color.stylex";
 import {
   gap,
   horizontalSpace,
-  size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
 import { fontSize, typeramp } from "../theme/typography.stylex";
@@ -51,8 +50,8 @@ const styles = stylex.create({
   },
   headerTitle: {
     fontSize: fontSize["lg"],
-    marginTop: 0,
     marginBottom: 0,
+    marginTop: 0,
   },
   description: {
     color: uiColor.text1,
@@ -70,16 +69,16 @@ const styles = stylex.create({
   /* eslint-disable @stylexjs/sort-keys -- footer layout + padding order */
   footer: {
     gap: gap["md"],
+    backgroundColor: uiColor.bg,
     display: "flex",
     justifyContent: "flex-end",
+    position: "sticky",
+    zIndex: 1,
+    bottom: 0,
     paddingBottom: verticalSpace["3xl"],
     paddingLeft: horizontalSpace["3xl"],
     paddingRight: horizontalSpace["3xl"],
-    position: "sticky",
     paddingTop: verticalSpace["3xl"],
-    zIndex: 1,
-    bottom: 0,
-    backgroundColor: uiColor.bg,
 
     borderTopColor: uiColor.border1,
     borderTopStyle: "solid",

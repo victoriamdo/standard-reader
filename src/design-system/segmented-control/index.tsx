@@ -64,16 +64,16 @@ const styles = stylex.create({
     borderWidth: 0,
 
     cornerShape: "squircle",
+    gap: gap["xs"],
     alignItems: "center",
     backgroundColor: "transparent",
     boxSizing: "border-box",
-    gap: gap["xs"],
-    display: "flex",
     color: {
       default: uiColor.text1,
       ":is([data-hovered])": uiColor.text2,
       ":is([data-selected])": uiColor.text2,
     },
+    display: "flex",
     flexGrow: 1,
     justifyContent: "center",
     position: "relative",
