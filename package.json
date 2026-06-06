@@ -11,6 +11,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "ingest:dev": "node --experimental-strip-types --env-file=.env src/server/ingest/service.ts",
     "typecheck": "tsc --noEmit",
     "lint": "pnpm exec oxlint .",
     "format": "pnpm exec oxfmt",
@@ -20,10 +21,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "ingest:backfill": "node --experimental-strip-types --env-file=.env scripts/backfill.ts"
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@atproto/tap": "^0.3.0",
     "@neondatabase/serverless": "^1.1.0",
     "@origin-space/image-cropper": "^0.1.9",
     "@react-aria/overlays": "^3.32.1",

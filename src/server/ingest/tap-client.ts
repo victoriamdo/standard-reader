@@ -4,6 +4,8 @@ import { db } from "../../db/index.ts";
 import { trackedRepos } from "../../db/schema.ts";
 import { ingestConfig } from "./config.ts";
 
+const TAP_ADMIN_TIMEOUT_MS = 1500;
+
 /** Reason a repo entered our tracking set (mirrors `tracked_repos.reason`). */
 export type TrackReason =
   | "publication"
@@ -33,9 +35,10 @@ async function tapAddRepos(dids: Array<string>): Promise<boolean> {
   }
   try {
     const res = await fetch(`${apiUrl.replace(/\/+$/, "")}/repos/add`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...basicAuthHeader() },
       body: JSON.stringify({ dids }),
+      headers: { "Content-Type": "application/json", ...basicAuthHeader() },
+      method: "POST",
+      signal: AbortSignal.timeout(TAP_ADMIN_TIMEOUT_MS),
     });
     return res.ok;
   } catch {

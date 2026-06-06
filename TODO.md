@@ -25,13 +25,13 @@ work. Check items off as they land.
       observability + structured logs.
 - [x] Topic derivation: `recomputeTopics()` sets each publication's `topic` to its most
       frequent document tag (lexicon has no topic field).
-- [x] Local-dev fill without tap: `pnpm ingest:backfill` (`scripts/backfill.ts` +
-      `src/server/ingest/backfill.ts`) discovers `standard.site` repos via the relay
-      (`com.atproto.sync.listReposByCollection`), reads records over `com.atproto.repo.listRecords`,
-      and feeds them through the **same `processTapEvent` consumer**. `src/db/index.ts` is now
-      driver-aware (node-postgres for local URLs, Neon serverless for Neon; override `DB_DRIVER`).
-      Verified end-to-end against a local Postgres (`standard_reader`): 59 pubs / 160 docs / 117 subs
-      / 52 recs / 25 profiles, derived stats + cosubs + topics, 0 dead-letters.
+- [x] Local-dev run verified end-to-end via the **real tap pipeline** against a local Postgres:
+- [x] Local-dev run verified end-to-end via the **real tap pipeline** against a local Postgres:
+      `tap/` docker-compose → acknowledged WebSocket channel → standalone ingest worker
+      (`pnpm ingest:dev`) → consumer → `standard_reader` db. `src/db/index.ts` is driver-aware
+      (node-postgres for local URLs, Neon serverless for Neon; override `DB_DRIVER`). Backfilled
+      5k+ pubs / 60k+ docs / 5k+ subs / 8k+ profiles. The ingest worker, not the TanStack app
+      server, owns tap event processing, operational status, and recompute endpoints.
 - [ ] _Later:_ schedule the derived-data `recompute` cron; publication verification pass
       (`/.well-known/site.standard.publication`).
 

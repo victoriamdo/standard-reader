@@ -20,7 +20,7 @@ import {
   subscriptions,
 } from "../../db/schema.ts";
 import { blobCid, bskyImageUrl, getBlobUrl } from "../atproto/blob.ts";
-import { primeIdentityHandle, resolveIdentity } from "../atproto/identity.ts";
+import { getCachedIdentity, primeIdentityHandle } from "../atproto/identity.ts";
 import {
   Collections,
   didFromAtUri,
@@ -60,13 +60,13 @@ export async function upsertPublication(
     return;
   }
 
-  const owner = await resolveIdentity(did);
+  const owner = getCachedIdentity(did);
   const iconCid = blobCid(record.icon);
   const iconUrl =
-    iconCid && owner.pds ? getBlobUrl(owner.pds, did, iconCid) : null;
+    iconCid && owner?.pds ? getBlobUrl(owner.pds, did, iconCid) : null;
   const theme = flattenTheme(record.basicTheme);
 
-  await ensureProfileStub(did, owner.handle);
+  await ensureProfileStub(did, owner?.handle);
 
   const values = {
     uri,
@@ -163,15 +163,15 @@ export async function upsertDocument(
   const base = publicationBaseUrl ?? (isAtUri(site) ? null : site);
   const canonicalUrl = buildCanonicalUrl(base, cleanOptional(record.path));
 
-  const owner = await resolveIdentity(did);
+  const owner = getCachedIdentity(did);
   const coverCid = blobCid(record.coverImage);
   const coverImageUrl =
-    coverCid && owner.pds ? getBlobUrl(owner.pds, did, coverCid) : null;
+    coverCid && owner?.pds ? getBlobUrl(owner.pds, did, coverCid) : null;
 
   const publishedAt =
     parseDate(record.publishedAt) ?? parseDate(record.updatedAt) ?? new Date();
 
-  await ensureProfileStub(did, owner.handle);
+  await ensureProfileStub(did, owner?.handle);
 
   const values = {
     uri,
@@ -190,7 +190,11 @@ export async function upsertDocument(
     coverImageCid: coverCid,
     coverImageMime: record.coverImage?.mimeType ?? null,
     coverImageUrl,
-    tags: record.tags ?? null,
+    tags: Array.isArray(record.tags)
+      ? record.tags
+          .filter((t) => typeof t === "string")
+          .map((t) => stripNullBytes(t))
+      : null,
     bskyPostUri: record.bskyPostRef?.uri ?? null,
     bskyPostCid: record.bskyPostRef?.cid ?? null,
     publishedAt,
@@ -208,7 +212,9 @@ export async function upsertDocument(
   await db
     .delete(documentContributors)
     .where(eq(documentContributors.documentUri, uri));
-  const contributors = record.contributors ?? [];
+  const contributors = Array.isArray(record.contributors)
+    ? record.contributors
+    : [];
   if (contributors.length > 0) {
     await db
       .insert(documentContributors)

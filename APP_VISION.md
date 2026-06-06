@@ -161,7 +161,7 @@ source of truth; Neon holds a derived view for speed and cross-network querying.
 AT Proto network (standard.site publications, profiles, follows)
         │
         ▼
-   tap instance  ──backfill / keep-in-sync──▶  Neon Postgres (read-model / cache)
+   tap instance  ──WebSocket + acks──▶ ingest worker ──backfill / keep-in-sync──▶  Neon Postgres (read-model / cache)
                                                       │  Drizzle ORM
                                                       ▼
                               TanStack Start server functions
@@ -173,11 +173,11 @@ AT Proto network (standard.site publications, profiles, follows)
 ```
 
 - **Ingestion:** a **tap instance** (`bluesky-social/indigo` cmd/tap; see `tap/`) backfills all
-  `standard.site` data from the network and keeps it current, POSTing verified record/identity
-  events to our webhook (`/api/ingest/tap`). The consumer (`src/server/ingest/`) maps records to
-  rows idempotently and expands tap's tracked-repo set along the graph via `/repos/add`. For local
-  testing without tap/Docker, `pnpm ingest:backfill` discovers repos via the relay and reads their
-  records over `com.atproto.repo.listRecords`, feeding them through the **same consumer**.
+  `standard.site` data from the network and keeps it current. A separate ingest worker
+  (`pnpm ingest:dev`) connects to tap's acknowledged WebSocket channel, maps records to rows
+  idempotently, and expands tap's tracked-repo set along the graph via `/repos/add`. tap + the
+  worker are the single ingestion path for both backfill and live sync (locally and in prod); the
+  product app server does not process the firehose.
 - **Read-model:** **Neon Postgres** in dev/prod (a local Postgres for testing — the DB client in
   `src/db/index.ts` picks the driver from the connection string), managed with **Drizzle**
   (`src/db/schema/`), powers feeds, the

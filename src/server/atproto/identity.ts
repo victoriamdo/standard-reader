@@ -21,8 +21,14 @@ interface DidDocument {
 }
 
 const cache = new Map<string, ResolvedIdentity>();
+/** In-flight resolutions, so a burst of events for the same DID shares one
+ * network request instead of spawning thousands of concurrent fetches. */
+const inflight = new Map<string, Promise<ResolvedIdentity>>();
 
 const PLC_URL = process.env.TAP_PLC_URL || "https://plc.directory";
+/** Hard cap on each DID-doc fetch so a slow/hanging PLC can't pile up unbounded
+ * pending promises (which previously exhausted memory under firehose load). */
+const FETCH_TIMEOUT_MS = 8000;
 
 function pdsFromDoc(doc: DidDocument): string | null {
   const service = doc.service?.find(
@@ -38,25 +44,26 @@ function handleFromDoc(doc: DidDocument): string | null {
 
 async function fetchDidDoc(did: string): Promise<DidDocument | null> {
   try {
+    let url: string | null = null;
     if (did.startsWith("did:plc:")) {
-      const res = await fetch(`${PLC_URL}/${encodeURIComponent(did)}`);
-      if (!res.ok) {
-        return null;
-      }
-      return (await res.json()) as DidDocument;
-    }
-    if (did.startsWith("did:web:")) {
+      url = `${PLC_URL}/${encodeURIComponent(did)}`;
+    } else if (did.startsWith("did:web:")) {
       const host = did.slice("did:web:".length).replaceAll(":", "/");
-      const res = await fetch(`https://${host}/.well-known/did.json`);
-      if (!res.ok) {
-        return null;
-      }
-      return (await res.json()) as DidDocument;
+      url = `https://${host}/.well-known/did.json`;
     }
+    if (!url) {
+      return null;
+    }
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      return null;
+    }
+    return (await res.json()) as DidDocument;
   } catch {
     return null;
   }
-  return null;
 }
 
 /**
@@ -68,12 +75,30 @@ export async function resolveIdentity(did: string): Promise<ResolvedIdentity> {
   if (cached) {
     return cached;
   }
-  const doc = await fetchDidDoc(did);
-  const resolved: ResolvedIdentity = doc
-    ? { did, pds: pdsFromDoc(doc), handle: handleFromDoc(doc) }
-    : { did, pds: null, handle: null };
-  cache.set(did, resolved);
-  return resolved;
+  const pending = inflight.get(did);
+  if (pending) {
+    return pending;
+  }
+  const promise = (async () => {
+    const doc = await fetchDidDoc(did);
+    const resolved: ResolvedIdentity = doc
+      ? { did, pds: pdsFromDoc(doc), handle: handleFromDoc(doc) }
+      : { did, pds: null, handle: null };
+    cache.set(did, resolved);
+    return resolved;
+  })();
+  inflight.set(did, promise);
+  try {
+    return await promise;
+  } finally {
+    inflight.delete(did);
+  }
+}
+
+/** Return an already-known identity without doing network I/O. Use this in the
+ * hot tap webhook path so acknowledgements are not blocked on PLC/PDS lookups. */
+export function getCachedIdentity(did: string): ResolvedIdentity | null {
+  return cache.get(did) ?? null;
 }
 
 /** Seed/refresh the identity cache from a known handle (e.g. a tap identity

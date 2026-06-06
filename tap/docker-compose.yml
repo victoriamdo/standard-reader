@@ -1,8 +1,9 @@
 # tap — AT Protocol sync service feeding the Standard Reader read-model.
 #
 # Runs bluesky-social/indigo `cmd/tap`, which subscribes to a relay, verifies +
-# backfills repos, and POSTs filtered JSON events to our ingestion webhook
-# (`/api/ingest/tap`). See ./README.md for the full runbook.
+# backfills repos, and serves filtered JSON events over a WebSocket channel to
+# the standalone ingestion service (`pnpm ingest:dev`). See ./README.md for the
+# full runbook.
 #
 #   cp .env.example .env   # then edit
 #   docker compose up -d
@@ -32,12 +33,8 @@ services:
       # Of those repos, only deliver the collections we model + bsky profiles.
       TAP_COLLECTION_FILTERS: "${TAP_COLLECTION_FILTERS:-site.standard.publication,site.standard.document,site.standard.graph.subscription,site.standard.graph.recommend,app.bsky.actor.profile}"
 
-      # Webhook delivery → our app. From inside the container the app on the
-      # host is reachable via host.docker.internal.
-      TAP_WEBHOOK_URL: "${TAP_WEBHOOK_URL:-http://host.docker.internal:3000/api/ingest/tap}"
-      # Basic-auth credential tap presents to the webhook (user is always
-      # `admin`). Our webhook verifies this against INGEST_WEBHOOK_SECRET /
-      # TAP_ADMIN_PASSWORD.
+      # Basic-auth credential for tap's admin API + WebSocket channel (user is
+      # always `admin`). The ingest worker uses the same value to connect.
       TAP_ADMIN_PASSWORD: "${TAP_ADMIN_PASSWORD:?set TAP_ADMIN_PASSWORD in .env}"
 
       TAP_LOG_LEVEL: "${TAP_LOG_LEVEL:-info}"
