@@ -122,9 +122,9 @@ source of truth; Neon holds a derived view for speed and cross-network querying.
 
 - **Auth:** sign in with **AT Proto / Bluesky OAuth**. Personal state is keyed to the user's
   **DID** and syncs across devices.
-- **Subscriptions (follows):** reuse `standard.site`'s follow record where possible. Toggling
-  follow is global and reflects everywhere (sidebar, cards, feed, profile) instantly; the write
-  goes to the user's repo, the cache updates optimistically.
+- **Subscriptions (follows):** reuse `standard.site`'s `site.standard.graph.subscription` record.
+  Toggling follow is global and reflects everywhere (sidebar, cards, feed, profile) instantly; the
+  write goes to the user's repo, the cache updates optimistically.
 - **Bookmarks:** an `app.standard-reader.bookmark` record per saved article (save toggle in reader).
 - **Read / unread:** an `app.standard-reader.readState` record per article; opening an article
   marks it read.
@@ -134,8 +134,21 @@ source of truth; Neon holds a derived view for speed and cross-network querying.
 
 ### Data shapes (source of truth)
 
-- **From `standard.site` lexicons** (reuse everything we can): publications, articles/posts,
-  author profiles, and follows.
+- **From `standard.site` lexicons** (reuse everything we can):
+  - `site.standard.publication` — a publication (`url`, `name`, `description`, `icon` blob,
+    `basicTheme`, `preferences.showInDiscover`). _In the UI we call these "publications"._
+  - `site.standard.document` — an **article** (`site` → publication, `title`, `path`,
+    `content`/`textContent`, `coverImage` blob = hero, `tags`, `contributors`, `publishedAt`).
+    _"Article" is the product/UI term; the record is a "document"._
+  - `site.standard.graph.subscription` — a **subscription** (`publication` at-uri). These are
+    standard.site subscriptions, **not** Bluesky follows. _UI term: "follow"._
+  - `site.standard.graph.recommend` — a per-document endorsement (`document` at-uri); a signal
+    for trending/recommendations.
+  - **Author profiles are _not_ a standard.site lexicon** — a publication's author is just its
+    repo DID. We backfill identity/profile data (handle, display name, avatar, banner, bio) from
+    the AT Proto identity layer + Bluesky `app.bsky.actor.profile`.
+  - Note: there's **no** "featured" flag or "topic" in the lexicons — both are app-derived
+    (`topic` = a publication's most frequent document tag; Discover chips = top-N topics).
 - **App-owned lexicons** under the `app.standard-reader` namespace:
   - `app.standard-reader.bookmark`
   - `app.standard-reader.readState`
@@ -159,10 +172,18 @@ AT Proto network (standard.site publications, profiles, follows)
                                                       └─▶ cache updated optimistically
 ```
 
-- **Ingestion:** a **tap instance** backfills all `standard.site` data from the network and keeps
-  it current.
-- **Read-model:** **Neon Postgres**, managed with **Drizzle** (`src/db/`), powers feeds, the
-  directory, search, recommendations, and trending. It is a cache — never the source of truth.
+- **Ingestion:** a **tap instance** (`bluesky-social/indigo` cmd/tap; see `tap/`) backfills all
+  `standard.site` data from the network and keeps it current, POSTing verified record/identity
+  events to our webhook (`/api/ingest/tap`). The consumer (`src/server/ingest/`) maps records to
+  rows idempotently and expands tap's tracked-repo set along the graph via `/repos/add`. For local
+  testing without tap/Docker, `pnpm ingest:backfill` discovers repos via the relay and reads their
+  records over `com.atproto.repo.listRecords`, feeding them through the **same consumer**.
+- **Read-model:** **Neon Postgres** in dev/prod (a local Postgres for testing — the DB client in
+  `src/db/index.ts` picks the driver from the connection string), managed with **Drizzle**
+  (`src/db/schema/`), powers feeds, the
+  directory, search (GIN `tsvector`), recommendations, and trending. Derived aggregates
+  (`publication_stats`, `publication_cosubscriptions`) are recomputed on a schedule. It is a
+  cache — never the source of truth.
 - **Writes:** user actions (follow, bookmark, read state) are written as records to the user's repo
   and reflected back into the cache.
 

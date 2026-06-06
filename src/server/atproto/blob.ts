@@ -1,0 +1,39 @@
+import type { BlobRef } from "./types.ts";
+
+/** Pull the CID string out of a blob ref (`ref.$link`, a bare string, or null). */
+export function blobCid(blob: BlobRef | undefined | null): string | null {
+  if (!blob || !blob.ref) {
+    return null;
+  }
+  if (typeof blob.ref === "string") {
+    return blob.ref;
+  }
+  return blob.ref.$link ?? null;
+}
+
+/**
+ * Build a `com.atproto.sync.getBlob` URL for a blob stored on an author's PDS.
+ * Used for standard.site blobs (publication `icon`, document `coverImage`),
+ * which are NOT served by the Bluesky CDN. Requires the owning repo's PDS
+ * endpoint (resolved via the identity layer).
+ */
+export function getBlobUrl(pds: string, did: string, cid: string): string {
+  const base = pds.replace(/\/+$/, "");
+  return `${base}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(
+    did,
+  )}&cid=${encodeURIComponent(cid)}`;
+}
+
+export type BskyImageKind = "avatar" | "banner";
+
+/**
+ * Build a Bluesky CDN image URL for a profile avatar/banner blob. The bsky
+ * AppView CDN can serve these directly from (did, cid) without a PDS lookup.
+ */
+export function bskyImageUrl(
+  kind: BskyImageKind,
+  did: string,
+  cid: string,
+): string {
+  return `https://cdn.bsky.app/img/${kind}/plain/${did}/${cid}@jpeg`;
+}

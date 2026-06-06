@@ -14,20 +14,48 @@ work. Check items off as they land.
 
 ## 1. Data ingestion — tap → Neon
 
-- [ ] Stand up the **tap instance** to backfill all `standard.site` data from the network.
-- [ ] Keep the read-model in sync (ongoing firehose/cursor, not just one-shot backfill).
-- [ ] Operational basics: cursor persistence, retry/backoff, observability/logging.
+- [x] Stand up the **tap instance** to backfill all `standard.site` data from the network
+      (`tap/` — docker-compose for `bluesky-social/indigo` cmd/tap, signal collection
+      `site.standard.publication`, filters `site.standard.*` + `app.bsky.actor.profile`, webhook
+      delivery to `/api/ingest/tap`; `tap/README.md` runbook + `tap/seed-repos.sh`).
+- [x] Keep the read-model in sync (tap firehose + backfill; consumer expands tracking along the
+      graph via tap `/repos/add` when it sees contributor/subscription/recommend references).
+- [x] Operational basics: cursor persistence (tap-owned) + `ingest_state` high-water mark;
+      retry/backoff (tap) + idempotent upserts + `ingest_dead_letter`; `/api/ingest/status`
+      observability + structured logs.
+- [x] Topic derivation: `recomputeTopics()` sets each publication's `topic` to its most
+      frequent document tag (lexicon has no topic field).
+- [x] Local-dev fill without tap: `pnpm ingest:backfill` (`scripts/backfill.ts` +
+      `src/server/ingest/backfill.ts`) discovers `standard.site` repos via the relay
+      (`com.atproto.sync.listReposByCollection`), reads records over `com.atproto.repo.listRecords`,
+      and feeds them through the **same `processTapEvent` consumer**. `src/db/index.ts` is now
+      driver-aware (node-postgres for local URLs, Neon serverless for Neon; override `DB_DRIVER`).
+      Verified end-to-end against a local Postgres (`standard_reader`): 59 pubs / 160 docs / 117 subs
+      / 52 recs / 25 profiles, derived stats + cosubs + topics, 0 dead-letters.
+- [ ] _Later:_ schedule the derived-data `recompute` cron; publication verification pass
+      (`/.well-known/site.standard.publication`).
 
 ## 2. Read-model schema (Drizzle)
 
-- [ ] Replace `demo_users` placeholder with real tables.
-- [ ] `publications` (DID, handle, name, description, avatar/banner, topic, stats).
-- [ ] `articles` (uri, publication ref, title, body/content, hero image, featured flag, published-at).
-- [ ] `authors` / profiles.
-- [ ] `follows` (subscription graph: follower DID → publication) — for social proof + recommendations.
-- [ ] Derived/aggregate fields or tables for **trending** and **recommendations** (counts, velocity, co-subscription).
-- [ ] Indexes for feed, directory sort (Readers / Active / A–Z), and search.
-- [ ] Generate + run migrations.
+- [x] Replace `demo_users` placeholder with real tables (`src/db/schema/`, migration `0000`,
+      applied to Neon).
+- [x] `publications` (`site.standard.publication`: uri/cid/did, name, url, description, icon blob,
+      flattened `basicTheme`, `showInDiscover`, app-derived `topic`, verification state).
+- [x] `documents` (`site.standard.document`: uri, publication ref + raw `site`, title, path,
+      canonical URL, description, `content`/`textContent`, cover image blob, tags, app-derived
+      `featured`, `bskyPostRef`, published/updated) + `document_contributors`.
+- [x] `profiles` — author/contributor identity backfilled from Bluesky (`app.bsky.actor.profile`
+  - identity layer): did, handle, pds, display name, bio, avatar/banner (standard.site has no
+    profile lexicon).
+- [x] `subscriptions` (`site.standard.graph.subscription`: subscriber DID → publication) +
+      `recommends` (`site.standard.graph.recommend`: recommender DID → document) — for social proof
+  - recommendations.
+- [x] Derived/aggregate tables for **trending** and **recommendations**: `publication_stats`
+      (counts, freshness, rolling-window velocity, trending score) + `publication_cosubscriptions`
+      (co-subscription similarity). Recomputed via `src/server/ingest/recompute.ts`.
+- [x] Indexes for feed, directory sort (Readers / Active / A–Z), and search (GIN `tsvector` on
+      documents + publications).
+- [x] Generate + run migrations (`drizzle/0000_premium_gorgon.sql`).
 
 ## 3. Auth — AT Proto / Bluesky OAuth
 
@@ -41,7 +69,8 @@ work. Check items off as they land.
 - [ ] Define app-owned lexicons under `app.standard-reader`:
   - [ ] `app.standard-reader.bookmark`
   - [ ] `app.standard-reader.readState`
-- [ ] Reuse `standard.site` follow lexicon for subscriptions (confirm shape).
+- [x] Confirm `standard.site` subscription lexicon shape: `site.standard.graph.subscription`
+      (`publication` at-uri + optional `createdAt`); read-model ingests it. Write path TODO below.
 - [ ] Write path: create/delete records in the user's repo for follow / bookmark / readState.
 - [ ] Optimistic cache update on write; reconcile from repo/firehose.
 
