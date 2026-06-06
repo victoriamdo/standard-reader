@@ -101,12 +101,31 @@ stores in `src/integrations/auth/`, session/user server fns in
 
 ## 5. Data layer (server functions)
 
-- [ ] Feed queries: Home (featured lead + latest unread + rails), Latest (All / Unread + counts).
-- [ ] Directory queries: All publications (topic chips, sort, pagination) for Discover.
-- [ ] Publication profile query (header, recent writing, readers-also-follow).
-- [ ] Article query (content + mark-read on open).
-- [ ] Search: publications + articles split.
-- [ ] Handle resolution: AT Proto handle/domain → publication preview (for Add modal).
+Read-side query layer mirroring the reader API's server-fn + `*QueryOptions`
+shape (`src/integrations/tanstack-query/api-{feed,discover,publication,search}.functions.ts`).
+Shared DTOs / column projections / mappers in `api-shapes.ts`; shared read-model
+SQL (article-card selector, follow set, unread counts, trending / recommended /
+readers-also-follow rails) in `src/server/reader/queries.ts`. Every fn is wrapped
+in structured o11y (`observe`) and reads from the Neon read-model.
+
+- [x] Feed queries: Home (featured lead + latest unread + Trending/You-might-follow
+      rails, with signed-out/cold-start fallback) + Latest (All / Unread + counts,
+      offset pagination). `feedApi` in `api-feed.functions.ts`.
+- [x] Directory queries: topic chips + All publications (topic filter, Readers/Active/A–Z
+      sort, pagination) + Trending/Recommended rails for Discover. `discoverApi` in
+      `api-discover.functions.ts` (rankings are simple reads over the precomputed
+      aggregates; quality tuning stays in §7).
+- [x] Publication profile query (header + owner identity, recent writing,
+      readers-also-follow). `publicationApi.getPublicationProfile`.
+- [x] Article query (full content + publication card + byline contributors +
+      recommend count). `publicationApi.getArticle`; the GET stays side-effect-free,
+      the UI marks read via `readerApi.markRead` on open.
+- [x] Search: publications + articles split over the GIN `tsvector` columns
+      (`websearch_to_tsquery` + `ts_rank`). `searchApi.search`.
+- [x] Handle resolution: AT Proto handle/domain → publication preview for the Add
+      modal. `searchApi.resolvePublicationByHandle` resolves handle→DID, reads the
+      read-model first, then falls back to listing the author's repo from their PDS
+      (and kicks off tap tracking) for not-yet-indexed publications.
 
 ## 6. UI — port screens to TanStack Start + hip-ui
 

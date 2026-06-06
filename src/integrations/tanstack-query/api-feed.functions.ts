@@ -1,0 +1,177 @@
+import { queryOptions } from "@tanstack/react-query";
+import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
+import { getAtprotoSessionForRequest } from "#/middleware/auth";
+import { observe } from "#/server/observability/log";
+import {
+  countFollowedDocuments,
+  popularPublications,
+  recommendedPublications,
+  selectArticleCards,
+  selectFollowUris,
+  trendingPublications,
+} from "#/server/reader/queries";
+import { z } from "zod";
+
+import type { ArticleCard, PublicationCard } from "./api-shapes";
+
+import { dbMiddleware } from "./db-middleware";
+
+/**
+ * Feed queries (`APP_VISION.md` §5): the signed-in reader's Home (featured lead
+ * + latest unread + Trending/You-might-follow rails) and Latest (chronological
+ * All/Unread with counts). Reads come from the Neon read-model; personal
+ * unread-state is joined from the reader's own `reads`. Signed-out / cold-start
+ * readers fall back to discover-eligible network content + popularity.
+ */
+
+const HOME_ROW_LIMIT = 8;
+const HOME_RAIL_LIMIT = 6;
+
+const latestInput = z.object({
+  filter: z.enum(["all", "unread"]).default("all"),
+  limit: z.number().int().min(1).max(50).default(20),
+  offset: z.number().int().min(0).default(0),
+});
+
+export interface HomeFeed {
+  /** Full-width featured lead (newest featured unread, else newest unread). */
+  featured: ArticleCard | null;
+  /** Latest unread rows from follows (excludes the featured lead). */
+  latestUnread: Array<ArticleCard>;
+  /** Trending publications rail (network-wide). */
+  trending: Array<PublicationCard>;
+  /** Recommended publications rail ("You might follow"). */
+  youMightFollow: Array<PublicationCard>;
+  /** True when tailored to the reader's follows (vs cold-start/signed-out). */
+  personalized: boolean;
+  /** Unread count across follows (null when not personalized). */
+  unreadCount: number | null;
+}
+
+export interface LatestFeed {
+  items: Array<ArticleCard>;
+  counts: { all: number; unread: number };
+  /** Offset for the next page, or null when the last page was reached. */
+  nextOffset: number | null;
+}
+
+const getHomeFeed = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .handler(
+    observe("feed.getHomeFeed", async ({ context }, span) => {
+      const { db, schema } = context;
+      const session = await getAtprotoSessionForRequest(getRequest());
+      const did = session?.did;
+      const followUris = did ? await selectFollowUris(db, schema, did) : [];
+      const personalized = followUris.length > 0;
+      span.set("did", did ?? null);
+      span.set("follows", followUris.length);
+      span.set("personalized", personalized);
+
+      const rowQuery = personalized
+        ? { publicationUris: followUris, unreadForDid: did }
+        : { discoverOnly: true };
+
+      const [featuredLead, rows, trending, youMightFollow, counts] =
+        await Promise.all([
+          selectArticleCards(db, schema, {
+            ...rowQuery,
+            featuredOnly: true,
+            limit: 1,
+          }),
+          selectArticleCards(db, schema, {
+            ...rowQuery,
+            limit: HOME_ROW_LIMIT + 1,
+          }),
+          trendingPublications(db, schema, HOME_RAIL_LIMIT),
+          personalized && did
+            ? recommendedPublications(db, schema, did, HOME_RAIL_LIMIT)
+            : popularPublications(db, schema, HOME_RAIL_LIMIT),
+          personalized && did
+            ? countFollowedDocuments(db, schema, followUris, did)
+            : Promise.resolve(null),
+        ]);
+
+      const featured = featuredLead[0] ?? rows[0] ?? null;
+      const latestUnread = rows
+        .filter((row) => row.uri !== featured?.uri)
+        .slice(0, HOME_ROW_LIMIT);
+
+      span.set("rows", latestUnread.length);
+      return {
+        featured,
+        latestUnread,
+        trending,
+        youMightFollow,
+        personalized,
+        unreadCount: counts?.unread ?? null,
+      } satisfies HomeFeed;
+    }),
+  );
+
+const getLatestFeed = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(latestInput)
+  .handler(
+    observe("feed.getLatestFeed", async ({ data, context }, span) => {
+      const { db, schema } = context;
+      span.set("filter", data.filter);
+      span.set("offset", data.offset);
+
+      const session = await getAtprotoSessionForRequest(getRequest());
+      const did = session?.did;
+      const followUris = did ? await selectFollowUris(db, schema, did) : [];
+      if (!did || followUris.length === 0) {
+        return {
+          items: [],
+          counts: { all: 0, unread: 0 },
+          nextOffset: null,
+        } satisfies LatestFeed;
+      }
+      span.set("did", did);
+
+      const [items, counts] = await Promise.all([
+        selectArticleCards(db, schema, {
+          publicationUris: followUris,
+          unreadForDid: data.filter === "unread" ? did : undefined,
+          limit: data.limit,
+          offset: data.offset,
+        }),
+        countFollowedDocuments(db, schema, followUris, did),
+      ]);
+
+      span.set("count", items.length);
+      return {
+        items,
+        counts,
+        nextOffset:
+          items.length === data.limit ? data.offset + data.limit : null,
+      } satisfies LatestFeed;
+    }),
+  );
+
+function getHomeFeedQueryOptions() {
+  return queryOptions({
+    queryKey: ["feed", "home"] as const,
+    queryFn: async () => getHomeFeed(),
+  });
+}
+
+function getLatestFeedQueryOptions({
+  filter = "all",
+  limit = 20,
+  offset = 0,
+}: z.input<typeof latestInput> = {}) {
+  return queryOptions({
+    queryKey: ["feed", "latest", filter, limit, offset] as const,
+    queryFn: async () => getLatestFeed({ data: { filter, limit, offset } }),
+  });
+}
+
+export const feedApi = {
+  getHomeFeed,
+  getHomeFeedQueryOptions,
+  getLatestFeed,
+  getLatestFeedQueryOptions,
+};
