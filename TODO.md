@@ -32,8 +32,6 @@ work. Check items off as they land.
       (node-postgres for local URLs, Neon serverless for Neon; override `DB_DRIVER`). Backfilled
       5k+ pubs / 60k+ docs / 5k+ subs / 8k+ profiles. The ingest worker, not the TanStack app
       server, owns tap event processing, operational status, and recompute endpoints.
-- [ ] _Later:_ schedule the derived-data `recompute` cron; publication verification pass
-      (`/.well-known/site.standard.publication`).
 
 ## 2. Read-model schema (Drizzle)
 
@@ -85,11 +83,10 @@ stores in `src/integrations/auth/`, session/user server fns in
 
 - [ ] Define app-owned lexicons under `app.standard-reader`:
   - [ ] `app.standard-reader.bookmark`
-  - [ ] `app.standard-reader.readState`
+  - [ ] `app.standard-reader.read`
 - [x] Confirm `standard.site` subscription lexicon shape: `site.standard.graph.subscription`
       (`publication` at-uri + optional `createdAt`); read-model ingests it. Write path TODO below.
-- [ ] Write path: create/delete records in the user's repo for follow / bookmark / readState.
-- [ ] Optimistic cache update on write; reconcile from repo/firehose.
+- [ ] Write path: create/delete records in the user's repo for follow / bookmark / read.
 
 ## 5. Data layer (server functions)
 
@@ -100,14 +97,7 @@ stores in `src/integrations/auth/`, session/user server fns in
 - [ ] Search: publications + articles split.
 - [ ] Handle resolution: AT Proto handle/domain → publication preview (for Add modal).
 
-## 6. Discovery engine (network-powered)
-
-- [ ] **Recommended for you** — collaborative filtering over the follow graph (co-subscription).
-- [ ] **Followed by people you follow** — social-graph query.
-- [ ] **Trending publications / Trending now** — recent activity (new articles + follow velocity, rolling window).
-- [ ] **Cold start** fallback to overall popularity when user has no follows.
-
-## 7. UI — port screens to TanStack Start + hip-ui
+## 6. UI — port screens to TanStack Start + hip-ui
 
 Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
 
@@ -121,6 +111,13 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
 - [ ] **Add / Follow modal** — Browse / Paste a handle (resolve → preview → follow) / Search tabs.
 - [ ] Global follow toggle reflects everywhere instantly (optimistic).
 - [ ] Theme tokens / dark mode parity with prototype.
+
+## 7. Discovery engine (network-powered)
+
+- [ ] **Recommended for you** — collaborative filtering over the follow graph (co-subscription).
+- [ ] **Followed by people you follow** — social-graph query.
+- [ ] **Trending publications / Trending now** — recent activity (new articles + follow velocity, rolling window).
+- [ ] **Cold start** fallback to overall popularity when user has no follows.
 
 ## 8. Routing & state
 
