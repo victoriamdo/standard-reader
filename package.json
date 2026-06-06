@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "ingest:dev": "node --experimental-strip-types --env-file=.env src/server/ingest/service.ts",
+    "backfill:blobs": "node --experimental-strip-types --env-file=.env scripts/backfill-blob-urls.ts",
     "typecheck": "tsc --noEmit",
     "lint": "pnpm exec oxlint .",
     "format": "pnpm exec oxfmt",

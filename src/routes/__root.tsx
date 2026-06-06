@@ -11,28 +11,15 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { useLayoutEffect } from "react";
 
-import { primaryColor } from "../design-system/theme/color.stylex";
-import { blue } from "../design-system/theme/colors/blue.stylex";
+import {
+  editorialFonts,
+  editorialPrimary,
+  editorialUi,
+} from "../components/reader/theme";
 import { ui } from "../design-system/theme/semantic-color.stylex";
 import { user } from "../integrations/tanstack-query/api-user.functions";
 import appCss from "../styles.css?url";
 import { saveHandle } from "../utils/saved-handles";
-
-const primaryColorTheme = stylex.createTheme(primaryColor, {
-  bg: blue.bg,
-  bgSubtle: blue.bgSubtle,
-  component1: blue.component1,
-  component2: blue.component2,
-  component3: blue.component3,
-  border1: blue.border1,
-  border2: blue.border2,
-  border3: blue.border3,
-  solid1: blue.solid1,
-  solid2: blue.solid2,
-  text1: blue.text1,
-  text2: blue.text2,
-  textContrast: "white",
-});
 
 if (import.meta.env.DEV) {
   void import("virtual:stylex:runtime");
@@ -91,6 +78,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { title: "TanStack Start + hip-ui" },
     ],
     links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400;1,6..72,500&family=Archivo:wght@400;500;600;700;800;900&family=Spline+Sans+Mono:wght@400;500;600&display=swap",
+      },
       { rel: "stylesheet", href: appCss },
       import.meta.env.DEV
         ? { rel: "stylesheet", href: "/virtual:stylex.css" }
@@ -106,7 +98,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body {...stylex.props(primaryColorTheme, ui.bg, ui.text)}>
+      <body
+        {...stylex.props(
+          editorialUi,
+          editorialPrimary,
+          editorialFonts,
+          ui.bg,
+          ui.text,
+        )}
+      >
         <PersistOAuthSavedHandle />
         {children}
 

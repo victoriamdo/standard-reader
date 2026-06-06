@@ -62,6 +62,7 @@ export async function selectArticleCards(
 
   const d = schema.documents;
   const p = schema.publications;
+  const pr = schema.profiles;
   const r = schema.reads;
 
   const conds = [eq(d.deleted, false)];
@@ -79,6 +80,7 @@ export async function selectArticleCards(
     .select(articleCardColumns(schema))
     .from(d)
     .leftJoin(p, eq(p.uri, d.publicationUri))
+    .leftJoin(pr, eq(pr.did, p.did))
     .$dynamic();
 
   if (opts.unreadForDid) {
@@ -100,6 +102,32 @@ export async function selectArticleCards(
     .offset(opts.offset ?? 0);
 
   return rows.map((row) => toArticleCard(row));
+}
+
+/**
+ * The reader's followed publications as {@link PublicationCard}s, alphabetical
+ * by name — backs the sidebar "Following" list. Returns `[]` for readers with
+ * no follows.
+ */
+export async function followedPublications(
+  db: Db,
+  schema: Schema,
+  publicationUris: Array<string>,
+): Promise<Array<PublicationCard>> {
+  if (publicationUris.length === 0) {
+    return [];
+  }
+  const p = schema.publications;
+  const st = schema.publicationStats;
+  const pr = schema.profiles;
+  const rows = await db
+    .select(publicationCardColumns(schema))
+    .from(p)
+    .leftJoin(st, eq(st.publicationUri, p.uri))
+    .leftJoin(pr, eq(pr.did, p.did))
+    .where(and(inArray(p.uri, publicationUris), eq(p.deleted, false)))
+    .orderBy(p.name);
+  return rows.map((row) => toPublicationCard(row));
 }
 
 /** Distinct publication AT-URIs a reader currently follows (active records). */
@@ -157,10 +185,12 @@ export async function trendingPublications(
 ): Promise<Array<PublicationCard>> {
   const p = schema.publications;
   const st = schema.publicationStats;
+  const pr = schema.profiles;
   const rows = await db
     .select(publicationCardColumns(schema))
     .from(st)
     .innerJoin(p, eq(p.uri, st.publicationUri))
+    .leftJoin(pr, eq(pr.did, p.did))
     .where(and(eq(p.showInDiscover, true), eq(p.deleted, false)))
     .orderBy(desc(st.trendingScore))
     .limit(limit);
@@ -179,6 +209,7 @@ export async function popularPublications(
 ): Promise<Array<PublicationCard>> {
   const p = schema.publications;
   const st = schema.publicationStats;
+  const pr = schema.profiles;
 
   const conds = [eq(p.showInDiscover, true), eq(p.deleted, false)];
   if (excludeUris.length > 0) {
@@ -189,6 +220,7 @@ export async function popularPublications(
     .select(publicationCardColumns(schema))
     .from(p)
     .leftJoin(st, eq(st.publicationUri, p.uri))
+    .leftJoin(pr, eq(pr.did, p.did))
     .where(and(...conds))
     .orderBy(sql`coalesce(${st.subscriberCount}, 0) desc`)
     .limit(limit);
@@ -215,6 +247,7 @@ export async function recommendedPublications(
   const cs = schema.publicationCosubscriptions;
   const p = schema.publications;
   const st = schema.publicationStats;
+  const pr = schema.profiles;
 
   const agg = db
     .select({
@@ -236,6 +269,7 @@ export async function recommendedPublications(
     .from(agg)
     .innerJoin(p, eq(p.uri, agg.relatedUri))
     .leftJoin(st, eq(st.publicationUri, p.uri))
+    .leftJoin(pr, eq(pr.did, p.did))
     .where(and(eq(p.showInDiscover, true), eq(p.deleted, false)))
     .orderBy(desc(agg.score))
     .limit(limit);
@@ -259,12 +293,14 @@ export async function readersAlsoFollow(
   const cs = schema.publicationCosubscriptions;
   const p = schema.publications;
   const st = schema.publicationStats;
+  const pr = schema.profiles;
 
   const rows = await db
     .select(publicationCardColumns(schema))
     .from(cs)
     .innerJoin(p, eq(p.uri, cs.relatedPublicationUri))
     .leftJoin(st, eq(st.publicationUri, p.uri))
+    .leftJoin(pr, eq(pr.did, p.did))
     .where(
       and(
         eq(cs.publicationUri, publicationUri),

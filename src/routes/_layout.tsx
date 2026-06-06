@@ -1,27 +1,19 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 
-import Footer from "../components/Footer";
-import Header from "../components/Header";
-import { HeaderLayout } from "../design-system/header-layout";
+import { AppShell } from "../components/reader/app-shell";
+import { feedApi } from "../integrations/tanstack-query/api-feed.functions";
 
 export const Route = createFileRoute("/_layout")({
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(feedApi.getSidebarQueryOptions());
+  },
   component: LayoutRoute,
 });
 
 function LayoutRoute() {
   return (
-    <HeaderLayout.Root>
-      <HeaderLayout.Header>
-        <Header />
-      </HeaderLayout.Header>
-
-      <HeaderLayout.Page>
-        <Outlet />
-      </HeaderLayout.Page>
-
-      <HeaderLayout.Footer>
-        <Footer />
-      </HeaderLayout.Footer>
-    </HeaderLayout.Root>
+    <AppShell>
+      <Outlet />
+    </AppShell>
   );
 }

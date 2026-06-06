@@ -1,5 +1,6 @@
 # Logs
 .screenshots
+.scratch
 logs
 *.log
 npm-debug.log*

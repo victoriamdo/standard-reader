@@ -91,6 +91,7 @@ const getPublications = createServerFn({ method: "GET" })
       const { db, schema } = context;
       const p = schema.publications;
       const st = schema.publicationStats;
+      const pr = schema.profiles;
       span.set("topic", data.topic ?? null);
       span.set("sort", data.sort);
       span.set("offset", data.offset);
@@ -111,6 +112,7 @@ const getPublications = createServerFn({ method: "GET" })
         .select(publicationCardColumns(schema))
         .from(p)
         .leftJoin(st, eq(st.publicationUri, p.uri))
+        .leftJoin(pr, eq(pr.did, p.did))
         .where(and(...conds))
         .orderBy(...orderBy)
         .limit(data.limit)

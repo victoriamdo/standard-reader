@@ -5,6 +5,7 @@ import { getAtprotoSessionForRequest } from "#/middleware/auth";
 import { observe } from "#/server/observability/log";
 import {
   countFollowedDocuments,
+  followedPublications,
   popularPublications,
   recommendedPublications,
   selectArticleCards,
@@ -55,6 +56,48 @@ export interface LatestFeed {
   /** Offset for the next page, or null when the last page was reached. */
   nextOffset: number | null;
 }
+
+export interface SidebarData {
+  /** Whether the reader is signed in (drives empty-state copy + auth chrome). */
+  signedIn: boolean;
+  /** Followed publications (alphabetical) for the sidebar Following list. */
+  following: Array<PublicationCard>;
+  /** Unread count across follows (null when signed out / no follows). */
+  unreadCount: number | null;
+}
+
+const getSidebar = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .handler(
+    observe("feed.getSidebar", async ({ context }, span) => {
+      const { db, schema } = context;
+      const session = await getAtprotoSessionForRequest(getRequest());
+      const did = session?.did;
+      span.set("did", did ?? null);
+      if (!did) {
+        return {
+          signedIn: false,
+          following: [],
+          unreadCount: null,
+        } satisfies SidebarData;
+      }
+
+      const followUris = await selectFollowUris(db, schema, did);
+      span.set("follows", followUris.length);
+      const [following, counts] = await Promise.all([
+        followedPublications(db, schema, followUris),
+        followUris.length > 0
+          ? countFollowedDocuments(db, schema, followUris, did)
+          : Promise.resolve(null),
+      ]);
+
+      return {
+        signedIn: true,
+        following,
+        unreadCount: counts?.unread ?? null,
+      } satisfies SidebarData;
+    }),
+  );
 
 const getHomeFeed = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
@@ -169,9 +212,18 @@ function getLatestFeedQueryOptions({
   });
 }
 
+function getSidebarQueryOptions() {
+  return queryOptions({
+    queryKey: ["feed", "sidebar"] as const,
+    queryFn: async () => getSidebar(),
+  });
+}
+
 export const feedApi = {
   getHomeFeed,
   getHomeFeedQueryOptions,
   getLatestFeed,
   getLatestFeedQueryOptions,
+  getSidebar,
+  getSidebarQueryOptions,
 };

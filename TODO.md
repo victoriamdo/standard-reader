@@ -131,8 +131,8 @@ in structured o11y (`observe`) and reads from the Neon read-model.
 
 Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
 
-- [ ] App shell: desktop persistent left sidebar; mobile top bar + bottom tab nav; Following list.
-- [ ] **Home** — masthead (date + unread count), featured lead, latest unread rows, right rail (Trending + You might follow).
+- [x] App shell: desktop persistent left sidebar; mobile top bar + bottom tab nav; Following list.
+- [x] **Home** — masthead (date + unread count), featured lead, latest unread rows, right rail (Trending + You might follow).
 - [ ] **Latest** — chronological list, segmented All/Unread filter with counts.
 - [ ] **Discover** — Recommended / Followed-by-people-you-follow / Trending / All (chips, sort, grid⇄list toggle).
 - [ ] **Search** — editorial field, live results split into Publications + Articles.

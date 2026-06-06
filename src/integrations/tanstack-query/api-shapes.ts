@@ -33,6 +33,8 @@ export interface PublicationCard {
   url: string;
   description: string | null;
   iconUrl: string | null;
+  /** Owning profile's avatar, used as an icon fallback when the pub has none. */
+  ownerAvatarUrl: string | null;
   topic: string | null;
   verified: boolean;
   subscriberCount: number;
@@ -54,6 +56,14 @@ export interface ArticleCard {
   publicationUri: string | null;
   publicationName: string | null;
   publicationIconUrl: string | null;
+  /** Owning profile's avatar, used as a byline-icon fallback when the pub has none. */
+  publicationOwnerAvatarUrl: string | null;
+  /** Owning publication's banner (from the owner profile), for cover fallback. */
+  publicationBannerUrl: string | null;
+  /** Owning publication's derived topic (e.g. "Design"), for meta labels. */
+  publicationTopic: string | null;
+  /** Free-form tags from the document record. */
+  tags: Array<string> | null;
 }
 
 /** A profile summary (byline / publication owner). */
@@ -70,12 +80,14 @@ export interface ProfileSummary {
 
 /**
  * Select-columns for a {@link PublicationCard}. Pulls the canonical record from
- * `publications` and the derived counts from `publication_stats`; queries should
- * `leftJoin` stats (a publication may not have a stats row yet).
+ * `publications`, the derived counts from `publication_stats`, and the owner's
+ * avatar from `profiles`; queries should `leftJoin` stats (a publication may not
+ * have a stats row yet) and `profiles` on `profiles.did = publications.did`.
  */
 export function publicationCardColumns(schema: Schema) {
   const p = schema.publications;
   const st = schema.publicationStats;
+  const pr = schema.profiles;
   return {
     uri: p.uri,
     did: p.did,
@@ -83,6 +95,7 @@ export function publicationCardColumns(schema: Schema) {
     url: p.url,
     description: p.description,
     iconUrl: p.iconUrl,
+    ownerAvatarUrl: pr.avatarUrl,
     topic: p.topic,
     verified: p.verified,
     subscriberCount: st.subscriberCount,
@@ -93,12 +106,14 @@ export function publicationCardColumns(schema: Schema) {
 
 /**
  * Select-columns for an {@link ArticleCard}. Pulls the document plus its
- * publication's name/icon; queries should `leftJoin` publications on
- * `publications.uri = documents.publication_uri` (loose documents have none).
+ * publication's name/icon and the owner profile's banner; queries should
+ * `leftJoin` publications on `publications.uri = documents.publication_uri`
+ * (loose documents have none) and `profiles` on `profiles.did = publications.did`.
  */
 export function articleCardColumns(schema: Schema) {
   const d = schema.documents;
   const p = schema.publications;
+  const pr = schema.profiles;
   return {
     uri: d.uri,
     did: d.did,
@@ -112,6 +127,10 @@ export function articleCardColumns(schema: Schema) {
     publicationUri: d.publicationUri,
     publicationName: p.name,
     publicationIconUrl: p.iconUrl,
+    publicationOwnerAvatarUrl: pr.avatarUrl,
+    publicationBannerUrl: pr.bannerUrl,
+    publicationTopic: p.topic,
+    tags: d.tags,
   };
 }
 
@@ -124,6 +143,7 @@ type PublicationCardRow = {
   url: string;
   description: string | null;
   iconUrl: string | null;
+  ownerAvatarUrl: string | null;
   topic: string | null;
   verified: boolean;
   subscriberCount: number | null;
@@ -131,14 +151,32 @@ type PublicationCardRow = {
   lastDocumentAt: Date | null;
 };
 
+/**
+ * A human label for a publication. The lexicon requires `name`, but some
+ * records carry an empty string — fall back to the URL host, then a generic
+ * label, so cards never render blank.
+ */
+export function publicationDisplayName(name: string, url: string): string {
+  const trimmed = name.trim();
+  if (trimmed) return trimmed;
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    if (host) return host;
+  } catch {
+    // url is empty or malformed — fall through to the generic label
+  }
+  return "Untitled publication";
+}
+
 export function toPublicationCard(row: PublicationCardRow): PublicationCard {
   return {
     uri: row.uri,
     did: row.did,
-    name: row.name,
+    name: publicationDisplayName(row.name, row.url),
     url: row.url,
     description: row.description,
     iconUrl: row.iconUrl,
+    ownerAvatarUrl: row.ownerAvatarUrl,
     topic: row.topic,
     verified: row.verified,
     subscriberCount: row.subscriberCount ?? 0,
@@ -160,6 +198,10 @@ type ArticleCardRow = {
   publicationUri: string | null;
   publicationName: string | null;
   publicationIconUrl: string | null;
+  publicationOwnerAvatarUrl: string | null;
+  publicationBannerUrl: string | null;
+  publicationTopic: string | null;
+  tags: Array<string> | null;
 };
 
 export function toArticleCard(row: ArticleCardRow): ArticleCard {
@@ -176,5 +218,9 @@ export function toArticleCard(row: ArticleCardRow): ArticleCard {
     publicationUri: row.publicationUri,
     publicationName: row.publicationName,
     publicationIconUrl: row.publicationIconUrl,
+    publicationOwnerAvatarUrl: row.publicationOwnerAvatarUrl,
+    publicationBannerUrl: row.publicationBannerUrl,
+    publicationTopic: row.publicationTopic,
+    tags: row.tags,
   };
 }

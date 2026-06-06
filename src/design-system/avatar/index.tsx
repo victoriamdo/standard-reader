@@ -90,7 +90,7 @@ const styles = stylex.create({
     top: 0,
   },
   fallbackSm: {
-    fontSize: fontSize["sm"],
+    fontSize: fontSize["xs"],
   },
   fallbackMd: {
     fontSize: fontSize["base"],

@@ -1,6 +1,9 @@
-import { sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { db } from "../../db/index.ts";
+import { documents, publications } from "../../db/schema.ts";
+import { getBlobUrl } from "../atproto/blob.ts";
+import { resolveIdentity } from "../atproto/identity.ts";
 
 /**
  * Recompute the derived per-publication aggregates (subscriber/document/
@@ -157,9 +160,114 @@ export async function recomputeTopics(): Promise<void> {
   `);
 }
 
+/**
+ * Resolve a batch of DIDs to their PDS endpoints with bounded concurrency.
+ * `resolveIdentity` memoizes per-DID, so duplicate DIDs cost one lookup; the
+ * pool just keeps the PLC fan-out from spiking under a large backfill.
+ */
+async function resolvePdsByDid(
+  dids: Array<string>,
+): Promise<Map<string, string>> {
+  const unique = [...new Set(dids)];
+  const byDid = new Map<string, string>();
+  const CONCURRENCY = 16;
+  let cursor = 0;
+  async function worker(): Promise<void> {
+    while (cursor < unique.length) {
+      const did = unique[cursor++];
+      const identity = await resolveIdentity(did);
+      if (identity.pds) byDid.set(did, identity.pds);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, unique.length) }, worker),
+  );
+  return byDid;
+}
+
+/**
+ * Backfill `icon_url` / `cover_image_url` for records that have a stored blob
+ * CID but no resolved URL. The hot ingest path builds these from the *cached*
+ * identity only (so the tap webhook never blocks on PLC), which means a record
+ * indexed before its owner's DID doc was cached lands with the CID but a null
+ * URL. This pass resolves the owning PDS and fills the gap; it's idempotent and
+ * only touches rows still missing a URL, so it's safe to run on every cron.
+ */
+export async function backfillBlobUrls(): Promise<{
+  icons: number;
+  covers: number;
+}> {
+  const pubRows = await db
+    .select({
+      uri: publications.uri,
+      did: publications.did,
+      cid: publications.iconCid,
+    })
+    .from(publications)
+    .where(
+      and(
+        isNotNull(publications.iconCid),
+        isNull(publications.iconUrl),
+        eq(publications.deleted, false),
+      ),
+    );
+  const docRows = await db
+    .select({
+      uri: documents.uri,
+      did: documents.did,
+      cid: documents.coverImageCid,
+    })
+    .from(documents)
+    .where(
+      and(
+        isNotNull(documents.coverImageCid),
+        isNull(documents.coverImageUrl),
+        eq(documents.deleted, false),
+      ),
+    );
+
+  const pdsByDid = await resolvePdsByDid([
+    ...pubRows.map((row) => row.did),
+    ...docRows.map((row) => row.did),
+  ]);
+
+  let icons = 0;
+  for (const row of pubRows) {
+    const pds = pdsByDid.get(row.did);
+    if (!pds || !row.cid) continue;
+    await db
+      .update(publications)
+      .set({ iconUrl: getBlobUrl(pds, row.did, row.cid), updatedAt: new Date() })
+      .where(eq(publications.uri, row.uri));
+    icons++;
+  }
+
+  let covers = 0;
+  for (const row of docRows) {
+    const pds = pdsByDid.get(row.did);
+    if (!pds || !row.cid) continue;
+    await db
+      .update(documents)
+      .set({
+        coverImageUrl: getBlobUrl(pds, row.did, row.cid),
+        updatedAt: new Date(),
+      })
+      .where(eq(documents.uri, row.uri));
+    covers++;
+  }
+
+  return { icons, covers };
+}
+
 /** Run the full derived-data recompute. */
 export async function recomputeDerived(): Promise<void> {
   await recomputePublicationStats();
   await recomputeCosubscriptions();
   await recomputeTopics();
+  // Best-effort: a slow/unreachable PLC must never abort the stats recompute.
+  try {
+    await backfillBlobUrls();
+  } catch {
+    // Leave URLs null; the next recompute retries the still-missing rows.
+  }
 }

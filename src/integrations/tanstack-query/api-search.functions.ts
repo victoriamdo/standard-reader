@@ -64,6 +64,7 @@ const search = createServerFn({ method: "GET" })
       const p = schema.publications;
       const st = schema.publicationStats;
       const d = schema.documents;
+      const pr = schema.profiles;
       span.set("q", data.q);
 
       const tsq = sql`websearch_to_tsquery('english', ${data.q})`;
@@ -73,6 +74,7 @@ const search = createServerFn({ method: "GET" })
           .select(publicationCardColumns(schema))
           .from(p)
           .leftJoin(st, eq(st.publicationUri, p.uri))
+          .leftJoin(pr, eq(pr.did, p.did))
           .where(
             and(
               eq(p.deleted, false),
@@ -86,6 +88,7 @@ const search = createServerFn({ method: "GET" })
           .select(articleCardColumns(schema))
           .from(d)
           .leftJoin(p, eq(p.uri, d.publicationUri))
+          .leftJoin(pr, eq(pr.did, p.did))
           .where(and(eq(d.deleted, false), sql`${d.searchVector} @@ ${tsq}`))
           .orderBy(sql`ts_rank(${d.searchVector}, ${tsq}) desc`)
           .limit(data.limit),
@@ -164,6 +167,7 @@ async function listRepoPublications(
         url: record.url ?? "",
         description: record.description ?? null,
         iconUrl: cid ? getBlobUrl(pds, did, cid) : null,
+        ownerAvatarUrl: null,
         topic: null,
         verified: false,
         subscriberCount: 0,

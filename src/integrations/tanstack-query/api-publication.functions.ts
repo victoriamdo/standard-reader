@@ -93,7 +93,6 @@ const getPublicationProfile = createServerFn({ method: "GET" })
               ownerHandle: pr.handle,
               ownerDisplayName: pr.displayName,
               ownerDescription: pr.description,
-              ownerAvatarUrl: pr.avatarUrl,
               ownerBannerUrl: pr.bannerUrl,
             })
             .from(p)
@@ -181,6 +180,7 @@ const getArticle = createServerFn({ method: "GET" })
               pubUrl: p.url,
               pubDescription: p.description,
               pubIconUrl: p.iconUrl,
+              pubOwnerAvatarUrl: pr.avatarUrl,
               pubTopic: p.topic,
               pubVerified: p.verified,
               pubSubscriberCount: st.subscriberCount,
@@ -190,6 +190,7 @@ const getArticle = createServerFn({ method: "GET" })
             .from(d)
             .leftJoin(p, eq(p.uri, d.publicationUri))
             .leftJoin(st, eq(st.publicationUri, p.uri))
+            .leftJoin(pr, eq(pr.did, p.did))
             .where(eq(d.uri, data.documentUri))
             .limit(1),
           db
@@ -230,6 +231,7 @@ const getArticle = createServerFn({ method: "GET" })
               url: row.pubUrl ?? "",
               description: row.pubDescription,
               iconUrl: row.pubIconUrl,
+              ownerAvatarUrl: row.pubOwnerAvatarUrl,
               topic: row.pubTopic,
               verified: row.pubVerified ?? false,
               subscriberCount: row.pubSubscriberCount,

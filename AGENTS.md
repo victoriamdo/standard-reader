@@ -100,6 +100,14 @@ HTML elements, or ad-hoc CSS / inline styles.**
   `animations` (`animationDuration`), and `media-queries`. Reference them in `stylex.create(...)`
   (e.g. `gap: gap["md"]`, `transitionDuration: animationDuration.fast`) instead of literal
   px/hex/duration values.
+- **Never inline spacing values.** All spacing — `padding*`, `margin*`, `gap` / `rowGap` /
+  `columnGap`, and spacing-derived `top`/`left`/`inset`/`width`/`height` for layout — MUST use a
+  spacing token, never a literal (`"1.5rem"`, `12`, `"0.45rem"`, etc.). Use the semantic scales
+  (`verticalSpace`/`horizontalSpace` for `padding`/`margin`, `gap` for gaps, `size` for
+  icon/avatar boxes) where a step fits; fall back to the raw `spacing` scale
+  (`spacing["12"]`) for steps the semantic scales don't cover. If a design genuinely needs an
+  off-scale value, that's the rare "super necessary" exception — snap to the nearest token first,
+  and only inline a literal with a comment explaining why no token fits.
 - **Style with StyleX**, following the existing component conventions (`stylex.create` +
   `stylex.props`, `"use client"` where needed). Avoid introducing new Tailwind/inline styling for
   design-system work.
