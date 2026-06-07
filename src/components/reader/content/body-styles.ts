@@ -144,6 +144,8 @@ export const articleBodyStyles = stylex.create({
   },
   iframeFigure: {
     marginBottom: spacing["6"],
+    marginLeft: spacing["0"],
+    marginRight: spacing["0"],
     marginTop: spacing["0"],
     maxWidth: "100%",
     minWidth: 0,
