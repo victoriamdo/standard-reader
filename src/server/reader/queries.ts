@@ -23,6 +23,8 @@ import {
   toArticleCard,
   toPublicationCard,
 } from "#/integrations/tanstack-query/api-shapes";
+import { EXCLUDED_PUBLICATION_URL_PATTERN } from "#/lib/publication/exclusions";
+import { discoverEligiblePublicationWhere } from "#/server/reader/publication-filters";
 import {
   and,
   asc,
@@ -79,7 +81,10 @@ export async function selectArticleCards(
     conds.push(eq(d.featured, true));
   }
   if (opts.discoverOnly) {
-    conds.push(isNotNull(d.publicationUri), eq(p.showInDiscover, true));
+    conds.push(
+      isNotNull(d.publicationUri),
+      discoverEligiblePublicationWhere(p)!,
+    );
   }
 
   let query = db
@@ -267,8 +272,7 @@ export async function trendingArticles(
   const conds = [
     eq(d.deleted, false),
     isNotNull(d.publicationUri),
-    eq(p.showInDiscover, true),
-    eq(p.deleted, false),
+    discoverEligiblePublicationWhere(p)!,
     sql`${d.publishedAt} > now() - interval '60 days'`,
   ];
   if (excludeUris.length > 0) {
@@ -374,6 +378,7 @@ async function selectLiveTrendingPublicationRows(
     ) recs ON recs.publication_uri = p.uri
     WHERE p.show_in_discover = true
       AND p.deleted = false
+      AND p.url NOT ILIKE ${EXCLUDED_PUBLICATION_URL_PATTERN}
       AND coalesce(docs.cnt, 0) > 0
       AND coalesce(subs.cnt, 0) > 0
     ORDER BY
@@ -441,6 +446,7 @@ export async function discoverPublicationTopics(
       FROM publications p
       WHERE p.show_in_discover = true
         AND p.deleted = false
+        AND p.url NOT ILIKE ${EXCLUDED_PUBLICATION_URL_PATTERN}
     )
     SELECT topic, count(*)::int AS count
     FROM pub_effective
@@ -507,7 +513,7 @@ export async function discoverDirectoryPublications(
 
   const effectiveTopic = publicationEffectiveTopicSql(p);
 
-  const conds = [eq(p.showInDiscover, true), eq(p.deleted, false)];
+  const conds = [discoverEligiblePublicationWhere(p)!];
   if (topic) {
     conds.push(sql`lower(btrim(${effectiveTopic})) = lower(btrim(${topic}))`);
   }
@@ -658,8 +664,7 @@ export async function popularPublications(
   const pr = schema.profiles;
 
   const conds = [
-    eq(p.showInDiscover, true),
-    eq(p.deleted, false),
+    discoverEligiblePublicationWhere(p)!,
     hasIndexedDocuments(db, schema, p.uri),
   ];
   if (excludeUris.length > 0) {
@@ -728,8 +733,7 @@ export async function recommendedPublications(
     .leftJoin(pr, eq(pr.did, p.did))
     .where(
       and(
-        eq(p.showInDiscover, true),
-        eq(p.deleted, false),
+        discoverEligiblePublicationWhere(p)!,
         hasIndexedDocuments(db, schema, p.uri),
       ),
     )
@@ -805,7 +809,7 @@ export async function followedByPeopleYouFollow(
     .innerJoin(p, eq(p.uri, agg.publicationUri))
     .leftJoin(st, eq(st.publicationUri, p.uri))
     .leftJoin(pr, eq(pr.did, p.did))
-    .where(and(eq(p.showInDiscover, true), eq(p.deleted, false)))
+    .where(discoverEligiblePublicationWhere(p)!)
     .orderBy(desc(agg.score))
     .limit(limit);
 
@@ -836,8 +840,7 @@ export async function readersAlsoFollow(
     .where(
       and(
         eq(cs.publicationUri, publicationUri),
-        eq(p.showInDiscover, true),
-        eq(p.deleted, false),
+        discoverEligiblePublicationWhere(p)!,
       ),
     )
     .orderBy(desc(cs.score))

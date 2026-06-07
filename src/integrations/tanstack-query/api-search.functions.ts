@@ -4,10 +4,15 @@ import { isDid } from "@atcute/lexicons/syntax";
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { STANDARD_NSID } from "#/lib/atproto/nsids";
+import { withoutExcludedPublications } from "#/lib/publication/exclusions";
 import { blobCid, getBlobUrl } from "#/server/atproto/blob";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
+import {
+  discoverEligiblePublicationWhere,
+  notExcludedPublicationArticleWhere,
+} from "#/server/reader/publication-filters";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -97,11 +102,7 @@ const searchPublications = createServerFn({ method: "GET" })
           );
         }
         if (items.length === 0 && hints.handleLookup) {
-          items = await resolvePublicationCards(
-            db,
-            schema,
-            hints.handleLookup,
-          );
+          items = await resolvePublicationCards(db, schema, hints.handleLookup);
         }
         total = items.length;
       }
@@ -138,12 +139,14 @@ const searchArticles = createServerFn({ method: "GET" })
       const articleWhere = and(
         eq(d.deleted, false),
         sql`${d.searchVector} @@ ${tsq}`,
+        notExcludedPublicationArticleWhere(p),
       );
 
       const [countRow, articleRows] = await Promise.all([
         db
           .select({ count: sql<number>`count(*)::int` })
           .from(d)
+          .leftJoin(p, eq(p.uri, d.publicationUri))
           .where(articleWhere),
         db
           .select(articleCardColumns(schema))
@@ -189,8 +192,7 @@ async function searchIndexedPublications(
   const hints = publicationQueryHints(q);
   const tsq = sql`websearch_to_tsquery('english', ${q})`;
   const pubWhere = and(
-    eq(p.deleted, false),
-    eq(p.showInDiscover, true),
+    discoverEligiblePublicationWhere(p),
     publicationMatchSql(p, pr, tsq, hints),
   );
 
@@ -336,7 +338,9 @@ async function resolvePublicationCards(
     .limit(20);
 
   if (indexed.length > 0) {
-    return indexed.map((row) => toPublicationCard(row));
+    return withoutExcludedPublications(
+      indexed.map((row) => toPublicationCard(row)),
+    );
   }
 
   void ensureTracked(did, "manual").catch(() => {});
@@ -344,10 +348,12 @@ async function resolvePublicationCards(
   if (!identity.pds) return [];
 
   const pubs = await listRepoPublications(identity.pds, did);
-  return pubs.map((pub) => ({
-    ...pub,
-    ownerHandle: identity.handle ?? pub.ownerHandle,
-  }));
+  return withoutExcludedPublications(
+    pubs.map((pub) => ({
+      ...pub,
+      ownerHandle: identity.handle ?? pub.ownerHandle,
+    })),
+  );
 }
 
 /** Look up indexed publications by publication URL substring. */
@@ -366,13 +372,7 @@ async function indexedPublicationsByUrl(
     .from(p)
     .leftJoin(st, eq(st.publicationUri, p.uri))
     .leftJoin(pr, eq(pr.did, p.did))
-    .where(
-      and(
-        eq(p.deleted, false),
-        eq(p.showInDiscover, true),
-        ilike(p.url, urlLike),
-      ),
-    )
+    .where(and(discoverEligiblePublicationWhere(p), ilike(p.url, urlLike)))
     .limit(limit);
 
   return rows.map((row) => toPublicationCard(row));

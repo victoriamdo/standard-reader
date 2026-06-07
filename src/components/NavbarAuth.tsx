@@ -3,24 +3,147 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createLink, useNavigate } from "@tanstack/react-router";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { LogOut } from "lucide-react";
+import { Button as AriaButton } from "react-aria-components";
 
-import { AvatarButton } from "../design-system/avatar";
+import type { PopoverProps } from "react-aria-components";
+
+import { Avatar, AvatarButton } from "../design-system/avatar";
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
 import { Menu, MenuItem, MenuSeparator } from "../design-system/menu";
-import { size } from "../design-system/theme/semantic-spacing.stylex";
+import { animationDuration } from "../design-system/theme/animations.stylex";
+import { uiColor } from "../design-system/theme/color.stylex";
+import { radius } from "../design-system/theme/radius.stylex";
+import {
+  gap as gapSpace,
+  horizontalSpace,
+  verticalSpace,
+} from "../design-system/theme/semantic-spacing.stylex";
+import {
+  fontFamily,
+  fontSize,
+  fontWeight,
+  lineHeight,
+} from "../design-system/theme/typography.stylex";
+import { Handle } from "./reader/primitives";
 import { ThemeSubMenu } from "./ThemeMenu";
 
 const ButtonLink = createLink(Button);
 
 const styles = stylex.create({
-  avatar: {
-    height: size["4xl"],
-    width: size["4xl"],
+  sidebarTrigger: {
+    // eslint-disable-next-line @stylexjs/valid-styles
+    appearance: "none",
+    borderWidth: 0,
+    borderRadius: radius.sm,
+    textAlign: "left",
+    alignItems: "center",
+    backgroundColor: {
+      default: "transparent",
+      ":is([data-hovered=true]):not([aria-expanded=true])": uiColor.component2,
+      ":is([data-pressed=true]):not([aria-expanded=true])": uiColor.component3,
+      ":is([aria-expanded=true])": uiColor.component2,
+      ":is([aria-expanded=true][data-hovered=true])": uiColor.component3,
+      ":is([aria-expanded=true][data-pressed=true])": uiColor.component3,
+    },
+    boxSizing: "border-box",
+    color: uiColor.text2,
+    columnGap: gapSpace.md,
+    cursor: "pointer",
+    display: "flex",
+    flexShrink: 0,
+    fontFamily: fontFamily.sans,
+    justifyContent: "flex-start",
+    outline: {
+      default: "none",
+      ":is([data-focused='true'][data-focus-visible='true'])": "revert",
+    },
+    paddingBottom: verticalSpace.sm,
+    paddingLeft: horizontalSpace.lg,
+    paddingRight: horizontalSpace.lg,
+    paddingTop: verticalSpace.sm,
+    rowGap: gapSpace.md,
+    transitionDuration: animationDuration.fast,
+    transitionProperty: "background-color",
+    transitionTimingFunction: "ease-in-out",
+    userSelect: "none",
+    width: "100%",
+  },
+  identity: {
+    overflow: "hidden",
+    display: "flex",
+    flexBasis: "0%",
+    flexDirection: "column",
+    flexGrow: "1",
+    flexShrink: "1",
+    minWidth: 0,
+    rowGap: gapSpace.xs,
+  },
+  displayName: {
+    overflow: "hidden",
+    color: uiColor.text2,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    lineHeight: lineHeight.none,
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textBoxEdge: "cap alphabetic",
+    textBoxTrim: "trim-both",
+  },
+  handleLine: {
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   },
 });
 
-export function NavbarAuth() {
+function UserIdentity({
+  name,
+  handle,
+}: {
+  name: string;
+  handle: string | null;
+}) {
+  return (
+    <div {...stylex.props(styles.identity)}>
+      <span {...stylex.props(styles.displayName)}>{name}</span>
+      {handle ? (
+        <span {...stylex.props(styles.handleLine)}>
+          <Handle>@{handle}</Handle>
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function SidebarMenuTrigger({
+  name,
+  handle,
+  image,
+  initial,
+}: {
+  name: string;
+  handle: string | null;
+  image: string | undefined;
+  initial: string;
+}) {
+  return (
+    <AriaButton {...stylex.props(styles.sidebarTrigger)}>
+      <Avatar size="md" src={image} fallback={initial} alt={name} />
+      <UserIdentity name={name} handle={handle} />
+    </AriaButton>
+  );
+}
+
+export function NavbarAuth({
+  variant = "compact",
+  menuPlacement = "bottom end",
+}: {
+  variant?: "compact" | "sidebar";
+  menuPlacement?: PopoverProps["placement"];
+}) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -37,19 +160,35 @@ export function NavbarAuth() {
 
   if (session?.user) {
     const initial = session.user.name?.charAt(0).toUpperCase() ?? "U";
+    const trigger =
+      variant === "sidebar" ? (
+        <SidebarMenuTrigger
+          name={session.user.name}
+          handle={session.user.handle}
+          image={session.user.image ?? undefined}
+          initial={initial}
+        />
+      ) : (
+        <AvatarButton
+          size="md"
+          src={session.user.image ?? undefined}
+          fallback={initial}
+        />
+      );
+
     return (
       <Menu
         size="lg"
-        trigger={
-          <AvatarButton
-            size="md"
-            src={session.user.image ?? undefined}
-            fallback={initial}
-            avatarStyle={styles.avatar}
-          />
+        placement={menuPlacement}
+        trigger={trigger}
+        header={
+          variant === "compact" ? (
+            <UserIdentity
+              name={session.user.name}
+              handle={session.user.handle}
+            />
+          ) : undefined
         }
-        placement="bottom end"
-        header={session.user.name}
       >
         <MenuItem
           onPress={() => {

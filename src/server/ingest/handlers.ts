@@ -1,4 +1,5 @@
 import { documentSearchText } from "#/lib/document/search-text";
+import { isExcludedPublicationUrl } from "#/lib/publication/exclusions";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
 import { GREENGALE_CONTENT_REF } from "#/lib/greengale/types";
 import { resolveGreengaleContent } from "#/server/greengale/resolve";
@@ -100,7 +101,9 @@ export async function upsertPublication(
     iconUrl,
     ...theme,
     themeJson: sanitizeJson(record.basicTheme),
-    showInDiscover: record.preferences?.showInDiscover ?? true,
+    showInDiscover:
+      (record.preferences?.showInDiscover ?? true) &&
+      !isExcludedPublicationUrl(record.url),
     deleted: false,
     updatedAt: sql`now()`,
   };

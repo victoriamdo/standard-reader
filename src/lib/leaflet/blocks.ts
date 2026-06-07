@@ -6,6 +6,7 @@ import type {
   LeafletHeaderBlock,
   LeafletIframeBlock,
   LeafletImageBlock,
+  LeafletOrderedListBlock,
   LeafletRenderableBlock,
   LeafletTextBlock,
   LeafletUnorderedListBlock,
@@ -55,6 +56,12 @@ function asUnorderedListBlock(
   return value as unknown as LeafletUnorderedListBlock;
 }
 
+function asOrderedListBlock(value: unknown): LeafletOrderedListBlock | null {
+  if (!isRecord(value)) return null;
+  if (value.$type !== LEAFLET_BLOCK.orderedList) return null;
+  return value as unknown as LeafletOrderedListBlock;
+}
+
 function asCodeBlock(value: unknown): LeafletCodeBlock | null {
   if (!isRecord(value)) return null;
   if (value.$type !== LEAFLET_BLOCK.code) return null;
@@ -80,8 +87,11 @@ function asRenderableBlock(value: unknown): LeafletRenderableBlock | null {
   const blockquote = asBlockquoteBlock(value);
   if (blockquote) return { kind: "blockquote", block: blockquote };
 
-  const list = asUnorderedListBlock(value);
-  if (list) return { kind: "unorderedList", block: list };
+  const unorderedList = asUnorderedListBlock(value);
+  if (unorderedList) return { kind: "unorderedList", block: unorderedList };
+
+  const orderedList = asOrderedListBlock(value);
+  if (orderedList) return { kind: "orderedList", block: orderedList };
 
   if (value.$type === LEAFLET_BLOCK.bskyPost) {
     return {
@@ -153,7 +163,8 @@ export function plaintextLinesFromBlock(
       const text = block.block.plaintext.trim();
       return text ? [text] : [];
     }
-    case "unorderedList": {
+    case "unorderedList":
+    case "orderedList": {
       const children = block.block.children ?? [];
       const lines: Array<string> = [];
       for (const child of children) {

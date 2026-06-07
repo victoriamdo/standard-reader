@@ -1,12 +1,98 @@
 "use client";
 
-import type { LeafletUnorderedListBlock } from "#/lib/leaflet/types";
+import type {
+  LeafletListItem,
+  LeafletOrderedListBlock,
+  LeafletUnorderedListBlock,
+} from "#/lib/leaflet/types";
 
 import * as stylex from "@stylexjs/stylex";
 import { asTextBlock } from "#/lib/leaflet/blocks";
+import { LEAFLET_BLOCK } from "#/lib/leaflet/types";
 
 import { articleBodyStyles } from "../body-styles";
 import { FacetedPlaintext } from "./shared/faceted-text";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function listItemText(item: LeafletListItem) {
+  const text = asTextBlock(item.content);
+  if (!text?.plaintext.trim()) return null;
+  return text;
+}
+
+function nestedList(item: LeafletListItem) {
+  if (item.children?.length) {
+    return <LeafletOrderedListBlockView block={{ children: item.children }} />;
+  }
+
+  const unordered = item.unorderedListChildren;
+  if (
+    isRecord(unordered) &&
+    unordered.$type === LEAFLET_BLOCK.unorderedList &&
+    Array.isArray(unordered.children) &&
+    unordered.children.length > 0
+  ) {
+    return (
+      <LeafletUnorderedListBlockView
+        block={unordered as LeafletUnorderedListBlock}
+      />
+    );
+  }
+
+  const ordered = item.orderedListChildren;
+  if (
+    isRecord(ordered) &&
+    ordered.$type === LEAFLET_BLOCK.orderedList &&
+    Array.isArray(ordered.children) &&
+    ordered.children.length > 0
+  ) {
+    return (
+      <LeafletOrderedListBlockView block={ordered as LeafletOrderedListBlock} />
+    );
+  }
+
+  return null;
+}
+
+function LeafletListItems({
+  items,
+  ordered,
+  startIndex,
+}: {
+  items: Array<LeafletListItem>;
+  ordered: boolean;
+  startIndex?: number;
+}) {
+  const ListTag = ordered ? "ol" : "ul";
+
+  return (
+    <ListTag
+      {...stylex.props(articleBodyStyles.list)}
+      {...(ordered ? { start: startIndex ?? 1 } : {})}
+    >
+      {items.map((item, index) => {
+        const text = listItemText(item);
+        const nested = nestedList(item);
+        if (!text && !nested) return null;
+
+        return (
+          <li key={index} {...stylex.props(articleBodyStyles.listItem)}>
+            {text ? (
+              <FacetedPlaintext
+                plaintext={text.plaintext}
+                facets={text.facets}
+              />
+            ) : null}
+            {nested}
+          </li>
+        );
+      })}
+    </ListTag>
+  );
+}
 
 export function LeafletUnorderedListBlockView({
   block,
@@ -14,21 +100,26 @@ export function LeafletUnorderedListBlockView({
   block: LeafletUnorderedListBlock;
 }) {
   const children = block.children ?? [];
-  const items = children.flatMap((child) => {
-    const item = asTextBlock(child.content);
-    if (!item?.plaintext.trim()) return [];
-    return [item];
-  });
+  const items = children.filter(
+    (child) => listItemText(child) || nestedList(child),
+  );
+  if (items.length === 0) return null;
 
+  return <LeafletListItems items={items} ordered={false} />;
+}
+
+export function LeafletOrderedListBlockView({
+  block,
+}: {
+  block: LeafletOrderedListBlock;
+}) {
+  const children = block.children ?? [];
+  const items = children.filter(
+    (child) => listItemText(child) || nestedList(child),
+  );
   if (items.length === 0) return null;
 
   return (
-    <ul {...stylex.props(articleBodyStyles.list)}>
-      {items.map((item, index) => (
-        <li key={index} {...stylex.props(articleBodyStyles.listItem)}>
-          <FacetedPlaintext plaintext={item.plaintext} facets={item.facets} />
-        </li>
-      ))}
-    </ul>
+    <LeafletListItems items={items} ordered startIndex={block.startIndex} />
   );
 }

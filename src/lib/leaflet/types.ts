@@ -13,6 +13,8 @@ export const LEAFLET_BLOCK = {
   horizontalRule: "pub.leaflet.blocks.horizontalRule",
   unorderedList: "pub.leaflet.blocks.unorderedList",
   unorderedListItem: "pub.leaflet.blocks.unorderedList#listItem",
+  orderedList: "pub.leaflet.blocks.orderedList",
+  orderedListItem: "pub.leaflet.blocks.orderedList#listItem",
   bskyPost: "pub.leaflet.blocks.bskyPost",
   image: "pub.leaflet.blocks.image",
   code: "pub.leaflet.blocks.code",
@@ -87,12 +89,23 @@ export interface LeafletIframeBlock {
   aspectRatio?: LeafletImageAspectRatio;
 }
 
+export interface LeafletListItem {
+  $type?: string;
+  content?: LeafletTextBlock | Record<string, unknown>;
+  children?: Array<LeafletListItem>;
+  unorderedListChildren?: LeafletUnorderedListBlock;
+  orderedListChildren?: LeafletOrderedListBlock;
+}
+
 export interface LeafletUnorderedListBlock {
   $type?: string;
-  children?: Array<{
-    $type?: string;
-    content?: LeafletTextBlock | Record<string, unknown>;
-  }>;
+  children?: Array<LeafletListItem>;
+}
+
+export interface LeafletOrderedListBlock {
+  $type?: string;
+  startIndex?: number;
+  children?: Array<LeafletListItem>;
 }
 
 export type LeafletRenderableBlock =
@@ -101,6 +114,7 @@ export type LeafletRenderableBlock =
   | { kind: "blockquote"; block: LeafletBlockquoteBlock }
   | { kind: "horizontalRule" }
   | { kind: "unorderedList"; block: LeafletUnorderedListBlock }
+  | { kind: "orderedList"; block: LeafletOrderedListBlock }
   | { kind: "bskyPost"; block: LeafletBskyPostBlock }
   | { kind: "image"; block: LeafletImageBlock }
   | { kind: "code"; block: LeafletCodeBlock }

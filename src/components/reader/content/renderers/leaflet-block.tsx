@@ -7,7 +7,10 @@ import { leafletImageAspectRatio, leafletImageUrl } from "#/lib/leaflet/image";
 
 import type { ContentBlobContext } from "../types";
 
-import { LeafletUnorderedListBlockView } from "./leaflet-list";
+import {
+  LeafletOrderedListBlockView,
+  LeafletUnorderedListBlockView,
+} from "./leaflet-list";
 import { BlockquoteBlockView } from "./shared/blockquote-block";
 import { BskyPostEmbedView } from "./shared/bsky-post-embed";
 import { CodeBlockView } from "./shared/code-block";
@@ -64,6 +67,9 @@ export function LeafletBlockView({
     }
     case "unorderedList": {
       return <LeafletUnorderedListBlockView block={block.block} />;
+    }
+    case "orderedList": {
+      return <LeafletOrderedListBlockView block={block.block} />;
     }
     case "bskyPost": {
       return <BskyPostEmbedView postUri={block.block.postRef?.uri} />;

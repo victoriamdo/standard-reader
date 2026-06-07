@@ -33,7 +33,7 @@ const SKELETON_ROWS = 4;
 const styles = stylex.create({
   headerTitle: {
     fontFamily: fontFamily.serif,
-    fontSize: fontSize["2xl"],
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
     letterSpacing: tracking.tight,
   },
@@ -44,9 +44,6 @@ const styles = stylex.create({
     paddingLeft: horizontalSpace["3xl"],
     paddingRight: horizontalSpace["3xl"],
     paddingTop: spacing["5"],
-  },
-  header: {
-    paddingBottom: spacing["0"],
   },
   searchField: {
     alignItems: "center",
@@ -172,7 +169,7 @@ export function AddPublicationModal() {
         </Button>
       }
     >
-      <DialogHeader style={styles.header}>
+      <DialogHeader>
         <span {...stylex.props(styles.headerTitle)}>Add a publication</span>
       </DialogHeader>
       <div {...stylex.props(styles.body)}>

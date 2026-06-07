@@ -18,7 +18,9 @@ import {
   themeModeToDbValue,
   type ThemeMode,
 } from "#/lib/theme";
+import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import { maybeAuthMiddleware } from "#/middleware/auth";
+import { resolveIdentity } from "#/server/atproto/identity";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -73,13 +75,31 @@ const getSession = createServerFn({ method: "GET" })
       return null;
     }
 
-    const atprotoSession = await restoreAtprotoSession(userRow.did);
+    const [atprotoSession, profileRow, publicProfile, identity] =
+      await Promise.all([
+        restoreAtprotoSession(userRow.did),
+        db.query.profiles.findFirst({
+          where: eq(schema.profiles.did, userRow.did),
+          columns: { handle: true },
+        }),
+        fetchBlueskyPublicProfileFields(userRow.did),
+        resolveIdentity(userRow.did),
+      ]);
     if (!atprotoSession) {
       return null;
     }
 
+    const handle =
+      profileRow?.handle ??
+      publicProfile?.handle ??
+      identity.handle ??
+      null;
+
     return {
-      user: userRow,
+      user: {
+        ...userRow,
+        handle,
+      },
       session: {
         id: sessionRow.id,
         userId: userRow.id,

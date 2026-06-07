@@ -14,9 +14,14 @@ import { Flex } from "../../design-system/flex";
 import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
 import {
+  horizontalSpace,
+  verticalSpace,
+} from "../../design-system/theme/semantic-spacing.stylex";
+import {
   fontFamily,
   fontSize,
   fontWeight,
+  lineHeight,
   tracking,
 } from "../../design-system/theme/typography.stylex";
 import { NavbarAuth } from "../NavbarAuth";
@@ -47,42 +52,25 @@ const styles = stylex.create({
     paddingBottom: "1rem",
     paddingLeft: "1.1rem",
     paddingRight: "1.1rem",
-    paddingTop: "1.4rem",
+    paddingTop: "2.4rem",
     top: 0,
     width: "264px",
   },
   brand: {
     textDecoration: "none",
-    alignItems: "center",
-    color: "inherit",
-    columnGap: "0.6rem",
-    display: "flex",
-    rowGap: "0.6rem",
-    paddingBottom: "1.1rem",
-    paddingLeft: "0.5rem",
-    paddingTop: "0.25rem",
-  },
-  brandMark: {
-    borderRadius: radius.sm,
-    alignItems: "center",
-    backgroundColor: primaryColor.solid1,
-    color: primaryColor.textContrast,
-    display: "flex",
-    flexShrink: 0,
-    fontFamily: fontFamily.serif,
-    fontSize: "1.15rem",
-    fontStyle: "italic",
-    fontWeight: fontWeight.semibold,
-    justifyContent: "center",
-    height: "30px",
-    width: "30px",
-  },
-  brandName: {
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: "1.3rem",
     fontWeight: fontWeight.medium,
     letterSpacing: tracking.tight,
+    lineHeight: lineHeight.none,
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textBoxEdge: "cap alphabetic",
+    textBoxTrim: "trim-both",
+  },
+  brandSidebar: {
+    paddingBottom: verticalSpace["7xl"],
+    paddingLeft: horizontalSpace.md,
   },
   brandAccent: { color: primaryColor.text2 },
   nav: {
@@ -348,13 +336,10 @@ function FollowRow({ pub }: { pub: PublicationCard }) {
   );
 }
 
-function Brand() {
+function Brand({ style }: { style?: stylex.StyleXStyles }) {
   return (
-    <Link to="/" {...stylex.props(styles.brand)}>
-      <span {...stylex.props(styles.brandMark)}>S</span>
-      <span {...stylex.props(styles.brandName)}>
-        Standard <span {...stylex.props(styles.brandAccent)}>Reader</span>
-      </span>
+    <Link to="/" {...stylex.props(styles.brand, style)}>
+      Standard <span {...stylex.props(styles.brandAccent)}>Reader</span>
     </Link>
   );
 }
@@ -369,7 +354,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div {...stylex.props(styles.shell)}>
       <aside {...stylex.props(styles.sidebar)}>
-        <Brand />
+        <Brand style={styles.brandSidebar} />
         <nav {...stylex.props(styles.nav)}>
           {NAV.map((item) => (
             <SidebarNavItem
@@ -381,7 +366,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <Flex align="center" justify="between" style={styles.sideLabel}>
-          <span>Following</span>
+          <span>Subscriptions</span>
           {following.length > 0 ? <span>{following.length}</span> : null}
         </Flex>
         <div {...stylex.props(styles.followList)}>
@@ -395,7 +380,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <Flex direction="column" gap="lg" style={styles.foot}>
-          <NavbarAuth />
+          <NavbarAuth variant="sidebar" menuPlacement="right bottom" />
           <AddPublicationModal />
         </Flex>
       </aside>
