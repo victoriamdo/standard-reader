@@ -5,20 +5,15 @@ import { initials } from "#/components/reader/format";
 import { truncateQuoteForDisplay } from "#/lib/quote-share";
 import { loadOgFonts } from "#/server/og/fonts";
 import { loadPublicationIcon } from "#/server/og/load-image";
+import {
+  resolveQuoteOgColors,
+  type PublicationThemeInput,
+  type QuoteOgColors,
+} from "#/server/og/theme-colors";
 import satori from "satori";
 
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
-
-/** Editorial Almanac palette (hex — resvg does not support oklch()). */
-const COLORS = {
-  paper: "#f9f7f2",
-  ink: "#3e3934",
-  muted: "#8a847a",
-  accent: "#bd5633",
-  line: "#d9d2c8",
-  avatarBg: "#c05830",
-};
 
 function quoteFontSize(text: string): number {
   const length = text.length;
@@ -28,12 +23,12 @@ function quoteFontSize(text: string): number {
   return 36;
 }
 
-function QuoteGlyph() {
+function QuoteGlyph({ accent }: { accent: string }) {
   return (
     <svg aria-hidden="true" height={74} viewBox="0 0 100 80" width={92}>
       <path
         d="M0 80V44C0 18 14 3 38 0l3 12C26 16 19 25 19 38h17v42H0Zm59 0V44C59 18 73 3 97 0l3 12C85 16 78 25 78 38h17v42H59Z"
-        fill={COLORS.accent}
+        fill={accent}
       />
     </svg>
   );
@@ -45,7 +40,9 @@ function quoteOgMarkup(input: {
   publicationDescription: string | null;
   publicationOwnerHandle: string | null;
   publicationIcon: string | null;
+  colors: QuoteOgColors;
 }) {
+  const { colors } = input;
   const displayQuote = truncateQuoteForDisplay(input.quote, 260);
   const fontSize = quoteFontSize(displayQuote);
   const lineHeight = Math.round(fontSize * 1.16);
@@ -57,8 +54,8 @@ function quoteOgMarkup(input: {
   return (
     <div
       style={{
-        backgroundColor: COLORS.paper,
-        color: COLORS.ink,
+        backgroundColor: colors.background,
+        color: colors.foreground,
         display: "flex",
         flexDirection: "column",
         fontFamily: "Newsreader",
@@ -89,7 +86,7 @@ function quoteOgMarkup(input: {
               marginBottom: 18,
             }}
           >
-            <QuoteGlyph />
+            <QuoteGlyph accent={colors.accent} />
           </div>
           <div
             style={{
@@ -111,7 +108,7 @@ function quoteOgMarkup(input: {
       <div
         style={{
           alignItems: "center",
-          borderTopColor: COLORS.line,
+          borderTopColor: colors.line,
           borderTopStyle: "solid",
           borderTopWidth: 1,
           display: "flex",
@@ -138,9 +135,9 @@ function quoteOgMarkup(input: {
           <div
             style={{
               alignItems: "center",
-              backgroundColor: COLORS.avatarBg,
+              backgroundColor: colors.accent,
               borderRadius: 10,
-              color: COLORS.paper,
+              color: colors.accentForeground,
               display: "flex",
               flexShrink: 0,
               fontFamily: "Newsreader",
@@ -171,7 +168,7 @@ function quoteOgMarkup(input: {
           {handle ? (
             <div
               style={{
-                color: COLORS.muted,
+                color: colors.muted,
                 display: "flex",
                 fontFamily: "Archivo",
                 fontSize: 19,
@@ -186,7 +183,7 @@ function quoteOgMarkup(input: {
           {tagline ? (
             <div
               style={{
-                color: COLORS.muted,
+                color: colors.muted,
                 display: "flex",
                 fontFamily: "Newsreader",
                 fontSize: 21,
@@ -205,14 +202,17 @@ function quoteOgMarkup(input: {
   );
 }
 
-export async function renderQuoteOgImage(input: {
-  quote: string;
-  publicationName: string | null;
-  publicationDescription: string | null;
-  publicationOwnerHandle: string | null;
-  publicationIconUrl: string | null;
-  publicationOwnerAvatarUrl: string | null;
-}): Promise<Uint8Array> {
+export async function renderQuoteOgImage(
+  input: {
+    quote: string;
+    publicationName: string | null;
+    publicationDescription: string | null;
+    publicationOwnerHandle: string | null;
+    publicationIconUrl: string | null;
+    publicationOwnerAvatarUrl: string | null;
+  } & PublicationThemeInput,
+): Promise<Uint8Array> {
+  const colors = resolveQuoteOgColors(input);
   const [fonts, publicationIcon] = await Promise.all([
     loadOgFonts(),
     loadPublicationIcon(
@@ -220,7 +220,9 @@ export async function renderQuoteOgImage(input: {
       input.publicationOwnerAvatarUrl,
     ),
   ]);
-  const svg = await satori(quoteOgMarkup({ ...input, publicationIcon }), {
+  const svg = await satori(
+    quoteOgMarkup({ ...input, publicationIcon, colors }),
+    {
     width: OG_WIDTH,
     height: OG_HEIGHT,
     fonts: fonts as Array<Font>,

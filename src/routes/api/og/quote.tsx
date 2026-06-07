@@ -22,6 +22,10 @@ async function loadQuoteOgMeta(did: string, rkey: string) {
       publicationOwnerHandle: pr.handle,
       publicationIconUrl: pub.iconUrl,
       publicationOwnerAvatarUrl: pr.avatarUrl,
+      themeBackground: pub.themeBackground,
+      themeForeground: pub.themeForeground,
+      themeAccent: pub.themeAccent,
+      themeAccentForeground: pub.themeAccentForeground,
     })
     .from(doc)
     .leftJoin(pub, eq(pub.uri, doc.publicationUri))
@@ -67,6 +71,10 @@ export const Route = createFileRoute("/api/og/quote")({
             publicationOwnerHandle: meta.publicationOwnerHandle,
             publicationIconUrl: meta.publicationIconUrl,
             publicationOwnerAvatarUrl: meta.publicationOwnerAvatarUrl,
+            themeBackground: meta.themeBackground,
+            themeForeground: meta.themeForeground,
+            themeAccent: meta.themeAccent,
+            themeAccentForeground: meta.themeAccentForeground,
           });
 
           return new Response(Buffer.from(png), {
