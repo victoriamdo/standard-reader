@@ -4,6 +4,8 @@ import { getRequest } from "@tanstack/react-start/server";
 import { getAtprotoSessionForRequest } from "#/middleware/auth";
 import { observe } from "#/server/observability/log";
 import {
+  discoverDirectoryPublications,
+  discoverPublicationTopics,
   followedByPeopleYouFollow,
   popularPublications,
   recommendedPublications,
@@ -11,12 +13,10 @@ import {
   trendingPublications,
   withLivePublicationCounts,
 } from "#/server/reader/queries";
-import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import type { PublicationCard } from "./api-shapes";
 
-import { publicationCardColumns, toPublicationCard } from "./api-shapes";
 import { dbMiddleware } from "./db-middleware";
 
 /**
@@ -28,8 +28,10 @@ import { dbMiddleware } from "./db-middleware";
 
 const directorySort = z.enum(["readers", "active", "az"]);
 
+export const DISCOVER_TOPICS_LIMIT = 50;
+
 const topicsInput = z.object({
-  limit: z.number().int().min(1).max(20).default(8),
+  limit: z.number().int().min(1).max(100).default(DISCOVER_TOPICS_LIMIT),
 });
 
 const directoryInput = z.object({
@@ -37,10 +39,11 @@ const directoryInput = z.object({
   sort: directorySort.default("readers"),
   limit: z.number().int().min(1).max(60).default(24),
   offset: z.number().int().min(0).default(0),
+  q: z.string().trim().min(1).max(120).optional(),
 });
 
 const railInput = z.object({
-  limit: z.number().int().min(1).max(30).default(12),
+  limit: z.number().int().min(1).max(60).default(12),
 });
 
 export interface TopicChip {
@@ -58,31 +61,10 @@ const getTopics = createServerFn({ method: "GET" })
   .inputValidator(topicsInput)
   .handler(
     observe("discover.getTopics", async ({ data, context }, span) => {
-      const { db, schema } = context;
-      const p = schema.publications;
-      const rows = await db
-        .select({
-          topic: p.topic,
-          count: sql<number>`count(*)`.mapWith(Number),
-        })
-        .from(p)
-        .where(
-          and(
-            eq(p.showInDiscover, true),
-            eq(p.deleted, false),
-            isNotNull(p.topic),
-          ),
-        )
-        .groupBy(p.topic)
-        .orderBy(desc(sql`count(*)`))
-        .limit(data.limit);
-
+      const { db } = context;
+      const rows = await discoverPublicationTopics(db, data.limit);
       span.set("count", rows.length);
-      return rows
-        .filter((row): row is { topic: string; count: number } =>
-          Boolean(row.topic),
-        )
-        .map((row) => ({ topic: row.topic, count: row.count }));
+      return rows;
     }),
   );
 
@@ -92,40 +74,24 @@ const getPublications = createServerFn({ method: "GET" })
   .handler(
     observe("discover.getPublications", async ({ data, context }, span) => {
       const { db, schema } = context;
-      const p = schema.publications;
-      const st = schema.publicationStats;
-      const pr = schema.profiles;
       span.set("topic", data.topic ?? null);
       span.set("sort", data.sort);
       span.set("offset", data.offset);
+      span.set("q", data.q ?? null);
 
-      const conds = [eq(p.showInDiscover, true), eq(p.deleted, false)];
-      if (data.topic) {
-        conds.push(eq(p.topic, data.topic));
-      }
+      const items = await discoverDirectoryPublications(db, schema, {
+        topic: data.topic ?? null,
+        sort: data.sort,
+        limit: data.limit,
+        offset: data.offset,
+        query: data.q ?? null,
+      });
 
-      const orderBy =
-        data.sort === "az"
-          ? [asc(p.name)]
-          : data.sort === "active"
-            ? [sql`${st.lastDocumentAt} desc nulls last`, asc(p.name)]
-            : [sql`coalesce(${st.subscriberCount}, 0) desc`, asc(p.name)];
-
-      const rows = await db
-        .select(publicationCardColumns(schema))
-        .from(p)
-        .leftJoin(st, eq(st.publicationUri, p.uri))
-        .leftJoin(pr, eq(pr.did, p.did))
-        .where(and(...conds))
-        .orderBy(...orderBy)
-        .limit(data.limit)
-        .offset(data.offset);
-
-      span.set("count", rows.length);
+      span.set("count", items.length);
       return {
-        items: rows.map((row) => toPublicationCard(row)),
+        items,
         nextOffset:
-          rows.length === data.limit ? data.offset + data.limit : null,
+          items.length === data.limit ? data.offset + data.limit : null,
       } satisfies PublicationDirectoryPage;
     }),
   );
@@ -222,7 +188,9 @@ const getFollowedByPeopleYouFollow = createServerFn({ method: "GET" })
     ),
   );
 
-function getTopicsQueryOptions({ limit = 8 }: { limit?: number } = {}) {
+function getTopicsQueryOptions({
+  limit = DISCOVER_TOPICS_LIMIT,
+}: { limit?: number } = {}) {
   return queryOptions({
     queryKey: ["discover", "topics", limit] as const,
     queryFn: async () => getTopics({ data: { limit } }),
@@ -234,11 +202,20 @@ function getPublicationsQueryOptions({
   sort = "readers",
   limit = 24,
   offset = 0,
+  q,
 }: z.input<typeof directoryInput> = {}) {
   return queryOptions({
-    queryKey: ["discover", "publications", topic, sort, limit, offset] as const,
+    queryKey: [
+      "discover",
+      "publications",
+      topic,
+      sort,
+      limit,
+      offset,
+      q ?? "",
+    ] as const,
     queryFn: async () =>
-      getPublications({ data: { topic, sort, limit, offset } }),
+      getPublications({ data: { topic, sort, limit, offset, q } }),
   });
 }
 

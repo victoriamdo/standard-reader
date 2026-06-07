@@ -194,10 +194,17 @@ const styles = stylex.create({
     paddingTop: "0.9rem",
   },
   addBtn: {
+    borderColor: {
+      default: uiColor.solid1,
+      ":is([data-hovered])": primaryColor.solid1,
+      ":is([data-pressed])": primaryColor.solid2,
+    },
     backgroundColor: {
       default: uiColor.solid1,
-      ":hover": primaryColor.solid1,
+      ":is([data-hovered])": primaryColor.solid1,
+      ":is([data-pressed])": primaryColor.solid2,
     },
+    boxShadow: "none",
     color: uiColor.textContrast,
     width: "100%",
   },

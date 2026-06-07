@@ -1,4 +1,5 @@
 import type * as DbSchema from "#/db/schema";
+import { sql, type SQL } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 /**
@@ -145,6 +146,16 @@ export function articleCardColumns(schema: Schema) {
 
 // ── Row → DTO mappers ───────────────────────────────────────────────────────
 
+/** Drizzle timestamps are `Date`; raw SQL / aggregates may return strings. */
+function toIsoTimestamp(
+  value: Date | string | null | undefined,
+): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value.toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
 type PublicationCardRow = {
   uri: string;
   did: string;
@@ -158,7 +169,7 @@ type PublicationCardRow = {
   verified: boolean;
   subscriberCount: number | null;
   documentCount: number | null;
-  lastDocumentAt: Date | null;
+  lastDocumentAt: Date | string | null;
 };
 
 /**
@@ -178,6 +189,26 @@ export function publicationDisplayName(name: string, url: string): string {
   return "Untitled publication";
 }
 
+/**
+ * SQL sort key aligned with {@link publicationDisplayName} — trim stored name,
+ * else lowercased URL host (no `www.`), else a stable fallback label.
+ */
+export function publicationSortNameSql(
+  name: typeof DbSchema.publications.name,
+  url: typeof DbSchema.publications.url,
+): SQL {
+  return sql`case
+    when nullif(trim(${name}), '') is not null then lower(trim(${name}))
+    when ${url} ~ '^https?://' then lower(
+      regexp_replace(
+        regexp_replace(substring(${url} from '^https?://([^/?#]+)'), '^www\\.', ''),
+        ':[0-9]+$', ''
+      )
+    )
+    else 'untitled publication'
+  end`;
+}
+
 export function toPublicationCard(row: PublicationCardRow): PublicationCard {
   return {
     uri: row.uri,
@@ -192,7 +223,7 @@ export function toPublicationCard(row: PublicationCardRow): PublicationCard {
     verified: row.verified,
     subscriberCount: row.subscriberCount ?? 0,
     documentCount: row.documentCount ?? 0,
-    lastDocumentAt: row.lastDocumentAt?.toISOString() ?? null,
+    lastDocumentAt: toIsoTimestamp(row.lastDocumentAt),
   };
 }
 

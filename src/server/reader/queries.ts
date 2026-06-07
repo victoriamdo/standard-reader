@@ -19,19 +19,23 @@ import type {
 import {
   articleCardColumns,
   publicationCardColumns,
+  publicationSortNameSql,
   toArticleCard,
   toPublicationCard,
 } from "#/integrations/tanstack-query/api-shapes";
 import {
   and,
+  asc,
   desc,
   eq,
   exists,
+  ilike,
   inArray,
   isNotNull,
   isNull,
   ne,
   notInArray,
+  or,
   sql,
 } from "drizzle-orm";
 
@@ -387,6 +391,206 @@ async function selectLiveTrendingPublicationRows(
   return result.rows as Array<LiveTrendingPublicationRow>;
 }
 
+export type DiscoverDirectorySort = "readers" | "active" | "az";
+
+export interface DiscoverTopicChip {
+  topic: string;
+  count: number;
+}
+
+/** Primary topic for a publication: indexed `topic`, else top document tag. */
+function publicationEffectiveTopicSql(
+  p: Schema["publications"],
+): ReturnType<typeof sql<string | null>> {
+  return sql<string | null>`coalesce(
+    ${p.topic},
+    (
+      SELECT lower(btrim(tag))
+      FROM documents d, unnest(d.tags) AS tag
+      WHERE d.publication_uri = ${p.uri}
+        AND d.deleted = false
+        AND btrim(tag) <> ''
+      GROUP BY lower(btrim(tag))
+      ORDER BY count(*) DESC, lower(btrim(tag)) ASC
+      LIMIT 1
+    )
+  )`;
+}
+
+/** Topic chips for Discover — derived live when `publications.topic` is unset. */
+export async function discoverPublicationTopics(
+  db: Db,
+  limit: number,
+): Promise<Array<DiscoverTopicChip>> {
+  const result = await db.execute(sql`
+    WITH pub_effective AS (
+      SELECT p.uri,
+             coalesce(
+               p.topic,
+               (
+                 SELECT lower(btrim(tag))
+                 FROM documents d, unnest(d.tags) AS tag
+                 WHERE d.publication_uri = p.uri
+                   AND d.deleted = false
+                   AND btrim(tag) <> ''
+                 GROUP BY lower(btrim(tag))
+                 ORDER BY count(*) DESC, lower(btrim(tag)) ASC
+                 LIMIT 1
+               )
+             ) AS topic
+      FROM publications p
+      WHERE p.show_in_discover = true
+        AND p.deleted = false
+    )
+    SELECT topic, count(*)::int AS count
+    FROM pub_effective
+    WHERE topic IS NOT NULL
+    GROUP BY topic
+    ORDER BY count(*) DESC, topic ASC
+    LIMIT ${limit}
+  `);
+
+  return result.rows as unknown as Array<DiscoverTopicChip>;
+}
+
+/**
+ * Discover "All publications" directory — topic filter + pagination, sorted by
+ * live subscription totals (Readers), latest indexed article (Active), or
+ * display name (A–Z). Avoids stale `publication_stats` aggregates.
+ */
+export async function discoverDirectoryPublications(
+  db: Db,
+  schema: Schema,
+  {
+    topic = null,
+    sort,
+    limit,
+    offset,
+    query = null,
+  }: {
+    topic?: string | null;
+    sort: DiscoverDirectorySort;
+    limit: number;
+    offset: number;
+    query?: string | null;
+  },
+): Promise<Array<PublicationCard>> {
+  const p = schema.publications;
+  const pr = schema.profiles;
+  const sub = schema.subscriptions;
+  const doc = schema.documents;
+
+  const subsAgg = db
+    .select({
+      publicationUri: sub.publicationUri,
+      subscriberCount:
+        sql<number>`count(distinct ${sub.subscriberDid}) filter (where ${sub.deleted} = false)`.as(
+          "subscriber_count",
+        ),
+    })
+    .from(sub)
+    .groupBy(sub.publicationUri)
+    .as("subs_agg");
+
+  const docsAgg = db
+    .select({
+      publicationUri: doc.publicationUri,
+      documentCount: sql<number>`count(*)`.as("document_count"),
+      lastDocumentAt: sql<Date | null>`max(${doc.publishedAt})`.as(
+        "last_document_at",
+      ),
+    })
+    .from(doc)
+    .where(and(eq(doc.deleted, false), isNotNull(doc.publicationUri)))
+    .groupBy(doc.publicationUri)
+    .as("docs_agg");
+
+  const effectiveTopic = publicationEffectiveTopicSql(p);
+
+  const conds = [eq(p.showInDiscover, true), eq(p.deleted, false)];
+  if (topic) {
+    conds.push(sql`lower(btrim(${effectiveTopic})) = lower(btrim(${topic}))`);
+  }
+
+  const trimmedQuery = query?.trim() ?? "";
+  const tsq = trimmedQuery
+    ? sql`websearch_to_tsquery('english', ${trimmedQuery})`
+    : null;
+  const likePattern = trimmedQuery ? `%${trimmedQuery}%` : null;
+
+  if (trimmedQuery && tsq && likePattern) {
+    conds.push(
+      or(
+        sql`${p.searchVector} @@ ${tsq}`,
+        ilike(pr.handle, likePattern),
+        sql`lower(btrim(coalesce(${effectiveTopic}, ''))) like lower(${likePattern})`,
+      )!,
+    );
+  }
+
+  const sortName = publicationSortNameSql(p.name, p.url);
+
+  const sortTieBreak =
+    sort === "az"
+      ? [asc(sortName), asc(p.uri)]
+      : sort === "active"
+        ? [
+            sql`${docsAgg.lastDocumentAt} desc nulls last`,
+            asc(sortName),
+            asc(p.uri),
+          ]
+        : [
+            sql`coalesce(${subsAgg.subscriberCount}, 0) desc`,
+            asc(sortName),
+            asc(p.uri),
+          ];
+
+  const orderBy =
+    trimmedQuery && tsq && likePattern
+      ? [
+          desc(sql`greatest(
+            case when ${p.searchVector} @@ ${tsq}
+              then ts_rank(${p.searchVector}, ${tsq})::real
+              else 0::real
+            end,
+            case when ${pr.handle} ilike ${likePattern} then 0.1::real else 0::real end,
+            case when lower(btrim(coalesce(${effectiveTopic}, ''))) like lower(${likePattern}) then 0.05::real else 0::real end
+          )`),
+          ...sortTieBreak,
+        ]
+      : sortTieBreak;
+
+  const rows = await db
+    .select({
+      uri: p.uri,
+      did: p.did,
+      name: p.name,
+      url: p.url,
+      description: p.description,
+      iconUrl: p.iconUrl,
+      ownerAvatarUrl: pr.avatarUrl,
+      ownerHandle: pr.handle,
+      topic: effectiveTopic,
+      verified: p.verified,
+      subscriberCount:
+        sql<number>`coalesce(${subsAgg.subscriberCount}, 0)`.mapWith(Number),
+      documentCount: sql<number>`coalesce(${docsAgg.documentCount}, 0)`.mapWith(
+        Number,
+      ),
+      lastDocumentAt: docsAgg.lastDocumentAt,
+    })
+    .from(p)
+    .leftJoin(subsAgg, eq(subsAgg.publicationUri, p.uri))
+    .leftJoin(docsAgg, eq(docsAgg.publicationUri, p.uri))
+    .leftJoin(pr, eq(pr.did, p.did))
+    .where(and(...conds))
+    .orderBy(...orderBy)
+    .limit(limit)
+    .offset(offset);
+
+  return rows.map((row) => toPublicationCard(row));
+}
+
 export interface PublicationRailOpts {
   /** Publication URIs to omit (e.g. the current trending set). */
   excludeUris?: Array<string>;
@@ -407,7 +611,9 @@ function hasIndexedDocuments(
     db
       .select({ one: sql`1` })
       .from(doc)
-      .where(and(eq(doc.publicationUri, publicationUri), eq(doc.deleted, false))),
+      .where(
+        and(eq(doc.publicationUri, publicationUri), eq(doc.deleted, false)),
+      ),
   );
 }
 

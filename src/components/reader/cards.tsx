@@ -20,6 +20,7 @@ import {
 } from "../../design-system/aspect-ratio";
 import { Button } from "../../design-system/button";
 import { Flex } from "../../design-system/flex";
+import { Skeleton } from "../../design-system/skeleton";
 import { animationDuration } from "../../design-system/theme/animations.stylex";
 import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
@@ -333,6 +334,20 @@ const styles = stylex.create({
   },
   pubDirRowLast: {
     borderBottomWidth: 0,
+  },
+  pubCardSkeleton: {
+    pointerEvents: "none",
+  },
+  pubDirRowSkeleton: {
+    pointerEvents: "none",
+  },
+  pubCardSkeletonDesc: {
+    flexBasis: "0%",
+    flexGrow: 1,
+    marginTop: spacing["2.5"],
+  },
+  pubCardSkeletonHandle: {
+    marginTop: spacing["2"],
   },
   pubDirRank: {
     color: uiColor.text1,
@@ -911,9 +926,11 @@ export function PubDirectoryRow({
           <PubReadersMeta pub={pub} />
           {pub.documentCount > 0 ? (
             <>
-              <span aria-hidden {...stylex.props(styles.metaDot)}>
-                ·
-              </span>
+              {pub.subscriberCount > 0 ? (
+                <span aria-hidden {...stylex.props(styles.metaDot)}>
+                  ·
+                </span>
+              ) : null}
               <Handle>{formatReaders(pub.documentCount)} posts</Handle>
             </>
           ) : null}
@@ -921,5 +938,79 @@ export function PubDirectoryRow({
       </Flex>
       <FollowSlot publicationUri={pub.uri} signedIn={signedIn} />
     </PublicationLink>
+  );
+}
+
+export function PubCardSkeleton() {
+  return (
+    <div aria-hidden {...stylex.props(styles.pubCard, styles.pubCardSkeleton)}>
+      <Flex align="center" justify="between" style={styles.pubCardHead}>
+        <Skeleton variant="circle" size="lg" />
+        <Skeleton
+          variant="rectangle"
+          height={spacing["8"]}
+          width={spacing["20"]}
+        />
+      </Flex>
+      <Skeleton variant="rectangle" height={spacing["6"]} width="72%" />
+      <Skeleton
+        variant="rectangle"
+        height={spacing["4"]}
+        width="38%"
+        style={styles.pubCardSkeletonHandle}
+      />
+      <Skeleton
+        variant="rectangle"
+        height={spacing["5"]}
+        width="100%"
+        style={styles.pubCardSkeletonDesc}
+      />
+      <Flex
+        align="center"
+        justify="between"
+        gap="md"
+        style={styles.pubCardFoot}
+      >
+        <Skeleton
+          variant="rectangle"
+          height={spacing["4"]}
+          width={spacing["16"]}
+        />
+        <Skeleton
+          variant="rectangle"
+          height={spacing["4"]}
+          width={spacing["14"]}
+        />
+      </Flex>
+    </div>
+  );
+}
+
+export function PubDirectoryRowSkeleton({
+  isLast = false,
+}: {
+  isLast?: boolean;
+}) {
+  return (
+    <div
+      aria-hidden
+      {...stylex.props(
+        styles.pubDirRow,
+        isLast && styles.pubDirRowLast,
+        styles.pubDirRowSkeleton,
+      )}
+    >
+      <Skeleton variant="circle" size="lg" />
+      <Flex direction="column" gap="sm" style={styles.grow}>
+        <Skeleton variant="rectangle" height={spacing["5"]} width="42%" />
+        <Skeleton variant="rectangle" height={spacing["4"]} width="88%" />
+        <Skeleton variant="rectangle" height={spacing["3.5"]} width="34%" />
+      </Flex>
+      <Skeleton
+        variant="rectangle"
+        height={spacing["8"]}
+        width={spacing["20"]}
+      />
+    </div>
   );
 }

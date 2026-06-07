@@ -6,6 +6,7 @@ import { Avatar } from "../../design-system/avatar";
 import { Flex } from "../../design-system/flex";
 import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
+import { ui } from "../../design-system/theme/semantic-color.stylex";
 import { spacing } from "../../design-system/theme/spacing.stylex";
 import {
   fontFamily,
@@ -155,11 +156,12 @@ const styles = stylex.create({
     whiteSpace: "nowrap",
   },
   divider: {
-    borderTopColor: uiColor.border1,
-    borderTopStyle: "solid",
-    borderTopWidth: 1,
-    marginBottom: spacing["2"],
-    marginTop: spacing["12"],
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    height: 0,
+    marginBottom: spacing["11"],
+    marginTop: spacing["11"],
   },
 });
 
@@ -219,12 +221,7 @@ export function SectionHead({
   icon?: React.ReactNode;
 }) {
   return (
-    <Flex
-      align="end"
-      justify="between"
-      gap="2xl"
-      style={styles.sectionHead}
-    >
+    <Flex align="end" justify="between" gap="2xl" style={styles.sectionHead}>
       <Flex direction="column" gap="md">
         {kicker != null && <Kicker icon={icon}>{kicker}</Kicker>}
         <span {...stylex.props(styles.sectionTitle)}>{title}</span>
@@ -235,7 +232,7 @@ export function SectionHead({
 }
 
 export function SectionDivider() {
-  return <hr {...stylex.props(styles.divider)} />;
+  return <hr {...stylex.props(ui.borderDim, styles.divider)} />;
 }
 
 export function PlaceholderImg({ style }: { style?: stylex.StyleXStyles }) {
