@@ -132,6 +132,35 @@ const styles = stylex.create({
     fontFamily: fontFamily.serif,
     fontSize: "1.85rem",
   },
+  kickerRow: {
+    alignItems: "center",
+    columnGap: spacing["1.5"],
+    display: "inline-flex",
+    rowGap: spacing["1.5"],
+  },
+  kickerIcon: {
+    color: primaryColor.text2,
+    flexShrink: 0,
+  },
+  sectionHead: {
+    marginBottom: spacing["5"],
+    marginTop: spacing["2"],
+  },
+  sectionAction: {
+    color: primaryColor.text2,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    textDecoration: "none",
+    whiteSpace: "nowrap",
+  },
+  divider: {
+    borderTopColor: uiColor.border1,
+    borderTopStyle: "solid",
+    borderTopWidth: 1,
+    marginBottom: spacing["2"],
+    marginTop: spacing["12"],
+  },
 });
 
 /* ── components ─────────────────────────────────────────────────────────── */
@@ -139,12 +168,23 @@ const styles = stylex.create({
 export function Kicker({
   children,
   muted = false,
+  icon,
 }: {
   children: React.ReactNode;
   muted?: boolean;
+  icon?: React.ReactNode;
 }) {
   return (
-    <span {...stylex.props(styles.kicker, muted && styles.kickerMuted)}>
+    <span
+      {...stylex.props(
+        styles.kicker,
+        muted && styles.kickerMuted,
+        icon != null && styles.kickerRow,
+      )}
+    >
+      {icon != null ? (
+        <span {...stylex.props(styles.kickerIcon)}>{icon}</span>
+      ) : null}
       {children}
     </span>
   );
@@ -171,20 +211,31 @@ export function SectionHead({
   kicker,
   title,
   action,
+  icon,
 }: {
   kicker?: React.ReactNode;
   title: React.ReactNode;
   action?: React.ReactNode;
+  icon?: React.ReactNode;
 }) {
   return (
-    <Flex align="end" justify="between" gap="2xl">
+    <Flex
+      align="end"
+      justify="between"
+      gap="2xl"
+      style={styles.sectionHead}
+    >
       <Flex direction="column" gap="md">
-        {kicker != null && <Kicker>{kicker}</Kicker>}
+        {kicker != null && <Kicker icon={icon}>{kicker}</Kicker>}
         <span {...stylex.props(styles.sectionTitle)}>{title}</span>
       </Flex>
       {action}
     </Flex>
   );
+}
+
+export function SectionDivider() {
+  return <hr {...stylex.props(styles.divider)} />;
 }
 
 export function PlaceholderImg({ style }: { style?: stylex.StyleXStyles }) {
@@ -197,12 +248,14 @@ export function ReaderContent({ children }: { children: React.ReactNode }) {
 
 export function Masthead({
   kicker,
+  kickerIcon,
   title,
   dek,
   metaLabel,
   metaValue,
 }: {
   kicker?: React.ReactNode;
+  kickerIcon?: React.ReactNode;
   title: React.ReactNode;
   dek?: React.ReactNode;
   metaLabel?: React.ReactNode;
@@ -212,7 +265,7 @@ export function Masthead({
     <div {...stylex.props(styles.masthead)}>
       <Flex direction="column" gap="3xl">
         <Flex direction="column" gap="4xl">
-          {kicker != null && <Kicker>{kicker}</Kicker>}
+          {kicker != null && <Kicker icon={kickerIcon}>{kicker}</Kicker>}
           <h1 {...stylex.props(styles.mastheadTitle)}>{title}</h1>
         </Flex>
         {dek != null && <p {...stylex.props(styles.mastheadDek)}>{dek}</p>}

@@ -1,10 +1,12 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createLink } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, createLink } from "@tanstack/react-router";
+import { spacing } from "#/design-system/theme/spacing.stylex.tsx";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
-import { Check, Plus } from "lucide-react";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { ArrowRight, Check, Plus } from "lucide-react";
 import { Fragment, useState } from "react";
 
 import type {
@@ -18,8 +20,10 @@ import {
 } from "../../design-system/aspect-ratio";
 import { Button } from "../../design-system/button";
 import { Flex } from "../../design-system/flex";
+import { animationDuration } from "../../design-system/theme/animations.stylex";
 import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
+import { shadow } from "../../design-system/theme/shadow.stylex";
 import {
   fontFamily,
   fontSize,
@@ -28,9 +32,13 @@ import {
   tracking,
 } from "../../design-system/theme/typography.stylex";
 import { Text } from "../../design-system/typography/text";
-import { formatDate, formatReaders } from "./format";
+import {
+  documentLinkParams,
+  formatDate,
+  formatReaders,
+  publicationLinkParams,
+} from "./format";
 import { Handle, MetaLine, PublicationAvatar, Topic } from "./primitives";
-import { spacing } from "#/design-system/theme/spacing.stylex.tsx";
 
 const ButtonLink = createLink(Button);
 
@@ -132,10 +140,6 @@ const styles = stylex.create({
     display: { default: "none", "@media (min-width: 40rem)": "block" },
     width: "150px",
   },
-  mediaFill: {
-    inset: 0,
-    position: "absolute",
-  },
   unreadDot: {
     borderRadius: radius.full,
     backgroundColor: primaryColor.solid1,
@@ -176,12 +180,33 @@ const styles = stylex.create({
     fontWeight: fontWeight.medium,
     lineHeight: lineHeight.sm,
   },
-  miniRow: {
+  miniRowLink: {
+    borderRadius: radius.sm,
+    backgroundColor: {
+      default: "transparent",
+      ":hover": uiColor.component1,
+    },
+    display: "block",
+    marginLeft: `calc(-1 * ${spacing["4"]})`,
+    marginRight: `calc(-1 * ${spacing["4"]})`,
+    paddingLeft: spacing["4"],
+    paddingRight: spacing["4"],
+  },
+  miniRowBody: {
+    alignItems: "center",
     borderBottomColor: uiColor.border1,
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
     paddingBottom: "0.75rem",
     paddingTop: "0.75rem",
+    width: "100%",
+  },
+  miniRowBodyLast: {
+    borderBottomWidth: 0,
+  },
+  miniRowArrow: {
+    color: uiColor.text1,
+    flexShrink: 0,
   },
   miniName: {
     overflow: "hidden",
@@ -207,17 +232,139 @@ const styles = stylex.create({
     flexGrow: "1",
     flexShrink: "1",
     // eslint-disable-next-line @stylexjs/valid-styles
-    textWrap: "pretty",
+    textWrap: "balance",
     minWidth: 0,
   },
   titleRowDate: {
     flexShrink: 0,
+  },
+  titleRowDateFeature: {
+    paddingTop: spacing["1.5"],
   },
   metaDot: {
     color: uiColor.text1,
   },
   unreadDotFeature: {
     marginTop: spacing["1.5"],
+  },
+  pubCard: {
+    backgroundColor: uiColor.bgSubtle,
+    borderColor: {
+      default: uiColor.border1,
+      ":hover": uiColor.border2,
+    },
+    borderRadius: radius.md,
+    borderStyle: "solid",
+    borderWidth: 1,
+    boxSizing: "border-box",
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
+    paddingBottom: spacing["5"],
+    paddingLeft: spacing["5"],
+    paddingRight: spacing["5"],
+    paddingTop: spacing["5"],
+    scrollSnapAlign: "start",
+    transitionDuration: animationDuration.fast,
+    transitionProperty: {
+      default: "border-color, box-shadow, transform",
+      "@media (prefers-reduced-motion: reduce)": "none",
+    },
+    ":hover": {
+      boxShadow: shadow.sm,
+      transform: "translateY(-2px)",
+    },
+  },
+  pubCardRail: {
+    alignSelf: "stretch",
+    width: "300px",
+  },
+  pubCardHead: {
+    marginBottom: spacing["3.5"],
+    width: "100%",
+  },
+  pubCardName: {
+    color: uiColor.text2,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: tracking.tight,
+    lineHeight: lineHeight.sm,
+    marginTop: spacing["0"],
+  },
+  pubCardDesc: {
+    color: uiColor.text1,
+    flexBasis: "0%",
+    flexGrow: 1,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.base,
+    lineHeight: lineHeight.sm,
+    marginBottom: spacing["0"],
+    marginTop: spacing["2.5"],
+  },
+  pubCardGrow: {
+    flexBasis: "0%",
+    flexGrow: 1,
+    marginBottom: spacing["0"],
+    marginTop: spacing["0"],
+  },
+  pubCardFoot: {
+    borderTopColor: uiColor.border1,
+    borderTopStyle: "solid",
+    borderTopWidth: 1,
+    flexShrink: 0,
+    marginTop: "auto",
+    paddingTop: spacing["3"],
+    width: "100%",
+  },
+  followSlot: {
+    flexShrink: 0,
+  },
+  pubDirRow: {
+    alignItems: "flex-start",
+    columnGap: spacing["4"],
+    display: "flex",
+    rowGap: spacing["4"],
+    borderBottomColor: uiColor.border1,
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    paddingBottom: spacing["5"],
+    paddingTop: spacing["5"],
+  },
+  pubDirRowLast: {
+    borderBottomWidth: 0,
+  },
+  pubDirRank: {
+    color: uiColor.text1,
+    flexShrink: 0,
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.sm,
+    paddingTop: spacing["3"],
+    width: spacing["6"],
+  },
+  pubDirTop: {
+    alignItems: "baseline",
+    columnGap: spacing["2.5"],
+    display: "flex",
+    flexWrap: "wrap",
+    rowGap: spacing["2"],
+  },
+  pubDirName: {
+    color: uiColor.text2,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: tracking.tight,
+    lineHeight: lineHeight.sm,
+  },
+  pubDirDesc: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.base,
+    lineHeight: lineHeight.sm,
+    marginBottom: spacing["2"],
+    marginTop: spacing["1"],
+    maxWidth: "64ch",
   },
 });
 
@@ -311,11 +458,17 @@ function Byline({
   );
 }
 
-function TitleRowDate({ publishedAt }: { publishedAt: string }) {
+function TitleRowDate({
+  publishedAt,
+  style,
+}: {
+  publishedAt: string;
+  style?: stylex.StyleXStyles;
+}) {
   const date = formatDate(publishedAt);
   if (!date) return null;
   return (
-    <span {...stylex.props(styles.bylineWhen, styles.titleRowDate)}>
+    <span {...stylex.props(styles.bylineWhen, styles.titleRowDate, style)}>
       {date}
     </span>
   );
@@ -327,26 +480,33 @@ function ArticleTitleRow({
   unread,
   titleStyle,
   unreadDotStyle,
+  dateStyle,
 }: {
   article: ArticleCard;
   showByline: boolean;
   unread: boolean;
   titleStyle: stylex.StyleXStyles;
   unreadDotStyle?: stylex.StyleXStyles;
+  dateStyle?: stylex.StyleXStyles;
 }) {
   if (showByline) {
     return (
-      <Flex gap="md" align="baseline" wrap>
+      <Flex gap="md" align="baseline" style={styles.titleRow}>
         {unread ? (
           <span {...stylex.props(styles.unreadDot, unreadDotStyle)} />
         ) : null}
-        <span {...stylex.props(titleStyle)}>{article.title}</span>
+        <Text style={[titleStyle, styles.titleInRow]}>{article.title}</Text>
       </Flex>
     );
   }
 
   return (
-    <Flex gap="md" align="center" justify="between" style={styles.titleRow}>
+    <Flex
+      gap="md"
+      align={dateStyle ? "start" : "center"}
+      justify="between"
+      style={styles.titleRow}
+    >
       <Flex gap="md" align="start" style={styles.grow}>
         {unread ? (
           <span
@@ -359,7 +519,7 @@ function ArticleTitleRow({
         ) : null}
         <Text style={[titleStyle, styles.titleInRow]}>{article.title}</Text>
       </Flex>
-      <TitleRowDate publishedAt={article.publishedAt} />
+      <TitleRowDate publishedAt={article.publishedAt} style={dateStyle} />
     </Flex>
   );
 }
@@ -374,8 +534,58 @@ function ArticleMetaLine({ article }: { article: ArticleCard }) {
   );
 }
 
-function articleHref(article: ArticleCard): string | undefined {
-  return article.canonicalUrl ?? undefined;
+function ArticleLink({
+  article,
+  children,
+  extraStyles = [],
+}: {
+  article: ArticleCard;
+  children: React.ReactNode;
+  extraStyles?: Array<stylex.StyleXStyles | false | undefined>;
+}) {
+  const params = documentLinkParams(article.uri);
+  const merged = stylex.props(styles.cardLink, ...extraStyles);
+  if (params) {
+    return (
+      <Link to="/a/$did/$rkey" params={params} {...merged}>
+        {children}
+      </Link>
+    );
+  }
+  const href = article.canonicalUrl;
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" {...merged}>
+        {children}
+      </a>
+    );
+  }
+  return <div {...stylex.props(...extraStyles)}>{children}</div>;
+}
+
+function PublicationLink({
+  pub,
+  children,
+  extraStyles = [],
+}: {
+  pub: PublicationCard;
+  children: React.ReactNode;
+  extraStyles?: Array<stylex.StyleXStyles | false | undefined>;
+}) {
+  const params = publicationLinkParams(pub.uri);
+  const merged = stylex.props(styles.cardLink, ...extraStyles);
+  if (params) {
+    return (
+      <Link to="/p/$did/$rkey" params={params} {...merged}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <a href={pub.url} target="_blank" rel="noreferrer" {...merged}>
+      {children}
+    </a>
+  );
 }
 
 /** Cover for an article: only its own cover image (never the Bluesky banner). */
@@ -421,18 +631,11 @@ export function FeatureArticle({
   showByline?: boolean;
   unread?: boolean;
 }) {
-  const href = articleHref(article);
   const cover = coverImage(article);
   return (
-    <a
-      href={href}
-      target={href ? "_blank" : undefined}
-      rel={href ? "noreferrer" : undefined}
-      {...stylex.props(
-        styles.cardLink,
-        styles.feature,
-        !cover && styles.featureTextOnly,
-      )}
+    <ArticleLink
+      article={article}
+      extraStyles={[styles.feature, !cover && styles.featureTextOnly]}
     >
       {cover ? (
         <span {...stylex.props(styles.featureMedia)}>
@@ -452,6 +655,7 @@ export function FeatureArticle({
           unread={unread}
           titleStyle={styles.featureTitle}
           unreadDotStyle={styles.unreadDotFeature}
+          dateStyle={showByline ? undefined : styles.titleRowDateFeature}
         />
         {article.description ? (
           <span {...stylex.props(styles.featureDek)}>
@@ -460,7 +664,7 @@ export function FeatureArticle({
         ) : null}
         <ArticleMetaLine article={article} />
       </Flex>
-    </a>
+    </ArticleLink>
   );
 }
 
@@ -475,18 +679,11 @@ export function ArticleRow({
   unread?: boolean;
   showByline?: boolean;
 }) {
-  const href = articleHref(article);
   const cover = coverImage(article);
   return (
-    <a
-      href={href}
-      target={href ? "_blank" : undefined}
-      rel={href ? "noreferrer" : undefined}
-      {...stylex.props(
-        styles.cardLink,
-        styles.row,
-        !cover && styles.rowNoMedia,
-      )}
+    <ArticleLink
+      article={article}
+      extraStyles={[styles.row, !cover && styles.rowNoMedia]}
     >
       <Flex direction="column" gap="2xl">
         {showByline ? <Byline article={article} includeDate /> : null}
@@ -511,7 +708,7 @@ export function ArticleRow({
           <AspectRatioImage src={cover} alt="" referrerPolicy="no-referrer" />
         </AspectRatio>
       ) : null}
-    </a>
+    </ArticleLink>
   );
 }
 
@@ -524,24 +721,21 @@ export function CompactRow({
   article: ArticleCard;
   rank: number;
 }) {
-  const href = articleHref(article);
   return (
-    <a
-      href={href}
-      target={href ? "_blank" : undefined}
-      rel={href ? "noreferrer" : undefined}
-      {...stylex.props(styles.cardLink, styles.compactRow)}
-    >
+    <ArticleLink article={article} extraStyles={[styles.compactRow]}>
       <span {...stylex.props(styles.rank)}>
         {String(rank).padStart(2, "0")}
       </span>
       <Flex direction="column" gap="sm" style={styles.grow}>
         <span {...stylex.props(styles.compactTitle)}>{article.title}</span>
-        <Text size="xs" variant="secondary">
-          {article.publicationName ?? "Unknown"}
-        </Text>
+        <MetaLine>
+          <span>{article.publicationName ?? "Unknown"}</span>
+          {article.publicationOwnerHandle ? (
+            <Handle>@{article.publicationOwnerHandle}</Handle>
+          ) : null}
+        </MetaLine>
       </Flex>
-    </a>
+    </ArticleLink>
   );
 }
 
@@ -549,30 +743,183 @@ export function CompactRow({
 
 export function MiniPubRow({
   pub,
-  signedIn,
+  isLast = false,
 }: {
   pub: PublicationCard;
-  signedIn: boolean;
+  isLast?: boolean;
 }) {
   return (
-    <Flex align="center" gap="lg" style={styles.miniRow}>
-      <PublicationAvatar pub={pub} size="lg" />
-      <Flex direction="column" gap="xs" style={styles.grow}>
-        <span {...stylex.props(styles.miniName)}>{pub.name}</span>
-        <Handle>{`${formatReaders(pub.subscriberCount)} readers`}</Handle>
+    <PublicationLink pub={pub} extraStyles={[styles.miniRowLink]}>
+      <Flex
+        align="center"
+        gap="md"
+        style={[styles.miniRowBody, isLast && styles.miniRowBodyLast]}
+      >
+        <PublicationAvatar pub={pub} size="lg" />
+        <Flex direction="column" gap="xs" style={styles.grow}>
+          <span {...stylex.props(styles.miniName)}>{pub.name}</span>
+          {pub.ownerHandle ? <Handle>@{pub.ownerHandle}</Handle> : null}
+          <PubMetaRow pub={pub} />
+        </Flex>
+        <ArrowRight
+          aria-hidden
+          size={15}
+          {...stylex.props(styles.miniRowArrow)}
+        />
       </Flex>
-      <FollowButton publicationUri={pub.uri} signedIn={signedIn} />
-    </Flex>
+    </PublicationLink>
   );
 }
 
 /* ── Compact publication row with topic + readers (directory style) ─────── */
 
 export function PubMetaRow({ pub }: { pub: PublicationCard }) {
+  const readers =
+    pub.subscriberCount > 0
+      ? `${formatReaders(pub.subscriberCount)} readers`
+      : pub.documentCount > 0
+        ? `${formatReaders(pub.documentCount)} articles`
+        : null;
+
+  if (!pub.topic && !readers) {
+    return null;
+  }
+
   return (
     <MetaLine>
       <Topic name={pub.topic} />
-      <span>{`${formatReaders(pub.subscriberCount)} readers`}</span>
+      {readers ? <Handle>{readers}</Handle> : null}
     </MetaLine>
+  );
+}
+
+function PubReadersMeta({ pub }: { pub: PublicationCard }) {
+  if (pub.subscriberCount <= 0) return null;
+  return <Handle>{formatReaders(pub.subscriberCount)} readers</Handle>;
+}
+
+function PubCardFoot({ pub }: { pub: PublicationCard }) {
+  if (!pub.topic && pub.subscriberCount <= 0) return null;
+  return (
+    <Flex align="center" justify="between" gap="md" style={styles.pubCardFoot}>
+      <Topic name={pub.topic} />
+      <PubReadersMeta pub={pub} />
+    </Flex>
+  );
+}
+
+function FollowSlot({
+  publicationUri,
+  signedIn,
+}: {
+  publicationUri: string;
+  signedIn: boolean;
+}) {
+  return (
+    <div
+      role="presentation"
+      {...stylex.props(styles.followSlot)}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <FollowButton publicationUri={publicationUri} signedIn={signedIn} />
+    </div>
+  );
+}
+
+/* ── Publication card (grid + horizontal rail) ─────────────────────────── */
+
+export function PubCard({
+  pub,
+  rail = false,
+}: {
+  pub: PublicationCard;
+  rail?: boolean;
+}) {
+  const { data: session } = useQuery(user.getSessionQueryOptions);
+  const signedIn = Boolean(session?.user);
+
+  return (
+    <PublicationLink
+      pub={pub}
+      extraStyles={[styles.pubCard, rail && styles.pubCardRail]}
+    >
+      <Flex align="center" justify="between" style={styles.pubCardHead}>
+        <PublicationAvatar pub={pub} size="lg" />
+        <FollowSlot publicationUri={pub.uri} signedIn={signedIn} />
+      </Flex>
+      <span {...stylex.props(styles.pubCardName)}>{pub.name}</span>
+      {pub.ownerHandle ? <Handle>@{pub.ownerHandle}</Handle> : null}
+      {pub.description ? (
+        <p {...stylex.props(styles.pubCardDesc)}>{pub.description}</p>
+      ) : (
+        <div aria-hidden {...stylex.props(styles.pubCardGrow)} />
+      )}
+      <PubCardFoot pub={pub} />
+    </PublicationLink>
+  );
+}
+
+/** @deprecated Use {@link PubCard} with `rail` */
+export function PubRailCard({ pub }: { pub: PublicationCard }) {
+  return <PubCard pub={pub} rail />;
+}
+
+/** @deprecated Use {@link PubCard} */
+export function PubGridCard({ pub }: { pub: PublicationCard }) {
+  return <PubCard pub={pub} />;
+}
+
+/* ── Publication directory row (list / trending) ────────────────────────── */
+
+export function PubDirectoryRow({
+  pub,
+  rank,
+  isLast = false,
+}: {
+  pub: PublicationCard;
+  rank?: number;
+  isLast?: boolean;
+}) {
+  const { data: session } = useQuery(user.getSessionQueryOptions);
+  const signedIn = Boolean(session?.user);
+
+  return (
+    <PublicationLink
+      pub={pub}
+      extraStyles={[styles.pubDirRow, isLast && styles.pubDirRowLast]}
+    >
+      {rank == null ? null : (
+        <span {...stylex.props(styles.pubDirRank)}>
+          {String(rank).padStart(2, "0")}
+        </span>
+      )}
+      <PublicationAvatar pub={pub} size="lg" />
+      <Flex direction="column" gap="sm" style={styles.grow}>
+        <div {...stylex.props(styles.pubDirTop)}>
+          <span {...stylex.props(styles.pubDirName)}>{pub.name}</span>
+          {pub.ownerHandle ? <Handle>@{pub.ownerHandle}</Handle> : null}
+        </div>
+        {pub.description ? (
+          <p {...stylex.props(styles.pubDirDesc)}>{pub.description}</p>
+        ) : null}
+        <MetaLine>
+          <Topic name={pub.topic} />
+          <PubReadersMeta pub={pub} />
+          {pub.documentCount > 0 ? (
+            <>
+              <span aria-hidden {...stylex.props(styles.metaDot)}>
+                ·
+              </span>
+              <Handle>{formatReaders(pub.documentCount)} posts</Handle>
+            </>
+          ) : null}
+        </MetaLine>
+      </Flex>
+      <FollowSlot publicationUri={pub.uri} signedIn={signedIn} />
+    </PublicationLink>
   );
 }

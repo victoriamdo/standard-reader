@@ -168,6 +168,7 @@ async function listRepoPublications(
         description: record.description ?? null,
         iconUrl: cid ? getBlobUrl(pds, did, cid) : null,
         ownerAvatarUrl: null,
+        ownerHandle: null,
         topic: null,
         verified: false,
         subscriberCount: 0,

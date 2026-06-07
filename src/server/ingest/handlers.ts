@@ -11,6 +11,9 @@ import type {
   TapIdentityPayload,
 } from "../atproto/types.ts";
 
+import { leafletPlaintext } from "#/lib/leaflet/plaintext";
+import { resolveLeafletContent } from "#/server/leaflet/resolve";
+
 import { db } from "../../db/index.ts";
 import {
   bookmarks,
@@ -24,7 +27,11 @@ import {
   subscriptions,
 } from "../../db/schema.ts";
 import { blobCid, bskyImageUrl, getBlobUrl } from "../atproto/blob.ts";
-import { getCachedIdentity, primeIdentityHandle } from "../atproto/identity.ts";
+import {
+  authorPds,
+  getCachedIdentity,
+  primeIdentityHandle,
+} from "../atproto/identity.ts";
 import {
   Collections,
   didFromAtUri,
@@ -65,9 +72,10 @@ export async function upsertPublication(
   }
 
   const owner = getCachedIdentity(did);
+  const ownerPds = await authorPds(did, owner?.pds ?? null);
   const iconCid = blobCid(record.icon);
   const iconUrl =
-    iconCid && owner?.pds ? getBlobUrl(owner.pds, did, iconCid) : null;
+    iconCid && ownerPds ? getBlobUrl(ownerPds, did, iconCid) : null;
   const theme = flattenTheme(record.basicTheme);
 
   await ensureProfileStub(did, owner?.handle);
@@ -168,14 +176,27 @@ export async function upsertDocument(
   const canonicalUrl = buildCanonicalUrl(base, cleanOptional(record.path));
 
   const owner = getCachedIdentity(did);
+  const ownerPds = await authorPds(did, owner?.pds ?? null);
   const coverCid = blobCid(record.coverImage);
   const coverImageUrl =
-    coverCid && owner?.pds ? getBlobUrl(owner.pds, did, coverCid) : null;
+    coverCid && ownerPds ? getBlobUrl(ownerPds, did, coverCid) : null;
 
   const publishedAt =
     parseDate(record.publishedAt) ?? parseDate(record.updatedAt) ?? new Date();
 
   await ensureProfileStub(did, owner?.handle);
+
+  let contentJson = sanitizeJson(record.content);
+  const contentFormat = cleanOptional(record.content?.$type);
+  if (contentFormat === "pub.leaflet.content" && contentJson) {
+    contentJson = sanitizeJson(
+      await resolveLeafletContent(contentJson, did, ownerPds),
+    );
+  }
+  let textContent = cleanOptional(record.textContent);
+  if (!textContent && contentFormat === "pub.leaflet.content" && contentJson) {
+    textContent = leafletPlaintext(contentJson);
+  }
 
   const values = {
     uri,
@@ -188,9 +209,9 @@ export async function upsertDocument(
     path: cleanOptional(record.path),
     canonicalUrl,
     description: cleanOptional(record.description),
-    textContent: cleanOptional(record.textContent),
-    contentJson: sanitizeJson(record.content),
-    contentFormat: cleanOptional(record.content?.$type),
+    textContent,
+    contentJson,
+    contentFormat,
     coverImageCid: coverCid,
     coverImageMime: record.coverImage?.mimeType ?? null,
     coverImageUrl,

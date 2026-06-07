@@ -11,6 +11,8 @@ export function getRouter() {
     routeTree,
     context,
     scrollRestoration: true,
+    // Main content scrolls in AppShell's `[data-app-scroller]`, not `window`.
+    scrollToTopSelectors: ["[data-app-scroller]"],
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
     // Keep the `:` in `did:plc:…` literal in `/p/$did/$rkey` (don't %-encode it).

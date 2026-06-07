@@ -35,6 +35,8 @@ export interface PublicationCard {
   iconUrl: string | null;
   /** Owning profile's avatar, used as an icon fallback when the pub has none. */
   ownerAvatarUrl: string | null;
+  /** Owning profile's handle (e.g. `alice.bsky.social`). */
+  ownerHandle: string | null;
   topic: string | null;
   verified: boolean;
   subscriberCount: number;
@@ -58,12 +60,16 @@ export interface ArticleCard {
   publicationIconUrl: string | null;
   /** Owning profile's avatar, used as a byline-icon fallback when the pub has none. */
   publicationOwnerAvatarUrl: string | null;
+  /** Owning profile's handle (e.g. `alice.bsky.social`). */
+  publicationOwnerHandle: string | null;
   /** Owning publication's banner (from the owner profile), for cover fallback. */
   publicationBannerUrl: string | null;
   /** Owning publication's derived topic (e.g. "Design"), for meta labels. */
   publicationTopic: string | null;
   /** Free-form tags from the document record. */
   tags: Array<string> | null;
+  /** Plaintext body when indexed (used for reading-time on cards). */
+  textContent: string | null;
 }
 
 /** A profile summary (byline / publication owner). */
@@ -96,6 +102,7 @@ export function publicationCardColumns(schema: Schema) {
     description: p.description,
     iconUrl: p.iconUrl,
     ownerAvatarUrl: pr.avatarUrl,
+    ownerHandle: pr.handle,
     topic: p.topic,
     verified: p.verified,
     subscriberCount: st.subscriberCount,
@@ -128,9 +135,11 @@ export function articleCardColumns(schema: Schema) {
     publicationName: p.name,
     publicationIconUrl: p.iconUrl,
     publicationOwnerAvatarUrl: pr.avatarUrl,
+    publicationOwnerHandle: pr.handle,
     publicationBannerUrl: pr.bannerUrl,
     publicationTopic: p.topic,
     tags: d.tags,
+    textContent: d.textContent,
   };
 }
 
@@ -144,6 +153,7 @@ type PublicationCardRow = {
   description: string | null;
   iconUrl: string | null;
   ownerAvatarUrl: string | null;
+  ownerHandle: string | null;
   topic: string | null;
   verified: boolean;
   subscriberCount: number | null;
@@ -177,6 +187,7 @@ export function toPublicationCard(row: PublicationCardRow): PublicationCard {
     description: row.description,
     iconUrl: row.iconUrl,
     ownerAvatarUrl: row.ownerAvatarUrl,
+    ownerHandle: row.ownerHandle,
     topic: row.topic,
     verified: row.verified,
     subscriberCount: row.subscriberCount ?? 0,
@@ -199,9 +210,11 @@ type ArticleCardRow = {
   publicationName: string | null;
   publicationIconUrl: string | null;
   publicationOwnerAvatarUrl: string | null;
+  publicationOwnerHandle: string | null;
   publicationBannerUrl: string | null;
   publicationTopic: string | null;
   tags: Array<string> | null;
+  textContent: string | null;
 };
 
 export function toArticleCard(row: ArticleCardRow): ArticleCard {
@@ -219,8 +232,10 @@ export function toArticleCard(row: ArticleCardRow): ArticleCard {
     publicationName: row.publicationName,
     publicationIconUrl: row.publicationIconUrl,
     publicationOwnerAvatarUrl: row.publicationOwnerAvatarUrl,
+    publicationOwnerHandle: row.publicationOwnerHandle,
     publicationBannerUrl: row.publicationBannerUrl,
     publicationTopic: row.publicationTopic,
     tags: row.tags,
+    textContent: row.textContent,
   };
 }

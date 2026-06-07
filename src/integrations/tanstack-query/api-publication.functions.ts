@@ -1,7 +1,14 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
+import { getAtprotoSessionForRequest } from "#/middleware/auth";
 import { observe } from "#/server/observability/log";
-import { readersAlsoFollow, selectArticleCards } from "#/server/reader/queries";
+import {
+  articleRecommendedPublications,
+  readersAlsoFollow,
+  selectArticleCards,
+  withLivePublicationCounts,
+} from "#/server/reader/queries";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -11,6 +18,10 @@ import type {
   ProfileSummary,
   PublicationCard,
 } from "./api-shapes";
+
+import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
+import { authorPds } from "#/server/atproto/identity";
+import { resolveLeafletContent } from "#/server/leaflet/resolve";
 
 import { publicationCardColumns, toPublicationCard } from "./api-shapes";
 import { dbMiddleware } from "./db-middleware";
@@ -33,6 +44,7 @@ const profileInput = z.object({
 
 const articleInput = z.object({
   documentUri: z.string().min(1),
+  alsoFollowLimit: z.number().int().min(1).max(20).default(3),
 });
 
 export interface PublicationProfile {
@@ -53,6 +65,8 @@ export interface ArticleContributor {
 export interface ArticleDetail {
   uri: string;
   did: string;
+  /** PDS for the authoring repo — resolves in-body leaflet image blobs. */
+  authorPds: string | null;
   title: string;
   description: string | null;
   path: string | null;
@@ -69,8 +83,17 @@ export interface ArticleDetail {
   bskyPostCid: string | null;
   publicationUri: string | null;
   publication: PublicationCard | null;
+  /** Owning profile handle for the sticky byline (`@handle`). */
+  publicationOwnerHandle: string | null;
   contributors: Array<ArticleContributor>;
+  /** Readers who opened this article (`app.standard-reader.read`). */
+  readCount: number;
+  /** Network endorsements (`site.standard.graph.recommend`). */
   recommendCount: number;
+  /** Other recent posts from the same publication (excludes this article). */
+  moreFrom: Array<ArticleCard>;
+  /** Co-subscribed publications for readers of this one ("You might follow"). */
+  readersAlsoFollow: Array<PublicationCard>;
 }
 
 const getPublicationProfile = createServerFn({ method: "GET" })
@@ -117,9 +140,10 @@ const getPublicationProfile = createServerFn({ method: "GET" })
             // count active subscriptions/documents directly for the header.
             db
               .select({
-                subscriberCount: sql<number>`count(distinct ${sub.subscriberDid}) filter (where ${sub.deleted} = false)`.mapWith(
-                  Number,
-                ),
+                subscriberCount:
+                  sql<number>`count(distinct ${sub.subscriberDid}) filter (where ${sub.deleted} = false)`.mapWith(
+                    Number,
+                  ),
               })
               .from(sub)
               .where(eq(sub.publicationUri, data.publicationUri))
@@ -186,69 +210,81 @@ const getArticle = createServerFn({ method: "GET" })
         const dc = schema.documentContributors;
         const pr = schema.profiles;
         const rec = schema.recommends;
+        const reads = schema.reads;
         span.set("documentUri", data.documentUri);
 
-        const [docRows, contributorRows, recommendRows] = await Promise.all([
-          db
-            .select({
-              uri: d.uri,
-              did: d.did,
-              title: d.title,
-              description: d.description,
-              path: d.path,
-              canonicalUrl: d.canonicalUrl,
-              coverImageUrl: d.coverImageUrl,
-              publishedAt: d.publishedAt,
-              recordUpdatedAt: d.recordUpdatedAt,
-              featured: d.featured,
-              tags: d.tags,
-              contentJson: d.contentJson,
-              contentFormat: d.contentFormat,
-              textContent: d.textContent,
-              bskyPostUri: d.bskyPostUri,
-              bskyPostCid: d.bskyPostCid,
-              publicationUri: d.publicationUri,
-              pubUri: p.uri,
-              pubDid: p.did,
-              pubName: p.name,
-              pubUrl: p.url,
-              pubDescription: p.description,
-              pubIconUrl: p.iconUrl,
-              pubOwnerAvatarUrl: pr.avatarUrl,
-              pubTopic: p.topic,
-              pubVerified: p.verified,
-              pubSubscriberCount: st.subscriberCount,
-              pubDocumentCount: st.documentCount,
-              pubLastDocumentAt: st.lastDocumentAt,
-            })
-            .from(d)
-            .leftJoin(p, eq(p.uri, d.publicationUri))
-            .leftJoin(st, eq(st.publicationUri, p.uri))
-            .leftJoin(pr, eq(pr.did, p.did))
-            .where(eq(d.uri, data.documentUri))
-            .limit(1),
-          db
-            .select({
-              did: dc.did,
-              role: dc.role,
-              displayName: dc.displayName,
-              profileDisplayName: pr.displayName,
-              handle: pr.handle,
-              avatarUrl: pr.avatarUrl,
-            })
-            .from(dc)
-            .leftJoin(pr, eq(pr.did, dc.did))
-            .where(eq(dc.documentUri, data.documentUri)),
-          db
-            .select({ count: sql<number>`count(*)`.mapWith(Number) })
-            .from(rec)
-            .where(
-              and(
-                eq(rec.documentUri, data.documentUri),
-                eq(rec.deleted, false),
+        const [docRows, contributorRows, recommendRows, readRows] =
+          await Promise.all([
+            db
+              .select({
+                uri: d.uri,
+                did: d.did,
+                title: d.title,
+                description: d.description,
+                path: d.path,
+                canonicalUrl: d.canonicalUrl,
+                coverImageUrl: d.coverImageUrl,
+                publishedAt: d.publishedAt,
+                recordUpdatedAt: d.recordUpdatedAt,
+                featured: d.featured,
+                tags: d.tags,
+                contentJson: d.contentJson,
+                contentFormat: d.contentFormat,
+                textContent: d.textContent,
+                bskyPostUri: d.bskyPostUri,
+                bskyPostCid: d.bskyPostCid,
+                publicationUri: d.publicationUri,
+                pubUri: p.uri,
+                pubDid: p.did,
+                pubName: p.name,
+                pubUrl: p.url,
+                pubDescription: p.description,
+                pubIconUrl: p.iconUrl,
+                pubOwnerAvatarUrl: pr.avatarUrl,
+                pubOwnerHandle: pr.handle,
+                pubTopic: p.topic,
+                pubVerified: p.verified,
+                pubSubscriberCount: st.subscriberCount,
+                pubDocumentCount: st.documentCount,
+                pubLastDocumentAt: st.lastDocumentAt,
+              })
+              .from(d)
+              .leftJoin(p, eq(p.uri, d.publicationUri))
+              .leftJoin(st, eq(st.publicationUri, p.uri))
+              .leftJoin(pr, eq(pr.did, p.did))
+              .where(eq(d.uri, data.documentUri))
+              .limit(1),
+            db
+              .select({
+                did: dc.did,
+                role: dc.role,
+                displayName: dc.displayName,
+                profileDisplayName: pr.displayName,
+                handle: pr.handle,
+                avatarUrl: pr.avatarUrl,
+              })
+              .from(dc)
+              .leftJoin(pr, eq(pr.did, dc.did))
+              .where(eq(dc.documentUri, data.documentUri)),
+            db
+              .select({ count: sql<number>`count(*)`.mapWith(Number) })
+              .from(rec)
+              .where(
+                and(
+                  eq(rec.documentUri, data.documentUri),
+                  eq(rec.deleted, false),
+                ),
               ),
-            ),
-        ]);
+            db
+              .select({ count: sql<number>`count(*)`.mapWith(Number) })
+              .from(reads)
+              .where(
+                and(
+                  eq(reads.documentUri, data.documentUri),
+                  eq(reads.deleted, false),
+                ),
+              ),
+          ]);
 
         const row = docRows[0];
         if (!row) {
@@ -256,6 +292,12 @@ const getArticle = createServerFn({ method: "GET" })
           return null;
         }
         span.set("found", true);
+
+        const [authorProfile] = await db
+          .select({ pds: pr.pds })
+          .from(pr)
+          .where(eq(pr.did, row.did))
+          .limit(1);
 
         const publication: PublicationCard | null = row.pubUri
           ? toPublicationCard({
@@ -266,6 +308,7 @@ const getArticle = createServerFn({ method: "GET" })
               description: row.pubDescription,
               iconUrl: row.pubIconUrl,
               ownerAvatarUrl: row.pubOwnerAvatarUrl,
+              ownerHandle: row.pubOwnerHandle,
               topic: row.pubTopic,
               verified: row.pubVerified ?? false,
               subscriberCount: row.pubSubscriberCount,
@@ -284,9 +327,51 @@ const getArticle = createServerFn({ method: "GET" })
           }),
         );
 
+        const session = await getAtprotoSessionForRequest(getRequest());
+        const readerDid = session?.did;
+
+        const [moreFromRaw, recommendedRaw] = await Promise.all([
+          row.publicationUri
+            ? selectArticleCards(db, schema, {
+                publicationUris: [row.publicationUri],
+                limit: 4,
+              })
+            : Promise.resolve([]),
+          articleRecommendedPublications(db, schema, {
+            publicationUri: row.publicationUri,
+            readerDid,
+            limit: data.alsoFollowLimit,
+          }),
+        ]);
+
+        const moreFrom = moreFromRaw
+          .filter((doc) => doc.uri !== row.uri)
+          .slice(0, 3);
+        const readersAlsoFollowPubs = await withLivePublicationCounts(
+          db,
+          schema,
+          recommendedRaw,
+        );
+
+        const authorPdsEndpoint = await authorPds(
+          row.did,
+          authorProfile?.pds ?? null,
+        );
+
+        const rawContentJson = row.contentJson ?? null;
+        const resolvedContentJson =
+          row.contentFormat === LEAFLET_CONTENT && rawContentJson
+            ? ((await resolveLeafletContent(
+                rawContentJson,
+                row.did,
+                authorPdsEndpoint,
+              )) as JsonValue)
+            : (rawContentJson as JsonValue | null);
+
         return {
           uri: row.uri,
           did: row.did,
+          authorPds: authorPdsEndpoint,
           title: row.title,
           description: row.description,
           path: row.path,
@@ -296,15 +381,19 @@ const getArticle = createServerFn({ method: "GET" })
           updatedAt: row.recordUpdatedAt?.toISOString() ?? null,
           featured: row.featured,
           tags: row.tags,
-          contentJson: (row.contentJson ?? null) as JsonValue,
+          contentJson: resolvedContentJson,
           contentFormat: row.contentFormat,
           textContent: row.textContent,
           bskyPostUri: row.bskyPostUri,
           bskyPostCid: row.bskyPostCid,
           publicationUri: row.publicationUri,
           publication,
+          publicationOwnerHandle: row.pubOwnerHandle ?? null,
           contributors,
+          readCount: readRows[0]?.count ?? 0,
           recommendCount: recommendRows[0]?.count ?? 0,
+          moreFrom,
+          readersAlsoFollow: readersAlsoFollowPubs,
         };
       },
     ),

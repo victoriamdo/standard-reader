@@ -442,6 +442,7 @@ function markReadMutationOptions() {
     mutationKey: ["reader", "markRead"] as const,
     mutationFn: async (documentUri: string) =>
       markRead({ data: { documentUri } }),
+    retry: false,
   });
 }
 

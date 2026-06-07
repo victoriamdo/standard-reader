@@ -4,9 +4,12 @@ import { getRequest } from "@tanstack/react-start/server";
 import { getAtprotoSessionForRequest } from "#/middleware/auth";
 import { observe } from "#/server/observability/log";
 import {
+  followedByPeopleYouFollow,
   popularPublications,
   recommendedPublications,
+  trendingPublicationUris,
   trendingPublications,
+  withLivePublicationCounts,
 } from "#/server/reader/queries";
 import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -134,11 +137,8 @@ const getTrendingPublications = createServerFn({ method: "GET" })
     observe(
       "discover.getTrendingPublications",
       async ({ data, context }, span) => {
-        const items = await trendingPublications(
-          context.db,
-          context.schema,
-          data.limit,
-        );
+        const { db, schema } = context;
+        const items = await trendingPublications(db, schema, data.limit);
         span.set("count", items.length);
         return items;
       },
@@ -153,12 +153,25 @@ const getRecommendedPublications = createServerFn({ method: "GET" })
       "discover.getRecommendedPublications",
       async ({ data, context }, span) => {
         const { db, schema } = context;
+        const trendingExclude = await trendingPublicationUris(
+          db,
+          schema,
+          data.limit,
+        );
+        span.set("trendingExclude", trendingExclude.length);
+
         const session = await getAtprotoSessionForRequest(getRequest());
         if (!session) {
-          const items = await popularPublications(db, schema, data.limit);
           span.set("personalized", false);
-          span.set("count", items.length);
-          return items;
+          const items = await popularPublications(
+            db,
+            schema,
+            data.limit,
+            trendingExclude,
+          );
+          const withCounts = await withLivePublicationCounts(db, schema, items);
+          span.set("count", withCounts.length);
+          return withCounts.filter((pub) => pub.documentCount > 0);
         }
         span.set("did", session.did);
         span.set("personalized", true);
@@ -167,9 +180,44 @@ const getRecommendedPublications = createServerFn({ method: "GET" })
           schema,
           session.did,
           data.limit,
+          { excludeUris: trendingExclude },
+        );
+        const withCounts = await withLivePublicationCounts(db, schema, items);
+        span.set("count", withCounts.length);
+        return withCounts.filter((pub) => pub.documentCount > 0);
+      },
+    ),
+  );
+
+const getFollowedByPeopleYouFollow = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(railInput)
+  .handler(
+    observe(
+      "discover.getFollowedByPeopleYouFollow",
+      async ({ data, context }, span) => {
+        const { db, schema } = context;
+        const session = await getAtprotoSessionForRequest(getRequest());
+        if (!session) {
+          span.set("count", 0);
+          return [];
+        }
+        span.set("did", session.did);
+        const trendingExclude = await trendingPublicationUris(
+          db,
+          schema,
+          data.limit,
+        );
+        span.set("trendingExclude", trendingExclude.length);
+        const items = await followedByPeopleYouFollow(
+          db,
+          schema,
+          session.did,
+          data.limit,
+          { excludeUris: trendingExclude },
         );
         span.set("count", items.length);
-        return items;
+        return withLivePublicationCounts(db, schema, items);
       },
     ),
   );
@@ -212,6 +260,15 @@ function getRecommendedPublicationsQueryOptions({
   });
 }
 
+function getFollowedByPeopleYouFollowQueryOptions({
+  limit = 12,
+}: { limit?: number } = {}) {
+  return queryOptions({
+    queryKey: ["discover", "followed-by", limit] as const,
+    queryFn: async () => getFollowedByPeopleYouFollow({ data: { limit } }),
+  });
+}
+
 export const discoverApi = {
   getTopics,
   getTopicsQueryOptions,
@@ -221,4 +278,6 @@ export const discoverApi = {
   getTrendingPublicationsQueryOptions,
   getRecommendedPublications,
   getRecommendedPublicationsQueryOptions,
+  getFollowedByPeopleYouFollow,
+  getFollowedByPeopleYouFollowQueryOptions,
 };

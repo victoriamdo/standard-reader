@@ -30,7 +30,8 @@ const styles = stylex.create({
   shell: {
     display: "flex",
     flexDirection: "row",
-    minHeight: "100vh",
+    height: "100vh",
+    overflow: "hidden",
   },
   sidebar: {
     backgroundColor: uiColor.bgSubtle,
@@ -204,13 +205,18 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     flexGrow: 1,
+    overflow: "hidden",
+    minHeight: 0,
     minWidth: 0,
   },
   scroller: {
+    display: "flex",
     flexBasis: "0%",
+    flexDirection: "column",
     flexGrow: "1",
     flexShrink: "1",
     minHeight: 0,
+    overflowY: "auto",
   },
   mobileBar: {
     alignItems: "center",
@@ -411,7 +417,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <NavbarAuth />
         </Flex>
 
-        <div {...stylex.props(styles.scroller)}>{children}</div>
+        <div {...stylex.props(styles.scroller)} data-app-scroller>
+          {children}
+        </div>
 
         <nav {...stylex.props(styles.bottomNav)}>
           {NAV.map((item) => (

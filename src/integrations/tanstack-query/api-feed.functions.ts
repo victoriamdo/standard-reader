@@ -10,7 +10,9 @@ import {
   recommendedPublications,
   selectArticleCards,
   selectFollowUris,
-  trendingPublications,
+  trendingArticles,
+  trendingPublicationUris,
+  withLivePublicationCounts,
 } from "#/server/reader/queries";
 import { z } from "zod";
 
@@ -40,8 +42,8 @@ export interface HomeFeed {
   featured: ArticleCard | null;
   /** Latest unread rows from follows (excludes the featured lead). */
   latestUnread: Array<ArticleCard>;
-  /** Trending publications rail (network-wide). */
-  trending: Array<PublicationCard>;
+  /** Trending articles rail (network-wide). */
+  trending: Array<ArticleCard>;
   /** Recommended publications rail ("You might follow"). */
   youMightFollow: Array<PublicationCard>;
   /** True when tailored to the reader's follows (vs cold-start/signed-out). */
@@ -116,7 +118,7 @@ const getHomeFeed = createServerFn({ method: "GET" })
         ? { publicationUris: followUris, unreadForDid: did }
         : { discoverOnly: true };
 
-      const [featuredLead, rows, trending, youMightFollow, counts] =
+      const [featuredLead, rows, trendingRaw, trendingPubUris, counts] =
         await Promise.all([
           selectArticleCards(db, schema, {
             ...rowQuery,
@@ -127,21 +129,46 @@ const getHomeFeed = createServerFn({ method: "GET" })
             ...rowQuery,
             limit: HOME_ROW_LIMIT + 1,
           }),
-          trendingPublications(db, schema, HOME_RAIL_LIMIT),
-          personalized && did
-            ? recommendedPublications(db, schema, did, HOME_RAIL_LIMIT)
-            : popularPublications(db, schema, HOME_RAIL_LIMIT),
+          trendingArticles(db, schema, HOME_RAIL_LIMIT + HOME_ROW_LIMIT),
+          trendingPublicationUris(db, schema, HOME_RAIL_LIMIT),
           personalized && did
             ? countFollowedDocuments(db, schema, followUris, did)
             : Promise.resolve(null),
         ]);
+
+      const youMightFollowRaw =
+        personalized && did
+          ? await recommendedPublications(db, schema, did, HOME_RAIL_LIMIT, {
+              excludeUris: trendingPubUris,
+            })
+          : await popularPublications(
+              db,
+              schema,
+              HOME_RAIL_LIMIT,
+              trendingPubUris,
+            );
 
       const featured = featuredLead[0] ?? rows[0] ?? null;
       const latestUnread = rows
         .filter((row) => row.uri !== featured?.uri)
         .slice(0, HOME_ROW_LIMIT);
 
+      const excludeUris = new Set(
+        [featured?.uri, ...latestUnread.map((row) => row.uri)].filter(
+          (uri): uri is string => Boolean(uri),
+        ),
+      );
+      const trending = trendingRaw
+        .filter((article) => !excludeUris.has(article.uri))
+        .slice(0, HOME_RAIL_LIMIT);
+      const youMightFollow = await withLivePublicationCounts(
+        db,
+        schema,
+        youMightFollowRaw,
+      );
+
       span.set("rows", latestUnread.length);
+      span.set("trending", trending.length);
       return {
         featured,
         latestUnread,

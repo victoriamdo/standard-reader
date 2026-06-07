@@ -132,11 +132,11 @@ in structured o11y (`observe`) and reads from the Neon read-model.
 Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
 
 - [x] App shell: desktop persistent left sidebar; mobile top bar + bottom tab nav; Following list.
-- [x] **Home** — masthead (date + unread count), featured lead, latest unread rows, right rail (Trending + You might follow).
-- [ ] **Latest** — chronological list, segmented All/Unread filter with counts.
-- [ ] **Discover** — Recommended / Followed-by-people-you-follow / Trending / All (chips, sort, grid⇄list toggle).
+- [x] **Home** — masthead (date + unread count), featured lead, latest unread rows, right rail (Trending articles + You might follow).
+- [x] **Latest** — chronological list, segmented All/Unread filter with counts.
+- [x] **Discover** — Recommended / Followed-by-people-you-follow / Trending / All (chips, sort, grid⇄list toggle).
 - [ ] **Search** — editorial field, live results split into Publications + Articles.
-- [ ] **Article** (reading view) — ~680px measure, drop-cap, pull quotes, hero, sticky bar (back/byline/follow/save/share), reading-progress bar, footer pub card + "More from {publication}".
+- [x] **Article** (reading view) — ~680px measure, drop-cap, pull quotes, hero, sticky bar (back/byline/follow/save/share), reading-progress bar, footer pub card + "More from {publication}". Route `/a/$did/$rkey` (`_layout.a.$did.$rkey.tsx`); feed/profile cards link here; `publicationApi.getArticle` returns `moreFrom` + owner handle.
 - [x] **Publication profile** — banner + inline header (avatar/topic/name/desc/stats/Copy DID/Follow),
       recent writing, right rail (About + DID + readers-also-follow). Route `/p/$did/$rkey`
       (`_layout.p.$did.$rkey.tsx`); sidebar Following rows + cards link here instead of the
@@ -148,10 +148,10 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
 
 ## 7. Discovery engine (network-powered)
 
-- [ ] **Recommended for you** — collaborative filtering over the follow graph (co-subscription).
-- [ ] **Followed by people you follow** — social-graph query.
-- [ ] **Trending publications / Trending now** — recent activity (new articles + follow velocity, rolling window).
-- [ ] **Cold start** fallback to overall popularity when user has no follows.
+- [x] **Recommended for you** — collaborative filtering over the follow graph (co-subscription).
+- [x] **Followed by people you follow** — social-graph query.
+- [x] **Trending publications / Trending now** — recent activity (new articles + follow velocity, rolling window).
+- [x] **Cold start** — high-readership fallback excluding the trending set (rails stay distinct).
 
 ## 8. Routing & state
 

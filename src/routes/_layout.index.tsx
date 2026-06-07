@@ -3,8 +3,6 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowRight, Flame, Sparkles } from "lucide-react";
 
-import type { PublicationCard } from "../integrations/tanstack-query/api-shapes";
-
 import {
   ArticleRow,
   CompactRow,
@@ -29,7 +27,6 @@ import {
   tracking,
 } from "../design-system/theme/typography.stylex";
 import { feedApi } from "../integrations/tanstack-query/api-feed.functions";
-import { user } from "../integrations/tanstack-query/api-user.functions";
 
 export const Route = createFileRoute("/_layout/")({
   loader: async ({ context }) => {
@@ -126,8 +123,6 @@ const WEEKDAY_FMT = new Intl.DateTimeFormat("en-US", { weekday: "long" });
 
 function Home() {
   const { data: feed } = useSuspenseQuery(feedApi.getHomeFeedQueryOptions());
-  const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
-  const signedIn = Boolean(session?.user);
 
   const now = new Date();
   const weekday = WEEKDAY_FMT.format(now);
@@ -200,11 +195,15 @@ function Home() {
             <div {...stylex.props(styles.railCard)}>
               <div {...stylex.props(styles.railHead)}>
                 <Flame size={14} {...stylex.props(styles.railIcon)} /> Trending
-                now
+                articles
               </div>
               <div>
-                {feed.trending.slice(0, 5).map((pub, i) => (
-                  <CompactRowFromPub key={pub.uri} pub={pub} rank={i + 1} />
+                {feed.trending.map((article, i) => (
+                  <CompactRow
+                    key={article.uri}
+                    article={article}
+                    rank={i + 1}
+                  />
                 ))}
               </div>
             </div>
@@ -217,8 +216,12 @@ function Home() {
                 might follow
               </div>
               <div>
-                {feed.youMightFollow.slice(0, 3).map((pub) => (
-                  <MiniPubRow key={pub.uri} pub={pub} signedIn={signedIn} />
+                {feed.youMightFollow.slice(0, 3).map((pub, i, pubs) => (
+                  <MiniPubRow
+                    key={pub.uri}
+                    pub={pub}
+                    isLast={i === pubs.length - 1}
+                  />
                 ))}
               </div>
               <Link to="/discover" {...stylex.props(styles.directoryLink)}>
@@ -231,40 +234,5 @@ function Home() {
         </Flex>
       </div>
     </ReaderContent>
-  );
-}
-
-/* Trending rail lists publications; render their latest as a compact line. */
-function CompactRowFromPub({
-  pub,
-  rank,
-}: {
-  pub: PublicationCard;
-  rank: number;
-}) {
-  return (
-    <CompactRow
-      rank={rank}
-      article={{
-        uri: pub.uri,
-        did: pub.did,
-        title: pub.name,
-        description: pub.description,
-        path: null,
-        canonicalUrl: pub.url,
-        coverImageUrl: null,
-        publishedAt: pub.lastDocumentAt ?? new Date().toISOString(),
-        featured: false,
-        publicationUri: pub.uri,
-        publicationName: pub.topic
-          ? `${pub.topic} · ${pub.subscriberCount} readers`
-          : `${pub.subscriberCount} readers`,
-        publicationIconUrl: pub.iconUrl,
-        publicationOwnerAvatarUrl: pub.ownerAvatarUrl,
-        publicationBannerUrl: null,
-        publicationTopic: pub.topic,
-        tags: null,
-      }}
-    />
   );
 }

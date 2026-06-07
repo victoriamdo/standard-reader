@@ -1,0 +1,198 @@
+import * as stylex from "@stylexjs/stylex";
+import { primaryColor, uiColor } from "#/design-system/theme/color.stylex";
+import { radius } from "#/design-system/theme/radius.stylex";
+import { spacing } from "#/design-system/theme/spacing.stylex";
+import { gap } from "#/design-system/theme/semantic-spacing.stylex";
+import {
+  fontFamily,
+  fontSize,
+  fontWeight,
+} from "#/design-system/theme/typography.stylex";
+
+export const articleBodyStyles = stylex.create({
+  body: {
+    color: uiColor.text2,
+    fontFamily: fontFamily.serif,
+    fontSize: { default: "1.1875rem", "@media (min-width: 40rem)": "1.25rem" },
+    lineHeight: 1.68,
+    marginTop: spacing["9"],
+  },
+  bodyAfterHero: {
+    marginTop: spacing["0"],
+  },
+  paragraph: {
+    marginBottom: "1.3em",
+    marginTop: spacing["0"],
+  },
+  /** First paragraph: contain floated drop cap so short openings clear the letter. */
+  dropCapParagraph: {
+    display: "flow-root",
+    minHeight: `calc(3.6em * 0.78 + ${spacing["1.5"]})`,
+  },
+  dropCap: {
+    color: primaryColor.text2,
+    float: "left",
+    fontFamily: fontFamily.serif,
+    fontSize: "3.6em",
+    fontStyle: "italic",
+    fontWeight: fontWeight.semibold,
+    lineHeight: 0.78,
+    paddingBottom: spacing["0"],
+    paddingLeft: spacing["0"],
+    paddingRight: spacing["3"],
+    paddingTop: spacing["1.5"],
+  },
+  pullquote: {
+    borderLeftColor: primaryColor.solid1,
+    color: uiColor.text2,
+    borderLeftStyle: "solid",
+    fontFamily: fontFamily.serif,
+    borderLeftWidth: 3,
+    fontSize: "1.6875rem",
+    fontStyle: "italic",
+    fontWeight: fontWeight.medium,
+    lineHeight: 1.32,
+    marginBottom: spacing["9"],
+    marginTop: spacing["9"],
+    paddingBottom: spacing["1"],
+    paddingLeft: spacing["6"],
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textWrap: "pretty",
+    paddingRight: spacing["0"],
+    paddingTop: spacing["1"],
+  },
+  facetBold: {
+    fontWeight: fontWeight.semibold,
+  },
+  facetItalic: {
+    fontStyle: "italic",
+  },
+  facetLink: {
+    textDecoration: { default: "underline", ":hover": "none" },
+    color: primaryColor.text2,
+    textUnderlineOffset: "2px",
+  },
+  facetCode: {
+    backgroundColor: uiColor.component1,
+    borderRadius: radius.sm,
+    fontFamily: fontFamily.mono,
+    fontSize: "0.88em",
+    paddingBottom: spacing["0.5"],
+    paddingLeft: spacing["1.5"],
+    paddingRight: spacing["1.5"],
+    paddingTop: spacing["0.5"],
+  },
+  codeBlock: {
+    backgroundColor: uiColor.component1,
+    borderColor: uiColor.border1,
+    borderRadius: radius.md,
+    borderStyle: "solid",
+    borderWidth: 1,
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.sm,
+    lineHeight: 1.5,
+    marginBottom: "1.3em",
+    marginTop: spacing["0"],
+    overflowX: "auto",
+    paddingBottom: spacing["4"],
+    paddingLeft: spacing["4"],
+    paddingRight: spacing["4"],
+    paddingTop: spacing["4"],
+    whiteSpace: "pre",
+  },
+  iframeFigure: {
+    marginBottom: "1.3em",
+    marginTop: spacing["0"],
+    maxWidth: "100%",
+    width: "100%",
+  },
+  iframeEmbed: {
+    borderStyle: "none",
+    display: "block",
+    height: "100%",
+    width: "100%",
+  },
+  iframeFrame: {
+    backgroundColor: uiColor.component1,
+    borderColor: uiColor.border1,
+    borderRadius: radius.md,
+    borderStyle: "solid",
+    borderWidth: 1,
+    maxHeight: "600px",
+    overflow: "hidden",
+    width: "100%",
+  },
+  heading1: {
+    color: uiColor.text2,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize["2xl"],
+    fontWeight: fontWeight.semibold,
+    lineHeight: 1.2,
+    marginBottom: spacing["4"],
+    marginTop: spacing["10"],
+  },
+  heading2: {
+    color: uiColor.text2,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.semibold,
+    lineHeight: 1.25,
+    marginBottom: spacing["3"],
+    marginTop: spacing["8"],
+  },
+  list: {
+    marginBottom: "1.3em",
+    marginTop: spacing["0"],
+    paddingLeft: spacing["6"],
+  },
+  listItem: {
+    marginBottom: gap.sm,
+    marginTop: spacing["0"],
+  },
+  horizontalRule: {
+    backgroundColor: uiColor.border1,
+    borderStyle: "none",
+    height: 1,
+    marginBottom: spacing["8"],
+    marginTop: spacing["8"],
+    width: "100%",
+  },
+  imageFigure: {
+    marginBottom: "1.3em",
+    marginTop: spacing["0"],
+    maxWidth: "100%",
+    width: "100%",
+  },
+  imageFullBleed: {
+    maxWidth: "none",
+    width: "100%",
+  },
+  bskyPostEmbed: {
+    marginBottom: "1.3em",
+    marginTop: spacing["0"],
+    maxWidth: "100%",
+
+    // oxlint-disable-next-line @stylexjs/no-legacy-contextual-styles, @stylexjs/valid-styles
+    ":is(*) a": {
+      textDecoration: "inherit",
+      color: "inherit",
+    },
+  },
+  unknownBlock: {
+    backgroundColor: uiColor.component1,
+    borderColor: uiColor.border1,
+    borderRadius: radius.md,
+    borderStyle: "dashed",
+    borderWidth: 1,
+    color: uiColor.text1,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.sm,
+    fontStyle: "italic",
+    marginBottom: "1.3em",
+    marginTop: spacing["0"],
+    paddingBottom: spacing["3"],
+    paddingLeft: spacing["4"],
+    paddingRight: spacing["4"],
+    paddingTop: spacing["3"],
+  },
+});

@@ -5,8 +5,8 @@
  * server fn's `dbMiddleware` context), so the same logic backs both the Home
  * rails and the Discover sections without duplicating SQL. The discovery
  * rankings here are deliberately simple reads over the precomputed aggregates
- * (`publication_stats`, `publication_cosubscriptions`); tuning their quality is
- * tracked separately under the discovery-engine work (TODO §7).
+ * (`publication_stats`, `publication_cosubscriptions`). Discover rails dedupe
+ * against the trending set so Recommended / social-proof rails stay distinct.
  */
 
 import type {
@@ -26,9 +26,11 @@ import {
   and,
   desc,
   eq,
+  exists,
   inArray,
   isNotNull,
   isNull,
+  ne,
   notInArray,
   sql,
 } from "drizzle-orm";
@@ -130,6 +132,59 @@ export async function followedPublications(
   return rows.map((row) => toPublicationCard(row));
 }
 
+/**
+ * Replace stale `publication_stats` counts with live subscription/document
+ * totals — used on rails where the header already does the same refresh.
+ */
+export async function withLivePublicationCounts(
+  db: Db,
+  schema: Schema,
+  pubs: Array<PublicationCard>,
+): Promise<Array<PublicationCard>> {
+  if (pubs.length === 0) {
+    return pubs;
+  }
+
+  const uris = pubs.map((pub) => pub.uri);
+  const sub = schema.subscriptions;
+  const doc = schema.documents;
+
+  const [subRows, docRows] = await Promise.all([
+    db
+      .select({
+        publicationUri: sub.publicationUri,
+        subscriberCount:
+          sql<number>`count(distinct ${sub.subscriberDid}) filter (where ${sub.deleted} = false)`.mapWith(
+            Number,
+          ),
+      })
+      .from(sub)
+      .where(inArray(sub.publicationUri, uris))
+      .groupBy(sub.publicationUri),
+    db
+      .select({
+        publicationUri: doc.publicationUri,
+        documentCount: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(doc)
+      .where(and(inArray(doc.publicationUri, uris), eq(doc.deleted, false)))
+      .groupBy(doc.publicationUri),
+  ]);
+
+  const subsByUri = new Map(
+    subRows.map((row) => [row.publicationUri, row.subscriberCount]),
+  );
+  const docsByUri = new Map(
+    docRows.map((row) => [row.publicationUri, row.documentCount]),
+  );
+
+  return pubs.map((pub) => ({
+    ...pub,
+    subscriberCount: subsByUri.get(pub.uri) ?? 0,
+    documentCount: docsByUri.get(pub.uri) ?? 0,
+  }));
+}
+
 /** Distinct publication AT-URIs a reader currently follows (active records). */
 export async function selectFollowUris(
   db: Db,
@@ -177,24 +232,207 @@ export async function countFollowedDocuments(
 
 // ── Discovery rails (reads over precomputed aggregates) ─────────────────────
 
-/** Discover-eligible publications ranked by trending score (Trending rail). */
-export async function trendingPublications(
+/**
+ * Discover-eligible articles ranked by recent network activity (recommends in
+ * the last 7 days, boosted by the parent publication's trending score).
+ */
+export async function trendingArticles(
   db: Db,
   schema: Schema,
   limit: number,
-): Promise<Array<PublicationCard>> {
+  excludeUris: Array<string> = [],
+): Promise<Array<ArticleCard>> {
+  const d = schema.documents;
   const p = schema.publications;
   const st = schema.publicationStats;
   const pr = schema.profiles;
+  const rc = schema.recommends;
+
+  const recAgg = db
+    .select({
+      documentUri: rc.documentUri,
+      cnt7: sql<number>`count(*) filter (where coalesce(${rc.createdAt}, ${rc.indexedAt}) > now() - interval '7 days')`.as(
+        "cnt7",
+      ),
+    })
+    .from(rc)
+    .where(eq(rc.deleted, false))
+    .groupBy(rc.documentUri)
+    .as("rec_agg");
+
+  const conds = [
+    eq(d.deleted, false),
+    isNotNull(d.publicationUri),
+    eq(p.showInDiscover, true),
+    eq(p.deleted, false),
+    sql`${d.publishedAt} > now() - interval '60 days'`,
+  ];
+  if (excludeUris.length > 0) {
+    conds.push(notInArray(d.uri, excludeUris));
+  }
+
   const rows = await db
-    .select(publicationCardColumns(schema))
-    .from(st)
-    .innerJoin(p, eq(p.uri, st.publicationUri))
+    .select(articleCardColumns(schema))
+    .from(d)
+    .innerJoin(p, eq(p.uri, d.publicationUri))
+    .leftJoin(st, eq(st.publicationUri, p.uri))
     .leftJoin(pr, eq(pr.did, p.did))
-    .where(and(eq(p.showInDiscover, true), eq(p.deleted, false)))
-    .orderBy(desc(st.trendingScore))
+    .leftJoin(recAgg, eq(recAgg.documentUri, d.uri))
+    .where(and(...conds))
+    .orderBy(
+      desc(
+        sql`(coalesce(${recAgg.cnt7}, 0) * 3.0 + coalesce(${st.trendingScore}, 0))`,
+      ),
+      desc(d.publishedAt),
+    )
     .limit(limit);
+
+  return rows.map((row) => toArticleCard(row));
+}
+
+/**
+ * Trending publications ranked by live 7-day activity (documents, subscribers,
+ * recommends). Requires at least one indexed article and one subscriber so
+ * empty shells never surface when `publication_stats` is stale or all-zero.
+ */
+export async function trendingPublications(
+  db: Db,
+  _schema: Schema,
+  limit: number,
+): Promise<Array<PublicationCard>> {
+  const rows = await selectLiveTrendingPublicationRows(db, limit);
   return rows.map((row) => toPublicationCard(row));
+}
+
+/** URIs of the current trending set — used to dedupe other Discover rails. */
+export async function trendingPublicationUris(
+  db: Db,
+  _schema: Schema,
+  limit: number,
+): Promise<Array<string>> {
+  const rows = await selectLiveTrendingPublicationRows(db, limit);
+  return rows.map((row) => row.uri);
+}
+
+type LiveTrendingPublicationRow = Parameters<typeof toPublicationCard>[0];
+
+async function selectLiveTrendingPublicationRows(
+  db: Db,
+  limit: number,
+): Promise<Array<LiveTrendingPublicationRow>> {
+  const result = await db.execute(sql`
+    SELECT
+      p.uri,
+      p.did,
+      p.name,
+      p.url,
+      p.description,
+      p.icon_url AS "iconUrl",
+      pr.avatar_url AS "ownerAvatarUrl",
+      pr.handle AS "ownerHandle",
+      p.topic,
+      p.verified,
+      coalesce(subs.cnt, 0)::int AS "subscriberCount",
+      coalesce(docs.cnt, 0)::int AS "documentCount",
+      st.last_document_at AS "lastDocumentAt"
+    FROM publications p
+    LEFT JOIN profiles pr ON pr.did = p.did
+    LEFT JOIN publication_stats st ON st.publication_uri = p.uri
+    LEFT JOIN (
+      SELECT publication_uri,
+             count(DISTINCT subscriber_did) AS cnt,
+             count(DISTINCT subscriber_did) FILTER (
+               WHERE coalesce(created_at, indexed_at) > now() - interval '7 days'
+             ) AS cnt7
+      FROM subscriptions
+      WHERE deleted = false
+      GROUP BY publication_uri
+    ) subs ON subs.publication_uri = p.uri
+    LEFT JOIN (
+      SELECT publication_uri,
+             count(*) AS cnt,
+             count(*) FILTER (
+               WHERE published_at > now() - interval '7 days'
+             ) AS cnt7
+      FROM documents
+      WHERE deleted = false AND publication_uri IS NOT NULL
+      GROUP BY publication_uri
+    ) docs ON docs.publication_uri = p.uri
+    LEFT JOIN (
+      SELECT doc.publication_uri,
+             count(*) FILTER (
+               WHERE coalesce(rc.created_at, rc.indexed_at) > now() - interval '7 days'
+             ) AS cnt7
+      FROM recommends rc
+      JOIN documents doc ON doc.uri = rc.document_uri
+      WHERE rc.deleted = false AND doc.publication_uri IS NOT NULL
+      GROUP BY doc.publication_uri
+    ) recs ON recs.publication_uri = p.uri
+    WHERE p.show_in_discover = true
+      AND p.deleted = false
+      AND coalesce(docs.cnt, 0) > 0
+      AND coalesce(subs.cnt, 0) > 0
+    ORDER BY
+      (
+        coalesce(docs.cnt7, 0) * 3.0
+        + coalesce(subs.cnt7, 0) * 2.0
+        + coalesce(recs.cnt7, 0) * 1.0
+      ) DESC,
+      coalesce(subs.cnt, 0) DESC,
+      coalesce(docs.cnt, 0) DESC,
+      p.name ASC
+    LIMIT ${limit}
+  `);
+
+  return result.rows as Array<LiveTrendingPublicationRow>;
+}
+
+export interface PublicationRailOpts {
+  /** Publication URIs to omit (e.g. the current trending set). */
+  excludeUris?: Array<string>;
+}
+
+function mergeExcludeUris(...groups: Array<Array<string>>): Array<string> {
+  return [...new Set(groups.flat())];
+}
+
+/** Publications with at least one indexed, non-deleted document. */
+function hasIndexedDocuments(
+  db: Db,
+  schema: Schema,
+  publicationUri: typeof schema.publications.uri,
+) {
+  const doc = schema.documents;
+  return exists(
+    db
+      .select({ one: sql`1` })
+      .from(doc)
+      .where(and(eq(doc.publicationUri, publicationUri), eq(doc.deleted, false))),
+  );
+}
+
+async function backfillPublicationRail(
+  db: Db,
+  schema: Schema,
+  primary: Array<PublicationCard>,
+  limit: number,
+  excludeUris: Array<string>,
+): Promise<Array<PublicationCard>> {
+  if (primary.length >= limit) {
+    return primary.slice(0, limit);
+  }
+
+  const seen = mergeExcludeUris(
+    excludeUris,
+    primary.map((pub) => pub.uri),
+  );
+  const backfill = await popularPublications(
+    db,
+    schema,
+    limit - primary.length,
+    seen,
+  );
+  return [...primary, ...backfill].slice(0, limit);
 }
 
 /**
@@ -211,7 +449,11 @@ export async function popularPublications(
   const st = schema.publicationStats;
   const pr = schema.profiles;
 
-  const conds = [eq(p.showInDiscover, true), eq(p.deleted, false)];
+  const conds = [
+    eq(p.showInDiscover, true),
+    eq(p.deleted, false),
+    hasIndexedDocuments(db, schema, p.uri),
+  ];
   if (excludeUris.length > 0) {
     conds.push(notInArray(p.uri, excludeUris));
   }
@@ -230,18 +472,21 @@ export async function popularPublications(
 /**
  * "Recommended for you" — collaborative filtering over the co-subscription
  * graph: publications co-followed by the readers of the ones you already follow,
- * scored by summed co-subscription similarity. Falls back to overall popularity
- * for cold-start readers (no follows / sparse graph).
+ * scored by summed co-subscription similarity. Cold-start / sparse-graph readers
+ * fall back to established publications (high readership, excluding the trending
+ * set) so the rail stays distinct from Trending.
  */
 export async function recommendedPublications(
   db: Db,
   schema: Schema,
   did: string,
   limit: number,
+  opts: PublicationRailOpts = {},
 ): Promise<Array<PublicationCard>> {
+  const excludeUris = opts.excludeUris ?? [];
   const followUris = await selectFollowUris(db, schema, did);
   if (followUris.length === 0) {
-    return popularPublications(db, schema, limit);
+    return popularPublications(db, schema, limit, excludeUris);
   }
 
   const cs = schema.publicationCosubscriptions;
@@ -249,18 +494,21 @@ export async function recommendedPublications(
   const st = schema.publicationStats;
   const pr = schema.profiles;
 
+  const cosubConds = [
+    inArray(cs.publicationUri, followUris),
+    notInArray(cs.relatedPublicationUri, followUris),
+  ];
+  if (excludeUris.length > 0) {
+    cosubConds.push(notInArray(cs.relatedPublicationUri, excludeUris));
+  }
+
   const agg = db
     .select({
       relatedUri: cs.relatedPublicationUri,
       score: sql<number>`sum(${cs.score})`.as("score"),
     })
     .from(cs)
-    .where(
-      and(
-        inArray(cs.publicationUri, followUris),
-        notInArray(cs.relatedPublicationUri, followUris),
-      ),
-    )
+    .where(and(...cosubConds))
     .groupBy(cs.relatedPublicationUri)
     .as("cosub_agg");
 
@@ -270,13 +518,89 @@ export async function recommendedPublications(
     .innerJoin(p, eq(p.uri, agg.relatedUri))
     .leftJoin(st, eq(st.publicationUri, p.uri))
     .leftJoin(pr, eq(pr.did, p.did))
+    .where(
+      and(
+        eq(p.showInDiscover, true),
+        eq(p.deleted, false),
+        hasIndexedDocuments(db, schema, p.uri),
+      ),
+    )
+    .orderBy(desc(agg.score))
+    .limit(limit);
+
+  const primary = rows.map((row) => toPublicationCard(row));
+  return backfillPublicationRail(
+    db,
+    schema,
+    primary,
+    limit,
+    mergeExcludeUris(excludeUris, followUris),
+  );
+}
+
+/**
+ * "Followed by people you follow" — publications co-subscribed by readers who
+ * also follow the ones you already follow, ranked by overlapping subscriber count.
+ */
+export async function followedByPeopleYouFollow(
+  db: Db,
+  schema: Schema,
+  did: string,
+  limit: number,
+  opts: PublicationRailOpts = {},
+): Promise<Array<PublicationCard>> {
+  const excludeUris = opts.excludeUris ?? [];
+  const followUris = await selectFollowUris(db, schema, did);
+  if (followUris.length === 0) {
+    return [];
+  }
+
+  const sub = schema.subscriptions;
+  const p = schema.publications;
+  const st = schema.publicationStats;
+  const pr = schema.profiles;
+
+  const coReaders = db
+    .selectDistinct({ did: sub.subscriberDid })
+    .from(sub)
+    .where(
+      and(
+        inArray(sub.publicationUri, followUris),
+        ne(sub.subscriberDid, did),
+        eq(sub.deleted, false),
+      ),
+    )
+    .as("co_readers");
+
+  const subConds = [
+    notInArray(sub.publicationUri, followUris),
+    eq(sub.deleted, false),
+  ];
+  if (excludeUris.length > 0) {
+    subConds.push(notInArray(sub.publicationUri, excludeUris));
+  }
+
+  const agg = db
+    .select({
+      publicationUri: sub.publicationUri,
+      score: sql<number>`count(distinct ${sub.subscriberDid})`.as("score"),
+    })
+    .from(sub)
+    .innerJoin(coReaders, eq(coReaders.did, sub.subscriberDid))
+    .where(and(...subConds))
+    .groupBy(sub.publicationUri)
+    .as("social_agg");
+
+  const rows = await db
+    .select(publicationCardColumns(schema))
+    .from(agg)
+    .innerJoin(p, eq(p.uri, agg.publicationUri))
+    .leftJoin(st, eq(st.publicationUri, p.uri))
+    .leftJoin(pr, eq(pr.did, p.did))
     .where(and(eq(p.showInDiscover, true), eq(p.deleted, false)))
     .orderBy(desc(agg.score))
     .limit(limit);
 
-  if (rows.length === 0) {
-    return popularPublications(db, schema, limit, followUris);
-  }
   return rows.map((row) => toPublicationCard(row));
 }
 
@@ -311,4 +635,49 @@ export async function readersAlsoFollow(
     .orderBy(desc(cs.score))
     .limit(limit);
   return rows.map((row) => toPublicationCard(row));
+}
+
+/**
+ * Publication recommendations for the article footer — co-subscribed readers
+ * first, then personalized/popular fallbacks when the graph is sparse.
+ */
+export async function articleRecommendedPublications(
+  db: Db,
+  schema: Schema,
+  opts: {
+    publicationUri: string | null;
+    readerDid?: string;
+    limit: number;
+  },
+): Promise<Array<PublicationCard>> {
+  const exclude = opts.publicationUri ? [opts.publicationUri] : [];
+
+  if (opts.publicationUri) {
+    const alsoFollow = await readersAlsoFollow(
+      db,
+      schema,
+      opts.publicationUri,
+      opts.limit,
+    );
+    if (alsoFollow.length > 0) {
+      return alsoFollow
+        .filter((pub) => !exclude.includes(pub.uri))
+        .slice(0, opts.limit);
+    }
+  }
+
+  if (opts.readerDid) {
+    const personalized = await recommendedPublications(
+      db,
+      schema,
+      opts.readerDid,
+      opts.limit,
+    );
+    const filtered = personalized.filter((pub) => !exclude.includes(pub.uri));
+    if (filtered.length > 0) {
+      return filtered.slice(0, opts.limit);
+    }
+  }
+
+  return popularPublications(db, schema, opts.limit, exclude);
 }

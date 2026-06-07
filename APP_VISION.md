@@ -67,7 +67,7 @@ Detail screens
 
 - Masthead with date + unread count.
 - **Featured lead** article (full-width), then **Latest unread** rows.
-- Right rail: **Trending now** (ranked compact list) + **You might follow** (recommended pubs).
+- Right rail: **Trending articles** (ranked compact list) + **You might follow** (recommended pubs).
 - "View all latest" → Latest view.
 
 ### Latest
@@ -198,7 +198,8 @@ hand-tuned lists:
 - **Followed by people you follow** — direct social-graph query across your follows' follows.
 - **Trending publications / Trending now** — ranked by recent network activity (new articles +
   follow velocity over a rolling window; exact window/weights are tunable).
-- **Cold start (no follows yet)** — fall back to overall network popularity.
+- **Cold start (no follows yet)** — fall back to high-readership publications
+  _outside_ the current trending set so Recommended stays distinct from Trending.
 
 ---
 

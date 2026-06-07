@@ -95,6 +95,15 @@ export async function resolveIdentity(did: string): Promise<ResolvedIdentity> {
   }
 }
 
+/** PDS from the profile row when present; otherwise resolve from the DID doc. */
+export async function authorPds(
+  did: string,
+  cachedPds?: string | null,
+): Promise<string | null> {
+  if (cachedPds) return cachedPds;
+  return (await resolveIdentity(did)).pds;
+}
+
 /** Return an already-known identity without doing network I/O. Use this in the
  * hot tap webhook path so acknowledgements are not blocked on PLC/PDS lookups. */
 export function getCachedIdentity(did: string): ResolvedIdentity | null {
