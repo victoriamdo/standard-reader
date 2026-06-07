@@ -2,18 +2,25 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { Compass, Home, Newspaper, Plus, Search } from "lucide-react";
-import { useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type { PublicationCard } from "../../integrations/tanstack-query/api-shapes";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
 import { Flex } from "../../design-system/flex";
+import { animationDuration } from "../../design-system/theme/animations.stylex";
 import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
 import {
@@ -194,6 +201,7 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     flexGrow: 1,
+    position: "relative",
     minHeight: 0,
     minWidth: 0,
   },
@@ -205,6 +213,8 @@ const styles = stylex.create({
     flexShrink: "1",
     minHeight: 0,
     overflowY: "auto",
+    // Reserve room on mobile so trailing content clears the floating nav pill.
+    paddingBottom: { [DESKTOP]: 0, default: spacing["20"] },
   },
   mobileBar: {
     alignItems: "center",
@@ -230,16 +240,50 @@ const styles = stylex.create({
     rowGap: gap.lg,
   },
   bottomNav: {
-    backgroundColor: uiColor.bg,
     display: { [DESKTOP]: "none", default: "flex" },
-    position: "sticky",
+    justifyContent: "center",
+    pointerEvents: "none",
+    position: "absolute",
     zIndex: 30,
-    borderTopColor: uiColor.border1,
-    borderTopStyle: "solid",
-    borderTopWidth: 1,
     bottom: 0,
-    paddingBottom: `max(${spacing["2"]}, env(safe-area-inset-bottom))`,
-    paddingTop: verticalSpace.md,
+    left: 0,
+    paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${verticalSpace["2xl"]})`,
+    paddingLeft: horizontalSpace["3xl"],
+    paddingRight: horizontalSpace["3xl"],
+    right: 0,
+  },
+  // Layered, soft floating shadow on boxShadow is lifted from the prototype.
+  fabBar: {
+    padding: spacing["1.5"],
+    borderColor: uiColor.border1,
+    borderRadius: radius.full,
+    borderStyle: "solid",
+    borderWidth: 1,
+    alignItems: "center",
+    backgroundColor: uiColor.bg,
+    boxShadow:
+      "0 1px 1px oklch(0.3 0.03 60 / 0.04), 0 6px 18px -8px oklch(0.3 0.04 60 / 0.18), 0 14px 34px -18px oklch(0.3 0.05 60 / 0.22)",
+    columnGap: gap.xxs,
+    display: "flex",
+    pointerEvents: "auto",
+    position: "relative",
+    rowGap: gap.xxs,
+  },
+  fabIndicator: {
+    borderRadius: radius.full,
+    backgroundColor: primaryColor.solid1,
+    boxShadow: `0 2px 8px -2px ${primaryColor.solid1}`,
+    pointerEvents: "none",
+    position: "absolute",
+    zIndex: 0,
+    height: spacing["12"],
+    left: 0,
+    top: spacing["1.5"],
+  },
+  fabIndicatorGlide: {
+    transitionDuration: animationDuration.verySlow,
+    transitionProperty: "transform, width",
+    transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
   },
   bottomItem: {
     borderWidth: 0,
@@ -247,35 +291,60 @@ const styles = stylex.create({
     alignItems: "center",
     backgroundColor: "transparent",
     color: uiColor.text1,
-    columnGap: gap.xs,
     cursor: "pointer",
     display: "flex",
-    flexBasis: "0%",
-    flexDirection: "column",
-    flexGrow: "1",
-    flexShrink: "1",
-    fontFamily: fontFamily.sans,
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-    rowGap: gap.xs,
-    paddingBottom: verticalSpace.sm,
-    paddingTop: verticalSpace.sm,
+    flexGrow: 0,
+    flexShrink: 0,
+    justifyContent: "center",
+    position: "relative",
+    transitionDuration: animationDuration.verySlow,
+    transitionProperty: "color",
+    transitionTimingFunction: "ease",
+    zIndex: 1,
+    height: spacing["12"],
+    paddingLeft: horizontalSpace.xl,
+    paddingRight: horizontalSpace.xl,
   },
-  bottomItemActive: { color: primaryColor.text2 },
+  bottomItemActive: { color: primaryColor.textContrast },
   bottomIconWrap: {
     placeItems: "center",
     display: "grid",
+    flexGrow: 0,
+    flexShrink: 0,
     position: "relative",
+  },
+  bottomLabel: {
+    overflow: "hidden",
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: tracking.wide,
+    opacity: 0,
+    transitionDuration: animationDuration.slow,
+    transitionProperty: "opacity",
+    transitionTimingFunction: "ease",
+    whiteSpace: "nowrap",
+    marginLeft: 0,
+    maxWidth: 0,
+  },
+  bottomLabelActive: {
+    opacity: 1,
+    marginLeft: horizontalSpace.md,
+    maxWidth: spacing["24"],
   },
   unreadDot: {
     borderRadius: radius.full,
-    backgroundColor: primaryColor.text2,
+    backgroundColor: primaryColor.solid1,
     boxShadow: `0 0 0 2px ${uiColor.bg}`,
     position: "absolute",
     height: spacing["2"],
     right: `calc(-1 * ${spacing["1"]})`,
-    top: `calc(-1 * ${spacing["0.5"]})`,
+    top: `calc(-1 * ${spacing["1"]})`,
     width: spacing["2"],
+  },
+  unreadDotActive: {
+    backgroundColor: uiColor.bg,
+    boxShadow: `0 0 0 2px ${primaryColor.solid1}`,
   },
   addTrigger: {
     width: "100%",
@@ -402,25 +471,112 @@ function FollowRow({ pub }: { pub: PublicationCard }) {
   );
 }
 
-function BottomNavItem({
-  to,
-  label,
-  icon,
-  showUnreadDot,
-}: NavLink & { showUnreadDot?: boolean }) {
+const BottomNavItem = forwardRef<
+  HTMLAnchorElement,
+  NavLink & { isActive: boolean; showUnreadDot?: boolean }
+>(function BottomNavItemRender(
+  { to, label, icon, isActive, showUnreadDot },
+  ref,
+) {
   return (
     <Link
+      ref={ref}
       to={to}
-      activeOptions={to === "/" ? { exact: true } : undefined}
-      {...stylex.props(styles.bottomItem)}
-      activeProps={stylex.props(styles.bottomItem, styles.bottomItemActive)}
+      aria-label={label}
+      {...stylex.props(styles.bottomItem, isActive && styles.bottomItemActive)}
     >
       <span {...stylex.props(styles.bottomIconWrap)}>
         {icon}
-        {showUnreadDot ? <span {...stylex.props(styles.unreadDot)} /> : null}
+        {showUnreadDot ? (
+          <span
+            {...stylex.props(
+              styles.unreadDot,
+              isActive && styles.unreadDotActive,
+            )}
+          />
+        ) : null}
       </span>
-      <span>{label}</span>
+      <span
+        {...stylex.props(
+          styles.bottomLabel,
+          isActive && styles.bottomLabelActive,
+        )}
+      >
+        {label}
+      </span>
     </Link>
+  );
+});
+
+function navItemActive(pathname: string, to: string): boolean {
+  if (to === "/") return pathname === "/";
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+function BottomNav({ hasUnread }: { hasUnread: boolean }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const activeIndex = NAV.findIndex((item) => navItemActive(pathname, item.to));
+  const itemRefs = useRef<Array<HTMLAnchorElement | null>>([]);
+  const [indicator, setIndicator] = useState<{
+    left: number;
+    width: number;
+  } | null>(null);
+  // Glide is disabled for the first placement so the pill appears in position
+  // instantly, then enabled so subsequent route changes animate the slide.
+  const [glide, setGlide] = useState(false);
+
+  // Article / publication routes have no matching tab (activeIndex < 0); in
+  // that case we intentionally leave the indicator where it last settled.
+  useLayoutEffect(() => {
+    if (activeIndex === -1) return;
+    const el = itemRefs.current[activeIndex];
+    if (!el) return;
+    setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
+    const id = requestAnimationFrame(() => setGlide(true));
+    return () => cancelAnimationFrame(id);
+  }, [activeIndex]);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (activeIndex === -1) return;
+      const el = itemRefs.current[activeIndex];
+      if (el) setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [activeIndex]);
+
+  const indicatorProps = stylex.props(
+    styles.fabIndicator,
+    glide && styles.fabIndicatorGlide,
+  );
+
+  return (
+    <nav {...stylex.props(styles.bottomNav)}>
+      <div {...stylex.props(styles.fabBar)}>
+        {indicator ? (
+          <span
+            className={indicatorProps.className}
+            style={{
+              ...indicatorProps.style,
+              transform: `translateX(${indicator.left}px)`,
+              width: indicator.width,
+            }}
+          />
+        ) : null}
+        {NAV.map((item, i) => (
+          <BottomNavItem
+            key={item.to}
+            {...item}
+            ref={(el) => {
+              itemRefs.current[i] = el;
+            }}
+            isActive={i === activeIndex}
+            showUnreadDot={item.to === "/latest" ? hasUnread : false}
+          />
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -503,15 +659,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
 
-        <nav {...stylex.props(styles.bottomNav)}>
-          {NAV.map((item) => (
-            <BottomNavItem
-              key={item.to}
-              {...item}
-              showUnreadDot={item.to === "/latest" ? hasUnread : false}
-            />
-          ))}
-        </nav>
+        <BottomNav hasUnread={hasUnread} />
       </main>
 
       <SubscriptionsSheet
