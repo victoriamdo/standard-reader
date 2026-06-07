@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowRight, Flame, Sparkles } from "lucide-react";
 
@@ -27,6 +27,7 @@ import {
   tracking,
 } from "../design-system/theme/typography.stylex";
 import { feedApi } from "../integrations/tanstack-query/api-feed.functions";
+import { user } from "../integrations/tanstack-query/api-user.functions";
 
 export const Route = createFileRoute("/_layout/")({
   loader: async ({ context }) => {
@@ -126,6 +127,7 @@ const WEEKDAY_FMT = new Intl.DateTimeFormat("en-US", { weekday: "long" });
 
 function Home() {
   const { data: feed } = useSuspenseQuery(feedApi.getHomeFeedQueryOptions());
+  const { data: session } = useQuery(user.getSessionQueryOptions);
 
   const now = new Date();
   const weekday = WEEKDAY_FMT.format(now);
@@ -186,11 +188,13 @@ function Home() {
               <ArticleRow key={article.uri} article={article} unread />
             ))}
           </div>
-          <Link to="/latest" {...stylex.props(styles.viewAll)}>
-            <Button variant="secondary" size="lg" style={styles.viewAll}>
-              View all latest <ArrowRight size={15} />
-            </Button>
-          </Link>
+          {session?.user ? (
+            <Link to="/latest" {...stylex.props(styles.viewAll)}>
+              <Button variant="secondary" size="lg" style={styles.viewAll}>
+                View all latest <ArrowRight size={15} />
+              </Button>
+            </Link>
+          ) : null}
         </Flex>
 
         <Flex direction="column" gap="2xl">
