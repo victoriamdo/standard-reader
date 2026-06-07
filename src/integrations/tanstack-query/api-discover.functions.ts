@@ -11,7 +11,6 @@ import {
   recommendedPublications,
   trendingPublicationUris,
   trendingPublications,
-  withLivePublicationCounts,
 } from "#/server/reader/queries";
 import { z } from "zod";
 
@@ -135,9 +134,8 @@ const getRecommendedPublications = createServerFn({ method: "GET" })
             data.limit,
             trendingExclude,
           );
-          const withCounts = await withLivePublicationCounts(db, schema, items);
-          span.set("count", withCounts.length);
-          return withCounts.filter((pub) => pub.documentCount > 0);
+          span.set("count", items.length);
+          return items.filter((pub) => pub.documentCount > 0);
         }
         span.set("did", session.did);
         span.set("personalized", true);
@@ -148,9 +146,8 @@ const getRecommendedPublications = createServerFn({ method: "GET" })
           data.limit,
           { excludeUris: trendingExclude },
         );
-        const withCounts = await withLivePublicationCounts(db, schema, items);
-        span.set("count", withCounts.length);
-        return withCounts.filter((pub) => pub.documentCount > 0);
+        span.set("count", items.length);
+        return items.filter((pub) => pub.documentCount > 0);
       },
     ),
   );
@@ -183,7 +180,7 @@ const getFollowedByPeopleYouFollow = createServerFn({ method: "GET" })
           { excludeUris: trendingExclude },
         );
         span.set("count", items.length);
-        return withLivePublicationCounts(db, schema, items);
+        return items;
       },
     ),
   );

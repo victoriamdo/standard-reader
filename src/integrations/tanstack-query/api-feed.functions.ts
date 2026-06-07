@@ -13,7 +13,6 @@ import {
   selectFollowUris,
   trendingArticles,
   trendingPublicationUris,
-  withLivePublicationCounts,
 } from "#/server/reader/queries";
 import { z } from "zod";
 
@@ -162,11 +161,7 @@ const getHomeFeed = createServerFn({ method: "GET" })
       const trending = trendingRaw
         .filter((article) => !excludeUris.has(article.uri))
         .slice(0, HOME_RAIL_LIMIT);
-      const youMightFollow = await withLivePublicationCounts(
-        db,
-        schema,
-        youMightFollowRaw,
-      );
+      const youMightFollow = youMightFollowRaw;
 
       span.set("rows", latestUnread.length);
       span.set("trending", trending.length);

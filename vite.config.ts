@@ -4,8 +4,8 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import browserslist from "browserslist";
 import { browserslistToTargets } from "lightningcss";
-import path from "node:path";
 import { nitro } from "nitro/vite";
+import path from "node:path";
 import { defineConfig } from "vite";
 
 const config = defineConfig({

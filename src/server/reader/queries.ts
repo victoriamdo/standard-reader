@@ -152,59 +152,6 @@ export async function followedPublications(
   return rows.map((row) => toPublicationCard(row));
 }
 
-/**
- * Replace stale `publication_stats` counts with live subscription/document
- * totals — used on rails where the header already does the same refresh.
- */
-export async function withLivePublicationCounts(
-  db: Db,
-  schema: Schema,
-  pubs: Array<PublicationCard>,
-): Promise<Array<PublicationCard>> {
-  if (pubs.length === 0) {
-    return pubs;
-  }
-
-  const uris = pubs.map((pub) => pub.uri);
-  const sub = schema.subscriptions;
-  const doc = schema.documents;
-
-  const [subRows, docRows] = await Promise.all([
-    db
-      .select({
-        publicationUri: sub.publicationUri,
-        subscriberCount:
-          sql<number>`count(distinct ${sub.subscriberDid}) filter (where ${sub.deleted} = false)`.mapWith(
-            Number,
-          ),
-      })
-      .from(sub)
-      .where(inArray(sub.publicationUri, uris))
-      .groupBy(sub.publicationUri),
-    db
-      .select({
-        publicationUri: doc.publicationUri,
-        documentCount: sql<number>`count(*)`.mapWith(Number),
-      })
-      .from(doc)
-      .where(and(inArray(doc.publicationUri, uris), eq(doc.deleted, false)))
-      .groupBy(doc.publicationUri),
-  ]);
-
-  const subsByUri = new Map(
-    subRows.map((row) => [row.publicationUri, row.subscriberCount]),
-  );
-  const docsByUri = new Map(
-    docRows.map((row) => [row.publicationUri, row.documentCount]),
-  );
-
-  return pubs.map((pub) => ({
-    ...pub,
-    subscriberCount: subsByUri.get(pub.uri) ?? 0,
-    documentCount: docsByUri.get(pub.uri) ?? 0,
-  }));
-}
-
 /** Distinct publication AT-URIs a reader currently follows (active records). */
 export async function selectFollowUris(
   db: Db,
@@ -310,16 +257,17 @@ export async function trendingArticles(
 }
 
 /**
- * Trending publications ranked by live 7-day activity (documents, subscribers,
- * recommends). Requires at least one indexed article and one subscriber so
- * empty shells never surface when `publication_stats` is stale or all-zero.
+ * Trending publications ranked by the precomputed `publication_stats`
+ * (`trending_score` = rolling-window new docs + follow velocity + likes,
+ * recomputed on a schedule by `recomputeDerived()`). Requires at least one
+ * indexed article and one subscriber so empty shells never surface.
  */
 export async function trendingPublications(
   db: Db,
   _schema: Schema,
   limit: number,
 ): Promise<Array<PublicationCard>> {
-  const rows = await selectLiveTrendingPublicationRows(db, limit);
+  const rows = await selectTrendingPublicationRows(db, limit);
   return rows.map((row) => toPublicationCard(row));
 }
 
@@ -329,16 +277,16 @@ export async function trendingPublicationUris(
   _schema: Schema,
   limit: number,
 ): Promise<Array<string>> {
-  const rows = await selectLiveTrendingPublicationRows(db, limit);
+  const rows = await selectTrendingPublicationRows(db, limit);
   return rows.map((row) => row.uri);
 }
 
-type LiveTrendingPublicationRow = Parameters<typeof toPublicationCard>[0];
+type TrendingPublicationRow = Parameters<typeof toPublicationCard>[0];
 
-async function selectLiveTrendingPublicationRows(
+async function selectTrendingPublicationRows(
   db: Db,
   limit: number,
-): Promise<Array<LiveTrendingPublicationRow>> {
+): Promise<Array<TrendingPublicationRow>> {
   const result = await db.execute(sql`
     SELECT
       p.uri,
@@ -351,60 +299,26 @@ async function selectLiveTrendingPublicationRows(
       pr.handle AS "ownerHandle",
       p.topic,
       p.verified,
-      coalesce(subs.cnt, 0)::int AS "subscriberCount",
-      coalesce(docs.cnt, 0)::int AS "documentCount",
+      coalesce(st.subscriber_count, 0)::int AS "subscriberCount",
+      coalesce(st.document_count, 0)::int AS "documentCount",
       st.last_document_at AS "lastDocumentAt"
     FROM publications p
     LEFT JOIN profiles pr ON pr.did = p.did
-    LEFT JOIN publication_stats st ON st.publication_uri = p.uri
-    LEFT JOIN (
-      SELECT publication_uri,
-             count(DISTINCT subscriber_did) AS cnt,
-             count(DISTINCT subscriber_did) FILTER (
-               WHERE coalesce(created_at, indexed_at) > now() - interval '7 days'
-             ) AS cnt7
-      FROM subscriptions
-      WHERE deleted = false
-      GROUP BY publication_uri
-    ) subs ON subs.publication_uri = p.uri
-    LEFT JOIN (
-      SELECT publication_uri,
-             count(*) AS cnt,
-             count(*) FILTER (
-               WHERE published_at > now() - interval '7 days'
-             ) AS cnt7
-      FROM documents
-      WHERE deleted = false AND publication_uri IS NOT NULL
-      GROUP BY publication_uri
-    ) docs ON docs.publication_uri = p.uri
-    LEFT JOIN (
-      SELECT doc.publication_uri,
-             count(*) FILTER (
-               WHERE coalesce(rc.created_at, rc.indexed_at) > now() - interval '7 days'
-             ) AS cnt7
-      FROM recommends rc
-      JOIN documents doc ON doc.uri = rc.document_uri
-      WHERE rc.deleted = false AND doc.publication_uri IS NOT NULL
-      GROUP BY doc.publication_uri
-    ) recs ON recs.publication_uri = p.uri
+    JOIN publication_stats st ON st.publication_uri = p.uri
     WHERE p.show_in_discover = true
       AND p.deleted = false
       AND p.url NOT ILIKE ${EXCLUDED_PUBLICATION_URL_PATTERN}
-      AND coalesce(docs.cnt, 0) > 0
-      AND coalesce(subs.cnt, 0) > 0
+      AND coalesce(st.document_count, 0) > 0
+      AND coalesce(st.subscriber_count, 0) > 0
     ORDER BY
-      (
-        coalesce(docs.cnt7, 0) * 3.0
-        + coalesce(subs.cnt7, 0) * 2.0
-        + coalesce(recs.cnt7, 0) * 1.0
-      ) DESC,
-      coalesce(subs.cnt, 0) DESC,
-      coalesce(docs.cnt, 0) DESC,
+      coalesce(st.trending_score, 0) DESC,
+      coalesce(st.subscriber_count, 0) DESC,
+      coalesce(st.document_count, 0) DESC,
       p.name ASC
     LIMIT ${limit}
   `);
 
-  return result.rows as Array<LiveTrendingPublicationRow>;
+  return result.rows as Array<TrendingPublicationRow>;
 }
 
 export type DiscoverDirectorySort = "readers" | "active" | "az";
@@ -472,8 +386,9 @@ export async function discoverPublicationTopics(
 
 /**
  * Discover "All publications" directory — topic filter + pagination, sorted by
- * live subscription totals (Readers), latest indexed article (Active), or
- * display name (A–Z). Avoids stale `publication_stats` aggregates.
+ * the precomputed `publication_stats` aggregates: subscriber/recommend totals
+ * (Readers), latest indexed article (Active), or display name (A–Z). The stats
+ * are refreshed on a schedule by `recomputeDerived()`.
  */
 export async function discoverDirectoryPublications(
   db: Db,
@@ -494,45 +409,7 @@ export async function discoverDirectoryPublications(
 ): Promise<Array<PublicationCard>> {
   const p = schema.publications;
   const pr = schema.profiles;
-  const sub = schema.subscriptions;
-  const doc = schema.documents;
-  const rc = schema.recommends;
-
-  const subsAgg = db
-    .select({
-      publicationUri: sub.publicationUri,
-      subscriberCount:
-        sql<number>`count(distinct ${sub.subscriberDid}) filter (where ${sub.deleted} = false)`.as(
-          "subscriber_count",
-        ),
-    })
-    .from(sub)
-    .groupBy(sub.publicationUri)
-    .as("subs_agg");
-
-  const docsAgg = db
-    .select({
-      publicationUri: doc.publicationUri,
-      documentCount: sql<number>`count(*)`.as("document_count"),
-      lastDocumentAt: sql<Date | null>`max(${doc.publishedAt})`.as(
-        "last_document_at",
-      ),
-    })
-    .from(doc)
-    .where(and(eq(doc.deleted, false), isNotNull(doc.publicationUri)))
-    .groupBy(doc.publicationUri)
-    .as("docs_agg");
-
-  const recsAgg = db
-    .select({
-      publicationUri: doc.publicationUri,
-      recommendCount: sql<number>`count(*)`.as("recommend_count"),
-    })
-    .from(rc)
-    .innerJoin(doc, eq(doc.uri, rc.documentUri))
-    .where(and(eq(rc.deleted, false), eq(doc.deleted, false)))
-    .groupBy(doc.publicationUri)
-    .as("recs_agg");
+  const st = schema.publicationStats;
 
   const effectiveTopic = publicationEffectiveTopicSql(p);
 
@@ -565,12 +442,12 @@ export async function discoverDirectoryPublications(
       ? [asc(sortName), asc(p.uri)]
       : sort === "active"
         ? [
-            sql`${docsAgg.lastDocumentAt} desc nulls last`,
+            sql`${st.lastDocumentAt} desc nulls last`,
             asc(sortName),
             asc(p.uri),
           ]
         : [
-            sql`(coalesce(${subsAgg.subscriberCount}, 0) * 2.0 + coalesce(${recsAgg.recommendCount}, 0) * 1.0) desc`,
+            sql`(coalesce(${st.subscriberCount}, 0) * 2.0 + coalesce(${st.recommendCount}, 0) * 1.0) desc`,
             asc(sortName),
             asc(p.uri),
           ];
@@ -604,16 +481,14 @@ export async function discoverDirectoryPublications(
       topic: effectiveTopic,
       verified: p.verified,
       subscriberCount:
-        sql<number>`coalesce(${subsAgg.subscriberCount}, 0)`.mapWith(Number),
-      documentCount: sql<number>`coalesce(${docsAgg.documentCount}, 0)`.mapWith(
+        sql<number>`coalesce(${st.subscriberCount}, 0)`.mapWith(Number),
+      documentCount: sql<number>`coalesce(${st.documentCount}, 0)`.mapWith(
         Number,
       ),
-      lastDocumentAt: docsAgg.lastDocumentAt,
+      lastDocumentAt: st.lastDocumentAt,
     })
     .from(p)
-    .leftJoin(subsAgg, eq(subsAgg.publicationUri, p.uri))
-    .leftJoin(docsAgg, eq(docsAgg.publicationUri, p.uri))
-    .leftJoin(recsAgg, eq(recsAgg.publicationUri, p.uri))
+    .leftJoin(st, eq(st.publicationUri, p.uri))
     .leftJoin(pr, eq(pr.did, p.did))
     .where(and(...conds))
     .orderBy(...orderBy)
