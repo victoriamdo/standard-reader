@@ -534,7 +534,9 @@ function ArticleViewInner({
     };
 
     for (const el of targets) {
-      el.scrollTop = 0;
+      if (!sharedQuote?.trim()) {
+        el.scrollTop = 0;
+      }
     }
     sync();
 
@@ -556,7 +558,7 @@ function ArticleViewInner({
       }
       resizeObserver.disconnect();
     };
-  }, [article.uri]);
+  }, [article.uri, sharedQuote]);
 
   const share = async () => {
     const url = globalThis.location.href;

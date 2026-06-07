@@ -83,17 +83,19 @@ export function CodeBlockView({
 
   if (!plaintext) return null;
 
+  // Quote marks must match between SSR and hydration — highlighted HTML shells
+  // cannot carry share marks, so keep plain text while a range is active.
+  if (highlightRange) {
+    return (
+      <PlainCodeBlock plaintext={plaintext} highlightRange={highlightRange} />
+    );
+  }
+
   const key = codeBlockKey({ plaintext, language });
   const serverHtml = pickCodeHighlight(codeHighlights, resolvedScheme, key);
 
   if (serverHtml) {
     return <HighlightedCodeShell html={serverHtml} />;
-  }
-
-  if (mode === "system" && globalThis.window === undefined) {
-    return (
-      <PlainCodeBlock plaintext={plaintext} highlightRange={highlightRange} />
-    );
   }
 
   if (mode === "system") {
@@ -106,7 +108,5 @@ export function CodeBlockView({
     );
   }
 
-  return (
-    <PlainCodeBlock plaintext={plaintext} highlightRange={highlightRange} />
-  );
+  return <PlainCodeBlock plaintext={plaintext} highlightRange={null} />;
 }

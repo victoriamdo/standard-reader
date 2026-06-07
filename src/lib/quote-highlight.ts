@@ -59,10 +59,7 @@ function rangeFromOffsets(
 }
 
 /** Find a DOM range matching quote text inside an article body. */
-export function findQuoteRange(
-  root: HTMLElement,
-  quote: string,
-): Range | null {
+export function findQuoteRange(root: HTMLElement, quote: string): Range | null {
   const trimmed = quote.trim();
   if (!trimmed) return null;
 
@@ -93,6 +90,7 @@ function findScrollContainer(start: HTMLElement): HTMLElement {
 export function scrollQuoteShareMarkIntoView(
   mark: HTMLElement,
   root: HTMLElement,
+  options?: { behavior?: ScrollBehavior },
 ): void {
   const scroller = findScrollContainer(root);
   const markRect = mark.getBoundingClientRect();
@@ -102,7 +100,7 @@ export function scrollQuoteShareMarkIntoView(
 
   scroller.scrollTo({
     top: scroller.scrollTop + (markCenter - scrollerCenter),
-    behavior: "smooth",
+    behavior: options?.behavior ?? "instant",
   });
 }
 
@@ -133,25 +131,19 @@ function wrapRangeInMark(range: Range): HTMLElement | null {
   }
 }
 
-function highlightRangeWithMark(range: Range, root: HTMLElement): boolean {
+function highlightRangeWithMark(range: Range): HTMLElement | null {
   const mark = wrapRangeInMark(range);
-  if (!mark) return false;
-
-  scrollQuoteShareMarkIntoView(mark, root);
-  return true;
+  return mark;
 }
 
 /** Highlight quote text in the article body and scroll it into view. */
-export function applyQuoteHighlight(
-  root: HTMLElement,
-  quote: string,
-): boolean {
+export function applyQuoteHighlight(root: HTMLElement, quote: string): boolean {
   clearQuoteHighlight();
 
   const range = findQuoteRange(root, quote);
   if (!range) return false;
 
-  return highlightRangeWithMark(range, root);
+  return highlightRangeWithMark(range) !== null;
 }
 
 /**
@@ -205,7 +197,7 @@ export function applyQuoteHighlightByOffsets(
   const range = rangeFromOffsets(spans, start, end);
   if (!range) return false;
 
-  return highlightRangeWithMark(range, root);
+  return highlightRangeWithMark(range) !== null;
 }
 
 export function clearQuoteHighlight(): void {
