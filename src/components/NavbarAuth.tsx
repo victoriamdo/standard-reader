@@ -32,19 +32,22 @@ const ButtonLink = createLink(Button);
 
 const styles = stylex.create({
   sidebarTrigger: {
+    borderRadius: radius.sm,
+    borderWidth: 0,
+    outline: {
+      default: "none",
+      ":is([data-focused='true'][data-focus-visible='true'])": "revert",
+    },
+    alignItems: "center",
     // eslint-disable-next-line @stylexjs/valid-styles
     appearance: "none",
-    borderWidth: 0,
-    borderRadius: radius.sm,
-    textAlign: "left",
-    alignItems: "center",
     backgroundColor: {
       default: "transparent",
-      ":is([data-hovered=true]):not([aria-expanded=true])": uiColor.component2,
-      ":is([data-pressed=true]):not([aria-expanded=true])": uiColor.component3,
       ":is([aria-expanded=true])": uiColor.component2,
       ":is([aria-expanded=true][data-hovered=true])": uiColor.component3,
       ":is([aria-expanded=true][data-pressed=true])": uiColor.component3,
+      ":is([data-hovered=true]):not([aria-expanded=true])": uiColor.component2,
+      ":is([data-pressed=true]):not([aria-expanded=true])": uiColor.component3,
     },
     boxSizing: "border-box",
     color: uiColor.text2,
@@ -54,19 +57,16 @@ const styles = stylex.create({
     flexShrink: 0,
     fontFamily: fontFamily.sans,
     justifyContent: "flex-start",
-    outline: {
-      default: "none",
-      ":is([data-focused='true'][data-focus-visible='true'])": "revert",
-    },
-    paddingBottom: verticalSpace.sm,
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
-    paddingTop: verticalSpace.sm,
     rowGap: gapSpace.md,
+    textAlign: "left",
     transitionDuration: animationDuration.fast,
     transitionProperty: "background-color",
     transitionTimingFunction: "ease-in-out",
     userSelect: "none",
+    paddingBottom: verticalSpace.sm,
+    paddingLeft: horizontalSpace.lg,
+    paddingRight: horizontalSpace.lg,
+    paddingTop: verticalSpace.sm,
     width: "100%",
   },
   identity: {
@@ -76,10 +76,13 @@ const styles = stylex.create({
     flexDirection: "column",
     flexGrow: "1",
     flexShrink: "1",
-    minWidth: 0,
     rowGap: gapSpace.xs,
+    minWidth: 0,
   },
   displayName: {
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textBoxEdge: "cap alphabetic",
+    textBoxTrim: "trim-both",
     overflow: "hidden",
     color: uiColor.text2,
     fontFamily: fontFamily.sans,
@@ -88,9 +91,6 @@ const styles = stylex.create({
     lineHeight: lineHeight.none,
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
-    // eslint-disable-next-line @stylexjs/valid-styles
-    textBoxEdge: "cap alphabetic",
-    textBoxTrim: "trim-both",
   },
   handleLine: {
     overflow: "hidden",

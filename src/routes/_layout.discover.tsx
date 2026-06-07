@@ -110,8 +110,8 @@ const styles = stylex.create({
     marginTop: spacing["5"],
   },
   railScroll: {
-    alignItems: "stretch",
     scrollSnapType: "x mandatory",
+    alignItems: "stretch",
     columnGap: gap["lg"],
     display: "grid",
     gridAutoColumns: "300px",

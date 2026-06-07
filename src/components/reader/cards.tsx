@@ -258,6 +258,10 @@ const styles = stylex.create({
     marginTop: spacing["1.5"],
   },
   pubCard: {
+    ":hover": {
+      boxShadow: shadow.sm,
+      transform: "translateY(-2px)",
+    },
     borderColor: {
       default: uiColor.border1,
       ":hover": uiColor.border2,
@@ -266,10 +270,6 @@ const styles = stylex.create({
     borderStyle: "solid",
     borderWidth: 1,
     backgroundColor: uiColor.bgSubtle,
-    ":hover": {
-      boxShadow: shadow.sm,
-      transform: "translateY(-2px)",
-    },
     boxSizing: "border-box",
     display: "flex",
     flexDirection: "column",
@@ -419,8 +419,8 @@ const styles = stylex.create({
     flexBasis: "0%",
     flexGrow: 1,
     flexShrink: 1,
-    minWidth: 0,
     rowGap: spacing["3.5"],
+    minWidth: 0,
   },
   modalPubName: {
     color: uiColor.text2,

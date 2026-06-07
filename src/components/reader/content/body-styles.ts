@@ -45,9 +45,9 @@ export const articleBodyStyles = stylex.create({
   },
   callout: {
     borderRadius: radius.md,
-    backgroundColor: uiColor.component1,
     gap: gap.md,
     alignItems: "flex-start",
+    backgroundColor: uiColor.component1,
     display: "flex",
     marginBottom: "1.3em",
     marginTop: spacing["0"],
@@ -303,6 +303,14 @@ export const articleBodyStyles = stylex.create({
   },
   facetHighlight: {
     backgroundColor: uiColor.component2,
+  },
+  quoteShareMark: {
+    backgroundColor: primaryColor.component3,
+    borderRadius: radius.sm,
+    // eslint-disable-next-line @stylexjs/valid-styles
+    boxDecorationBreak: "clone",
+    color: "inherit",
+    paddingBlock: spacing["0.5"],
   },
   taskList: {
     listStyle: "none",

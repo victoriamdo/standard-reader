@@ -36,6 +36,7 @@ import {
   articleCardReadingText,
   articleReadingText,
 } from "./content/extract-text";
+import { QuoteShareLayer } from "./quote-share-layer";
 import {
   articlePublicationUrl,
   documentLinkParams,
@@ -463,11 +464,29 @@ function MoreFromRow({
   );
 }
 
-export function ArticleView({ article }: { article: ArticleDetail }) {
-  return <ArticleViewInner key={article.uri} article={article} />;
+export function ArticleView({
+  article,
+  sharedQuote = null,
+}: {
+  article: ArticleDetail;
+  sharedQuote?: string | null;
+}) {
+  return (
+    <ArticleViewInner
+      key={article.uri}
+      article={article}
+      sharedQuote={sharedQuote}
+    />
+  );
 }
 
-function ArticleViewInner({ article }: { article: ArticleDetail }) {
+function ArticleViewInner({
+  article,
+  sharedQuote,
+}: {
+  article: ArticleDetail;
+  sharedQuote?: string | null;
+}) {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0);
@@ -477,6 +496,7 @@ function ArticleViewInner({ article }: { article: ArticleDetail }) {
   const readingLabel = formatReadingTime(articleReadingText(article));
   const date = formatDate(article.publishedAt);
   const publicationArticleUrl = articlePublicationUrl(article);
+  const linkParams = documentLinkParams(article.uri);
 
   const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -694,10 +714,26 @@ function ArticleViewInner({ article }: { article: ArticleDetail }) {
             </div>
           ) : null}
 
-          <ArticleContent
-            article={article}
-            hasHero={Boolean(article.coverImageUrl)}
-          />
+          {linkParams ? (
+            <QuoteShareLayer
+              article={article}
+              documentUri={article.uri}
+              did={linkParams.did}
+              rkey={linkParams.rkey}
+              articleTitle={article.title}
+              sharedQuote={sharedQuote}
+            >
+              <ArticleContent
+                article={article}
+                hasHero={Boolean(article.coverImageUrl)}
+              />
+            </QuoteShareLayer>
+          ) : (
+            <ArticleContent
+              article={article}
+              hasHero={Boolean(article.coverImageUrl)}
+            />
+          )}
 
           {pub ? (
             <div {...stylex.props(styles.foot)}>

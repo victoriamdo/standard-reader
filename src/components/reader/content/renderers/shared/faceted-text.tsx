@@ -1,6 +1,7 @@
 "use client";
 
 import type { LeafletFacet } from "#/lib/leaflet/types";
+import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
 
 import * as stylex from "@stylexjs/stylex";
 import { segmentFacetedText, shiftFacets } from "#/lib/leaflet/facets";
@@ -11,6 +12,12 @@ import type { FacetFeature } from "./facets";
 
 import { articleBodyStyles } from "../../body-styles";
 import { findFacetFeature, hasFacetKind } from "./facets";
+import {
+  QuoteShareMark,
+  intersectHighlightRange,
+  renderDropCapChar,
+  useQuoteHighlightTracker,
+} from "#/components/reader/quote-highlight-context";
 
 function FacetSegment({
   text,
@@ -110,6 +117,59 @@ export function FacetedPlaintext({
   );
 }
 
+function facetsForSlice(
+  facets: Array<LeafletFacet> | Array<unknown> | undefined,
+  plaintext: string,
+  sliceStart: number,
+): Array<LeafletFacet> | Array<unknown> | undefined {
+  if (!facets?.length || sliceStart <= 0) return facets;
+  const byteOffset = utf8ByteLength(plaintext.slice(0, sliceStart));
+  return shiftFacets(facets, byteOffset);
+}
+
+export function HighlightedFacetedPlaintext({
+  plaintext,
+  facets,
+  highlightRange,
+}: {
+  plaintext: string;
+  facets?: Array<LeafletFacet> | Array<unknown>;
+  highlightRange: QuoteHighlightRange | null;
+}) {
+  if (!highlightRange || highlightRange.start >= highlightRange.end) {
+    return <FacetedPlaintext plaintext={plaintext} facets={facets} />;
+  }
+
+  const { start, end } = highlightRange;
+  const slices = [
+    { sliceStart: 0, sliceEnd: start, mark: false },
+    { sliceStart: start, sliceEnd: end, mark: true },
+    { sliceStart: end, sliceEnd: plaintext.length, mark: false },
+  ].filter((slice) => slice.sliceEnd > slice.sliceStart);
+
+  return (
+    <>
+      {slices.map((slice) => {
+        const text = plaintext.slice(slice.sliceStart, slice.sliceEnd);
+        const sliceFacets = facetsForSlice(facets, plaintext, slice.sliceStart);
+        const content = (
+          <FacetedPlaintext plaintext={text} facets={sliceFacets} />
+        );
+
+        return slice.mark ? (
+          <QuoteShareMark key={`${slice.sliceStart}-${slice.sliceEnd}`}>
+            {content}
+          </QuoteShareMark>
+        ) : (
+          <Fragment key={`${slice.sliceStart}-${slice.sliceEnd}`}>
+            {content}
+          </Fragment>
+        );
+      })}
+    </>
+  );
+}
+
 export function TextBlockView({
   plaintext,
   facets,
@@ -119,6 +179,9 @@ export function TextBlockView({
   facets?: Array<LeafletFacet> | Array<unknown>;
   dropCap?: boolean;
 }) {
+  const tracker = useQuoteHighlightTracker();
+  const highlightRange = tracker?.consume(plaintext.length) ?? null;
+
   if (!plaintext) return null;
 
   if (dropCap) {
@@ -126,6 +189,12 @@ export function TextBlockView({
     const firstChar = chars[0] ?? "";
     const rest = chars.slice(1).join("");
     const byteOffset = utf8ByteLength(firstChar);
+    const firstCharRange = intersectHighlightRange(highlightRange, 0, 1);
+    const restRange = intersectHighlightRange(
+      highlightRange,
+      1,
+      Math.max(0, plaintext.length - 1),
+    );
 
     return (
       <p
@@ -135,11 +204,12 @@ export function TextBlockView({
         )}
       >
         <span {...stylex.props(articleBodyStyles.dropCap)} aria-hidden>
-          {firstChar}
+          {renderDropCapChar(firstChar, firstCharRange)}
         </span>
-        <FacetedPlaintext
+        <HighlightedFacetedPlaintext
           plaintext={rest}
           facets={shiftFacets(facets, byteOffset)}
+          highlightRange={restRange}
         />
       </p>
     );
@@ -147,7 +217,11 @@ export function TextBlockView({
 
   return (
     <p {...stylex.props(articleBodyStyles.paragraph)}>
-      <FacetedPlaintext plaintext={plaintext} facets={facets} />
+      <HighlightedFacetedPlaintext
+        plaintext={plaintext}
+        facets={facets}
+        highlightRange={highlightRange}
+      />
     </p>
   );
 }

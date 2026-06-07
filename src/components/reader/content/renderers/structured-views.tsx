@@ -5,22 +5,35 @@ import type { StructuredText } from "#/lib/document/structured-content/types";
 import * as stylex from "@stylexjs/stylex";
 
 import { articleBodyStyles } from "../body-styles";
-import { FacetedPlaintext } from "./shared/faceted-text";
+import { HighlightedFacetedPlaintext } from "./shared/faceted-text";
+import {
+  HighlightedPlaintext,
+  useQuoteHighlightTracker,
+} from "#/components/reader/quote-highlight-context";
 
 export function StructuredBulletListView({
   items,
 }: {
   items: Array<StructuredText>;
 }) {
+  const tracker = useQuoteHighlightTracker();
   if (items.length === 0) return null;
 
   return (
     <ul {...stylex.props(articleBodyStyles.list)}>
-      {items.map((item, index) => (
-        <li key={index} {...stylex.props(articleBodyStyles.listItem)}>
-          <FacetedPlaintext plaintext={item.plaintext} facets={item.facets} />
-        </li>
-      ))}
+      {items.map((item, index) => {
+        const highlightRange =
+          tracker?.consume(item.plaintext.length) ?? null;
+        return (
+          <li key={index} {...stylex.props(articleBodyStyles.listItem)}>
+            <HighlightedFacetedPlaintext
+              plaintext={item.plaintext}
+              facets={item.facets}
+              highlightRange={highlightRange}
+            />
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -32,15 +45,24 @@ export function StructuredOrderedListView({
   items: Array<StructuredText>;
   start?: number;
 }) {
+  const tracker = useQuoteHighlightTracker();
   if (items.length === 0) return null;
 
   return (
     <ol {...stylex.props(articleBodyStyles.list)} start={start ?? 1}>
-      {items.map((item, index) => (
-        <li key={index} {...stylex.props(articleBodyStyles.listItem)}>
-          <FacetedPlaintext plaintext={item.plaintext} facets={item.facets} />
-        </li>
-      ))}
+      {items.map((item, index) => {
+        const highlightRange =
+          tracker?.consume(item.plaintext.length) ?? null;
+        return (
+          <li key={index} {...stylex.props(articleBodyStyles.listItem)}>
+            <HighlightedFacetedPlaintext
+              plaintext={item.plaintext}
+              facets={item.facets}
+              highlightRange={highlightRange}
+            />
+          </li>
+        );
+      })}
     </ol>
   );
 }
@@ -50,28 +72,34 @@ export function StructuredTaskListView({
 }: {
   items: Array<{ checked?: boolean; text: StructuredText }>;
 }) {
+  const tracker = useQuoteHighlightTracker();
   if (items.length === 0) return null;
 
   return (
     <ul {...stylex.props(articleBodyStyles.taskList)}>
-      {items.map((item, index) => (
-        <li key={index} {...stylex.props(articleBodyStyles.taskItem)}>
-          <input
-            type="checkbox"
-            checked={item.checked === true}
-            readOnly
-            aria-hidden
-            tabIndex={-1}
-            {...stylex.props(articleBodyStyles.taskCheckbox)}
-          />
-          <span>
-            <FacetedPlaintext
-              plaintext={item.text.plaintext}
-              facets={item.text.facets}
+      {items.map((item, index) => {
+        const highlightRange =
+          tracker?.consume(item.text.plaintext.length) ?? null;
+        return (
+          <li key={index} {...stylex.props(articleBodyStyles.taskItem)}>
+            <input
+              type="checkbox"
+              checked={item.checked === true}
+              readOnly
+              aria-hidden
+              tabIndex={-1}
+              {...stylex.props(articleBodyStyles.taskCheckbox)}
             />
-          </span>
-        </li>
-      ))}
+            <span>
+              <HighlightedFacetedPlaintext
+                plaintext={item.text.plaintext}
+                facets={item.text.facets}
+                highlightRange={highlightRange}
+              />
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -81,6 +109,7 @@ export function StructuredTableView({
 }: {
   rows: Array<Array<{ isHeader?: boolean; text: StructuredText }>>;
 }) {
+  const tracker = useQuoteHighlightTracker();
   if (rows.length === 0) return null;
 
   return (
@@ -89,6 +118,8 @@ export function StructuredTableView({
         {rows.map((row, rowIndex) => (
           <tr key={rowIndex}>
             {row.map((cell, cellIndex) => {
+              const highlightRange =
+                tracker?.consume(cell.text.plaintext.length) ?? null;
               const CellTag = cell.isHeader ? "th" : "td";
               return (
                 <CellTag
@@ -100,9 +131,10 @@ export function StructuredTableView({
                       : undefined,
                   )}
                 >
-                  <FacetedPlaintext
+                  <HighlightedFacetedPlaintext
                     plaintext={cell.text.plaintext}
                     facets={cell.text.facets}
+                    highlightRange={highlightRange}
                   />
                 </CellTag>
               );
@@ -125,9 +157,16 @@ export function StructuredWebsiteView({
   description?: string;
   previewImage?: string;
 }) {
+  const tracker = useQuoteHighlightTracker();
   const cardTitle = title?.trim();
   const cardDescription = description?.trim();
   const image = previewImage?.trim();
+  const titleRange = cardTitle
+    ? (tracker?.consume(cardTitle.length) ?? null)
+    : null;
+  const descriptionRange = cardDescription
+    ? (tracker?.consume(cardDescription.length) ?? null)
+    : null;
 
   return (
     <a
@@ -148,12 +187,18 @@ export function StructuredWebsiteView({
       <div {...stylex.props(articleBodyStyles.websiteCardBody)}>
         {cardTitle ? (
           <p {...stylex.props(articleBodyStyles.websiteCardTitle)}>
-            {cardTitle}
+            <HighlightedPlaintext
+              plaintext={cardTitle}
+              highlightRange={titleRange}
+            />
           </p>
         ) : null}
         {cardDescription ? (
           <p {...stylex.props(articleBodyStyles.websiteCardDescription)}>
-            {cardDescription}
+            <HighlightedPlaintext
+              plaintext={cardDescription}
+              highlightRange={descriptionRange}
+            />
           </p>
         ) : null}
       </div>

@@ -57,6 +57,9 @@ const styles = stylex.create({
     width: "264px",
   },
   brand: {
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textBoxEdge: "cap alphabetic",
+    textBoxTrim: "trim-both",
     textDecoration: "none",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
@@ -64,9 +67,6 @@ const styles = stylex.create({
     fontWeight: fontWeight.medium,
     letterSpacing: tracking.tight,
     lineHeight: lineHeight.none,
-    // eslint-disable-next-line @stylexjs/valid-styles
-    textBoxEdge: "cap alphabetic",
-    textBoxTrim: "trim-both",
   },
   brandSidebar: {
     paddingBottom: verticalSpace["7xl"],

@@ -11,7 +11,8 @@ import { asTextBlock } from "#/lib/leaflet/blocks";
 import { LEAFLET_BLOCK } from "#/lib/leaflet/types";
 
 import { articleBodyStyles } from "../body-styles";
-import { FacetedPlaintext } from "./shared/faceted-text";
+import { HighlightedFacetedPlaintext } from "./shared/faceted-text";
+import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-context";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -66,6 +67,7 @@ function LeafletListItems({
   ordered: boolean;
   startIndex?: number;
 }) {
+  const tracker = useQuoteHighlightTracker();
   const ListTag = ordered ? "ol" : "ul";
 
   return (
@@ -78,12 +80,16 @@ function LeafletListItems({
         const nested = nestedList(item);
         if (!text && !nested) return null;
 
+        const highlightRange =
+          text != null ? (tracker?.consume(text.plaintext.length) ?? null) : null;
+
         return (
           <li key={index} {...stylex.props(articleBodyStyles.listItem)}>
             {text ? (
-              <FacetedPlaintext
+              <HighlightedFacetedPlaintext
                 plaintext={text.plaintext}
                 facets={text.facets}
+                highlightRange={highlightRange}
               />
             ) : null}
             {nested}

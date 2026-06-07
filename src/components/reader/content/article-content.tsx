@@ -9,6 +9,12 @@ import type { ContentRendererProps } from "./types";
 
 import { articleBodyStyles } from "./body-styles";
 import { CONTENT_RENDERERS } from "./renderers";
+import {
+  HighlightedPlaintext,
+  intersectHighlightRange,
+  renderDropCapChar,
+  useQuoteHighlightTracker,
+} from "#/components/reader/quote-highlight-context";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -32,6 +38,7 @@ function FallbackContent({
   article: ArticleDetail;
   hasHero: boolean;
 }) {
+  const tracker = useQuoteHighlightTracker();
   const blocks = parseArticleBlocks({
     textContent: article.textContent,
     contentJson: article.contentJson,
@@ -47,10 +54,16 @@ function FallbackContent({
       )}
     >
       {blocks.map((block, index) => {
+        const highlightRange =
+          tracker?.consume(block.text.length) ?? null;
+
         if (block.type === "pullquote") {
           return (
             <p key={index} {...stylex.props(articleBodyStyles.pullquote)}>
-              {block.text}
+              <HighlightedPlaintext
+                plaintext={block.text}
+                highlightRange={highlightRange}
+              />
             </p>
           );
         }
@@ -60,6 +73,13 @@ function FallbackContent({
         if (isFirst && block.text.length > 0) {
           const first = block.text[0] ?? "";
           const rest = block.text.slice(1);
+          const firstCharRange = intersectHighlightRange(highlightRange, 0, 1);
+          const restRange = intersectHighlightRange(
+            highlightRange,
+            1,
+            Math.max(0, block.text.length - 1),
+          );
+
           return (
             <p
               key={index}
@@ -69,16 +89,22 @@ function FallbackContent({
               )}
             >
               <span {...stylex.props(articleBodyStyles.dropCap)} aria-hidden>
-                {first}
+                {renderDropCapChar(first, firstCharRange)}
               </span>
-              {rest}
+              <HighlightedPlaintext
+                plaintext={rest}
+                highlightRange={restRange}
+              />
             </p>
           );
         }
 
         return (
           <p key={index} {...stylex.props(articleBodyStyles.paragraph)}>
-            {block.text}
+            <HighlightedPlaintext
+              plaintext={block.text}
+              highlightRange={highlightRange}
+            />
           </p>
         );
       })}

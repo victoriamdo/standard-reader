@@ -7,7 +7,8 @@ import { asTextBlock } from "#/lib/pckt/blocks";
 import { PCKT_BLOCK } from "#/lib/pckt/types";
 
 import { articleBodyStyles } from "../body-styles";
-import { FacetedPlaintext } from "./shared/faceted-text";
+import { HighlightedFacetedPlaintext } from "./shared/faceted-text";
+import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-context";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -18,6 +19,7 @@ function TableCellContent({
 }: {
   content: Array<Record<string, unknown>> | undefined;
 }) {
+  const tracker = useQuoteHighlightTracker();
   if (!content?.length) return null;
 
   return (
@@ -25,11 +27,14 @@ function TableCellContent({
       {content.map((entry, index) => {
         const text = asTextBlock(entry);
         if (!text?.plaintext.trim()) return null;
+        const highlightRange =
+          tracker?.consume(text.plaintext.length) ?? null;
         return (
-          <FacetedPlaintext
+          <HighlightedFacetedPlaintext
             key={index}
             plaintext={text.plaintext}
             facets={text.facets}
+            highlightRange={highlightRange}
           />
         );
       })}

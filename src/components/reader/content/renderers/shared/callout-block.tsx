@@ -5,7 +5,8 @@ import type { LeafletFacet } from "#/lib/leaflet/types";
 import * as stylex from "@stylexjs/stylex";
 
 import { articleBodyStyles } from "../../body-styles";
-import { FacetedPlaintext } from "./faceted-text";
+import { HighlightedFacetedPlaintext } from "./faceted-text";
+import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-context";
 
 const DEFAULT_CALLOUT_EMOJI = "💡";
 
@@ -22,6 +23,9 @@ export function CalloutBlockView({
 }) {
   if (!plaintext.trim()) return null;
 
+  const tracker = useQuoteHighlightTracker();
+  const highlightRange = tracker?.consume(plaintext.length) ?? null;
+
   return (
     <aside
       {...stylex.props(articleBodyStyles.callout)}
@@ -36,7 +40,11 @@ export function CalloutBlockView({
           articleBodyStyles.calloutBody,
         )}
       >
-        <FacetedPlaintext plaintext={plaintext} facets={facets} />
+        <HighlightedFacetedPlaintext
+          plaintext={plaintext}
+          facets={facets}
+          highlightRange={highlightRange}
+        />
       </p>
     </aside>
   );

@@ -19,4 +19,5 @@ export * from "./schema/graph.ts";
 export * from "./schema/personal.ts";
 export * from "./schema/stats.ts";
 export * from "./schema/ingest.ts";
+export * from "./schema/quote-shares.ts";
 export * from "./schema/relations.ts";

@@ -4,11 +4,16 @@ import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { highlightApi } from "#/integrations/tanstack-query/api-highlight.functions";
 import { codeBlockKey } from "#/lib/code-highlight";
-import { EMPTY_CODE_HIGHLIGHTS, pickCodeHighlight } from '#/lib/theme';
-import type { CodeHighlightsByScheme } from '#/lib/theme';
+import { EMPTY_CODE_HIGHLIGHTS, pickCodeHighlight } from "#/lib/theme";
+import type { CodeHighlightsByScheme } from "#/lib/theme";
+import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
 import { useTheme } from "#/lib/use-theme";
 
 import { articleBodyStyles } from "../../body-styles";
+import {
+  HighlightedPlaintext,
+  useQuoteHighlightTracker,
+} from "#/components/reader/quote-highlight-context";
 
 function HighlightedCodeShell({ html }: { html: string }) {
   return (
@@ -44,10 +49,21 @@ function CodeBlockLazy({
   );
 }
 
-function PlainCodeBlock({ plaintext }: { plaintext: string }) {
+function PlainCodeBlock({
+  plaintext,
+  highlightRange,
+}: {
+  plaintext: string;
+  highlightRange: QuoteHighlightRange | null;
+}) {
   return (
     <pre {...stylex.props(articleBodyStyles.codeBlock)}>
-      <code>{plaintext}</code>
+      <code>
+        <HighlightedPlaintext
+          plaintext={plaintext}
+          highlightRange={highlightRange}
+        />
+      </code>
     </pre>
   );
 }
@@ -62,18 +78,22 @@ export function CodeBlockView({
   codeHighlights?: CodeHighlightsByScheme;
 }) {
   const { mode, resolvedScheme } = useTheme();
+  const tracker = useQuoteHighlightTracker();
+  const highlightRange = tracker?.consume(plaintext.length) ?? null;
 
   if (!plaintext) return null;
-
-  if (globalThis.window === undefined && mode === "system") {
-    return <PlainCodeBlock plaintext={plaintext} />;
-  }
 
   const key = codeBlockKey({ plaintext, language });
   const serverHtml = pickCodeHighlight(codeHighlights, resolvedScheme, key);
 
   if (serverHtml) {
     return <HighlightedCodeShell html={serverHtml} />;
+  }
+
+  if (mode === "system" && globalThis.window === undefined) {
+    return (
+      <PlainCodeBlock plaintext={plaintext} highlightRange={highlightRange} />
+    );
   }
 
   if (mode === "system") {
@@ -86,5 +106,7 @@ export function CodeBlockView({
     );
   }
 
-  return <PlainCodeBlock plaintext={plaintext} />;
+  return (
+    <PlainCodeBlock plaintext={plaintext} highlightRange={highlightRange} />
+  );
 }

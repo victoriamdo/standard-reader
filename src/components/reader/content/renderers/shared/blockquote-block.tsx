@@ -5,7 +5,8 @@ import type { LeafletFacet } from "#/lib/leaflet/types";
 import * as stylex from "@stylexjs/stylex";
 
 import { articleBodyStyles } from "../../body-styles";
-import { FacetedPlaintext } from "./faceted-text";
+import { HighlightedFacetedPlaintext } from "./faceted-text";
+import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-context";
 
 export interface BlockquoteParagraph {
   plaintext: string;
@@ -17,16 +18,25 @@ export function BlockquoteBlockView({
 }: {
   paragraphs: Array<BlockquoteParagraph>;
 }) {
+  const tracker = useQuoteHighlightTracker();
   const items = paragraphs.filter((item) => item.plaintext.trim());
   if (items.length === 0) return null;
 
   return (
     <blockquote {...stylex.props(articleBodyStyles.pullquote)}>
-      {items.map((item, index) => (
-        <p key={index} {...stylex.props(articleBodyStyles.paragraph)}>
-          <FacetedPlaintext plaintext={item.plaintext} facets={item.facets} />
-        </p>
-      ))}
+      {items.map((item, index) => {
+        const highlightRange =
+          tracker?.consume(item.plaintext.length) ?? null;
+        return (
+          <p key={index} {...stylex.props(articleBodyStyles.paragraph)}>
+            <HighlightedFacetedPlaintext
+              plaintext={item.plaintext}
+              facets={item.facets}
+              highlightRange={highlightRange}
+            />
+          </p>
+        );
+      })}
     </blockquote>
   );
 }

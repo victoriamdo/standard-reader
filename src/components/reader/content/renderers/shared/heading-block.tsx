@@ -6,7 +6,11 @@ import * as stylex from "@stylexjs/stylex";
 import { createElement } from "react";
 
 import { articleBodyStyles } from "../../body-styles";
-import { FacetedPlaintext } from "./faceted-text";
+import { HighlightedFacetedPlaintext } from "./faceted-text";
+import {
+  HighlightedPlaintext,
+  useQuoteHighlightTracker,
+} from "#/components/reader/quote-highlight-context";
 
 export function HeadingBlockView({
   plaintext,
@@ -17,6 +21,9 @@ export function HeadingBlockView({
   level?: number;
   facets?: Array<LeafletFacet> | Array<unknown>;
 }) {
+  const tracker = useQuoteHighlightTracker();
+  const highlightRange = tracker?.consume(plaintext.length) ?? null;
+
   if (!plaintext) return null;
   const clamped = Math.min(6, Math.max(1, level));
   const style =
@@ -26,9 +33,16 @@ export function HeadingBlockView({
     `h${clamped}`,
     { ...stylex.props(style) },
     facets?.length ? (
-      <FacetedPlaintext plaintext={plaintext} facets={facets} />
+      <HighlightedFacetedPlaintext
+        plaintext={plaintext}
+        facets={facets}
+        highlightRange={highlightRange}
+      />
     ) : (
-      plaintext
+      <HighlightedPlaintext
+        plaintext={plaintext}
+        highlightRange={highlightRange}
+      />
     ),
   );
 }
