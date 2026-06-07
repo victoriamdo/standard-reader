@@ -93,6 +93,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { title: "Standard Reader" },
     ],
     links: [
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       {
         rel: "stylesheet",
