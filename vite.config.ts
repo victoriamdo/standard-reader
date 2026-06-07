@@ -10,6 +10,12 @@ import { defineConfig } from "vite";
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  // StyleX emits one shared virtual stylesheet imported across the whole module
+  // graph. With Vite 8 / Rolldown CSS code-splitting, that shared CSS gets
+  // hoisted into a single route chunk (e.g. the article route) instead of being
+  // linked globally, so most pages render unstyled on first paint. Emitting a
+  // single stylesheet keeps the StyleX output linked on every route.
+  build: { cssCodeSplit: false },
   plugins: [
     stylexPlugin({
       treeshakeCompensation: true,
@@ -23,8 +29,8 @@ const config = defineConfig({
       },
     }),
     devtools(),
-    tanstackStart(),
     nitro(),
+    tanstackStart(),
     viteReact(),
   ],
 });
