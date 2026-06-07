@@ -82,6 +82,61 @@ export async function recomputePublicationStats(): Promise<void> {
 }
 
 /**
+ * Rebuild the materialized co-recommend graph used alongside co-subscriptions
+ * for discovery. For each ordered pair of publications, count shared
+ * recommenders (readers who liked at least one article from each) and store a
+ * cosine-style similarity score.
+ */
+export async function recomputeCorecommends(): Promise<void> {
+  await db.execute(sql`DELETE FROM publication_corecommends`);
+  await db.execute(sql`
+    WITH deg AS (
+      SELECT doc.publication_uri,
+             count(DISTINCT rc.recommender_did) AS n
+      FROM recommends rc
+      JOIN documents doc ON doc.uri = rc.document_uri
+      WHERE rc.deleted = false
+        AND doc.deleted = false
+        AND doc.publication_uri IS NOT NULL
+      GROUP BY doc.publication_uri
+    ),
+    pairs AS (
+      SELECT doc_a.publication_uri AS pa,
+             doc_b.publication_uri AS pb,
+             count(DISTINCT rc_a.recommender_did) AS co
+      FROM recommends rc_a
+      JOIN documents doc_a ON doc_a.uri = rc_a.document_uri
+      JOIN recommends rc_b
+        ON rc_b.recommender_did = rc_a.recommender_did
+       AND rc_b.document_uri <> rc_a.document_uri
+      JOIN documents doc_b ON doc_b.uri = rc_b.document_uri
+      WHERE rc_a.deleted = false
+        AND rc_b.deleted = false
+        AND doc_a.deleted = false
+        AND doc_b.deleted = false
+        AND doc_a.publication_uri IS NOT NULL
+        AND doc_b.publication_uri IS NOT NULL
+        AND doc_a.publication_uri <> doc_b.publication_uri
+      GROUP BY doc_a.publication_uri, doc_b.publication_uri
+    )
+    INSERT INTO publication_corecommends (
+      publication_uri, related_publication_uri, co_recommender_count, score, recomputed_at
+    )
+    SELECT
+      pairs.pa,
+      pairs.pb,
+      pairs.co,
+      pairs.co::float8 / sqrt(da.n::float8 * db.n::float8),
+      now()
+    FROM pairs
+    JOIN deg da ON da.publication_uri = pairs.pa
+    JOIN deg db ON db.publication_uri = pairs.pb
+    JOIN publications ppa ON ppa.uri = pairs.pa AND ppa.deleted = false
+    JOIN publications ppb ON ppb.uri = pairs.pb AND ppb.deleted = false
+  `);
+}
+
+/**
  * Rebuild the materialized co-subscription graph used for "Recommended for
  * you". For each ordered pair of publications, count shared subscribers and
  * store a cosine-style similarity score (shared / sqrt(degA * degB)). Only
@@ -299,6 +354,7 @@ export async function backfillDocumentSearchText(): Promise<number> {
 export async function recomputeDerived(): Promise<void> {
   await recomputePublicationStats();
   await recomputeCosubscriptions();
+  await recomputeCorecommends();
   await recomputeTopics();
   // Best-effort: a slow/unreachable PLC must never abort the stats recompute.
   try {

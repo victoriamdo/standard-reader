@@ -5,9 +5,20 @@
  * server fn's `dbMiddleware` context), so the same logic backs both the Home
  * rails and the Discover sections without duplicating SQL. The discovery
  * rankings here are deliberately simple reads over the precomputed aggregates
- * (`publication_stats`, `publication_cosubscriptions`). Discover rails dedupe
- * against the trending set so Recommended / social-proof rails stay distinct.
+ * (`publication_stats`, `publication_cosubscriptions`,
+ * `publication_corecommends`). Likes (`site.standard.graph.recommend`) feed
+ * trending, popularity, and personalized rails alongside subscriptions.
+ * Discover rails dedupe against the trending set so Recommended / social-proof
+ * rails stay distinct.
  */
+
+/** Blend weights for personalized publication ranking (tunable). */
+const RECOMMENDATION_BLEND = {
+  cosub: 1.0,
+  corecommend: 1.5,
+  coReaderLike: 2.0,
+  coReaderFollow: 2.0,
+} as const;
 
 import type {
   ArticleCard,
@@ -485,6 +496,7 @@ export async function discoverDirectoryPublications(
   const pr = schema.profiles;
   const sub = schema.subscriptions;
   const doc = schema.documents;
+  const rc = schema.recommends;
 
   const subsAgg = db
     .select({
@@ -510,6 +522,17 @@ export async function discoverDirectoryPublications(
     .where(and(eq(doc.deleted, false), isNotNull(doc.publicationUri)))
     .groupBy(doc.publicationUri)
     .as("docs_agg");
+
+  const recsAgg = db
+    .select({
+      publicationUri: doc.publicationUri,
+      recommendCount: sql<number>`count(*)`.as("recommend_count"),
+    })
+    .from(rc)
+    .innerJoin(doc, eq(doc.uri, rc.documentUri))
+    .where(and(eq(rc.deleted, false), eq(doc.deleted, false)))
+    .groupBy(doc.publicationUri)
+    .as("recs_agg");
 
   const effectiveTopic = publicationEffectiveTopicSql(p);
 
@@ -547,7 +570,7 @@ export async function discoverDirectoryPublications(
             asc(p.uri),
           ]
         : [
-            sql`coalesce(${subsAgg.subscriberCount}, 0) desc`,
+            sql`(coalesce(${subsAgg.subscriberCount}, 0) * 2.0 + coalesce(${recsAgg.recommendCount}, 0) * 1.0) desc`,
             asc(sortName),
             asc(p.uri),
           ];
@@ -590,6 +613,7 @@ export async function discoverDirectoryPublications(
     .from(p)
     .leftJoin(subsAgg, eq(subsAgg.publicationUri, p.uri))
     .leftJoin(docsAgg, eq(docsAgg.publicationUri, p.uri))
+    .leftJoin(recsAgg, eq(recsAgg.publicationUri, p.uri))
     .leftJoin(pr, eq(pr.did, p.did))
     .where(and(...conds))
     .orderBy(...orderBy)
@@ -606,6 +630,163 @@ export interface PublicationRailOpts {
 
 function mergeExcludeUris(...groups: Array<Array<string>>): Array<string> {
   return [...new Set(groups.flat())];
+}
+
+type ScoredUri = { uri: string; score: number };
+
+function mergeScoredUris(
+  groups: Array<{ weight: number; scores: Array<ScoredUri> }>,
+): Array<ScoredUri> {
+  const merged = new Map<string, number>();
+  for (const { weight, scores } of groups) {
+    for (const { uri, score } of scores) {
+      merged.set(uri, (merged.get(uri) ?? 0) + score * weight);
+    }
+  }
+  return [...merged.entries()]
+    .map(([uri, score]) => ({ uri, score }))
+    .toSorted((a, b) => b.score - a.score);
+}
+
+/** Fetch {@link PublicationCard}s for `uris`, preserving rank order. */
+async function publicationCardsByOrderedUris(
+  db: Db,
+  schema: Schema,
+  uris: Array<string>,
+): Promise<Array<PublicationCard>> {
+  if (uris.length === 0) {
+    return [];
+  }
+
+  const p = schema.publications;
+  const st = schema.publicationStats;
+  const pr = schema.profiles;
+  const rows = await db
+    .select(publicationCardColumns(schema))
+    .from(p)
+    .leftJoin(st, eq(st.publicationUri, p.uri))
+    .leftJoin(pr, eq(pr.did, p.did))
+    .where(
+      and(
+        inArray(p.uri, uris),
+        eq(p.deleted, false),
+        discoverEligiblePublicationWhere(p)!,
+        hasIndexedDocuments(db, schema, p.uri),
+      ),
+    );
+
+  const byUri = new Map(rows.map((row) => [row.uri, toPublicationCard(row)]));
+  return uris
+    .map((uri) => byUri.get(uri))
+    .filter((pub): pub is PublicationCard => pub != null);
+}
+
+async function cosubScoresForAnchors(
+  db: Db,
+  schema: Schema,
+  anchorUris: Array<string>,
+  excludeUris: Array<string>,
+): Promise<Array<ScoredUri>> {
+  if (anchorUris.length === 0) {
+    return [];
+  }
+
+  const cs = schema.publicationCosubscriptions;
+  const conds = [inArray(cs.publicationUri, anchorUris)];
+  if (excludeUris.length > 0) {
+    conds.push(notInArray(cs.relatedPublicationUri, excludeUris));
+  }
+
+  const rows = await db
+    .select({
+      uri: cs.relatedPublicationUri,
+      score: sql<number>`sum(${cs.score})`.mapWith(Number),
+    })
+    .from(cs)
+    .where(and(...conds))
+    .groupBy(cs.relatedPublicationUri);
+
+  return rows.map((row) => ({ uri: row.uri, score: row.score }));
+}
+
+async function corecommendScoresForAnchors(
+  db: Db,
+  schema: Schema,
+  anchorUris: Array<string>,
+  excludeUris: Array<string>,
+): Promise<Array<ScoredUri>> {
+  if (anchorUris.length === 0) {
+    return [];
+  }
+
+  const cc = schema.publicationCorecommends;
+  const conds = [inArray(cc.publicationUri, anchorUris)];
+  if (excludeUris.length > 0) {
+    conds.push(notInArray(cc.relatedPublicationUri, excludeUris));
+  }
+
+  const rows = await db
+    .select({
+      uri: cc.relatedPublicationUri,
+      score: sql<number>`sum(${cc.score})`.mapWith(Number),
+    })
+    .from(cc)
+    .where(and(...conds))
+    .groupBy(cc.relatedPublicationUri);
+
+  return rows.map((row) => ({ uri: row.uri, score: row.score }));
+}
+
+/**
+ * Publications liked by readers who also follow the anchor set (personalized
+ * social signal).
+ */
+async function coReaderLikeScores(
+  db: Db,
+  schema: Schema,
+  anchorUris: Array<string>,
+  readerDid: string,
+  excludeUris: Array<string>,
+): Promise<Array<ScoredUri>> {
+  if (anchorUris.length === 0) {
+    return [];
+  }
+
+  const sub = schema.subscriptions;
+  const rc = schema.recommends;
+  const doc = schema.documents;
+
+  const coReaders = db
+    .selectDistinct({ did: sub.subscriberDid })
+    .from(sub)
+    .where(
+      and(
+        inArray(sub.publicationUri, anchorUris),
+        ne(sub.subscriberDid, readerDid),
+        eq(sub.deleted, false),
+      ),
+    )
+    .as("co_readers");
+
+  const recConds = [eq(rc.deleted, false), eq(doc.deleted, false)];
+  if (excludeUris.length > 0) {
+    recConds.push(notInArray(doc.publicationUri, excludeUris));
+  }
+
+  const rows = await db
+    .select({
+      uri: doc.publicationUri,
+      score: sql<number>`count(distinct ${rc.recommenderDid})`.mapWith(Number),
+    })
+    .from(rc)
+    .innerJoin(doc, eq(doc.uri, rc.documentUri))
+    .innerJoin(coReaders, eq(coReaders.did, rc.recommenderDid))
+    .where(and(...recConds, isNotNull(doc.publicationUri)))
+    .groupBy(doc.publicationUri);
+
+  return rows
+    .filter((row): row is { uri: string; score: number } => row.uri != null)
+    .map((row) => ({ uri: row.uri, score: row.score }));
 }
 
 /** Publications with at least one indexed, non-deleted document. */
@@ -677,17 +858,19 @@ export async function popularPublications(
     .leftJoin(st, eq(st.publicationUri, p.uri))
     .leftJoin(pr, eq(pr.did, p.did))
     .where(and(...conds))
-    .orderBy(sql`coalesce(${st.subscriberCount}, 0) desc`)
+    .orderBy(
+      desc(sql`coalesce(${st.trendingScore}, 0)`),
+      desc(sql`coalesce(${st.recommendCount}, 0)`),
+      desc(sql`coalesce(${st.subscriberCount}, 0)`),
+    )
     .limit(limit);
   return rows.map((row) => toPublicationCard(row));
 }
 
 /**
- * "Recommended for you" — collaborative filtering over the co-subscription
- * graph: publications co-followed by the readers of the ones you already follow,
- * scored by summed co-subscription similarity. Cold-start / sparse-graph readers
- * fall back to established publications (high readership, excluding the trending
- * set) so the rail stays distinct from Trending.
+ * "Recommended for you" — blends co-subscription similarity, co-recommend
+ * affinity, and live likes from readers who follow the same publications.
+ * Cold-start readers fall back to {@link popularPublications}.
  */
 export async function recommendedPublications(
   db: Db,
@@ -702,57 +885,31 @@ export async function recommendedPublications(
     return popularPublications(db, schema, limit, excludeUris);
   }
 
-  const cs = schema.publicationCosubscriptions;
-  const p = schema.publications;
-  const st = schema.publicationStats;
-  const pr = schema.profiles;
+  const mergedExclude = mergeExcludeUris(excludeUris, followUris);
+  const [cosub, corecommend, coReaderLikes] = await Promise.all([
+    cosubScoresForAnchors(db, schema, followUris, mergedExclude),
+    corecommendScoresForAnchors(db, schema, followUris, mergedExclude),
+    coReaderLikeScores(db, schema, followUris, did, mergedExclude),
+  ]);
 
-  const cosubConds = [
-    inArray(cs.publicationUri, followUris),
-    notInArray(cs.relatedPublicationUri, followUris),
-  ];
-  if (excludeUris.length > 0) {
-    cosubConds.push(notInArray(cs.relatedPublicationUri, excludeUris));
-  }
+  const ranked = mergeScoredUris([
+    { weight: RECOMMENDATION_BLEND.cosub, scores: cosub },
+    { weight: RECOMMENDATION_BLEND.corecommend, scores: corecommend },
+    { weight: RECOMMENDATION_BLEND.coReaderLike, scores: coReaderLikes },
+  ]);
 
-  const agg = db
-    .select({
-      relatedUri: cs.relatedPublicationUri,
-      score: sql<number>`sum(${cs.score})`.as("score"),
-    })
-    .from(cs)
-    .where(and(...cosubConds))
-    .groupBy(cs.relatedPublicationUri)
-    .as("cosub_agg");
-
-  const rows = await db
-    .select(publicationCardColumns(schema))
-    .from(agg)
-    .innerJoin(p, eq(p.uri, agg.relatedUri))
-    .leftJoin(st, eq(st.publicationUri, p.uri))
-    .leftJoin(pr, eq(pr.did, p.did))
-    .where(
-      and(
-        discoverEligiblePublicationWhere(p)!,
-        hasIndexedDocuments(db, schema, p.uri),
-      ),
-    )
-    .orderBy(desc(agg.score))
-    .limit(limit);
-
-  const primary = rows.map((row) => toPublicationCard(row));
-  return backfillPublicationRail(
+  const primary = await publicationCardsByOrderedUris(
     db,
     schema,
-    primary,
-    limit,
-    mergeExcludeUris(excludeUris, followUris),
+    ranked.slice(0, limit).map((row) => row.uri),
   );
+
+  return backfillPublicationRail(db, schema, primary, limit, mergedExclude);
 }
 
 /**
- * "Followed by people you follow" — publications co-subscribed by readers who
- * also follow the ones you already follow, ranked by overlapping subscriber count.
+ * "Followed by people you follow" — publications co-subscribed or liked by
+ * readers who also follow the ones you already follow.
  */
 export async function followedByPeopleYouFollow(
   db: Db,
@@ -768,9 +925,7 @@ export async function followedByPeopleYouFollow(
   }
 
   const sub = schema.subscriptions;
-  const p = schema.publications;
-  const st = schema.publicationStats;
-  const pr = schema.profiles;
+  const mergedExclude = mergeExcludeUris(excludeUris, followUris);
 
   const coReaders = db
     .selectDistinct({ did: sub.subscriberDid })
@@ -792,33 +947,36 @@ export async function followedByPeopleYouFollow(
     subConds.push(notInArray(sub.publicationUri, excludeUris));
   }
 
-  const agg = db
-    .select({
-      publicationUri: sub.publicationUri,
-      score: sql<number>`count(distinct ${sub.subscriberDid})`.as("score"),
-    })
-    .from(sub)
-    .innerJoin(coReaders, eq(coReaders.did, sub.subscriberDid))
-    .where(and(...subConds))
-    .groupBy(sub.publicationUri)
-    .as("social_agg");
+  const [followScores, likeScores] = await Promise.all([
+    db
+      .select({
+        uri: sub.publicationUri,
+        score: sql<number>`count(distinct ${sub.subscriberDid})`.mapWith(
+          Number,
+        ),
+      })
+      .from(sub)
+      .innerJoin(coReaders, eq(coReaders.did, sub.subscriberDid))
+      .where(and(...subConds))
+      .groupBy(sub.publicationUri),
+    coReaderLikeScores(db, schema, followUris, did, mergedExclude),
+  ]);
 
-  const rows = await db
-    .select(publicationCardColumns(schema))
-    .from(agg)
-    .innerJoin(p, eq(p.uri, agg.publicationUri))
-    .leftJoin(st, eq(st.publicationUri, p.uri))
-    .leftJoin(pr, eq(pr.did, p.did))
-    .where(discoverEligiblePublicationWhere(p)!)
-    .orderBy(desc(agg.score))
-    .limit(limit);
+  const ranked = mergeScoredUris([
+    { weight: RECOMMENDATION_BLEND.coReaderFollow, scores: followScores },
+    { weight: RECOMMENDATION_BLEND.coReaderLike, scores: likeScores },
+  ]);
 
-  return rows.map((row) => toPublicationCard(row));
+  return publicationCardsByOrderedUris(
+    db,
+    schema,
+    ranked.slice(0, limit).map((row) => row.uri),
+  );
 }
 
 /**
- * "Readers also follow" for a publication profile — its top co-subscribed
- * publications by similarity score.
+ * "Readers also follow" for a publication profile — blends co-subscription and
+ * co-recommend similarity.
  */
 export async function readersAlsoFollow(
   db: Db,
@@ -826,26 +984,21 @@ export async function readersAlsoFollow(
   publicationUri: string,
   limit: number,
 ): Promise<Array<PublicationCard>> {
-  const cs = schema.publicationCosubscriptions;
-  const p = schema.publications;
-  const st = schema.publicationStats;
-  const pr = schema.profiles;
+  const [cosub, corecommend] = await Promise.all([
+    cosubScoresForAnchors(db, schema, [publicationUri], []),
+    corecommendScoresForAnchors(db, schema, [publicationUri], []),
+  ]);
 
-  const rows = await db
-    .select(publicationCardColumns(schema))
-    .from(cs)
-    .innerJoin(p, eq(p.uri, cs.relatedPublicationUri))
-    .leftJoin(st, eq(st.publicationUri, p.uri))
-    .leftJoin(pr, eq(pr.did, p.did))
-    .where(
-      and(
-        eq(cs.publicationUri, publicationUri),
-        discoverEligiblePublicationWhere(p)!,
-      ),
-    )
-    .orderBy(desc(cs.score))
-    .limit(limit);
-  return rows.map((row) => toPublicationCard(row));
+  const ranked = mergeScoredUris([
+    { weight: RECOMMENDATION_BLEND.cosub, scores: cosub },
+    { weight: RECOMMENDATION_BLEND.corecommend, scores: corecommend },
+  ]);
+
+  return publicationCardsByOrderedUris(
+    db,
+    schema,
+    ranked.slice(0, limit).map((row) => row.uri),
+  );
 }
 
 /**

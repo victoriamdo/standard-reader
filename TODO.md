@@ -153,10 +153,11 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
 
 ## 7. Discovery engine (network-powered)
 
-- [x] **Recommended for you** — collaborative filtering over the follow graph (co-subscription).
-- [x] **Followed by people you follow** — social-graph query.
-- [x] **Trending publications / Trending now** — recent activity (new articles + follow velocity, rolling window).
-- [x] **Cold start** — high-readership fallback excluding the trending set (rails stay distinct).
+- [x] **Recommended for you** — blends co-subscription, co-recommend (`publication_corecommends`), and likes from co-readers.
+- [x] **Followed by people you follow** — co-subscriptions + likes from co-readers.
+- [x] **Trending publications / Trending now** — recent activity (new articles + follow velocity + likes, rolling window).
+- [x] **Cold start** — popularity fallback (`trending_score` incl. likes) excluding the trending set (rails stay distinct).
+- [x] **Readers also follow** — co-subscription + co-recommend affinity on publication profiles.
 
 ## 8. Routing & state
 

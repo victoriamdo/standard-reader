@@ -101,3 +101,43 @@ export type PublicationCosubscription =
   typeof publicationCosubscriptions.$inferSelect;
 export type NewPublicationCosubscription =
   typeof publicationCosubscriptions.$inferInsert;
+
+/**
+ * Materialized co-recommend graph for discovery: publications frequently liked
+ * (`site.standard.graph.recommend`) by the same readers. Recomputed from
+ * recommend edges alongside {@link publicationCosubscriptions}.
+ */
+export const publicationCorecommends = pgTable(
+  "publication_corecommends",
+  {
+    /** The anchor publication. */
+    publicationUri: text("publication_uri")
+      .notNull()
+      .references(() => publications.uri, { onDelete: "cascade" }),
+    /** A publication co-liked by the anchor's recommenders. */
+    relatedPublicationUri: text("related_publication_uri")
+      .notNull()
+      .references(() => publications.uri, { onDelete: "cascade" }),
+    /** Number of recommenders shared by both publications. */
+    coRecommenderCount: integer("co_recommender_count").notNull().default(0),
+    /** Normalized similarity score (cosine-style). */
+    score: doublePrecision("score").notNull().default(0),
+    recomputedAt: timestamp("recomputed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.publicationUri, table.relatedPublicationUri],
+    }),
+    index("publication_corecomm_rank_idx").on(
+      table.publicationUri,
+      table.score.desc(),
+    ),
+  ],
+);
+
+export type PublicationCorecommend =
+  typeof publicationCorecommends.$inferSelect;
+export type NewPublicationCorecommend =
+  typeof publicationCorecommends.$inferInsert;

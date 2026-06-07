@@ -43,6 +43,13 @@
       "when": 1780813146754,
       "tag": "0005_dizzy_hawkeye",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780816055576,
+      "tag": "0006_naive_shotgun",
+      "breakpoints": true
     }
   ]
 }
