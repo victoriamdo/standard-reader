@@ -158,7 +158,7 @@ function Latest() {
           void loadMoreFeed();
         }
       },
-      { root, rootMargin: "240px", threshold: 0 },
+      { root, rootMargin: "1200px 0px", threshold: 0 },
     );
 
     observer.observe(sentinel);

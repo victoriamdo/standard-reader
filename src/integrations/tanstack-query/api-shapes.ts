@@ -78,6 +78,13 @@ export interface ArticleCard {
   /** Bluesky posts linking this article (Constellation, top-level only). */
   commentCount: number;
   /**
+   * Whether the reader can render an in-app body. `false` for "external" posts
+   * (plain text / bsky-anchored / no structured content) — those link straight
+   * out to the publication site in a new tab instead of routing through
+   * `/a/$did/$rkey`.
+   */
+  hasRenderableBody: boolean;
+  /**
    * Whether the requesting reader has marked this read. Only meaningful when the
    * query was scoped to a reader (`readForDid`); otherwise defaults to `false`.
    */
@@ -153,6 +160,7 @@ export function articleCardColumns(schema: Schema) {
     publicationTopic: p.topic,
     tags: d.tags,
     textContent: d.textContent,
+    hasRenderableBody: d.hasRenderableBody,
     recommendCount: sql<number>`coalesce((
       select count(*)::int
       from ${rec}
@@ -264,6 +272,7 @@ type ArticleCardRow = {
   publicationTopic: string | null;
   tags: Array<string> | null;
   textContent: string | null;
+  hasRenderableBody?: boolean | null;
   recommendCount: number | null;
   isRead?: boolean | null;
 };
@@ -288,6 +297,7 @@ export function toArticleCard(row: ArticleCardRow): ArticleCard {
     publicationTopic: row.publicationTopic,
     tags: row.tags,
     textContent: row.textContent,
+    hasRenderableBody: row.hasRenderableBody ?? true,
     recommendCount: row.recommendCount ?? 0,
     commentCount: 0,
     isRead: row.isRead ?? false,

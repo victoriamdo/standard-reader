@@ -245,6 +245,7 @@ const getLikes = createServerFn({ method: "GET" })
                 publicationTopic: row.publicationTopic,
                 tags: row.tags,
                 textContent: row.textContent,
+                hasRenderableBody: row.hasRenderableBody,
                 recommendCount: row.recommendCount,
               })
             : null,

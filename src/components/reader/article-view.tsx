@@ -19,6 +19,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { ArticleCard } from "../../integrations/tanstack-query/api-shapes";
 
+import { Avatar } from "../../design-system/avatar";
 import { Flex } from "../../design-system/flex";
 import { IconButton } from "../../design-system/icon-button";
 import { animationDuration } from "../../design-system/theme/animations.stylex";
@@ -46,6 +47,7 @@ import {
   formatArticleReadStats,
   formatDate,
   formatReadingTime,
+  initials,
   publicationLinkParams,
   readingMinutes,
 } from "./format";
@@ -178,13 +180,6 @@ const styles = stylex.create({
     whiteSpace: "nowrap",
     minWidth: 0,
   },
-  pubBylineHandle: {
-    display: {
-      default: "none",
-      "@media (min-width: 40rem)": "inline",
-    },
-    flexShrink: 0,
-  },
   progress: {
     backgroundColor: primaryColor.solid1,
     position: "absolute",
@@ -265,7 +260,10 @@ const styles = stylex.create({
     textAlign: "left",
   },
   bylineName: {
+    gap: gap.lg,
+    alignItems: "center",
     color: uiColor.text2,
+    display: "flex",
     fontFamily: fontFamily.serif,
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
@@ -276,6 +274,11 @@ const styles = stylex.create({
     textUnderlineOffset: "2px",
   },
   bylineMeta: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.sm,
+  },
+  bylineHandle: {
     color: uiColor.text1,
     fontFamily: fontFamily.sans,
     fontSize: fontSize.sm,
@@ -368,8 +371,29 @@ function articleTopic(article: ArticleDetail): string | null {
 function primaryAuthor(article: ArticleDetail): string {
   const lead = article.contributors[0];
   if (lead?.displayName) return lead.displayName;
+  if (article.publicationOwnerDisplayName) {
+    return article.publicationOwnerDisplayName;
+  }
   if (lead?.handle) return `@${lead.handle}`;
+  if (article.publicationOwnerHandle)
+    return `@${article.publicationOwnerHandle}`;
   return article.publication?.name ?? "Unknown author";
+}
+
+/** The author's bare @handle (lead contributor, else publication owner). */
+function authorHandle(article: ArticleDetail): string | null {
+  return (
+    article.contributors[0]?.handle ?? article.publicationOwnerHandle ?? null
+  );
+}
+
+/** Avatar for the article's author (lead contributor, else publication owner). */
+function authorAvatarUrl(article: ArticleDetail): string | null {
+  return (
+    article.contributors[0]?.avatarUrl ??
+    article.publication?.ownerAvatarUrl ??
+    null
+  );
 }
 
 function ArticleFollowButtonMd({
@@ -520,6 +544,9 @@ export function ArticleView({
   const [progress, setProgress] = useState(0);
   const pub = article.publication;
   const pubParams = pub ? publicationLinkParams(pub.uri) : null;
+  const authorName = primaryAuthor(article);
+  const handle = authorHandle(article);
+  const showHandle = handle != null && authorName !== `@${handle}`;
   const topic = articleTopic(article);
   const readingLabel = formatReadingTime(articleReadingText(article));
   const date = formatDate(article.publishedAt);
@@ -626,23 +653,21 @@ export function ArticleView({
                     params={pubParams}
                     {...stylex.props(styles.pubByline)}
                   >
+                    <PublicationAvatar pub={pub} size="sm" />
                     <span {...stylex.props(styles.pubBylineName)}>
                       {pub.name}
                     </span>
-                    {article.publicationOwnerHandle ? (
-                      <Handle style={styles.pubBylineHandle}>
-                        @{article.publicationOwnerHandle}
-                      </Handle>
-                    ) : null}
                   </Link>
                 ) : pub.url ? (
                   <AppLink href={pub.url} linkStyle={styles.pubByline}>
+                    <PublicationAvatar pub={pub} size="sm" />
                     <span {...stylex.props(styles.pubBylineName)}>
                       {pub.name}
                     </span>
                   </AppLink>
                 ) : (
                   <span {...stylex.props(styles.pubByline)}>
+                    <PublicationAvatar pub={pub} size="sm" />
                     <span {...stylex.props(styles.pubBylineName)}>
                       {pub.name}
                     </span>
@@ -711,7 +736,12 @@ export function ArticleView({
           ) : null}
 
           <div {...stylex.props(styles.byline)}>
-            {pub ? <PublicationAvatar pub={pub} size="lg" /> : null}
+            <Avatar
+              size="lg"
+              src={authorAvatarUrl(article) ?? undefined}
+              fallback={initials(authorName)}
+              alt={authorName}
+            />
             <div {...stylex.props(styles.bylineWho)}>
               <div {...stylex.props(styles.bylineName)}>
                 {pubParams ? (
@@ -720,15 +750,21 @@ export function ArticleView({
                     params={pubParams}
                     {...stylex.props(styles.bylineNameLink)}
                   >
-                    {primaryAuthor(article)}
+                    {authorName}
                   </Link>
                 ) : pub?.url ? (
                   <AppLink href={pub.url} linkStyle={styles.bylineNameLink}>
-                    {primaryAuthor(article)}
+                    {authorName}
                   </AppLink>
                 ) : (
-                  primaryAuthor(article)
+                  authorName
                 )}
+
+                {showHandle ? (
+                  <>
+                    <Handle>@{handle}</Handle>
+                  </>
+                ) : null}
               </div>
               <Flex align="center" gap="md" wrap style={styles.bylineMeta}>
                 <span>

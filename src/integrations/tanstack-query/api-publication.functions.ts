@@ -59,6 +59,12 @@ const profileInput = z.object({
   alsoFollowLimit: z.number().int().min(1).max(20).default(6),
 });
 
+const documentsInput = z.object({
+  publicationUri: z.string().min(1),
+  limit: z.number().int().min(1).max(30).default(20),
+  offset: z.number().int().min(0).default(0),
+});
+
 const articleInput = z.object({
   documentUri: z.string().min(1),
   alsoFollowLimit: z.number().int().min(1).max(20).default(3),
@@ -89,6 +95,12 @@ export interface PublicationProfile {
   owner: ProfileSummary;
   recentDocuments: Array<ArticleCard>;
   readersAlsoFollow: Array<PublicationCard>;
+}
+
+/** One page of a publication's documents for the profile's infinite scroll. */
+export interface PublicationDocumentsPage {
+  items: Array<ArticleCard>;
+  nextOffset: number | null;
 }
 
 export interface ArticleContributor {
@@ -124,6 +136,8 @@ export interface ArticleDetail {
   publication: PublicationCard | null;
   /** Owning profile handle for the sticky byline (`@handle`). */
   publicationOwnerHandle: string | null;
+  /** Owning profile display name — the byline author when no contributor. */
+  publicationOwnerDisplayName: string | null;
   contributors: Array<ArticleContributor>;
   /** Readers who opened this article (`app.standard-reader.read`). */
   readCount: number;
@@ -210,6 +224,38 @@ const getPublicationProfile = createServerFn({ method: "GET" })
     ),
   );
 
+const getPublicationDocuments = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(documentsInput)
+  .handler(
+    observe(
+      "publication.getDocuments",
+      async ({ data, context }, span): Promise<PublicationDocumentsPage> => {
+        const { db, schema } = context;
+        span.set("publicationUri", data.publicationUri);
+        span.set("offset", data.offset);
+
+        const documents = await selectArticleCards(db, schema, {
+          publicationUris: [data.publicationUri],
+          limit: data.limit,
+          offset: data.offset,
+        });
+        const items = await attachCommentCountsToArticles(
+          db,
+          schema,
+          documents,
+        );
+
+        span.set("count", items.length);
+        return {
+          items,
+          nextOffset:
+            documents.length === data.limit ? data.offset + data.limit : null,
+        };
+      },
+    ),
+  );
+
 const getArticle = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
   .inputValidator(articleInput)
@@ -256,6 +302,7 @@ const getArticle = createServerFn({ method: "GET" })
                 pubIconUrl: p.iconUrl,
                 pubOwnerAvatarUrl: pr.avatarUrl,
                 pubOwnerHandle: pr.handle,
+                pubOwnerDisplayName: pr.displayName,
                 pubTopic: p.topic,
                 pubVerified: p.verified,
                 pubSubscriberCount: st.subscriberCount,
@@ -464,6 +511,7 @@ const getArticle = createServerFn({ method: "GET" })
           publicationUri: row.publicationUri,
           publication,
           publicationOwnerHandle: row.pubOwnerHandle ?? null,
+          publicationOwnerDisplayName: row.pubOwnerDisplayName ?? null,
           contributors,
           readCount: readRows[0]?.count ?? 0,
           recommendCount: recommendRows[0]?.count ?? 0,
@@ -491,6 +539,23 @@ function getPublicationProfileQueryOptions(
   });
 }
 
+function getPublicationDocumentsQueryOptions(
+  publicationUri: string,
+  { limit = 20, offset = 0 }: { limit?: number; offset?: number } = {},
+) {
+  return queryOptions({
+    queryKey: [
+      "publication",
+      "documents",
+      publicationUri,
+      limit,
+      offset,
+    ] as const,
+    queryFn: async () =>
+      getPublicationDocuments({ data: { publicationUri, limit, offset } }),
+  });
+}
+
 function getArticleQueryOptions(documentUri: string) {
   return queryOptions({
     queryKey: ["article", documentUri] as const,
@@ -501,6 +566,8 @@ function getArticleQueryOptions(documentUri: string) {
 export const publicationApi = {
   getPublicationProfile,
   getPublicationProfileQueryOptions,
+  getPublicationDocuments,
+  getPublicationDocumentsQueryOptions,
   getArticle,
   getArticleQueryOptions,
 };

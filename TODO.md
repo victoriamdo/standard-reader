@@ -169,7 +169,8 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
 - [x] **Article** (reading view) — ~680px measure, drop-cap, pull quotes, hero, sticky bar (back/byline/follow/save/share), reading-progress bar, footer pub card + "More from {publication}". Route `/a/$did/$rkey` (`_layout.a.$did.$rkey.tsx`); feed/profile cards link here; `publicationApi.getArticle` returns `moreFrom` + owner handle. Save toggle writes `site.standard.graph.recommend`; like counts on cards + article byline.
 - [x] **Article discussion** — Bluesky comment section on documents: Constellation backlink discovery for external + app quote-share URLs, hydrated via public AppView, facet-rendered commentary, reply counts linking to bsky threads (`commentsApi.getDocumentComments`).
 - [x] **Publication profile** — banner + inline header (avatar/topic/name/desc/stats/Copy DID/Follow),
-      recent writing, right rail (About + DID + readers-also-follow). Route `/p/$did/$rkey`
+      recent writing (infinite scroll via `publicationApi.getPublicationDocuments` offset
+      pagination), right rail (About + DID + readers-also-follow). Route `/p/$did/$rkey`
       (`_layout.p.$did.$rkey.tsx`); sidebar Following rows + cards link here instead of the
       external publication URL. The "followed by people you follow" social-proof line is deferred
       until the §7 social-graph query lands.

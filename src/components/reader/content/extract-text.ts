@@ -4,15 +4,16 @@ import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
 import { parseArticleBlocks } from "#/lib/document/blocks";
 import { markdownPlaintext } from "#/lib/document/structured-content/markdown";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
-import { leafletBlocks } from "#/lib/leaflet/blocks";
 import { leafletPlaintext } from "#/lib/leaflet/plaintext";
 import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
-import { offprintBlocks } from "#/lib/offprint/blocks";
 import { offprintPlaintext } from "#/lib/offprint/plaintext";
 import { OFFPRINT_CONTENT } from "#/lib/offprint/types";
-import { pcktBlocks } from "#/lib/pckt/blocks";
 import { pcktPlaintext } from "#/lib/pckt/plaintext";
 import { PCKT_CONTENT } from "#/lib/pckt/types";
+
+// Re-exported so existing reader-UI imports keep working; the implementation
+// lives in `#/lib/document/renderable` so it can run at ingest/backfill time.
+export { hasRenderableArticleBody } from "#/lib/document/renderable";
 
 type ArticleBodyFields = Pick<
   ArticleDetail,
@@ -32,33 +33,6 @@ function resolveContentType(article: ArticleBodyFields): string | null {
     return article.contentJson.$type;
   }
   return null;
-}
-
-/**
- * True when the reader can render structured in-app body content (leaflet
- * blocks or JSON blocks). Plain `textContent` and document-level `bskyPostUri`
- * do not count — those articles open on the publication site.
- */
-export function hasRenderableArticleBody(article: ArticleBodyFields): boolean {
-  const contentType = resolveContentType(article);
-  if (contentType === LEAFLET_CONTENT) {
-    return leafletBlocks(article.contentJson).length > 0;
-  }
-  if (contentType === PCKT_CONTENT) {
-    return pcktBlocks(article.contentJson).length > 0;
-  }
-  if (contentType === OFFPRINT_CONTENT) {
-    return offprintBlocks(article.contentJson).length > 0;
-  }
-  if (contentType === STANDARD_MARKDOWN_CONTENT) {
-    return Boolean(markdownPlaintext(article.contentJson));
-  }
-
-  const blocks = parseArticleBlocks({
-    textContent: null,
-    contentJson: article.contentJson,
-  });
-  return blocks.length > 0;
 }
 
 /** Best-effort full text for reading-time estimates and search previews. */

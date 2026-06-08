@@ -1,10 +1,17 @@
 import * as stylex from "@stylexjs/stylex";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { ExternalLink } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import type { ArticleCard } from "../integrations/tanstack-query/api-shapes";
 
 import {
   ArticleRow,
@@ -35,11 +42,18 @@ import {
   tracking,
 } from "../design-system/theme/typography.stylex";
 
+/** Documents loaded with the profile (page 0) before infinite scroll kicks in. */
+const PUBLICATION_RECENT_LIMIT = 12;
+/** Page size for each subsequent infinite-scroll fetch. */
+const PUBLICATION_PAGE_SIZE = 20;
+
 export const Route = createFileRoute("/_layout/p/$did/$rkey")({
   loader: async ({ context, params }) => {
     const uri = publicationUriFromParams(params.did, params.rkey);
     const profile = await context.queryClient.ensureQueryData(
-      publicationApi.getPublicationProfileQueryOptions(uri),
+      publicationApi.getPublicationProfileQueryOptions(uri, {
+        recentLimit: PUBLICATION_RECENT_LIMIT,
+      }),
     );
     await context.queryClient.ensureQueryData(
       readerApi.getFollowStatusQueryOptions(uri),
@@ -167,6 +181,19 @@ const styles = stylex.create({
     paddingBottom: spacing["8"],
     paddingTop: spacing["8"],
   },
+  loadSentinel: {
+    height: 1,
+    marginTop: spacing["6"],
+    width: "100%",
+  },
+  endNote: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.sm,
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: spacing["6"],
+  },
 });
 
 function lastActive(iso: string | null): string {
@@ -194,20 +221,93 @@ function PublicationProfile() {
   const { did, rkey } = Route.useParams();
   const uri = publicationUriFromParams(did, rkey);
   const { data: profile } = useSuspenseQuery(
-    publicationApi.getPublicationProfileQueryOptions(uri),
+    publicationApi.getPublicationProfileQueryOptions(uri, {
+      recentLimit: PUBLICATION_RECENT_LIMIT,
+    }),
   );
   const { data: follow } = useSuspenseQuery(
     readerApi.getFollowStatusQueryOptions(uri),
   );
   const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
-  const documentUris = profile?.recentDocuments.map((doc) => doc.uri) ?? [];
-  const { data: readUris } = useSuspenseQuery(
-    readerApi.getReadDocumentsQueryOptions(documentUris),
+
+  const [documents, setDocuments] = useState<Array<ArticleCard>>(
+    () => profile?.recentDocuments ?? [],
   );
-  const readSet = new Set(readUris);
+  const [nextOffset, setNextOffset] = useState<number | null>(() =>
+    (profile?.recentDocuments.length ?? 0) === PUBLICATION_RECENT_LIMIT
+      ? PUBLICATION_RECENT_LIMIT
+      : null,
+  );
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset accumulated documents when navigating to a different publication.
+  useEffect(() => {
+    const recent = profile?.recentDocuments ?? [];
+    setDocuments(recent);
+    setNextOffset(
+      recent.length === PUBLICATION_RECENT_LIMIT
+        ? PUBLICATION_RECENT_LIMIT
+        : null,
+    );
+  }, [profile]);
+
+  const documentUris = useMemo(
+    () => documents.map((doc) => doc.uri),
+    [documents],
+  );
+  const { data: readUris } = useQuery({
+    ...readerApi.getReadDocumentsQueryOptions(documentUris),
+    enabled: signedIn && documentUris.length > 0,
+    placeholderData: keepPreviousData,
+  });
+  const readSet = useMemo(() => new Set(readUris ?? []), [readUris]);
   const isUnread = (documentUri: string) =>
     signedIn && !readSet.has(documentUri);
+
+  const loadMore = useCallback(async () => {
+    if (nextOffset == null || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const page = await publicationApi.getPublicationDocuments({
+        data: {
+          publicationUri: uri,
+          limit: PUBLICATION_PAGE_SIZE,
+          offset: nextOffset,
+        },
+      });
+      setDocuments((prev) => {
+        const seen = new Set(prev.map((doc) => doc.uri));
+        return [...prev, ...page.items.filter((doc) => !seen.has(doc.uri))];
+      });
+      setNextOffset(page.nextOffset);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [nextOffset, uri]);
+
+  useEffect(() => {
+    if (nextOffset == null) return;
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel) return;
+
+    const root = sentinel.closest("[data-app-scroller]");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadMore();
+        }
+      },
+      { root, rootMargin: "1200px 0px", threshold: 0 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [nextOffset, loadMore]);
 
   if (!profile) {
     return (
@@ -219,9 +319,9 @@ function PublicationProfile() {
     );
   }
 
-  const { publication: pub, owner, recentDocuments } = profile;
-  const lead = recentDocuments[0];
-  const rest = recentDocuments.slice(1);
+  const { publication: pub, owner } = profile;
+  const lead = documents[0];
+  const rest = documents.slice(1);
 
   return (
     <div>
@@ -289,7 +389,7 @@ function PublicationProfile() {
       <ReaderContent>
         <Flex direction="column" gap="6xl" style={styles.writing}>
           <SectionHead kicker="Latest" title="Recent writing" />
-          {recentDocuments.length === 0 ? (
+          {documents.length === 0 ? (
             <div {...stylex.props(styles.emptyNote)}>
               No posts indexed from this publication yet.
             </div>
@@ -312,6 +412,22 @@ function PublicationProfile() {
               ))}
             </div>
           )}
+          {documents.length > 0 ? (
+            <div>
+              <div
+                ref={loadMoreSentinelRef}
+                aria-hidden
+                {...stylex.props(styles.loadSentinel)}
+              />
+              {loadingMore ? (
+                <div {...stylex.props(styles.endNote)}>Loading more…</div>
+              ) : nextOffset == null ? (
+                <div {...stylex.props(styles.endNote)}>
+                  You&apos;ve reached the end.
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </Flex>
       </ReaderContent>
     </div>

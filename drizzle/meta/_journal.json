@@ -57,6 +57,13 @@
       "when": 1780871506115,
       "tag": "0007_shallow_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780900349797,
+      "tag": "0008_polite_ken_ellis",
+      "breakpoints": true
     }
   ]
 }

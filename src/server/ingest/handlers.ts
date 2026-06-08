@@ -1,3 +1,4 @@
+import { hasRenderableArticleBody } from "#/lib/document/renderable";
 import { documentSearchText } from "#/lib/document/search-text";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
 import { GREENGALE_CONTENT_REF } from "#/lib/greengale/types";
@@ -319,6 +320,11 @@ export async function upsertDocument(
     contentJson,
     contentFormat,
   });
+  const renderableBody = hasRenderableArticleBody({
+    textContent: cleanOptional(record.textContent),
+    contentJson,
+    contentFormat,
+  });
 
   const values = {
     uri,
@@ -334,6 +340,7 @@ export async function upsertDocument(
     textContent,
     contentJson,
     contentFormat,
+    hasRenderableBody: renderableBody,
     coverImageCid: coverCid,
     coverImageMime: record.coverImage?.mimeType ?? null,
     coverImageUrl,

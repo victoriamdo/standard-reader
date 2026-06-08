@@ -860,7 +860,9 @@ function ArticleLink({
   const markReadExternal = useMarkReadExternal();
   const params = documentLinkParams(article.uri);
   const merged = stylex.props(styles.cardLink, ...extraStyles);
-  if (params) {
+  // Only route through the in-app reader when there's a body to render;
+  // "external" posts (no renderable body) link straight out in a new tab.
+  if (params && article.hasRenderableBody) {
     return (
       <Link to="/a/$did/$rkey" params={params} {...merged}>
         {children}
@@ -894,6 +896,15 @@ function ArticleLink({
       >
         {children}
       </a>
+    );
+  }
+  // No external URL: fall back to the in-app record page when we have an AT-URI
+  // (the route resolves/redirects), else render plain children.
+  if (params) {
+    return (
+      <Link to="/a/$did/$rkey" params={params} {...merged}>
+        {children}
+      </Link>
     );
   }
   return <div {...stylex.props(...extraStyles)}>{children}</div>;

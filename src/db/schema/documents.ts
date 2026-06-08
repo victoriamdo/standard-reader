@@ -50,6 +50,12 @@ export const documents = pgTable(
     contentJson: jsonb("content_json"),
     /** `$type` of the content union entry (e.g. the markdown content lexicon). */
     contentFormat: text("content_format"),
+    /** App-derived: whether the reader can render an in-app body for this doc.
+     * False for "external" posts (plain text / bsky-anchored / no structured
+     * content) — feed cards link those straight out to the publication site in
+     * a new tab instead of routing through `/a/$did/$rkey`. Defaults to `true`
+     * so un-backfilled rows keep the prior in-app routing until recomputed. */
+    hasRenderableBody: boolean("has_renderable_body").notNull().default(true),
 
     /** `coverImage` blob (the hero/thumbnail). Raw ref + resolved getBlob URL. */
     coverImageCid: text("cover_image_cid"),
