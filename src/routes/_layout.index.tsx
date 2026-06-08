@@ -176,7 +176,7 @@ function Home() {
       {feed.featured ? <FeatureArticle article={feed.featured} /> : null}
 
       <div {...stylex.props(styles.twoCol)}>
-        <Flex direction="column" gap="xl">
+        <Flex direction="column">
           <SectionHead
             kicker={
               feed.personalized ? "From your follows" : "Fresh off the network"
@@ -185,7 +185,7 @@ function Home() {
           />
           <div>
             {feed.latestUnread.map((article) => (
-              <ArticleRow key={article.uri} article={article} unread />
+              <ArticleRow key={article.uri} article={article} />
             ))}
           </div>
           {session?.user ? (

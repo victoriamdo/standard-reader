@@ -143,16 +143,26 @@ async function deadLetter(event: TapEvent, error: unknown): Promise<void> {
 }
 
 /**
+ * Outcome of processing one event, used to decide whether to ack:
+ * - `applied`: written to the read-model (idempotent upsert/delete).
+ * - `dead-lettered`: apply failed but the event was durably captured in
+ *   `ingest_dead_letter` for later replay.
+ * - `unhandled`: apply failed AND the dead-letter write failed too (e.g. the DB
+ *   is down or out of storage). The caller MUST NOT ack — leaving it un-acked
+ *   lets tap redeliver once the DB recovers, instead of silently dropping it.
+ */
+export type ProcessResult = "applied" | "dead-lettered" | "unhandled";
+
+/**
  * Process a single tap event. All operations are idempotent upserts/deletes, so
  * at-least-once redelivery is safe — we re-apply rather than risk dropping an
- * event by deduping on id. Failures are captured in `ingest_dead_letter` and
- * swallowed so the caller can still 200 (avoids wedging tap's per-repo
- * ordering on a single poison event); transient infra failures can be replayed
- * from the dead-letter table.
- *
- * @returns `true` if applied cleanly, `false` if dead-lettered.
+ * event by deduping on id. Apply failures are captured in `ingest_dead_letter`;
+ * if even that write fails we report `unhandled` so the caller withholds the ack
+ * and tap redelivers later (this is what prevents data loss during an outage).
  */
-export async function processTapEvent(event: TapEvent): Promise<boolean> {
+export async function processTapEvent(
+  event: TapEvent,
+): Promise<ProcessResult> {
   try {
     if (event.type === "identity") {
       await applyIdentity(event.identity);
@@ -160,15 +170,17 @@ export async function processTapEvent(event: TapEvent): Promise<boolean> {
       await handleRecord(event.record);
     }
     await recordProgress(event.id);
-    return true;
+    return "applied";
   } catch (error) {
     try {
       await deadLetter(event, error);
+      return "dead-lettered";
     } catch {
-      // If even the dead-letter write fails, surface via logs only.
+      // Both the apply and the dead-letter write failed (DB down / full). Don't
+      // ack: surface via logs and let tap redeliver once the DB recovers.
       console.error("[ingest] failed to dead-letter event", event.id, error);
+      return "unhandled";
     }
-    return false;
   }
 }
 
@@ -180,8 +192,8 @@ export async function processTapEvents(
   let ok = 0;
   let failed = 0;
   for (const event of events) {
-    const applied = await processTapEvent(event);
-    if (applied) {
+    const result = await processTapEvent(event);
+    if (result === "applied") {
       ok += 1;
     } else {
       failed += 1;

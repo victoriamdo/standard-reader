@@ -8,6 +8,8 @@ import type { TapEvent } from "../atproto/types.ts";
 
 import { db } from "../../db/index.ts";
 import { ingestState } from "../../db/schema.ts";
+import type { ProcessResult } from "./consumer.ts";
+
 import { verifyIngestAuth } from "./auth.ts";
 import { ingestConfig } from "./config.ts";
 import { processTapEvent } from "./consumer.ts";
@@ -273,6 +275,9 @@ function startTapChannel(): { destroy: () => Promise<void> } {
       // work + ack run detached so up to MAX_INFLIGHT apply concurrently.
       await acquireSlot();
       void (async () => {
+        // Default to "unhandled" so an unexpected throw withholds the ack and
+        // tap redelivers, rather than silently dropping the event.
+        let result: ProcessResult = "unhandled";
         try {
           const mapped = isIdentity
             ? fromIdentityEvent(
@@ -281,18 +286,26 @@ function startTapChannel(): { destroy: () => Promise<void> } {
             : fromRecordEvent(
                 evt as unknown as Parameters<typeof fromRecordEvent>[0],
               );
-          const ok = await processTapEvent(mapped);
-          if (!ok) {
+          result = await processTapEvent(mapped);
+          if (result === "dead-lettered") {
             stats.failed += 1;
             console.warn(`[ingest] dead-lettered event ${evt.id}`);
+          } else if (result === "unhandled") {
+            stats.errors += 1;
+            console.warn(
+              `[ingest] event ${evt.id} unhandled (DB down/full) — not acking, tap will redeliver`,
+            );
           }
         } catch (error: unknown) {
           stats.errors += 1;
           console.error(`[ingest] failed to process event ${evt.id}`, error);
         } finally {
-          // Ack after the DB work settles (idempotent re-apply on redelivery),
-          // then free the slot. The ack itself never gates the slot.
-          ackInBackground(evt.id, opts.ack);
+          // Only ack once the event is durably handled (applied or
+          // dead-lettered). Withholding the ack on "unhandled" leaves it for
+          // tap to redeliver after the DB recovers. Always free the slot.
+          if (result !== "unhandled") {
+            ackInBackground(evt.id, opts.ack);
+          }
           releaseSlot();
         }
       })();

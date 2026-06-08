@@ -49,7 +49,6 @@ import {
   formatReaders,
   publicationLinkParams,
 } from "./format";
-import { applyMarkReadOptimisticUpdate } from "./read-optimistic";
 import {
   Handle,
   ArticleEngagement,
@@ -58,6 +57,7 @@ import {
   PublicationAvatar,
   Topic,
 } from "./primitives";
+import { applyMarkReadOptimisticUpdate } from "./read-optimistic";
 
 const ButtonLink = createLink(Button);
 
@@ -827,11 +827,12 @@ function ArticleMetaLine({ article }: { article: ArticleCard }) {
 }
 
 /**
- * Marks a document read the moment the reader interacts with a link to it.
- * We can't wait for the article page to mount (the link may be external), so we
- * fire the write on click and optimistically reflect it across the feed caches.
+ * Marks an *external* document read when the reader opens it. Internal article
+ * navigations mark read once the article page mounts (i.e. after we navigate);
+ * external links have no such page, so this is their only trigger. The write is
+ * fire-and-forget with an optimistic cache update so the feed reflects it.
  */
-function useMarkReadOnNavigate() {
+function useMarkReadExternal() {
   const queryClient = useQueryClient();
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -856,13 +857,12 @@ function ArticleLink({
   children: React.ReactNode;
   extraStyles?: Array<stylex.StyleXStyles | false | undefined>;
 }) {
-  const markReadOnNavigate = useMarkReadOnNavigate();
-  const onNavigate = () => markReadOnNavigate(article.uri);
+  const markReadExternal = useMarkReadExternal();
   const params = documentLinkParams(article.uri);
   const merged = stylex.props(styles.cardLink, ...extraStyles);
   if (params) {
     return (
-      <Link to="/a/$did/$rkey" params={params} onClick={onNavigate} {...merged}>
+      <Link to="/a/$did/$rkey" params={params} {...merged}>
         {children}
       </Link>
     );
@@ -872,19 +872,14 @@ function ArticleLink({
     const internal = parseInternalRoute(href);
     if (internal?.params) {
       return (
-        <Link
-          to={internal.to}
-          params={internal.params}
-          onClick={onNavigate}
-          {...merged}
-        >
+        <Link to={internal.to} params={internal.params} {...merged}>
           {children}
         </Link>
       );
     }
     if (internal) {
       return (
-        <Link to={internal.to} onClick={onNavigate} {...merged}>
+        <Link to={internal.to} {...merged}>
           {children}
         </Link>
       );
@@ -894,7 +889,7 @@ function ArticleLink({
         href={href}
         target="_blank"
         rel="noreferrer"
-        onClick={onNavigate}
+        onClick={() => markReadExternal(article.uri)}
         {...merged}
       >
         {children}

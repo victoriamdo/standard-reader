@@ -13,6 +13,7 @@ import { AppLink } from "#/components/reader/app-link";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { parseInternalRoute } from "#/lib/internal-route";
+import { buildBlueskyComposeUrl } from "#/lib/quote-share";
 import { ArrowLeft, Bookmark, ExternalLink, Share2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
@@ -56,9 +57,8 @@ import {
   SectionHead,
   Topic,
 } from "./primitives";
-import { buildBlueskyComposeUrl } from "#/lib/quote-share";
-
 import { QuoteShareLayer } from "./quote-share-layer";
+import { applyMarkReadOptimisticUpdate } from "./read-optimistic";
 
 const MEASURE = "80ch";
 
@@ -552,14 +552,16 @@ function ArticleViewInner({
   const readStats = formatArticleReadStats(article.readCount);
   const hasEngagement = article.recommendCount > 0 || article.commentCount > 0;
 
+  const queryClient = useQueryClient();
   const { mutate: markRead } = useMutation(readerApi.markReadMutationOptions());
   const markedUriRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!signedIn || markedUriRef.current === article.uri) return;
     markedUriRef.current = article.uri;
+    applyMarkReadOptimisticUpdate(queryClient, article.uri);
     markRead(article.uri);
-  }, [article.uri, signedIn, markRead]);
+  }, [article.uri, signedIn, markRead, queryClient]);
 
   useLayoutEffect(() => {
     const anchor = scrollRef.current;
