@@ -15,10 +15,10 @@ function toDataUrl(buffer: ArrayBuffer, contentType: string): string {
 
 /**
  * Rewrite a raw PDS `com.atproto.sync.getBlob` URL to the Bluesky image CDN,
- * which transcodes to JPEG (PDS blobs are often webp, which satori can't
- * parse) and resizes to a sane fullsize variant.
+ * which transcodes to PNG (PDS blobs are often webp, which satori can't
+ * parse — PNG keeps any alpha channel) and resizes to a sane fullsize variant.
  */
-function bskyCdnJpegUrl(url: string): string | null {
+function bskyCdnPngUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
     if (!parsed.pathname.endsWith("/xrpc/com.atproto.sync.getBlob")) {
@@ -27,7 +27,7 @@ function bskyCdnJpegUrl(url: string): string | null {
     const did = parsed.searchParams.get("did");
     const cid = parsed.searchParams.get("cid");
     if (!did || !cid) return null;
-    return `https://cdn.bsky.app/img/feed_fullsize/plain/${did}/${cid}@jpeg`;
+    return `https://cdn.bsky.app/img/feed_fullsize/plain/${did}/${cid}@png`;
   } catch {
     return null;
   }
@@ -57,13 +57,13 @@ export async function loadOgImage(
 ): Promise<string | null> {
   if (!url) return null;
 
-  const cdnUrl = bskyCdnJpegUrl(url);
-  if (cdnUrl) {
-    const fromCdn = await fetchSatoriImage(cdnUrl);
-    if (fromCdn) return fromCdn;
-  }
+  // Originals first: png/jpeg pass through untouched (alpha preserved).
+  const original = await fetchSatoriImage(url);
+  if (original) return original;
 
-  return fetchSatoriImage(url);
+  // Unsupported format (usually webp) — let the Bluesky CDN transcode it.
+  const cdnUrl = bskyCdnPngUrl(url);
+  return cdnUrl ? fetchSatoriImage(cdnUrl) : null;
 }
 
 /** Try publication icon, then owner avatar (matches `PublicationAvatar`). */
