@@ -121,6 +121,7 @@ export function PageReaderProvider({
   const narrationCacheRef = useRef(new Map<string, Promise<string | null>>());
   const [state, setState] = useState<ReaderState>(INITIAL_STATE);
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
+  const [scrollLocked, setScrollLocked] = useState(true);
 
   // One engine for the session; survives route changes, torn down on unmount.
   useEffect(() => {
@@ -154,6 +155,7 @@ export function PageReaderProvider({
 
       lastPlaybackRef.current = { article, text };
       setNowPlaying(nowPlayingFromArticle(article));
+      setScrollLocked(true);
 
       const { status } = engine.getState();
       const prepared = preparedRef.current;
@@ -241,7 +243,16 @@ export function PageReaderProvider({
   const stop = useCallback(() => {
     preparedRef.current = null;
     setNowPlaying(null);
+    setScrollLocked(true);
     engineRef.current?.reset();
+  }, []);
+
+  const unlockScroll = useCallback(() => {
+    setScrollLocked((locked) => (locked ? false : locked));
+  }, []);
+
+  const lockScroll = useCallback(() => {
+    setScrollLocked(true);
   }, []);
 
   const value = useMemo<PageReaderContextValue>(
@@ -259,6 +270,9 @@ export function PageReaderProvider({
       seekTo,
       setRate,
       stop,
+      scrollLocked,
+      unlockScroll,
+      lockScroll,
     }),
     [
       state,
@@ -273,6 +287,9 @@ export function PageReaderProvider({
       seekTo,
       setRate,
       stop,
+      scrollLocked,
+      unlockScroll,
+      lockScroll,
     ],
   );
 

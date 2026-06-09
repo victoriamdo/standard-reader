@@ -1,7 +1,7 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { Button } from "#/design-system/button";
 import { IconButton } from "#/design-system/icon-button";
 import { Menu, MenuItem } from "#/design-system/menu";
@@ -22,7 +22,8 @@ import {
   tracking,
 } from "#/design-system/theme/typography.stylex";
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
-import { Pause, Play, RotateCcw, SkipBack, X } from "lucide-react";
+import { articleSharePath } from "#/lib/quote-share";
+import { LocateFixed, Pause, Play, RotateCcw, SkipBack, X } from "lucide-react";
 import { useRef, useState } from "react";
 
 const SKIP_SECONDS = 15;
@@ -40,7 +41,18 @@ const rise = stylex.keyframes({
   to: { opacity: 1, transform: "translateY(0)" },
 });
 
+const fabIn = stylex.keyframes({
+  from: { opacity: 0 },
+  to: { opacity: 1 },
+});
+
 const styles = stylex.create({
+  // Wraps the transport card + follow FAB. The FAB is absolutely positioned so
+  // showing/hiding it never changes the card's size or dock layout.
+  cluster: {
+    pointerEvents: "none",
+    position: "relative",
+  },
   // The floating card. Positioning lives on the app-shell dock that hosts it;
   // here we only own the look. Layered shadow + rise are lifted from the
   // prototype's `.audiobar`.
@@ -134,6 +146,34 @@ const styles = stylex.create({
   },
   roundBtn: {
     borderRadius: radius.full,
+  },
+  followFabHost: {
+    animationDuration: animationDuration.default,
+    animationName: {
+      default: fabIn,
+      "@media (prefers-reduced-motion: reduce)": "none",
+    },
+    animationTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+    pointerEvents: "auto",
+    position: "absolute",
+    transform: {
+      [DESKTOP]: "translateY(-50%)",
+      default: "translate(40%, -40%)",
+    },
+    zIndex: 1,
+    left: { [DESKTOP]: `calc(100% + ${gap.md})`, default: "auto" },
+    right: { [DESKTOP]: "auto", default: 0 },
+    top: { [DESKTOP]: "50%", default: 0 },
+  },
+  followFab: {
+    borderColor: "transparent",
+    borderRadius: radius.full,
+    backgroundColor: primaryColor.solid1,
+    boxShadow:
+      "0 1px 1px oklch(0.3 0.03 60 / 0.04), 0 8px 22px -10px oklch(0.3 0.04 60 / 0.22), 0 20px 48px -22px oklch(0.3 0.05 60 / 0.3)",
+    color: primaryColor.textContrast,
+    filter: { default: "none", ":is([data-hovered])": "brightness(1.06)" },
+    transform: { default: "none", ":is([data-pressed])": "scale(0.94)" },
   },
   playBtn: {
     borderColor: "transparent",
@@ -297,6 +337,8 @@ function SeekTrack({
  * loaded into the player. Tapping the title returns to the playing article.
  */
 export function PageReaderBar() {
+  const navigate = useNavigate();
+  const router = useRouter();
   const {
     state,
     active,
@@ -307,6 +349,8 @@ export function PageReaderBar() {
     setRate,
     stop,
     retry,
+    scrollLocked,
+    lockScroll,
   } = usePageReader();
   // While dragging the scrubber we preview the thumb position locally and only
   // commit the seek on release.
@@ -348,7 +392,19 @@ export function PageReaderBar() {
     nowPlaying && nowPlaying.did && nowPlaying.rkey
       ? { did: nowPlaying.did, rkey: nowPlaying.rkey }
       : null;
+  const playingHref = playingParams
+    ? articleSharePath(playingParams.did, playingParams.rkey)
+    : null;
+  const onPlayingArticle =
+    playingHref !== null && router.state.location.pathname === playingHref;
   const title = nowPlaying?.title ?? "";
+
+  const onFollowAlong = () => {
+    if (playingParams && !onPlayingArticle) {
+      void navigate({ to: "/a/$did/$rkey", params: playingParams });
+    }
+    lockScroll();
+  };
 
   const metaInner = (
     <>
@@ -371,97 +427,117 @@ export function PageReaderBar() {
   );
 
   return (
-    <section {...stylex.props(styles.card)} aria-label="Read aloud">
-      <div {...stylex.props(styles.row)}>
-        <div {...stylex.props(styles.now)}>
-          {playingParams ? (
-            <Link
-              to="/a/$did/$rkey"
-              params={playingParams}
-              {...stylex.props(styles.meta)}
+    <div {...stylex.props(styles.cluster)}>
+      <section {...stylex.props(styles.card)} aria-label="Read aloud">
+        <div {...stylex.props(styles.row)}>
+          <div {...stylex.props(styles.now)}>
+            {playingParams ? (
+              <Link
+                to="/a/$did/$rkey"
+                params={playingParams}
+                {...stylex.props(styles.meta)}
+              >
+                {metaInner}
+              </Link>
+            ) : (
+              <div {...stylex.props(styles.meta)}>{metaInner}</div>
+            )}
+          </div>
+
+          <div {...stylex.props(styles.controls)}>
+            <IconButton
+              variant="tertiary"
+              style={styles.roundBtn}
+              aria-label={`Back ${SKIP_SECONDS} seconds`}
+              isDisabled={!transportReady}
+              onPress={() => skip(-SKIP_SECONDS)}
             >
-              {metaInner}
-            </Link>
-          ) : (
-            <div {...stylex.props(styles.meta)}>{metaInner}</div>
-          )}
+              <SkipBack size={18} />
+            </IconButton>
+
+            <IconButton
+              variant="tertiary"
+              size="lg"
+              style={styles.playBtn}
+              aria-label={isError ? "Retry" : isPlaying ? "Pause" : "Play"}
+              isPending={isLoading}
+              onPress={isError ? retry : toggle}
+            >
+              {isError ? (
+                <RotateCcw size={20} />
+              ) : isPlaying ? (
+                <Pause size={20} fill="currentColor" />
+              ) : (
+                <Play size={20} fill="currentColor" />
+              )}
+            </IconButton>
+
+            <Menu
+              placement="top"
+              selectionMode="single"
+              selectedKeys={new Set([rateKey])}
+              disallowEmptySelection
+              onAction={(key) => setRate(Number(key))}
+              trigger={
+                <Button
+                  variant="tertiary"
+                  aria-label={`Playback speed: ${formatRate(state.rate)}`}
+                  style={styles.speedTrigger}
+                >
+                  {formatRate(state.rate)}
+                </Button>
+              }
+            >
+              {SPEED_OPTIONS.map((speed) => (
+                <MenuItem key={speed} id={String(speed)}>
+                  {formatRate(speed)}
+                </MenuItem>
+              ))}
+            </Menu>
+
+            <span {...stylex.props(styles.divider)} aria-hidden />
+
+            <IconButton
+              variant="tertiary"
+              style={styles.roundBtn}
+              aria-label="Stop reading"
+              onPress={stop}
+            >
+              <X size={18} />
+            </IconButton>
+          </div>
         </div>
 
-        <div {...stylex.props(styles.controls)}>
-          <IconButton
-            variant="tertiary"
-            style={styles.roundBtn}
-            aria-label={`Back ${SKIP_SECONDS} seconds`}
-            isDisabled={!transportReady}
-            onPress={() => skip(-SKIP_SECONDS)}
-          >
-            <SkipBack size={18} />
-          </IconButton>
+        <SeekTrack
+          fraction={fraction}
+          disabled={!transportReady || duration <= 0}
+          durationSeconds={duration}
+          currentSeconds={previewTime}
+          onPreview={setScrubValue}
+          onCommit={(seconds) => {
+            setScrubValue(null);
+            seekTo(seconds);
+          }}
+        />
+      </section>
 
+      {!scrollLocked && transportReady ? (
+        <div {...stylex.props(styles.followFabHost)}>
           <IconButton
             variant="tertiary"
             size="lg"
-            style={styles.playBtn}
-            aria-label={isError ? "Retry" : isPlaying ? "Pause" : "Play"}
-            isPending={isLoading}
-            onPress={isError ? retry : toggle}
-          >
-            {isError ? (
-              <RotateCcw size={20} />
-            ) : isPlaying ? (
-              <Pause size={20} fill="currentColor" />
-            ) : (
-              <Play size={20} fill="currentColor" />
-            )}
-          </IconButton>
-
-          <Menu
-            placement="top"
-            selectionMode="single"
-            selectedKeys={new Set([rateKey])}
-            disallowEmptySelection
-            onAction={(key) => setRate(Number(key))}
-            trigger={
-              <Button
-                variant="tertiary"
-                aria-label={`Playback speed: ${formatRate(state.rate)}`}
-                style={styles.speedTrigger}
-              >
-                {formatRate(state.rate)}
-              </Button>
+            style={styles.followFab}
+            aria-label={
+              onPlayingArticle
+                ? "Follow along"
+                : "Return to article and follow along"
             }
+            onPress={onFollowAlong}
           >
-            {SPEED_OPTIONS.map((speed) => (
-              <MenuItem key={speed} id={String(speed)}>
-                {formatRate(speed)}
-              </MenuItem>
-            ))}
-          </Menu>
-
-          <span {...stylex.props(styles.divider)} aria-hidden />
-
-          <IconButton
-            variant="tertiary"
-            style={styles.roundBtn}
-            aria-label="Stop reading"
-            onPress={stop}
-          >
-            <X size={18} />
+            <LocateFixed size={20} />
           </IconButton>
         </div>
-      </div>
-
-      <SeekTrack
-        fraction={fraction}
-        disabled={!transportReady || duration <= 0}
-        durationSeconds={duration}
-        currentSeconds={previewTime}
-        onPreview={setScrubValue}
-        onCommit={(seconds) => {
-          setScrubValue(null);
-          seekTo(seconds);
-        }}
-      />
-    </section>
+      ) : null}
+    </div>
   );
 }

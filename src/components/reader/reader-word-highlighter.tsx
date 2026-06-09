@@ -4,6 +4,7 @@ import type { HighlightMap } from "#/lib/page-reader/word-highlight";
 
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
 import {
+  articleScrollContainers,
   buildHighlightMap,
   clearWordHighlight,
   matchedSentenceCount,
@@ -17,11 +18,22 @@ import { useEffect, useRef } from "react";
 /** Throttle for (re)building the DOM↔sentence map while it isn't ready yet. */
 const BUILD_RETRY_MS = 300;
 
+const SCROLL_UNLOCK_KEYS = new Set([
+  " ",
+  "ArrowDown",
+  "ArrowUp",
+  "End",
+  "Home",
+  "PageDown",
+  "PageUp",
+]);
+
 /**
  * Drives karaoke-style word highlighting for the article that's currently
  * playing. It aligns the engine's narration sentences to this article's DOM and,
- * while playing, moves a CSS highlight to the active word and keeps it in view.
- * Renders nothing.
+ * while playing, moves a CSS highlight to the active word. Auto-scroll follows
+ * the active word until the user scrolls manually; they can re-lock from the
+ * player bar. Renders nothing.
  */
 export function ReaderWordHighlighter({
   rootRef,
@@ -30,7 +42,14 @@ export function ReaderWordHighlighter({
   rootRef: React.RefObject<HTMLElement | null>;
   articleUri: string;
 }) {
-  const { state, nowPlaying, getSentences, getProgress } = usePageReader();
+  const {
+    state,
+    nowPlaying,
+    getSentences,
+    getProgress,
+    scrollLocked,
+    unlockScroll,
+  } = usePageReader();
   const isCurrent = nowPlaying?.uri === articleUri;
   const { status } = state;
 
@@ -38,6 +57,9 @@ export function ReaderWordHighlighter({
   const builtForRef = useRef<ReadonlyArray<string> | null>(null);
   const lastTokenRef = useRef(-1);
   const lastBuildRef = useRef(0);
+  const forceScrollRef = useRef(false);
+  const prevScrollLockedRef = useRef(scrollLocked);
+  const userPointerScrollRef = useRef(false);
 
   // Drop any cached map when the loaded article changes.
   useEffect(() => {
@@ -45,7 +67,70 @@ export function ReaderWordHighlighter({
     builtForRef.current = null;
     lastTokenRef.current = -1;
     lastBuildRef.current = 0;
+    forceScrollRef.current = false;
   }, [isCurrent, articleUri]);
+
+  // Re-lock from the player bar: jump to the active word on the next frame.
+  useEffect(() => {
+    if (scrollLocked && !prevScrollLockedRef.current) {
+      forceScrollRef.current = true;
+    }
+    prevScrollLockedRef.current = scrollLocked;
+  }, [scrollLocked]);
+
+  // Only break auto-follow on user-initiated scroll — not our own follow-into-view.
+  useEffect(() => {
+    if (!isCurrent || status !== "playing" || !scrollLocked) return;
+
+    const root = rootRef.current;
+    if (!root) return;
+
+    const scrollers = articleScrollContainers(root);
+
+    const onUserIntent = () => {
+      unlockScroll();
+    };
+
+    const onPointerDown = () => {
+      userPointerScrollRef.current = true;
+    };
+
+    const onPointerEnd = () => {
+      userPointerScrollRef.current = false;
+    };
+
+    // Scrollbar drags emit scroll events without wheel/touchmove.
+    const onScroll = () => {
+      if (userPointerScrollRef.current) onUserIntent();
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (SCROLL_UNLOCK_KEYS.has(event.key)) onUserIntent();
+    };
+
+    for (const el of scrollers) {
+      el.addEventListener("scroll", onScroll, { passive: true });
+      el.addEventListener("wheel", onUserIntent, { passive: true });
+      el.addEventListener("touchmove", onUserIntent, { passive: true });
+      el.addEventListener("keydown", onKeyDown);
+      el.addEventListener("pointerdown", onPointerDown);
+      el.addEventListener("pointerup", onPointerEnd);
+      el.addEventListener("pointercancel", onPointerEnd);
+    }
+
+    return () => {
+      userPointerScrollRef.current = false;
+      for (const el of scrollers) {
+        el.removeEventListener("scroll", onScroll);
+        el.removeEventListener("wheel", onUserIntent);
+        el.removeEventListener("touchmove", onUserIntent);
+        el.removeEventListener("keydown", onKeyDown);
+        el.removeEventListener("pointerdown", onPointerDown);
+        el.removeEventListener("pointerup", onPointerEnd);
+        el.removeEventListener("pointercancel", onPointerEnd);
+      }
+    };
+  }, [isCurrent, status, scrollLocked, rootRef, unlockScroll]);
 
   // Move the highlight to the active word each frame while playing. The map is
   // built lazily here (once sentences + content are ready, regardless of how
@@ -120,7 +205,10 @@ export function ReaderWordHighlighter({
       if (!run) return;
 
       const tokenIndex = tokenIndexForProgress(run, progress.fraction);
-      if (tokenIndex === lastTokenRef.current) return;
+      const tokenChanged = tokenIndex !== lastTokenRef.current;
+      const shouldFollow =
+        scrollLocked && (tokenChanged || forceScrollRef.current);
+      if (!tokenChanged && !forceScrollRef.current) return;
 
       const range = rangeForToken(map, tokenIndex);
       if (!range) {
@@ -131,7 +219,12 @@ export function ReaderWordHighlighter({
       lastTokenRef.current = tokenIndex;
 
       const root = rootRef.current;
-      if (setWordHighlight(range) && root) scrollWordIntoView(range, root);
+      if (tokenChanged) setWordHighlight(range);
+
+      if (shouldFollow && root) {
+        scrollWordIntoView(range, root);
+        forceScrollRef.current = false;
+      }
     };
 
     frame = requestAnimationFrame(tick);
@@ -140,7 +233,7 @@ export function ReaderWordHighlighter({
       observer?.disconnect();
       if (dirtyTimer !== null) globalThis.clearTimeout(dirtyTimer);
     };
-  }, [isCurrent, status, rootRef, getSentences, getProgress]);
+  }, [isCurrent, status, scrollLocked, rootRef, getSentences, getProgress]);
 
   // Clear the highlight when the article view unmounts.
   useEffect(() => () => clearWordHighlight(), []);

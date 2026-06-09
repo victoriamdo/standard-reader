@@ -278,6 +278,16 @@ export function clearWordHighlight(): void {
   activeHighlight = null;
 }
 
+/** Scroll containers the user may move while reading (inner body + app shell). */
+export function articleScrollContainers(root: HTMLElement): Array<HTMLElement> {
+  const inner = findScrollContainer(root);
+  const outer = root.closest("[data-app-scroller]");
+  if (outer instanceof HTMLElement && outer !== inner) {
+    return [inner, outer];
+  }
+  return [inner];
+}
+
 function findScrollContainer(start: HTMLElement): HTMLElement {
   let node: HTMLElement | null = start;
   while (node) {

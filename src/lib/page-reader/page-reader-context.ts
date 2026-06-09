@@ -36,6 +36,12 @@ export interface PageReaderContextValue {
   seekTo: (seconds: number) => void;
   setRate: (rate: number) => void;
   stop: () => void;
+  /** When true, the article view auto-scrolls to the active word while playing. */
+  scrollLocked: boolean;
+  /** Stop auto-scrolling after the user scrolls manually. */
+  unlockScroll: () => void;
+  /** Re-enable auto-scroll and jump to the active word. */
+  lockScroll: () => void;
 }
 
 export const PageReaderContext = createContext<PageReaderContextValue | null>(

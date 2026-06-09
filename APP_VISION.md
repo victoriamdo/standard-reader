@@ -115,7 +115,8 @@ Sections, top to bottom:
   and a thin draggable seek track (forward-seek rebases synthesis). The
   article's own sticky chrome keeps its scroll-progress bar. While playing, the
   current word is highlighted in place (CSS Custom Highlight API) and kept in
-  view — the engine's narration sentences are aligned word-by-word to the
+  view by default — manual scrolling unlocks follow mode until the user taps
+  "Follow along" on the player bar. The engine's narration sentences are aligned word-by-word to the
   rendered DOM, then the active word is derived from each sentence's audio
   position by distributing the sentence's duration across its characters (Kokoro
   exposes no per-word timestamps in JS, so this is the standard chunk-duration
