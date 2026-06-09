@@ -599,6 +599,17 @@ const styles = stylex.create({
 
 /* ── Follow toggle ──────────────────────────────────────────────────────── */
 
+/** Nested inside {@link PublicationLink} cards — block parent navigation. */
+function stopFollowClick(event: React.MouseEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+/** Signed-out follow links still navigate to login; only isolate from parent. */
+function stopFollowBubble(event: React.MouseEvent) {
+  event.stopPropagation();
+}
+
 export function FollowButton({
   publicationUri,
   signedIn,
@@ -653,6 +664,7 @@ export function FollowButton({
           variant="secondary"
           aria-label="Follow"
           style={styles.followResponsiveIcon}
+          onClick={stopFollowBubble}
         >
           <Plus size={mobileIconSize} aria-hidden />
         </ButtonLink>
@@ -661,6 +673,7 @@ export function FollowButton({
           variant="secondary"
           size={size}
           style={styles.followResponsiveFull}
+          onClick={stopFollowBubble}
         >
           {desktopIcon} Follow
         </ButtonLink>
@@ -689,6 +702,7 @@ export function FollowButton({
         variant={following ? "secondary" : "primary"}
         label={followLabel}
         onPress={onPress}
+        onClick={stopFollowClick}
         style={styles.followResponsiveIcon}
       >
         {icon}
@@ -697,6 +711,7 @@ export function FollowButton({
         variant={following ? "secondary" : "primary"}
         size={size}
         onPress={onPress}
+        onClick={stopFollowClick}
         style={styles.followResponsiveFull}
       >
         {desktopIcon}
@@ -1252,15 +1267,7 @@ function FollowSlot({
   style?: stylex.StyleXStyles;
 }) {
   return (
-    <div
-      role="presentation"
-      {...stylex.props(styles.followSlot, style)}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-      }}
-      onKeyDown={(event) => event.stopPropagation()}
-    >
+    <div role="presentation" {...stylex.props(styles.followSlot, style)}>
       <FollowButton
         publicationUri={publicationUri}
         signedIn={signedIn}
