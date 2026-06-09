@@ -8,6 +8,7 @@ import {
   discoverApi,
 } from "#/integrations/tanstack-query/api-discover.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { formatCount } from "#/lib/format-count";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
 import {
@@ -433,12 +434,14 @@ function Discover() {
         title="Discover"
         dek={
           knownPublicationCount > 0
-            ? `Every publication the network knows about — ${knownPublicationCount} and counting. Follow the ones worth your mornings.`
+            ? `Every publication the network knows about — ${formatCount(knownPublicationCount)} and counting. Follow the ones worth your mornings.`
             : "Every publication the network knows about — follow the ones worth your mornings."
         }
         metaLabel="Known publications"
         metaValue={
-          knownPublicationCount > 0 ? knownPublicationCount : undefined
+          knownPublicationCount > 0
+            ? formatCount(knownPublicationCount)
+            : undefined
         }
       />
 

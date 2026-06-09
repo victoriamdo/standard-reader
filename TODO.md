@@ -168,7 +168,7 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
 
 - [x] App shell: desktop persistent left sidebar; mobile top bar + bottom tab nav; Following list.
 - [x] **Home** — masthead (date + unread count), featured lead, latest unread rows, right rail (Trending articles + You might follow).
-- [x] **Latest** — chronological list, segmented All/Unread filter with counts.
+- [x] **Latest** — chronological list, segmented Unread / Subscriptions / All-network filter with counts (Unread = unread docs from subs, Subscriptions = all docs from subs, All = whole network).
 - [x] **Discover** — Recommended / Followed-by-people-you-follow / Trending / All (chips, sort, grid⇄list toggle).
 - [x] **Search** — editorial field, live results split into Publications + Articles. Route `/search` with URL `?q=`; paginated search APIs with full counts; load more (publications) + infinite scroll (articles); reuses `PubDirectoryRow` + `ArticleRow`.
 - [x] **Article** (reading view) — ~680px measure, drop-cap, pull quotes, hero, sticky bar (back/byline/follow/save/share), reading-progress bar, footer pub card + "More from {publication}". Route `/a/$did/$rkey` (`_layout.a.$did.$rkey.tsx`); feed/profile cards link here; `publicationApi.getArticle` returns core content + Constellation comment count; below-the-fold rails (`moreFrom`, `readersAlsoFollow`) and discussion load client-side via `getArticleExtras` + `commentsApi.getDocumentComments`. Save toggle writes `site.standard.graph.recommend`; like counts on cards + article byline.

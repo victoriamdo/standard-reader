@@ -47,7 +47,7 @@ things you already subscribe to.
 ```
 Sidebar / bottom-nav
 ├── Home        — your day: featured lead + latest unread from follows + rails
-├── Latest      — full chronological list from your follows (All / Unread filter)
+├── Latest      — chronological list (Unread / Subscriptions / All-network tabs)
 ├── Discover    — the directory (THE differentiator)
 ├── Search      — publications, handles, topics, headlines
 └── + Add publication  (modal)
@@ -73,11 +73,15 @@ Detail screens
 
 ### Latest
 
-- Everything recent from followed pubs, newest first.
+- Chronological list, newest first.
 - Posts with a `publishedAt` still in the future are hidden from chronological
   feeds (Home latest rows, Latest, publication recents, trending) until that
   time passes; direct article URLs still work.
-- Segmented filter: **All** vs **Unread** with counts.
+- Segmented filter with counts: **Unread** (unread docs from subscriptions),
+  **Subscriptions** (all docs from subscriptions, the default), and **All**
+  (the whole network — discover-eligible publications).
+- Signed-out readers see the network-wide **All** list (no tabs) with a
+  log-in CTA.
 
 ### Discover (the directory)
 

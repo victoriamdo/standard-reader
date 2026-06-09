@@ -11,6 +11,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { formatCount } from "#/lib/format-count";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
 import { useLoginSearch } from "#/utils/use-login-search";
@@ -44,8 +45,10 @@ import {
 const PAGE_SIZE = 20;
 
 const latestSearchSchema = z.object({
-  filter: z.enum(["all", "unread"]).default("all"),
+  filter: z.enum(["unread", "subscriptions", "all"]).default("subscriptions"),
 });
+
+type LatestFilter = z.infer<typeof latestSearchSchema>["filter"];
 
 export const Route = createFileRoute("/_layout/latest")({
   validateSearch: latestSearchSchema,
@@ -172,7 +175,7 @@ function Latest() {
   });
 
   const onFilterChange = (keys: Set<React.Key> | "all") => {
-    const next = keys === "all" ? "all" : ([...keys][0] as "all" | "unread");
+    const next = keys === "all" ? "all" : ([...keys][0] as LatestFilter);
     void navigate({ search: { filter: next } });
   };
 
@@ -212,84 +215,56 @@ function Latest() {
     return () => observer.disconnect();
   }, [loadMoreFeed, nextOffset]);
 
-  const allLabel = `All (${feed.counts.all})`;
+  const allCount = formatCount(feed.counts.all);
   const unreadLabel = `Unread (${feed.counts.unread})`;
+  const subscriptionsLabel = `Subscriptions (${feed.counts.subscriptions})`;
+  const allLabel = `All (${allCount})`;
 
-  if (!signedIn) {
-    return (
-      <ReaderContent>
-        <Masthead
-          kicker="From your follows"
-          title="Latest"
-          dek="Everything published recently across the publications you follow."
-        />
-        <Flex direction="column" gap="2xl" style={styles.emptyCard}>
-          <span {...stylex.props(styles.emptyTitle)}>
-            Sign in to see your feed
-          </span>
-          <span {...stylex.props(styles.emptyDek)}>
-            Follow publications and their latest writing will collect here,
-            newest first.
-          </span>
-          <Flex>
-            <Link to="/login" search={loginSearch}>
-              <Button>Log in</Button>
-            </Link>
-          </Flex>
-        </Flex>
-      </ReaderContent>
-    );
-  }
+  const isNetwork = !signedIn || filter === "all";
 
-  if (feed.counts.all === 0) {
-    return (
-      <ReaderContent>
-        <Masthead
-          kicker="From your follows"
-          title="Latest"
-          dek="Everything published recently across the publications you follow."
-        />
-        <Flex direction="column" gap="2xl" style={styles.emptyCard}>
-          <span {...stylex.props(styles.emptyTitle)}>Nothing here yet</span>
-          <span {...stylex.props(styles.emptyDek)}>
-            Follow a few publications and their latest writing will show up
-            here.
-          </span>
-          <Flex>
-            <Link to="/discover">
-              <Button>Explore the directory</Button>
-            </Link>
-          </Flex>
-        </Flex>
-      </ReaderContent>
-    );
-  }
-
-  const metaValue =
-    filter === "unread"
+  const metaValue = isNetwork
+    ? `${allCount} articles`
+    : filter === "unread"
       ? `${feed.counts.unread} unread`
-      : `${feed.counts.all} articles`;
+      : `${feed.counts.subscriptions} articles`;
 
   return (
     <ReaderContent>
       <Masthead
-        kicker="From your follows"
+        kicker={isNetwork ? "Across the network" : "From your follows"}
         title="Latest"
-        dek="Everything published recently across the publications you follow."
-        metaLabel="In your feed"
+        dek={
+          isNetwork
+            ? "Everything published recently across the whole network."
+            : "Everything published recently across the publications you follow."
+        }
+        metaLabel={isNetwork ? "On the network" : "In your feed"}
         metaValue={metaValue}
       />
 
       <div {...stylex.props(styles.controls)}>
-        <SegmentedControl
-          selectedKeys={new Set([filter])}
-          onSelectionChange={onFilterChange}
-          size="lg"
-        >
-          <SegmentedControlItem id="all">{allLabel}</SegmentedControlItem>
-          <SegmentedControlItem id="unread">{unreadLabel}</SegmentedControlItem>
-        </SegmentedControl>
-        {filter === "unread" && feed.counts.unread > 0 ? (
+        {signedIn ? (
+          <SegmentedControl
+            selectedKeys={new Set([filter])}
+            onSelectionChange={onFilterChange}
+            size="lg"
+          >
+            <SegmentedControlItem id="unread">
+              {unreadLabel}
+            </SegmentedControlItem>
+            <SegmentedControlItem id="subscriptions">
+              {subscriptionsLabel}
+            </SegmentedControlItem>
+            <SegmentedControlItem id="all">{allLabel}</SegmentedControlItem>
+          </SegmentedControl>
+        ) : (
+          <Flex>
+            <Link to="/login" search={loginSearch}>
+              <Button variant="secondary">Log in to follow publications</Button>
+            </Link>
+          </Flex>
+        )}
+        {signedIn && filter === "unread" && feed.counts.unread > 0 ? (
           <Button
             variant="tertiary"
             size="sm"
@@ -302,20 +277,42 @@ function Latest() {
       </div>
 
       {items.length === 0 ? (
-        <Flex direction="column" gap="2xl" style={styles.emptyCard}>
-          <span {...stylex.props(styles.emptyTitle)}>All caught up</span>
-          <span {...stylex.props(styles.emptyDek)}>
-            No unread articles from your follows right now.
-          </span>
-          <Flex>
-            <Button
-              variant="secondary"
-              onPress={() => onFilterChange(new Set(["all"]))}
-            >
-              Show all articles
-            </Button>
+        isNetwork ? (
+          <Flex direction="column" gap="2xl" style={styles.emptyCard}>
+            <span {...stylex.props(styles.emptyTitle)}>Nothing here yet</span>
+            <span {...stylex.props(styles.emptyDek)}>
+              Nothing has been published across the network recently.
+            </span>
           </Flex>
-        </Flex>
+        ) : feed.counts.subscriptions === 0 ? (
+          <Flex direction="column" gap="2xl" style={styles.emptyCard}>
+            <span {...stylex.props(styles.emptyTitle)}>Nothing here yet</span>
+            <span {...stylex.props(styles.emptyDek)}>
+              Follow a few publications and their latest writing will show up
+              here.
+            </span>
+            <Flex>
+              <Link to="/discover">
+                <Button>Explore the directory</Button>
+              </Link>
+            </Flex>
+          </Flex>
+        ) : (
+          <Flex direction="column" gap="2xl" style={styles.emptyCard}>
+            <span {...stylex.props(styles.emptyTitle)}>All caught up</span>
+            <span {...stylex.props(styles.emptyDek)}>
+              No unread articles from your follows right now.
+            </span>
+            <Flex>
+              <Button
+                variant="secondary"
+                onPress={() => onFilterChange(new Set(["subscriptions"]))}
+              >
+                Show all subscriptions
+              </Button>
+            </Flex>
+          </Flex>
+        )
       ) : (
         <>
           <div>
@@ -323,7 +320,7 @@ function Latest() {
               <ArticleRow
                 key={article.uri}
                 article={article}
-                unread={filter === "unread" || isUnread(article)}
+                unread={signedIn && (filter === "unread" || isUnread(article))}
               />
             ))}
           </div>

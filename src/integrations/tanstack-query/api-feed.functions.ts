@@ -6,6 +6,7 @@ import { observe } from "#/server/observability/log";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
 import {
   countFollowedDocuments,
+  countNetworkDocuments,
   countUnreadByPublication,
   followedPublications,
   popularPublications,
@@ -24,7 +25,7 @@ import { dbMiddleware } from "./db-middleware";
 /**
  * Feed queries (`APP_VISION.md` §5): the signed-in reader's Home (featured lead
  * + latest unread + Trending/You-might-follow rails) and Latest (chronological
- * All/Unread with counts). Reads come from the Neon read-model; personal
+ * Unread/Subscriptions/All-network with counts). Reads come from the Neon read-model; personal
  * unread-state is joined from the reader's own `reads`. Signed-out / cold-start
  * readers fall back to discover-eligible network content + popularity.
  */
@@ -33,10 +34,17 @@ const HOME_ROW_LIMIT = 8;
 const HOME_RAIL_LIMIT = 6;
 
 const latestInput = z.object({
-  filter: z.enum(["all", "unread"]).default("all"),
+  /**
+   * - `unread` — unread documents from the reader's subscriptions
+   * - `subscriptions` — all documents from the reader's subscriptions
+   * - `all` — the whole network (discover-eligible publications)
+   */
+  filter: z.enum(["unread", "subscriptions", "all"]).default("subscriptions"),
   limit: z.number().int().min(1).max(50).default(20),
   offset: z.number().int().min(0).default(0),
 });
+
+export type LatestFilter = z.infer<typeof latestInput>["filter"];
 
 export interface HomeFeed {
   /** Full-width featured lead (newest featured unread, else newest unread). */
@@ -55,7 +63,14 @@ export interface HomeFeed {
 
 export interface LatestFeed {
   items: Array<ArticleCard>;
-  counts: { all: number; unread: number };
+  counts: {
+    /** Unread documents across the reader's subscriptions. */
+    unread: number;
+    /** All documents across the reader's subscriptions. */
+    subscriptions: number;
+    /** All discover-eligible documents across the network. */
+    all: number;
+  };
   /** Offset for the next page, or null when the last page was reached. */
   nextOffset: number | null;
 }
@@ -206,25 +221,31 @@ const getLatestFeed = createServerFn({ method: "GET" })
 
       const session = await getAtprotoSessionForRequest(getRequest());
       const did = session?.did;
-      const followUris = did ? await selectFollowUris(db, schema, did) : [];
-      if (!did || followUris.length === 0) {
-        return {
-          items: [],
-          counts: { all: 0, unread: 0 },
-          nextOffset: null,
-        } satisfies LatestFeed;
-      }
-      span.set("did", did);
+      span.set("did", did ?? null);
 
-      const [items, counts] = await Promise.all([
+      const followUris = did ? await selectFollowUris(db, schema, did) : [];
+      span.set("follows", followUris.length);
+
+      // Signed-out readers always get the network-wide list.
+      const cardQuery =
+        !did || data.filter === "all"
+          ? { discoverOnly: true }
+          : {
+              publicationUris: followUris,
+              unreadForDid: data.filter === "unread" ? did : undefined,
+            };
+
+      const [items, followCounts, networkCount] = await Promise.all([
         selectArticleCards(db, schema, {
-          publicationUris: followUris,
-          unreadForDid: data.filter === "unread" ? did : undefined,
+          ...cardQuery,
           readForDid: did,
           limit: data.limit,
           offset: data.offset,
         }),
-        countFollowedDocuments(db, schema, followUris, did),
+        did
+          ? countFollowedDocuments(db, schema, followUris, did)
+          : Promise.resolve({ all: 0, unread: 0 }),
+        countNetworkDocuments(db, schema),
       ]);
 
       span.set("count", items.length);
@@ -235,7 +256,11 @@ const getLatestFeed = createServerFn({ method: "GET" })
       );
       return {
         items: enrichedItems,
-        counts,
+        counts: {
+          unread: followCounts.unread,
+          subscriptions: followCounts.all,
+          all: networkCount,
+        },
         nextOffset:
           items.length === data.limit ? data.offset + data.limit : null,
       } satisfies LatestFeed;
@@ -250,7 +275,7 @@ function getHomeFeedQueryOptions() {
 }
 
 function getLatestFeedQueryOptions({
-  filter = "all",
+  filter = "subscriptions",
   limit = 20,
   offset = 0,
 }: z.input<typeof latestInput> = {}) {

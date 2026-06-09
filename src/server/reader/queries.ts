@@ -274,6 +274,28 @@ export async function countFollowedDocuments(
   return { all: row?.all ?? 0, unread: row?.unread ?? 0 };
 }
 
+/** Count of discover-eligible documents across the whole network (Latest "All" tab). */
+export async function countNetworkDocuments(
+  db: Db,
+  schema: Schema,
+): Promise<number> {
+  const d = schema.documents;
+  const p = schema.publications;
+  const [row] = await db
+    .select({ count: sql<number>`count(*)`.mapWith(Number) })
+    .from(d)
+    .leftJoin(p, eq(p.uri, d.publicationUri))
+    .where(
+      and(
+        eq(d.deleted, false),
+        documentPublishedNotInFuture(d),
+        isNotNull(d.publicationUri),
+        discoverEligiblePublicationWhere(p),
+      ),
+    );
+  return row?.count ?? 0;
+}
+
 /** Unread document counts keyed by publication AT-URI for a reader's follows. */
 export async function countUnreadByPublication(
   db: Db,
