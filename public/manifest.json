@@ -1,6 +1,7 @@
 {
   "short_name": "Standard Reader",
   "name": "Standard Reader",
+  "description": "A warm reader for standard.site publications on the Atmosphere.",
   "icons": [
     {
       "src": "favicon.svg",

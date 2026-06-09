@@ -21,6 +21,8 @@ import {
 import { ui } from "../design-system/theme/semantic-color.stylex";
 import { PlausibleAnalytics } from "../integrations/plausible/analytics";
 import { user } from "../integrations/tanstack-query/api-user.functions";
+import { getPublicUrlClient } from "../lib/public-url";
+import { siteOgImageUrl, siteSocialMeta } from "../lib/site-metadata";
 import { DEFAULT_THEME_MODE, RESOLVED_SCHEME_SCRIPT } from "../lib/theme";
 import appCss from "../styles.css?url";
 import { saveHandle } from "../utils/saved-handles";
@@ -87,25 +89,32 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       context.queryClient.ensureQueryData(user.getThemePreferenceQueryOptions),
     ]);
   },
-  head: () => ({
-    meta: [
-      { charSet: "utf8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Standard Reader" },
-    ],
-    links: [
-      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400;1,6..72,500&family=Archivo:wght@400;500;600;700;800;900&family=Spline+Sans+Mono:wght@400;500;600&display=swap",
-      },
-      { rel: "stylesheet", href: appCss },
-      import.meta.env.DEV
-        ? { rel: "stylesheet", href: "/virtual:stylex.css" }
-        : null,
-    ].filter((link) => link !== null),
-  }),
+  head: () => {
+    const baseUrl = getPublicUrlClient();
+    return {
+      meta: [
+        { charSet: "utf8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        ...siteSocialMeta({
+          url: baseUrl,
+          ogImage: siteOgImageUrl(baseUrl),
+        }),
+      ],
+      links: [
+        { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+        { rel: "manifest", href: "/manifest.json" },
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400;1,6..72,500&family=Archivo:wght@400;500;600;700;800;900&family=Spline+Sans+Mono:wght@400;500;600&display=swap",
+        },
+        { rel: "stylesheet", href: appCss },
+        import.meta.env.DEV
+          ? { rel: "stylesheet", href: "/virtual:stylex.css" }
+          : null,
+      ].filter((link) => link !== null),
+    };
+  },
   shellComponent: RootDocument,
 });
 
