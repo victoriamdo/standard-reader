@@ -4,6 +4,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createLink, useNavigate } from "@tanstack/react-router";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { useLoginSearch } from "#/utils/use-login-search";
 import { Bookmark, LogOut } from "lucide-react";
 import { Button as AriaButton } from "react-aria-components";
 
@@ -149,6 +150,7 @@ export function NavbarAuth({
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const loginSearch = useLoginSearch();
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -218,7 +220,12 @@ export function NavbarAuth({
 
   return (
     <Flex align="center" gap="sm">
-      <ButtonLink to="/login" variant="secondary" size="md">
+      <ButtonLink
+        to="/login"
+        search={loginSearch}
+        variant="secondary"
+        size="md"
+      >
         Log in
       </ButtonLink>
     </Flex>

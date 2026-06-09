@@ -7,11 +7,7 @@ import { quoteShareApi } from "#/integrations/tanstack-query/api-quote-share.fun
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
-import {
-  buildQuoteOgImageUrl,
-  decodeQuoteParam,
-  truncateQuoteForDisplay,
-} from "#/lib/quote-share";
+import { buildQuoteOgImageUrl, decodeQuoteParam } from "#/lib/quote-share";
 import { useLayoutEffect } from "react";
 import { z } from "zod";
 
@@ -89,22 +85,17 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
     const quote = loaderData?.sharedQuote ?? null;
     const title = article?.title ?? "Article";
     const publicationName = article?.publication?.name;
+    const pageTitle = publicationName ? `${title} · ${publicationName}` : title;
+    const description =
+      article?.description?.trim() ||
+      (publicationName ? `${title} — ${publicationName}` : title);
 
     if (!quote || !article || !match.search.q) {
       return {
-        meta: [
-          {
-            title: publicationName ? `${title} · ${publicationName}` : title,
-          },
-        ],
+        meta: [{ title: pageTitle }],
       };
     }
 
-    const displayQuote = truncateQuoteForDisplay(quote, 120);
-    const pageTitle = `"${displayQuote}" · ${title}`;
-    const description = publicationName
-      ? `${title} — ${publicationName}`
-      : title;
     const baseUrl = getPublicUrlClient();
     const search = `?q=${encodeURIComponent(match.search.q)}`;
     const shareUrl = `${baseUrl}${match.pathname}${search}`;

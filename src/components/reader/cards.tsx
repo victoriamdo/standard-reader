@@ -10,6 +10,7 @@ import { spacing } from "#/design-system/theme/spacing.stylex.tsx";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { parseInternalRoute } from "#/lib/internal-route";
+import { useLoginSearch } from "#/utils/use-login-search";
 import { ArrowRight, Check, Plus } from "lucide-react";
 import { Fragment, useCallback } from "react";
 
@@ -626,6 +627,7 @@ export function FollowButton({
   initialFollowing?: boolean;
 }) {
   const queryClient = useQueryClient();
+  const loginSearch = useLoginSearch();
   const { data: followStatus } = useQuery({
     ...readerApi.getFollowStatusQueryOptions(publicationUri),
     enabled: signedIn,
@@ -661,6 +663,7 @@ export function FollowButton({
       <>
         <ButtonLink
           to="/login"
+          search={loginSearch}
           variant="secondary"
           aria-label="Follow"
           style={styles.followResponsiveIcon}
@@ -670,6 +673,7 @@ export function FollowButton({
         </ButtonLink>
         <ButtonLink
           to="/login"
+          search={loginSearch}
           variant="secondary"
           size={size}
           style={styles.followResponsiveFull}

@@ -11,6 +11,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { useLoginSearch } from "#/utils/use-login-search";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -144,6 +145,7 @@ function Latest() {
 
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
+  const loginSearch = useLoginSearch();
 
   const isUnread = (article: ArticleCard) => signedIn && !article.isRead;
   const unreadItemUris = useMemo(
@@ -230,7 +232,7 @@ function Latest() {
             newest first.
           </span>
           <Flex>
-            <Link to="/login">
+            <Link to="/login" search={loginSearch}>
               <Button>Log in</Button>
             </Link>
           </Flex>

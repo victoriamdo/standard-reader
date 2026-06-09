@@ -5,6 +5,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, redirect } from "@tanstack/react-router";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { buildAuthRedirectPath } from "#/utils/auth-redirect";
 import { Bookmark } from "lucide-react";
 
 import { ArticleRow } from "../components/reader/cards";
@@ -37,7 +38,10 @@ export const Route = createFileRoute("/_layout/likes")({
       user.getSessionQueryOptions,
     );
     if (!session?.user) {
-      throw redirect({ to: "/login", search: { redirect: "/likes" } });
+      throw redirect({
+        to: "/login",
+        search: { redirect: buildAuthRedirectPath("/likes") },
+      });
     }
   },
   loader: async ({ context }) => {

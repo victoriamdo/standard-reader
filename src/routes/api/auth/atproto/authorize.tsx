@@ -15,6 +15,7 @@ export const Route = createFileRoute("/api/auth/atproto/authorize")({
     if (!handleParam) {
       throw redirect({
         to: "/login",
+        ...(search.redirect ? { search: { redirect: search.redirect } } : {}),
       });
     }
 

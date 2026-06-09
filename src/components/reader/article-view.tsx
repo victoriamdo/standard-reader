@@ -20,6 +20,7 @@ import {
   Bookmark,
   ExternalLink,
   Headphones,
+  Heart,
   Share2,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -27,12 +28,21 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ArticleCard } from "../../integrations/tanstack-query/api-shapes";
 
 import { Avatar } from "../../design-system/avatar";
+import { Button } from "../../design-system/button";
 import { Flex } from "../../design-system/flex";
 import { IconButton } from "../../design-system/icon-button";
 import { animationDuration } from "../../design-system/theme/animations.stylex";
-import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
+import {
+  criticalColor,
+  primaryColor,
+  uiColor,
+} from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
-import { gap } from "../../design-system/theme/semantic-spacing.stylex";
+import {
+  gap,
+  horizontalSpace,
+  verticalSpace,
+} from "../../design-system/theme/semantic-spacing.stylex";
 import { spacing } from "../../design-system/theme/spacing.stylex";
 import {
   fontFamily,
@@ -54,6 +64,7 @@ import {
   documentLinkParams,
   formatArticleReadStats,
   formatDate,
+  formatReaders,
   formatReadingTime,
   initials,
   publicationLinkParams,
@@ -70,6 +81,7 @@ import {
 import { QuoteShareLayer } from "./quote-share-layer";
 import { applyMarkReadOptimisticUpdate } from "./read-optimistic";
 import { ReaderWordHighlighter } from "./reader-word-highlighter";
+import { useArticleRecommend } from "./use-article-recommend";
 
 const MEASURE = "80ch";
 
@@ -385,6 +397,81 @@ const styles = stylex.create({
   bookmarkActive: {
     color: primaryColor.text2,
   },
+  likePrompt: {
+    gap: gap["2xl"],
+    alignItems: "center",
+    display: "flex",
+    flexDirection: "column",
+    textAlign: "center",
+    borderTopColor: uiColor.border1,
+    borderTopStyle: "solid",
+    borderTopWidth: 1,
+    marginTop: spacing["14"],
+    paddingBottom: spacing["7"],
+    paddingTop: spacing["10"],
+  },
+  likePromptTitle: {
+    margin: spacing["0"],
+    color: uiColor.text2,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize["2xl"],
+    fontStyle: "italic",
+    fontWeight: fontWeight.semibold,
+    lineHeight: lineHeight.sm,
+  },
+  likePromptSubtext: {
+    margin: spacing["0"],
+    color: uiColor.text1,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.lg,
+    lineHeight: lineHeight.base,
+    maxWidth: "42ch",
+  },
+  likeButton: {
+    borderColor: uiColor.border1,
+    borderRadius: radius.full,
+    borderStyle: "solid",
+    borderWidth: 1,
+    gap: gap.lg,
+    alignItems: "center",
+    backgroundColor: uiColor.bg,
+    display: "inline-flex",
+    transitionDuration: animationDuration.fast,
+    transitionProperty: "background-color, border-color, color",
+    transitionTimingFunction: "ease-in-out",
+    paddingBottom: verticalSpace.md,
+    paddingLeft: horizontalSpace["2xl"],
+    paddingRight: horizontalSpace["2xl"],
+    paddingTop: verticalSpace.md,
+  },
+  likeButtonActive: {
+    borderColor: criticalColor.border1,
+    backgroundColor: criticalColor.bgSubtle,
+  },
+  likeButtonHeart: {
+    color: criticalColor.solid1,
+    flexShrink: 0,
+  },
+  likeButtonLabel: {
+    color: uiColor.text2,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+  },
+  likeButtonDivider: {
+    alignSelf: "stretch",
+    borderLeftColor: uiColor.border1,
+    borderLeftStyle: "solid",
+    borderLeftWidth: 1,
+    width: spacing["0"],
+  },
+  likeButtonCount: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.normal,
+    minWidth: spacing["6"],
+  },
 });
 
 function articleTopic(article: ArticleDetail): string | null {
@@ -440,52 +527,65 @@ function ArticleFollowButtonMd({
 }
 
 function BookmarkButton({
-  documentUri,
-  signedIn,
-  initialRecommended = false,
+  recommended,
+  onToggle,
 }: {
-  documentUri: string;
-  signedIn: boolean;
-  initialRecommended?: boolean;
+  recommended: boolean;
+  onToggle: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const [recommended, setRecommended] = useState(initialRecommended);
-  const recommendMutation = useMutation(
-    readerApi.recommendDocumentMutationOptions(),
-  );
-  const unrecommendMutation = useMutation(
-    readerApi.unrecommendDocumentMutationOptions(),
-  );
-
-  const onPress = () => {
-    if (!signedIn) return;
-    const next = !recommended;
-    setRecommended(next);
-    const mutation = next ? recommendMutation : unrecommendMutation;
-    mutation.mutate(documentUri, {
-      onError: () => setRecommended(!next),
-      onSettled: () => {
-        void queryClient.invalidateQueries({
-          queryKey: ["reader", "recommendStatus", documentUri],
-        });
-        void queryClient.invalidateQueries({
-          queryKey: ["article", documentUri],
-        });
-      },
-    });
-  };
-
   return (
     <IconButton
       variant="secondary"
       size="md"
       label={recommended ? "Saved" : "Save"}
-      onPress={onPress}
-      isDisabled={!signedIn}
+      onPress={onToggle}
       style={recommended ? styles.bookmarkActive : undefined}
     >
       <Bookmark size={18} fill={recommended ? "currentColor" : "none"} />
     </IconButton>
+  );
+}
+
+function ArticleLikePrompt({
+  recommended,
+  onToggle,
+  recommendCount,
+}: {
+  recommended: boolean;
+  onToggle: () => void;
+  recommendCount: number;
+}) {
+  return (
+    <div {...stylex.props(styles.likePrompt)}>
+      <h2 {...stylex.props(styles.likePromptTitle)}>
+        Did this piece stay with you?
+      </h2>
+      <p {...stylex.props(styles.likePromptSubtext)}>
+        Give it a heart — Standard Reader surfaces well-loved writing to more
+        readers across the network.
+      </p>
+      <Button
+        variant="secondary"
+        aria-pressed={recommended}
+        onPress={onToggle}
+        style={[styles.likeButton, recommended && styles.likeButtonActive]}
+      >
+        <span {...stylex.props(styles.likeButtonHeart)}>
+          <Heart
+            size={18}
+            strokeWidth={2}
+            fill={recommended ? "currentColor" : "none"}
+          />
+        </span>
+        <span {...stylex.props(styles.likeButtonLabel)}>
+          {recommended ? "Liked" : "Like this article"}
+        </span>
+        <span aria-hidden {...stylex.props(styles.likeButtonDivider)} />
+        <span {...stylex.props(styles.likeButtonCount)}>
+          {formatReaders(recommendCount)}
+        </span>
+      </Button>
+    </div>
   );
 }
 
@@ -643,8 +743,9 @@ function ArticleViewBody({
   const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
 
-  const { data: recommend } = useSuspenseQuery(
-    readerApi.getRecommendStatusQueryOptions(article.uri),
+  const { recommended, toggle: toggleRecommend } = useArticleRecommend(
+    article.uri,
+    signedIn,
   );
 
   const readStats = formatArticleReadStats(article.readCount);
@@ -783,9 +884,8 @@ function ArticleViewBody({
               </IconButton>
             ) : null}
             <BookmarkButton
-              documentUri={article.uri}
-              signedIn={signedIn}
-              initialRecommended={recommend?.isRecommended ?? false}
+              recommended={recommended}
+              onToggle={toggleRecommend}
             />
             <IconButton
               variant="secondary"
@@ -901,6 +1001,12 @@ function ArticleViewBody({
             />
           )}
 
+          <ArticleLikePrompt
+            recommended={recommended}
+            onToggle={toggleRecommend}
+            recommendCount={article.recommendCount}
+          />
+
           {pub ? (
             <div {...stylex.props(styles.foot)}>
               <PublicationAvatar pub={pub} size="lg" />
@@ -947,10 +1053,10 @@ function ArticleViewBody({
             <Flex direction="column">
               <SectionHead kicker="Discover" title="You might follow" />
               <div>
-                {article.readersAlsoFollow.map((recommended, i, pubs) => (
+                {article.readersAlsoFollow.map((suggestedPub, i, pubs) => (
                   <MiniPubRow
-                    key={recommended.uri}
-                    pub={recommended}
+                    key={suggestedPub.uri}
+                    pub={suggestedPub}
                     isLast={i === pubs.length - 1}
                   />
                 ))}
