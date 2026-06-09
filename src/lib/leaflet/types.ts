@@ -19,6 +19,7 @@ export const LEAFLET_BLOCK = {
   image: "pub.leaflet.blocks.image",
   code: "pub.leaflet.blocks.code",
   iframe: "pub.leaflet.blocks.iframe",
+  website: "pub.leaflet.blocks.website",
 } as const;
 
 export const LEAFLET_PAGE = {
@@ -89,6 +90,13 @@ export interface LeafletIframeBlock {
   aspectRatio?: LeafletImageAspectRatio;
 }
 
+export interface LeafletWebsiteBlock {
+  $type?: string;
+  url?: string;
+  title?: string;
+  description?: string;
+}
+
 export interface LeafletListItem {
   $type?: string;
   content?: LeafletTextBlock | Record<string, unknown>;
@@ -119,6 +127,7 @@ export type LeafletRenderableBlock =
   | { kind: "image"; block: LeafletImageBlock }
   | { kind: "code"; block: LeafletCodeBlock }
   | { kind: "iframe"; block: LeafletIframeBlock }
+  | { kind: "website"; block: LeafletWebsiteBlock }
   | { kind: "unknown"; blockType: string };
 
 export interface LeafletPageBlock {

@@ -10,6 +10,7 @@ import type {
   LeafletRenderableBlock,
   LeafletTextBlock,
   LeafletUnorderedListBlock,
+  LeafletWebsiteBlock,
 } from "./types";
 
 import { LEAFLET_BLOCK, LEAFLET_CONTENT, LEAFLET_PAGE } from "./types";
@@ -23,6 +24,11 @@ function unwrapPageBlock(entry: unknown): Record<string, unknown> | null {
   if (entry.$type === LEAFLET_PAGE.linearDocumentBlock) {
     const inner = entry.block;
     return isRecord(inner) ? inner : null;
+  }
+  // Skyreader linkblogs nest blocks under `block` without the page wrapper $type.
+  const nested = entry.block;
+  if (isRecord(nested) && typeof nested.$type === "string") {
+    return nested;
   }
   return entry;
 }
@@ -113,6 +119,15 @@ function asRenderableBlock(value: unknown): LeafletRenderableBlock | null {
   const iframe = asIframeBlock(value);
   if (iframe) return { kind: "iframe", block: iframe };
 
+  if (value.$type === LEAFLET_BLOCK.website) {
+    const url = typeof value.url === "string" ? value.url : null;
+    if (!url) return null;
+    return {
+      kind: "website",
+      block: value as unknown as LeafletWebsiteBlock,
+    };
+  }
+
   if (value.$type === LEAFLET_BLOCK.horizontalRule) {
     return { kind: "horizontalRule" };
   }
@@ -195,6 +210,14 @@ export function plaintextLinesFromBlock(
       const uri = block.block.postRef?.uri;
       const text = uri ? bskyPostText?.get(uri) : undefined;
       return text ? [text] : [];
+    }
+    case "website": {
+      const title = block.block.title?.trim();
+      const description = block.block.description?.trim();
+      const lines: Array<string> = [];
+      if (title) lines.push(title);
+      if (description) lines.push(description);
+      return lines;
     }
     case "horizontalRule":
     case "image":

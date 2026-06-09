@@ -11,7 +11,6 @@ const OFFPRINT_SUPPORTED = new Set<string>(Object.values(OFFPRINT_BLOCK));
 
 /** Leaflet block types in the spec but not yet rendered in the reader. */
 export const LEAFLET_KNOWN_UNSUPPORTED = [
-  "pub.leaflet.blocks.website",
   "pub.leaflet.blocks.math",
   "pub.leaflet.blocks.button",
   "pub.leaflet.blocks.poll",

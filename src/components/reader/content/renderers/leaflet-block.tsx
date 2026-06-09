@@ -20,6 +20,7 @@ import { HorizontalRuleView } from "./shared/horizontal-rule";
 import { IframeEmbedView } from "./shared/iframe-embed";
 import { ImageFigureView } from "./shared/image-figure";
 import { UnknownBlockView } from "./shared/unknown-block";
+import { StructuredWebsiteView } from "./structured-views";
 
 export function LeafletBlockView({
   block,
@@ -105,6 +106,17 @@ export function LeafletBlockView({
         <IframeEmbedView
           url={block.block.url ?? ""}
           aspectRatio={block.block.aspectRatio}
+        />
+      );
+    }
+    case "website": {
+      const url = block.block.url?.trim();
+      if (!url) return null;
+      return (
+        <StructuredWebsiteView
+          src={url}
+          title={block.block.title}
+          description={block.block.description}
         />
       );
     }

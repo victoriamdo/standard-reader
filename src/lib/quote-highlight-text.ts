@@ -145,6 +145,11 @@ function appendLeafletRenderedText(
       appendText(parts, block.block.plaintext);
       return;
     }
+    case "website": {
+      appendText(parts, block.block.title);
+      appendText(parts, block.block.description);
+      return;
+    }
     case "horizontalRule":
     case "bskyPost":
     case "image":
