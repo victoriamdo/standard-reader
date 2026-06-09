@@ -38,7 +38,18 @@ export const publicationStats = pgTable(
     subscribers7d: integer("subscribers_7d").notNull().default(0),
     recommends7d: integer("recommends_7d").notNull().default(0),
 
-    /** Computed ranking score for trending (new docs + follow velocity). */
+    /** Prior-window counts for velocity (days 7–14 ago). */
+    documentsPrev7d: integer("documents_prev_7d").notNull().default(0),
+    subscribersPrev7d: integer("subscribers_prev_7d").notNull().default(0),
+    recommendsPrev7d: integer("recommends_prev_7d").notNull().default(0),
+
+    /** Sum of Constellation backlink counts on recent in-window documents. */
+    backlinks7d: integer("backlinks_7d").notNull().default(0),
+
+    /** Acceleration: recent-window activity minus prior-window activity. */
+    trendingVelocity: doublePrecision("trending_velocity").notNull().default(0),
+
+    /** Computed ranking score for trending (normalized blend). */
     trendingScore: doublePrecision("trending_score").notNull().default(0),
     /** Start of the window the rolling counts were computed over. */
     trendingWindowStart: timestamp("trending_window_start", {

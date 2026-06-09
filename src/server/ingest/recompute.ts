@@ -1,27 +1,42 @@
 import { hasRenderableArticleBody } from "#/lib/document/renderable";
 import { documentSearchText } from "#/lib/document/search-text";
+import { EXCLUDED_PUBLICATION_URL_PATTERN } from "#/lib/publication/exclusions";
+import {
+  ARTICLE_BLEND,
+  BACKLINK_SYNC_CONCURRENCY,
+  MIN_ARTICLE_RECOMMENDERS,
+  PUBLICATION_BLEND,
+  PUBLICATION_PRIOR_WINDOW_DAYS,
+  PUBLICATION_RECENT_WINDOW_DAYS,
+  TRENDING_MAX_AGE_DAYS,
+} from "#/server/reader/trending-scoring";
 import { and, asc, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { db } from "../../db/index.ts";
 import { documents, publications } from "../../db/schema.ts";
 import { getBlobUrl } from "../atproto/blob.ts";
+import { getBacklinkCountForTarget } from "../atproto/constellation.ts";
 import { resolveIdentity } from "../atproto/identity.ts";
 import { reconcileDocumentDup, reconcilePublicationGroup } from "./handlers.ts";
 
 /**
  * Recompute the derived per-publication aggregates (subscriber/document/
- * recommend counts, freshness, rolling-window activity, trending score).
- *
- * Cheap to run periodically (cron) or after a backfill. The rolling window
- * (7 days) and trending weights are intentionally simple/tunable starting
- * points, per the discovery-engine plan.
+ * recommend counts, freshness, rolling-window activity, normalized trending
+ * score). Distinct recommenders exclude self-recommends; velocity compares
+ * recent vs prior windows; trending_score is a z-score blend.
  */
 export async function recomputePublicationStats(): Promise<void> {
+  const recentDays = PUBLICATION_RECENT_WINDOW_DAYS;
+  const priorDays = PUBLICATION_PRIOR_WINDOW_DAYS;
+  const totalWindow = recentDays + priorDays;
+
   await db.execute(sql`
     INSERT INTO publication_stats (
       publication_uri, subscriber_count, document_count, recommend_count,
       last_document_at, documents_7d, subscribers_7d, recommends_7d,
-      trending_score, trending_window_start, recomputed_at
+      documents_prev_7d, subscribers_prev_7d, recommends_prev_7d,
+      backlinks_7d, trending_velocity, trending_score,
+      trending_window_start, recomputed_at
     )
     SELECT
       p.uri,
@@ -32,16 +47,25 @@ export async function recomputePublicationStats(): Promise<void> {
       coalesce(d.cnt7, 0),
       coalesce(s.cnt7, 0),
       coalesce(r.cnt7, 0),
-      (coalesce(d.cnt7, 0) * 3.0 + coalesce(s.cnt7, 0) * 2.0 + coalesce(r.cnt7, 0) * 1.0),
-      now() - interval '7 days',
+      coalesce(d.cnt_prev7, 0),
+      coalesce(s.cnt_prev7, 0),
+      coalesce(r.cnt_prev7, 0),
+      coalesce(bl.backlinks, 0),
+      0,
+      0,
+      now() - (${recentDays}::text || ' days')::interval,
       now()
     FROM publications p
     LEFT JOIN (
       SELECT publication_uri,
-             count(*) AS cnt,
-             count(*) FILTER (
-               WHERE coalesce(created_at, indexed_at) > now() - interval '7 days'
-             ) AS cnt7
+             count(DISTINCT subscriber_did) AS cnt,
+             count(DISTINCT subscriber_did) FILTER (
+               WHERE coalesce(created_at, indexed_at) > now() - (${recentDays}::text || ' days')::interval
+             ) AS cnt7,
+             count(DISTINCT subscriber_did) FILTER (
+               WHERE coalesce(created_at, indexed_at) > now() - (${totalWindow}::text || ' days')::interval
+                 AND coalesce(created_at, indexed_at) <= now() - (${recentDays}::text || ' days')::interval
+             ) AS cnt_prev7
       FROM subscriptions
       WHERE deleted = false
       GROUP BY publication_uri
@@ -51,23 +75,43 @@ export async function recomputePublicationStats(): Promise<void> {
              count(*) AS cnt,
              max(published_at) AS last_at,
              count(*) FILTER (
-               WHERE published_at > now() - interval '7 days'
-             ) AS cnt7
+               WHERE published_at > now() - (${recentDays}::text || ' days')::interval
+             ) AS cnt7,
+             count(*) FILTER (
+               WHERE published_at > now() - (${totalWindow}::text || ' days')::interval
+                 AND published_at <= now() - (${recentDays}::text || ' days')::interval
+             ) AS cnt_prev7
       FROM documents
       WHERE deleted = false AND publication_uri IS NOT NULL
       GROUP BY publication_uri
     ) d ON d.publication_uri = p.uri
     LEFT JOIN (
       SELECT doc.publication_uri,
-             count(*) AS cnt,
-             count(*) FILTER (
-               WHERE coalesce(rc.created_at, rc.indexed_at) > now() - interval '7 days'
-             ) AS cnt7
+             count(DISTINCT rc.recommender_did) AS cnt,
+             count(DISTINCT rc.recommender_did) FILTER (
+               WHERE coalesce(rc.created_at, rc.indexed_at) > now() - (${recentDays}::text || ' days')::interval
+             ) AS cnt7,
+             count(DISTINCT rc.recommender_did) FILTER (
+               WHERE coalesce(rc.created_at, rc.indexed_at) > now() - (${totalWindow}::text || ' days')::interval
+                 AND coalesce(rc.created_at, rc.indexed_at) <= now() - (${recentDays}::text || ' days')::interval
+             ) AS cnt_prev7
       FROM recommends rc
       JOIN documents doc ON doc.uri = rc.document_uri
-      WHERE rc.deleted = false AND doc.publication_uri IS NOT NULL
+      WHERE rc.deleted = false
+        AND doc.deleted = false
+        AND doc.publication_uri IS NOT NULL
+        AND rc.recommender_did <> doc.did
       GROUP BY doc.publication_uri
     ) r ON r.publication_uri = p.uri
+    LEFT JOIN (
+      SELECT publication_uri,
+             coalesce(sum(backlink_count), 0)::int AS backlinks
+      FROM documents
+      WHERE deleted = false
+        AND publication_uri IS NOT NULL
+        AND published_at > now() - (${TRENDING_MAX_AGE_DAYS}::text || ' days')::interval
+      GROUP BY publication_uri
+    ) bl ON bl.publication_uri = p.uri
     WHERE p.deleted = false
     ON CONFLICT (publication_uri) DO UPDATE SET
       subscriber_count = EXCLUDED.subscriber_count,
@@ -77,9 +121,243 @@ export async function recomputePublicationStats(): Promise<void> {
       documents_7d = EXCLUDED.documents_7d,
       subscribers_7d = EXCLUDED.subscribers_7d,
       recommends_7d = EXCLUDED.recommends_7d,
-      trending_score = EXCLUDED.trending_score,
+      documents_prev_7d = EXCLUDED.documents_prev_7d,
+      subscribers_prev_7d = EXCLUDED.subscribers_prev_7d,
+      recommends_prev_7d = EXCLUDED.recommends_prev_7d,
+      backlinks_7d = EXCLUDED.backlinks_7d,
       trending_window_start = EXCLUDED.trending_window_start,
       recomputed_at = EXCLUDED.recomputed_at
+  `);
+
+  const wDoc = PUBLICATION_BLEND.documents;
+  const wSub = PUBLICATION_BLEND.subscribers;
+  const wRec = PUBLICATION_BLEND.recommends;
+  const wBl = PUBLICATION_BLEND.backlinks;
+  const wVel = PUBLICATION_BLEND.velocity;
+
+  await db.execute(sql`
+    WITH base AS (
+      SELECT publication_uri,
+        ln(1 + documents_7d::float8) AS doc_ln,
+        ln(1 + subscribers_7d::float8) AS sub_ln,
+        ln(1 + recommends_7d::float8) AS rec_ln,
+        ln(1 + backlinks_7d::float8) AS bl_ln,
+        (documents_7d + subscribers_7d + recommends_7d)::float8
+          - (documents_prev_7d + subscribers_prev_7d + recommends_prev_7d)::float8 AS vel_raw
+      FROM publication_stats
+    ),
+    stats AS (
+      SELECT
+        avg(doc_ln) AS doc_avg,
+        nullif(stddev_pop(doc_ln), 0) AS doc_std,
+        avg(sub_ln) AS sub_avg,
+        nullif(stddev_pop(sub_ln), 0) AS sub_std,
+        avg(rec_ln) AS rec_avg,
+        nullif(stddev_pop(rec_ln), 0) AS rec_std,
+        avg(bl_ln) AS bl_avg,
+        nullif(stddev_pop(bl_ln), 0) AS bl_std,
+        avg(vel_raw) AS vel_avg,
+        nullif(stddev_pop(vel_raw), 0) AS vel_std
+      FROM base
+    ),
+    scored AS (
+      SELECT b.publication_uri,
+        b.vel_raw,
+        CASE WHEN s.doc_std IS NULL THEN 0
+             ELSE (b.doc_ln - s.doc_avg) / s.doc_std END AS z_doc,
+        CASE WHEN s.sub_std IS NULL THEN 0
+             ELSE (b.sub_ln - s.sub_avg) / s.sub_std END AS z_sub,
+        CASE WHEN s.rec_std IS NULL THEN 0
+             ELSE (b.rec_ln - s.rec_avg) / s.rec_std END AS z_rec,
+        CASE WHEN s.bl_std IS NULL THEN 0
+             ELSE (b.bl_ln - s.bl_avg) / s.bl_std END AS z_bl,
+        CASE WHEN s.vel_std IS NULL THEN 0
+             ELSE (b.vel_raw - s.vel_avg) / s.vel_std END AS z_vel
+      FROM base b
+      CROSS JOIN stats s
+    )
+    UPDATE publication_stats ps
+    SET trending_velocity = sc.vel_raw,
+        trending_score = (
+          sc.z_doc * ${wDoc} + sc.z_sub * ${wSub} + sc.z_rec * ${wRec}
+          + sc.z_bl * ${wBl} + sc.z_vel * ${wVel}
+        ),
+        recomputed_at = now()
+    FROM scored sc
+    WHERE ps.publication_uri = sc.publication_uri
+  `);
+}
+
+/**
+ * Sync Constellation backlink totals for recent discover-eligible documents.
+ * Best-effort; failures are non-fatal.
+ */
+export async function recomputeDocumentBacklinks(): Promise<number> {
+  const rows = await db.execute<{ uri: string; canonical_url: string }>(sql`
+    SELECT d.uri, d.canonical_url AS "canonical_url"
+    FROM documents d
+    JOIN publications p ON p.uri = d.publication_uri
+    WHERE d.deleted = false
+      AND p.deleted = false
+      AND p.show_in_discover = true
+      AND p.url NOT ILIKE ${EXCLUDED_PUBLICATION_URL_PATTERN}
+      AND d.canonical_url IS NOT NULL
+      AND d.published_at > now() - (${TRENDING_MAX_AGE_DAYS}::text || ' days')::interval
+  `);
+
+  const targets = rows.rows.filter(
+    (row): row is { uri: string; canonical_url: string } =>
+      typeof row.uri === "string" && typeof row.canonical_url === "string",
+  );
+
+  let updated = 0;
+  let cursor = 0;
+  const concurrency = Math.min(BACKLINK_SYNC_CONCURRENCY, targets.length || 1);
+
+  async function worker(): Promise<void> {
+    while (cursor < targets.length) {
+      const row = targets[cursor++];
+      const count = await getBacklinkCountForTarget(row.canonical_url);
+      await db.execute(sql`
+        UPDATE documents
+        SET backlink_count_prev = backlink_count,
+            backlink_count = ${count},
+            backlink_synced_at = now(),
+            updated_at = now()
+        WHERE uri = ${row.uri}
+      `);
+      updated++;
+    }
+  }
+
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+
+  return updated;
+}
+
+/**
+ * Precompute per-document trending scores for the recency-gated candidate set.
+ * Articles below the distinct-recommender floor get score 0.
+ */
+export async function recomputeDocumentTrending(): Promise<void> {
+  const maxAge = TRENDING_MAX_AGE_DAYS;
+  const minRecs = MIN_ARTICLE_RECOMMENDERS;
+  const wRec = ARTICLE_BLEND.recommends;
+  const wRecVel = ARTICLE_BLEND.recommendVelocity;
+  const wFresh = ARTICLE_BLEND.freshness;
+  const wBl = ARTICLE_BLEND.backlinks;
+  const wBlVel = ARTICLE_BLEND.backlinkVelocity;
+  const wPub = ARTICLE_BLEND.parentPublication;
+
+  await db.execute(sql`
+    UPDATE documents d
+    SET trending_score = 0,
+        distinct_recommender_count = 0,
+        trending_recomputed_at = now()
+    WHERE d.deleted = false
+      AND d.publication_uri IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM publications p
+        WHERE p.uri = d.publication_uri
+          AND p.deleted = false
+          AND p.show_in_discover = true
+          AND p.url NOT ILIKE ${EXCLUDED_PUBLICATION_URL_PATTERN}
+          AND d.published_at > now() - (${maxAge}::text || ' days')::interval
+      )
+  `);
+
+  await db.execute(sql`
+    WITH eligible AS (
+      SELECT d.uri,
+             d.published_at,
+             d.backlink_count,
+             d.backlink_count_prev,
+             coalesce(st.trending_score, 0)::float8 AS pub_score
+      FROM documents d
+      JOIN publications p ON p.uri = d.publication_uri
+      LEFT JOIN publication_stats st ON st.publication_uri = p.uri
+      WHERE d.deleted = false
+        AND p.deleted = false
+        AND p.show_in_discover = true
+        AND p.url NOT ILIKE ${EXCLUDED_PUBLICATION_URL_PATTERN}
+        AND d.published_at > now() - (${maxAge}::text || ' days')::interval
+    ),
+    rec AS (
+      SELECT rc.document_uri,
+        count(DISTINCT rc.recommender_did) AS distinct_cnt,
+        coalesce(sum(
+          exp(-ln(2) * extract(epoch from (now() - coalesce(rc.created_at, rc.indexed_at)))
+              / 3600.0 / 30.0)
+        ) FILTER (
+          WHERE coalesce(rc.created_at, rc.indexed_at)
+            > now() - (${maxAge}::text || ' days')::interval
+        ), 0)::float8 AS decay_sum,
+        count(DISTINCT rc.recommender_did) FILTER (
+          WHERE coalesce(rc.created_at, rc.indexed_at) > now() - interval '24 hours'
+        ) AS recent24,
+        count(DISTINCT rc.recommender_did) FILTER (
+          WHERE coalesce(rc.created_at, rc.indexed_at) > now() - interval '48 hours'
+            AND coalesce(rc.created_at, rc.indexed_at) <= now() - interval '24 hours'
+        ) AS prev24
+      FROM recommends rc
+      JOIN documents doc ON doc.uri = rc.document_uri
+      WHERE rc.deleted = false
+        AND rc.recommender_did <> doc.did
+      GROUP BY rc.document_uri
+    ),
+    raw AS (
+      SELECT e.uri,
+        coalesce(r.distinct_cnt, 0)::int AS distinct_cnt,
+        coalesce(r.decay_sum, 0)::float8 AS decay_sum,
+        (coalesce(r.recent24, 0) - coalesce(r.prev24, 0))::float8 AS rec_vel,
+        exp(-ln(2) * extract(epoch from (now() - e.published_at)) / 3600.0 / 30.0)::float8 AS freshness,
+        e.backlink_count::float8 AS bl,
+        greatest(e.backlink_count - e.backlink_count_prev, 0)::float8 AS bl_vel,
+        e.pub_score
+      FROM eligible e
+      LEFT JOIN rec r ON r.document_uri = e.uri
+    ),
+    stats AS (
+      SELECT
+        coalesce(avg(ln(1 + decay_sum)), 0) AS rec_avg,
+        coalesce(nullif(stddev_pop(ln(1 + decay_sum)), 0), 1) AS rec_std,
+        coalesce(avg(rec_vel), 0) AS rec_vel_avg,
+        coalesce(nullif(stddev_pop(rec_vel), 0), 1) AS rec_vel_std,
+        coalesce(avg(freshness), 0) AS fresh_avg,
+        coalesce(nullif(stddev_pop(freshness), 0), 1) AS fresh_std,
+        coalesce(avg(ln(1 + bl)), 0) AS bl_avg,
+        coalesce(nullif(stddev_pop(ln(1 + bl)), 0), 1) AS bl_std,
+        coalesce(avg(ln(1 + bl_vel)), 0) AS bl_vel_avg,
+        coalesce(nullif(stddev_pop(ln(1 + bl_vel)), 0), 1) AS bl_vel_std,
+        coalesce(avg(pub_score), 0) AS pub_avg,
+        coalesce(nullif(stddev_pop(pub_score), 0), 1) AS pub_std,
+        count(*) FILTER (WHERE distinct_cnt >= ${minRecs}) AS qualifying
+      FROM raw
+    ),
+    scored AS (
+      SELECT r.uri,
+        r.distinct_cnt,
+        CASE
+          WHEN r.distinct_cnt < ${minRecs} THEN 0
+          WHEN s.qualifying = 0 THEN 0
+          ELSE (
+            ((ln(1 + r.decay_sum) - s.rec_avg) / s.rec_std) * ${wRec}
+            + ((r.rec_vel - s.rec_vel_avg) / s.rec_vel_std) * ${wRecVel}
+            + ((r.freshness - s.fresh_avg) / s.fresh_std) * ${wFresh}
+            + ((ln(1 + r.bl) - s.bl_avg) / s.bl_std) * ${wBl}
+            + ((ln(1 + r.bl_vel) - s.bl_vel_avg) / s.bl_vel_std) * ${wBlVel}
+            + ((r.pub_score - s.pub_avg) / s.pub_std) * ${wPub}
+          )
+        END AS score
+      FROM raw r
+      CROSS JOIN stats s
+    )
+    UPDATE documents d
+    SET trending_score = sc.score,
+        distinct_recommender_count = sc.distinct_cnt,
+        trending_recomputed_at = now()
+    FROM scored sc
+    WHERE d.uri = sc.uri
   `);
 }
 
@@ -469,28 +747,18 @@ export async function dedupeRecords(): Promise<{
   return { documents: docGroups.length, publications: pubGroups.length };
 }
 
-/** Run the full derived-data recompute. */
+/** Run the full derived-data recompute (trending + discovery graphs). */
 export async function recomputeDerived(): Promise<void> {
   // Dedup first so stats/aggregates compute over canonical rows only.
   await dedupeRecords();
+  try {
+    await recomputeDocumentBacklinks();
+  } catch {
+    // Backlink counts stay as-is; the next recompute retries.
+  }
   await recomputePublicationStats();
   await recomputeCosubscriptions();
   await recomputeCorecommends();
   await recomputeTopics();
-  // Best-effort: a slow/unreachable PLC must never abort the stats recompute.
-  try {
-    await backfillBlobUrls();
-  } catch {
-    // Leave URLs null; the next recompute retries the still-missing rows.
-  }
-  try {
-    await backfillDocumentSearchText();
-  } catch {
-    // Search text stays as-is; the next recompute retries.
-  }
-  try {
-    await backfillRenderableBody();
-  } catch {
-    // Renderable flags stay as-is; the next recompute retries.
-  }
+  await recomputeDocumentTrending();
 }

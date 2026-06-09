@@ -129,7 +129,7 @@ const getHomeFeed = createServerFn({ method: "GET" })
             ...rowQuery,
             limit: HOME_ROW_LIMIT + 1,
           }),
-          trendingArticles(db, schema, HOME_RAIL_LIMIT + HOME_ROW_LIMIT),
+          trendingArticles(db, schema, HOME_RAIL_LIMIT),
           trendingPublicationUris(db, schema, HOME_RAIL_LIMIT),
           personalized && did
             ? countFollowedDocuments(db, schema, followUris, did)

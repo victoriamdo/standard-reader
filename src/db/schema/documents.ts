@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  doublePrecision,
   index,
+  integer,
   jsonb,
   pgTable,
   primaryKey,
@@ -69,6 +71,23 @@ export const documents = pgTable(
      * flag, so this is set by our derivation/editorial logic. */
     featured: boolean("featured").notNull().default(false),
 
+    /** App-derived: Constellation Bluesky backlink count (precomputed). */
+    backlinkCount: integer("backlink_count").notNull().default(0),
+    /** Previous backlink count snapshot for velocity delta. */
+    backlinkCountPrev: integer("backlink_count_prev").notNull().default(0),
+    backlinkSyncedAt: timestamp("backlink_synced_at", { withTimezone: true }),
+
+    /** App-derived: precomputed trending score (recompute cron). */
+    trendingScore: doublePrecision("trending_score").notNull().default(0),
+    trendingRecomputedAt: timestamp("trending_recomputed_at", {
+      withTimezone: true,
+    }),
+
+    /** App-derived: distinct recommenders (excl. self) at last trending recompute. */
+    distinctRecommenderCount: integer("distinct_recommender_count")
+      .notNull()
+      .default(0),
+
     /** `bskyPostRef` strongRef (off-platform comments anchor). */
     bskyPostUri: text("bsky_post_uri"),
     bskyPostCid: text("bsky_post_cid"),
@@ -108,6 +127,7 @@ export const documents = pgTable(
     ),
     index("documents_site_idx").on(table.siteUri),
     index("documents_search_idx").using("gin", table.searchVector),
+    index("documents_trending_idx").on(table.trendingScore.desc()),
   ],
 );
 

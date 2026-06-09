@@ -226,8 +226,13 @@ hand-tuned lists:
   pubs _you_ follow also follow these. Subscribing to a publication is a strong taste signal for
   similar publications.
 - **Followed by people you follow** — direct social-graph query across your follows' follows.
-- **Trending publications / Trending now** — ranked by recent network activity (new articles +
-  follow velocity over a rolling window; exact window/weights are tunable).
+- **Trending publications / Trending articles** — precomputed on the recompute cron and cached on
+  rows (`publication_stats.trending_score`, `documents.trending_score`). Signals: distinct
+  in-app recommends (self-recommends excluded), subscriptions, new documents, Constellation Bluesky
+  backlink counts + velocity, half-life freshness/decay, and z-score normalization. Articles must be
+  published within the last **4 days**, meet a minimum distinct-recommender floor, and pass
+  per-publication + per-author diversity caps at read time. Rail reads are cheap indexed queries
+  only — no scoring per request.
 - **Cold start (no follows yet)** — fall back to high-readership publications
   _outside_ the current trending set so Recommended stays distinct from Trending.
 

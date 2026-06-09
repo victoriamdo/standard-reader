@@ -4,10 +4,10 @@
  * These are pure functions over the Drizzle client + schema (threaded in from a
  * server fn's `dbMiddleware` context), so the same logic backs both the Home
  * rails and the Discover sections without duplicating SQL. The discovery
- * rankings here are deliberately simple reads over the precomputed aggregates
- * (`publication_stats`, `publication_cosubscriptions`,
- * `publication_corecommends`). Likes (`site.standard.graph.recommend`) feed
- * trending, popularity, and personalized rails alongside subscriptions.
+ * rankings here are reads over the precomputed aggregates (`publication_stats`,
+ * `publication_cosubscriptions`, `publication_corecommends`, `documents.trending_score`).
+ * Likes (`site.standard.graph.recommend`) feed trending, popularity, and personalized rails
+ * alongside subscriptions and Constellation Bluesky backlink counts (precomputed on recompute).
  * Discover rails dedupe against the trending set so Recommended / social-proof
  * rails stay distinct.
  */
@@ -28,6 +28,12 @@ import {
 } from "#/integrations/tanstack-query/api-shapes";
 import { EXCLUDED_PUBLICATION_URL_PATTERN } from "#/lib/publication/exclusions";
 import { discoverEligiblePublicationWhere } from "#/server/reader/publication-filters";
+import {
+  MIN_ARTICLE_RECOMMENDERS,
+  TRENDING_MAX_AGE_DAYS,
+  applyTrendingDiversityCaps,
+  trendingFetchPoolSize,
+} from "#/server/reader/trending-scoring";
 import {
   and,
   asc,
@@ -260,8 +266,9 @@ export async function countFollowedDocuments(
 // ── Discovery rails (reads over precomputed aggregates) ─────────────────────
 
 /**
- * Discover-eligible articles ranked by recent network activity (recommends in
- * the last 7 days, boosted by the parent publication's trending score).
+ * Discover-eligible articles ranked by precomputed `documents.trending_score`
+ * (recomputed on the cron pass). Cheap read: recency gate + engagement floor +
+ * diversity caps only.
  */
 export async function trendingArticles(
   db: Db,
@@ -271,27 +278,17 @@ export async function trendingArticles(
 ): Promise<Array<ArticleCard>> {
   const d = schema.documents;
   const p = schema.publications;
-  const st = schema.publicationStats;
   const pr = schema.profiles;
-  const rc = schema.recommends;
 
-  const recAgg = db
-    .select({
-      documentUri: rc.documentUri,
-      cnt7: sql<number>`count(*) filter (where coalesce(${rc.createdAt}, ${rc.indexedAt}) > now() - interval '7 days')`.as(
-        "cnt7",
-      ),
-    })
-    .from(rc)
-    .where(eq(rc.deleted, false))
-    .groupBy(rc.documentUri)
-    .as("rec_agg");
+  const poolSize = trendingFetchPoolSize(limit);
 
   const conds = [
     eq(d.deleted, false),
     isNotNull(d.publicationUri),
     discoverEligiblePublicationWhere(p),
-    sql`${d.publishedAt} > now() - interval '60 days'`,
+    sql`${d.publishedAt} > now() - (${TRENDING_MAX_AGE_DAYS}::text || ' days')::interval`,
+    sql`${d.trendingScore} > 0`,
+    sql`${d.distinctRecommenderCount} >= ${MIN_ARTICLE_RECOMMENDERS}`,
   ];
   if (excludeUris.length > 0) {
     conds.push(notInArray(d.uri, excludeUris));
@@ -301,26 +298,21 @@ export async function trendingArticles(
     .select(articleCardColumns(schema))
     .from(d)
     .innerJoin(p, eq(p.uri, d.publicationUri))
-    .leftJoin(st, eq(st.publicationUri, p.uri))
     .leftJoin(pr, eq(pr.did, p.did))
-    .leftJoin(recAgg, eq(recAgg.documentUri, d.uri))
     .where(and(...conds))
-    .orderBy(
-      desc(
-        sql`(coalesce(${recAgg.cnt7}, 0) * 3.0 + coalesce(${st.trendingScore}, 0))`,
-      ),
-      desc(d.publishedAt),
-    )
-    .limit(limit);
+    .orderBy(desc(d.trendingScore), desc(d.publishedAt))
+    .limit(poolSize);
 
-  return rows.map((row) => toArticleCard(row));
+  const cards = rows.map((row) => toArticleCard(row));
+  return applyTrendingDiversityCaps(cards, limit);
 }
 
 /**
  * Trending publications ranked by the precomputed `publication_stats`
- * (`trending_score` = rolling-window new docs + follow velocity + likes,
- * recomputed on a schedule by `recomputeDerived()`). Requires at least one
- * indexed article and one subscriber so empty shells never surface.
+ * (`trending_score` = normalized decay/velocity blend with Constellation
+ * backlink aggregate, recomputed on a schedule by `recomputeDerived()`).
+ * Requires at least one indexed article and one subscriber so empty shells
+ * never surface.
  */
 export async function trendingPublications(
   db: Db,

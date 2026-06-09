@@ -71,7 +71,8 @@ work. Check items off as they land.
       `recommends` (`site.standard.graph.recommend`: recommender DID → document) — for social proof
   - recommendations.
 - [x] Derived/aggregate tables for **trending** and **recommendations**: `publication_stats`
-      (counts, freshness, rolling-window velocity, trending score) + `publication_cosubscriptions`
+      (counts, freshness, rolling-window velocity, normalized trending score, Constellation backlink
+      aggregate) + precomputed `documents.trending_score` / backlink columns + `publication_cosubscriptions`
       (co-subscription similarity). Recomputed via `src/server/ingest/recompute.ts`.
 - [x] Indexes for feed, directory sort (Readers / Active / A–Z), and search (GIN `tsvector` on
       documents + publications).
@@ -185,7 +186,9 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
 
 - [x] **Recommended for you** — blends co-subscription, co-recommend (`publication_corecommends`), and likes from co-readers.
 - [x] **Followed by people you follow** — co-subscriptions + likes from co-readers.
-- [x] **Trending publications / Trending now** — recent activity (new articles + follow velocity + likes, rolling window).
+- [x] **Trending publications / Trending articles** — cron-precomputed normalized scores (decay,
+      velocity, z-score blend, Constellation backlinks, distinct recommenders excl. self); 4-day
+      recency gate; per-publication + per-author diversity caps on rail reads.
 - [x] **Cold start** — popularity fallback (`trending_score` incl. likes) excluding the trending set (rails stay distinct).
 - [x] **Readers also follow** — co-subscription + co-recommend affinity on publication profiles.
 

@@ -202,6 +202,29 @@ async function getAllBacklinksForSource(
   return merged;
 }
 
+/**
+ * Cheap backlink total for trending — one page per source, sum `total` fields.
+ * Best-effort; returns 0 on failure.
+ */
+export async function getBacklinkCountForTarget(
+  target: string,
+): Promise<number> {
+  if (!target.trim()) return 0;
+
+  const totals = await Promise.all(
+    BSKY_POST_LINK_SOURCES.map(async (source) => {
+      const page = await fetchBacklinksPage({
+        target,
+        source,
+        limit: 1,
+      });
+      return page.total;
+    }),
+  );
+
+  return totals.reduce((sum, n) => sum + n, 0);
+}
+
 /** Query all configured link sources for a target and union the results. */
 export async function getPostBacklinksForTarget(
   target: string,

@@ -64,6 +64,13 @@
       "when": 1780900349797,
       "tag": "0008_polite_ken_ellis",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781017368081,
+      "tag": "0009_condemned_talos",
+      "breakpoints": true
     }
   ]
 }
