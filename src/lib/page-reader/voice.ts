@@ -1,8 +1,10 @@
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 
-/** Kokoro voices we narrate with (highest-grade American picks per gender). */
-export type ReaderVoice = "af_heart" | "am_michael";
+import type { ReaderVoice } from "./voice-catalog";
 
+export type { ReaderVoice } from "./voice-catalog";
+
+/** Highest-grade American English picks used when auto-detecting gender. */
 const FEMALE_VOICE: ReaderVoice = "af_heart";
 const MALE_VOICE: ReaderVoice = "am_michael";
 

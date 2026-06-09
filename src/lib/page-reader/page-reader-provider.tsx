@@ -1,6 +1,7 @@
 "use client";
 
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
+import type { ReaderVoicePreference } from "#/lib/reader-voice";
 
 import {
   articleBskyPostUris,
@@ -10,6 +11,7 @@ import {
 import { documentLinkParams } from "#/components/reader/format";
 import { bskyApi } from "#/integrations/tanstack-query/api-bsky.functions";
 import { normalizeQuoteText } from "#/lib/quote-share";
+import { useReaderVoice } from "#/lib/use-reader-voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { NowPlaying, PageReaderContextValue } from "./page-reader-context";
@@ -112,13 +114,20 @@ export function PageReaderProvider({
   children: React.ReactNode;
 }) {
   const engineRef = useRef<PageReaderEngine | null>(null);
-  const preparedRef = useRef<{ uri: string; text: string } | null>(null);
+  const preparedRef = useRef<{
+    uri: string;
+    text: string;
+    voicePreference: ReaderVoicePreference;
+  } | null>(null);
   const lastPlaybackRef = useRef<{
     article: ArticleDetail;
     text: string;
   } | null>(null);
   const voiceCacheRef = useRef(new Map<string, Promise<ReaderVoice>>());
   const narrationCacheRef = useRef(new Map<string, Promise<string | null>>());
+  const { preference: voicePreference } = useReaderVoice();
+  const voicePreferenceRef = useRef(voicePreference);
+  voicePreferenceRef.current = voicePreference;
   const [state, setState] = useState<ReaderState>(INITIAL_STATE);
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
   const [scrollLocked, setScrollLocked] = useState(true);
@@ -136,9 +145,14 @@ export function PageReaderProvider({
     };
   }, []);
 
-  // Lazily detect the narration voice per article (loads the tiny model);
-  // memoized by URI so replays reuse the result.
+  // Lazily detect the narration voice per article when preference is auto
+  // (loads the tiny model); memoized by URI so replays reuse the result.
   const getVoicePromise = useCallback((article: ArticleDetail) => {
+    const preference = voicePreferenceRef.current;
+    if (preference !== "auto") {
+      return Promise.resolve(preference);
+    }
+
     const cache = voiceCacheRef.current;
     let promise = cache.get(article.uri);
     if (!promise) {
@@ -147,6 +161,32 @@ export function PageReaderProvider({
     }
     return promise;
   }, []);
+
+  const markPrepared = useCallback((article: ArticleDetail, text: string) => {
+    preparedRef.current = {
+      uri: article.uri,
+      text,
+      voicePreference: voicePreferenceRef.current,
+    };
+  }, []);
+
+  // Drop cached synthesis when the voice preference changes. Re-prepare anything
+  // still loaded in the player so the transport doesn't resume stale audio.
+  useEffect(() => {
+    voiceCacheRef.current.clear();
+    preparedRef.current = null;
+
+    const engine = engineRef.current;
+    const last = lastPlaybackRef.current;
+    if (!engine || !last) return;
+
+    const { status } = engine.getState();
+    if (status === "idle" || status === "error") return;
+
+    void engine.prepare(last.text, getVoicePromise(last.article)).then((ok) => {
+      if (ok) markPrepared(last.article, last.text);
+    });
+  }, [voicePreference, getVoicePromise, markPrepared]);
 
   const startPlayback = useCallback(
     (article: ArticleDetail, text: string) => {
@@ -162,6 +202,7 @@ export function PageReaderProvider({
       const alreadyPrepared =
         prepared?.uri === article.uri &&
         prepared.text === text &&
+        prepared.voicePreference === voicePreference &&
         status !== "idle" &&
         status !== "error";
       if (alreadyPrepared) {
@@ -170,10 +211,11 @@ export function PageReaderProvider({
       }
 
       // `prepare` streams audio and starts playback from the first sentence.
-      preparedRef.current = { uri: article.uri, text };
-      void engine.prepare(text, getVoicePromise(article));
+      void engine.prepare(text, getVoicePromise(article)).then((ok) => {
+        if (ok) markPrepared(article, text);
+      });
     },
-    [getVoicePromise],
+    [getVoicePromise, markPrepared, voicePreference],
   );
 
   // Narration (with embedded Bluesky posts resolved) is async; memoize per URI
@@ -225,8 +267,26 @@ export function PageReaderProvider({
   );
 
   const toggle = useCallback(() => {
-    engineRef.current?.toggle();
-  }, []);
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    const last = lastPlaybackRef.current;
+    const { status } = engine.getState();
+    const prepared = preparedRef.current;
+    const needsReprepare =
+      last !== null &&
+      status !== "idle" &&
+      status !== "error" &&
+      (prepared === null ||
+        prepared.voicePreference !== voicePreferenceRef.current);
+
+    if (needsReprepare) {
+      startPlayback(last.article, last.text);
+      return;
+    }
+
+    engine.toggle();
+  }, [startPlayback]);
 
   const skip = useCallback((seconds: number) => {
     engineRef.current?.skip(seconds);

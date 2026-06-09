@@ -26,6 +26,8 @@ export const user = pgTable("user", {
   isAdmin: boolean("is_admin").default(false).notNull(),
   /** `light` | `dark`; `null` follows system preference. */
   themeMode: text("theme_mode"),
+  /** Kokoro voice id; `null` infers voice from the article author (auto). */
+  readerVoice: text("reader_voice"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

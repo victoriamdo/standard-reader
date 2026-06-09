@@ -103,9 +103,12 @@ Sections, top to bottom:
   using on-device TTS (`kokoro-js`, lazy-loaded on first use). It narrates the
   title, description, byline, then body — including embedded Bluesky posts
   (author + content, fetched from the public AppView and inlined at their
-  position) — and infers a male/female voice from the author's name/handle via a
-  tiny on-device zero-shot classifier (`@huggingface/transformers`,
-  lazy-loaded). A passage can also be played from the selection toolbar
+  position). By default (**Auto**), voice is inferred from the author's
+  name/handle via a tiny on-device zero-shot classifier
+  (`@huggingface/transformers`, lazy-loaded); signed-in users can pick a fixed
+  Kokoro American English voice from the account menu (with overall quality
+  grades from [hexgrad/Kokoro-82M VOICES.md](https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md)).
+  A passage can also be played from the selection toolbar
   ("Read from here"). The player lives in the app shell (not the article), so
   playback **persists across navigation**: a single floating action bar —
   modelled on the prototype's `AudioBar` — docks just above the bottom navigation

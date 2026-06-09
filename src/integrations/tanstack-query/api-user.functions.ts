@@ -12,6 +12,14 @@ import {
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import {
+  READER_VOICE_COOKIE,
+  READER_VOICE_COOKIE_MAX_AGE_SECONDS,
+  READER_VOICE_PREFERENCES,
+  dbValueToReaderVoicePreference,
+  parseReaderVoicePreference,
+  readerVoicePreferenceToDbValue,
+} from "#/lib/reader-voice";
+import {
   THEME_COOKIE,
   THEME_COOKIE_MAX_AGE_SECONDS,
   THEME_MODES,
@@ -153,6 +161,53 @@ const setThemePreference = createServerFn({ method: "POST" })
     return { mode: data.mode };
   });
 
+const getReaderVoicePreference = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .handler(async ({ context }) => {
+    const session = context?.session;
+    if (session?.user) {
+      const row = await context.db.query.user.findFirst({
+        where: eq(context.schema.user.id, session.user.id),
+        columns: { readerVoice: true },
+      });
+      return {
+        preference: dbValueToReaderVoicePreference(row?.readerVoice ?? null),
+      };
+    }
+
+    return {
+      preference: parseReaderVoicePreference(getCookie(READER_VOICE_COOKIE)),
+    };
+  });
+
+const getReaderVoicePreferenceQueryOptions = queryOptions({
+  queryKey: ["readerVoicePreference"] as const,
+  queryFn: () => getReaderVoicePreference(),
+  staleTime: Number.POSITIVE_INFINITY,
+});
+
+const setReaderVoicePreference = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .inputValidator(z.object({ preference: z.enum(READER_VOICE_PREFERENCES) }))
+  .handler(async ({ data, context }) => {
+    setCookie(READER_VOICE_COOKIE, data.preference, {
+      path: "/",
+      sameSite: "lax",
+      maxAge: READER_VOICE_COOKIE_MAX_AGE_SECONDS,
+    });
+
+    if (context?.session?.user) {
+      await context.db
+        .update(context.schema.user)
+        .set({
+          readerVoice: readerVoicePreferenceToDbValue(data.preference),
+        })
+        .where(eq(context.schema.user.id, context.session.user.id));
+    }
+
+    return { preference: data.preference };
+  });
+
 const signOut = createServerFn({ method: "POST" })
   .middleware([dbMiddleware])
   .handler(async ({ context }) => {
@@ -200,5 +255,8 @@ export const user = {
   getThemePreference,
   getThemePreferenceQueryOptions,
   setThemePreference,
+  getReaderVoicePreference,
+  getReaderVoicePreferenceQueryOptions,
+  setReaderVoicePreference,
   signOut,
 };

@@ -27,6 +27,7 @@ import {
   lineHeight,
 } from "../design-system/theme/typography.stylex";
 import { Handle } from "./reader/primitives";
+import { ReaderVoiceSubMenu } from "./ReaderVoiceMenu";
 import { ThemeSubMenu } from "./ThemeMenu";
 
 const ButtonLink = createLink(Button);
@@ -210,6 +211,7 @@ export function NavbarAuth({
         </MenuItem>
         <MenuSeparator />
         <ThemeSubMenu />
+        <ReaderVoiceSubMenu />
         <MenuSeparator />
         <MenuItem onPress={() => logoutMutation.mutate()} suffix={<LogOut />}>
           Log out
