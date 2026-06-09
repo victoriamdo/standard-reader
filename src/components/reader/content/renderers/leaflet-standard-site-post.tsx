@@ -5,8 +5,12 @@ import type { LeafletStandardSitePostBlock } from "#/lib/leaflet/types";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { documentLinkParams } from "#/components/reader/format";
+import {
+  articlePublicationUrl,
+  documentLinkParams,
+} from "#/components/reader/format";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
+import { useOpenLinks } from "#/lib/use-open-links";
 
 import { articleBodyStyles } from "../body-styles";
 import { StructuredWebsiteView } from "./structured-views";
@@ -18,6 +22,7 @@ export function LeafletStandardSitePostBlockView({
 }) {
   const uri = block.uri?.trim();
   const linkParams = uri ? documentLinkParams(uri) : null;
+  const { openExternally } = useOpenLinks();
 
   const { data: article } = useQuery({
     ...publicationApi.getArticleQueryOptions(uri ?? ""),
@@ -30,14 +35,12 @@ export function LeafletStandardSitePostBlockView({
   const title = article?.title ?? "Article";
   const description = article?.description ?? undefined;
   const previewImage = article?.coverImageUrl ?? undefined;
+  const externalUrl =
+    openExternally && article ? articlePublicationUrl(article) : null;
 
-  if (linkParams) {
-    return (
-      <Link
-        to="/a/$did/$rkey"
-        params={linkParams}
-        {...stylex.props(articleBodyStyles.websiteCard)}
-      >
+  if (linkParams || externalUrl) {
+    const card = (
+      <>
         {previewImage ? (
           <img
             src={previewImage}
@@ -55,8 +58,32 @@ export function LeafletStandardSitePostBlockView({
             </p>
           ) : null}
         </div>
-      </Link>
+      </>
     );
+    // "Open on original site" preference: skip the in-app reader.
+    if (externalUrl) {
+      return (
+        <a
+          href={externalUrl}
+          target="_blank"
+          rel="noreferrer"
+          {...stylex.props(articleBodyStyles.websiteCard)}
+        >
+          {card}
+        </a>
+      );
+    }
+    if (linkParams) {
+      return (
+        <Link
+          to="/a/$did/$rkey"
+          params={linkParams}
+          {...stylex.props(articleBodyStyles.websiteCard)}
+        >
+          {card}
+        </Link>
+      );
+    }
   }
 
   return (

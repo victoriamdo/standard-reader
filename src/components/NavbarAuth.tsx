@@ -26,6 +26,7 @@ import {
   fontWeight,
   lineHeight,
 } from "../design-system/theme/typography.stylex";
+import { OpenLinksMenuItem } from "./OpenLinksMenuItem";
 import { Handle } from "./reader/primitives";
 import { ReaderVoiceSubMenu } from "./ReaderVoiceMenu";
 import { ThemeSubMenu } from "./ThemeMenu";
@@ -212,6 +213,7 @@ export function NavbarAuth({
         <MenuSeparator />
         <ThemeSubMenu />
         <ReaderVoiceSubMenu />
+        <OpenLinksMenuItem />
         <MenuSeparator />
         <MenuItem onPress={() => logoutMutation.mutate()} suffix={<LogOut />}>
           Log out

@@ -78,6 +78,13 @@
       "when": 1781025405747,
       "tag": "0010_brown_sasquatch",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1781033896785,
+      "tag": "0011_white_mongu",
+      "breakpoints": true
     }
   ]
 }

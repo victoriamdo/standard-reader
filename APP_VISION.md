@@ -133,6 +133,12 @@ Sections, top to bottom:
 - Footer: publication card + follow; "More from {publication}".
 - **Discussion:** Bluesky posts linking the article (external URL or app quote shares), plus direct replies to the author's linked announcement post (`bskyPostRef`), read-only — reply counts link out to bsky threads. The announcement post itself is not listed as a comment.
 - Opening an article marks it read.
+- **Open on original site (preference):** a user-menu toggle (cookie for
+  everyone; `user.open_links_externally` when signed in). When on, document
+  links across the app open the article's canonical URL on its publication
+  site in a new tab (marking it read) instead of the in-app reader, and
+  `/a/$did/$rkey` itself redirects to the publication site. Articles without
+  a canonical URL fall back to the in-app reader.
 
 ### Publication profile
 

@@ -10,6 +10,7 @@ import { spacing } from "#/design-system/theme/spacing.stylex.tsx";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { parseInternalRoute } from "#/lib/internal-route";
+import { useOpenLinks } from "#/lib/use-open-links";
 import { useLoginSearch } from "#/utils/use-login-search";
 import { ArrowRight, Check, Plus } from "lucide-react";
 import { Fragment, useCallback } from "react";
@@ -881,8 +882,24 @@ function ArticleLink({
   extraStyles?: Array<stylex.StyleXStyles | false | undefined>;
 }) {
   const markReadExternal = useMarkReadExternal();
+  const { openExternally } = useOpenLinks();
   const params = documentLinkParams(article.uri);
   const merged = stylex.props(styles.cardLink, ...extraStyles);
+  // "Open on original site" preference: bypass the in-app reader whenever the
+  // document has a canonical URL on its publication site.
+  if (openExternally && article.canonicalUrl) {
+    return (
+      <a
+        href={article.canonicalUrl}
+        target="_blank"
+        rel="noreferrer"
+        onClick={() => markReadExternal(article.uri, article.publicationUri)}
+        {...merged}
+      >
+        {children}
+      </a>
+    );
+  }
   // Only route through the in-app reader when there's a body to render;
   // "external" posts (no renderable body) link straight out in a new tab.
   if (params && article.hasRenderableBody) {

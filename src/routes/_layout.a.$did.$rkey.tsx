@@ -8,6 +8,7 @@ import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { buildQuoteOgImageUrl, decodeQuoteParam } from "#/lib/quote-share";
+import { useOpenLinks } from "#/lib/use-open-links";
 import { useLayoutEffect } from "react";
 import { z } from "zod";
 
@@ -53,10 +54,20 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
   loaderDeps: ({ search }) => ({ q: search.q }),
   loader: async ({ context, params, deps }) => {
     const uri = documentUriFromParams(params.did, params.rkey);
-    const article = await context.queryClient.ensureQueryData(
-      publicationApi.getArticleQueryOptions(uri),
-    );
-    if (article && !hasRenderableArticleBody(article)) {
+    const [article, openLinks] = await Promise.all([
+      context.queryClient.ensureQueryData(
+        publicationApi.getArticleQueryOptions(uri),
+      ),
+      context.queryClient.ensureQueryData(
+        user.getOpenLinksPreferenceQueryOptions,
+      ),
+    ]);
+    // Bounce to the publication site when the body isn't renderable in-app, or
+    // when the reader prefers links to open on the original site.
+    if (
+      article &&
+      (openLinks.openExternally || !hasRenderableArticleBody(article))
+    ) {
       const externalUrl = articlePublicationUrl(article);
       if (externalUrl) {
         throw redirect({ href: externalUrl });
@@ -134,14 +145,16 @@ function ArticleRoute() {
   const { data: article } = useSuspenseQuery(
     publicationApi.getArticleQueryOptions(uri),
   );
+  const { openExternally } = useOpenLinks();
 
   useLayoutEffect(() => {
-    if (!article || hasRenderableArticleBody(article)) return;
+    if (!article) return;
+    if (!openExternally && hasRenderableArticleBody(article)) return;
     const externalUrl = articlePublicationUrl(article);
     if (externalUrl) {
       globalThis.location.replace(externalUrl);
     }
-  }, [article]);
+  }, [article, openExternally]);
 
   if (!article) {
     return <ArticleNotFound />;

@@ -87,6 +87,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     await Promise.all([
       context.queryClient.ensureQueryData(user.getSessionQueryOptions),
       context.queryClient.ensureQueryData(user.getThemePreferenceQueryOptions),
+      context.queryClient.ensureQueryData(
+        user.getOpenLinksPreferenceQueryOptions,
+      ),
     ]);
   },
   head: () => {

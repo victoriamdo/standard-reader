@@ -19,6 +19,7 @@ import {
   lineHeight,
 } from "#/design-system/theme/typography.stylex";
 import { parseInternalRoute } from "#/lib/internal-route";
+import { useOpenLinks } from "#/lib/use-open-links";
 
 import { MiniPubRow } from "./cards";
 import { CommentsSection } from "./comments/comments-section";
@@ -79,6 +80,7 @@ function MoreFromRow({
   article: ArticleExtras["moreFrom"][number];
   publicationName: string;
 }) {
+  const { openExternally } = useOpenLinks();
   const params = documentLinkParams(article.uri);
   const minutes = readingMinutes(articleCardReadingText(article));
   const body = (
@@ -91,6 +93,20 @@ function MoreFromRow({
       </span>
     </Flex>
   );
+
+  // "Open on original site" preference: skip the in-app reader entirely.
+  if (openExternally && article.canonicalUrl) {
+    return (
+      <a
+        href={article.canonicalUrl}
+        target="_blank"
+        rel="noreferrer"
+        {...stylex.props(styles.moreRow)}
+      >
+        {body}
+      </a>
+    );
+  }
 
   if (params && article.hasRenderableBody) {
     return (

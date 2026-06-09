@@ -12,6 +12,14 @@ import {
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import {
+  OPEN_LINKS_COOKIE,
+  OPEN_LINKS_COOKIE_MAX_AGE_SECONDS,
+  dbValueToOpenLinksExternally,
+  openLinksExternallyToCookieValue,
+  openLinksExternallyToDbValue,
+  parseOpenLinksExternally,
+} from "#/lib/open-links";
+import {
   READER_VOICE_COOKIE,
   READER_VOICE_COOKIE_MAX_AGE_SECONDS,
   READER_VOICE_PREFERENCES,
@@ -208,6 +216,61 @@ const setReaderVoicePreference = createServerFn({ method: "POST" })
     return { preference: data.preference };
   });
 
+const getOpenLinksPreference = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .handler(async ({ context }): Promise<{ openExternally: boolean }> => {
+    const session = context?.session;
+    if (session?.user) {
+      const row = await context.db.query.user.findFirst({
+        where: eq(context.schema.user.id, session.user.id),
+        columns: { openLinksExternally: true },
+      });
+      return {
+        openExternally: dbValueToOpenLinksExternally(
+          row?.openLinksExternally ?? null,
+        ),
+      };
+    }
+
+    return {
+      openExternally: parseOpenLinksExternally(getCookie(OPEN_LINKS_COOKIE)),
+    };
+  });
+
+const getOpenLinksPreferenceQueryOptions = queryOptions({
+  queryKey: ["openLinksPreference"] as const,
+  queryFn: () => getOpenLinksPreference(),
+  staleTime: Number.POSITIVE_INFINITY,
+});
+
+const setOpenLinksPreference = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .inputValidator(z.object({ openExternally: z.boolean() }))
+  .handler(async ({ data, context }): Promise<{ openExternally: boolean }> => {
+    setCookie(
+      OPEN_LINKS_COOKIE,
+      openLinksExternallyToCookieValue(data.openExternally),
+      {
+        path: "/",
+        sameSite: "lax",
+        maxAge: OPEN_LINKS_COOKIE_MAX_AGE_SECONDS,
+      },
+    );
+
+    if (context?.session?.user) {
+      await context.db
+        .update(context.schema.user)
+        .set({
+          openLinksExternally: openLinksExternallyToDbValue(
+            data.openExternally,
+          ),
+        })
+        .where(eq(context.schema.user.id, context.session.user.id));
+    }
+
+    return { openExternally: data.openExternally };
+  });
+
 const signOut = createServerFn({ method: "POST" })
   .middleware([dbMiddleware])
   .handler(async ({ context }) => {
@@ -258,5 +321,8 @@ export const user = {
   getReaderVoicePreference,
   getReaderVoicePreferenceQueryOptions,
   setReaderVoicePreference,
+  getOpenLinksPreference,
+  getOpenLinksPreferenceQueryOptions,
+  setOpenLinksPreference,
   signOut,
 };

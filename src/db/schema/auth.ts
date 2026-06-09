@@ -28,6 +28,9 @@ export const user = pgTable("user", {
   themeMode: text("theme_mode"),
   /** Kokoro voice id; `null` infers voice from the article author (auto). */
   readerVoice: text("reader_voice"),
+  /** `true` opens document links on their original site; `null`/`false` uses
+   * the in-app reader (default). */
+  openLinksExternally: boolean("open_links_externally"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
