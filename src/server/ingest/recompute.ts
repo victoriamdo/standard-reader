@@ -1,5 +1,9 @@
 import { hasRenderableArticleBody } from "#/lib/document/renderable";
-import { documentSearchText } from "#/lib/document/search-text";
+import {
+  documentExtractedText,
+  documentSearchText,
+  repairCompoundedSearchText,
+} from "#/lib/document/search-text";
 import { EXCLUDED_PUBLICATION_URL_PATTERN } from "#/lib/publication/exclusions";
 import {
   ARTICLE_BLEND,
@@ -607,6 +611,12 @@ export async function backfillBlobUrls(): Promise<{
  * Fill or refresh `documents.text_content` from record text plus structured
  * content blocks so GIN search covers full article bodies.
  *
+ * The stored column is itself the output of this function, so each row's text
+ * is first run through `repairCompoundedSearchText` to strip the duplicate
+ * extracted-text copies an earlier (non-idempotent) version of this backfill
+ * appended on every run. With that and containment-based dedupe in
+ * `documentSearchText`, re-running this is a fixed point.
+ *
  * `content_json` can be large per row, so reads are keyset-paginated by `uri`
  * to stay under the Neon HTTP response cap (~64MB).
  */
@@ -636,8 +646,14 @@ export async function backfillDocumentSearchText(): Promise<number> {
     cursor = rows.at(-1)?.uri ?? null;
 
     for (const row of rows) {
+      const base = row.textContent
+        ? repairCompoundedSearchText(
+            row.textContent,
+            documentExtractedText(row.contentJson, row.contentFormat),
+          )
+        : row.textContent;
       const next = documentSearchText({
-        textContent: row.textContent,
+        textContent: base,
         contentJson: row.contentJson,
         contentFormat: row.contentFormat,
       });

@@ -54,6 +54,11 @@ export function articleBskyPostUris(article: ArticleDetail): Array<string> {
  * Best-effort full text for reading-time estimates and search previews.
  * `bskyPostText` optionally inlines narration for embedded Bluesky posts; it's
  * ignored unless the body is rendered from blocks (Leaflet content).
+ *
+ * Structured `contentJson` is always preferred over `textContent`: the latter
+ * is the *search* blob (record text + extracted block plaintext), so narrating
+ * it would read the article body more than once. It's only used as a fallback
+ * when there's no structured content to extract from.
  */
 export function articleReadingText(
   article: ArticleDetail,
@@ -63,26 +68,28 @@ export function articleReadingText(
   if (contentType === LEAFLET_CONTENT) {
     return leafletPlaintext(article.contentJson, bskyPostText);
   }
-
-  if (article.textContent?.trim()) return article.textContent;
   if (contentType === PCKT_CONTENT) {
-    return pcktPlaintext(article.contentJson);
+    const text = pcktPlaintext(article.contentJson);
+    if (text?.trim()) return text;
   }
   if (contentType === OFFPRINT_CONTENT) {
-    return offprintPlaintext(article.contentJson);
+    const text = offprintPlaintext(article.contentJson);
+    if (text?.trim()) return text;
   }
   if (contentType === STANDARD_MARKDOWN_CONTENT) {
-    return markdownPlaintext(article.contentJson);
+    const text = markdownPlaintext(article.contentJson);
+    if (text?.trim()) return text;
   }
 
   const blocks = parseArticleBlocks({
-    textContent: article.textContent,
+    textContent: null,
     contentJson: article.contentJson,
   });
   if (blocks.length > 0) {
     return blocks.map((block) => block.text).join("\n\n");
   }
 
+  if (article.textContent?.trim()) return article.textContent;
   return article.description;
 }
 
@@ -111,7 +118,10 @@ export function articleSpeechText(
   const parts: Array<string> = [];
 
   if (article.title?.trim()) parts.push(article.title.trim());
-  if (!articleDescriptionIsBodyExcerpt(article) && article.description?.trim()) {
+  if (
+    !articleDescriptionIsBodyExcerpt(article) &&
+    article.description?.trim()
+  ) {
     parts.push(article.description.trim());
   }
 
