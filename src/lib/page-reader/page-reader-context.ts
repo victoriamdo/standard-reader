@@ -1,0 +1,51 @@
+import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
+
+import { createContext, use } from "react";
+
+import type { ReaderState } from "./page-reader-engine";
+
+/** Metadata for the article currently loaded into the player. */
+export interface NowPlaying {
+  uri: string;
+  /** Route params for the article (empty when the URI can't be parsed). */
+  did: string;
+  rkey: string;
+  title: string;
+  publicationName: string | null;
+  author: string | null;
+}
+
+export interface PageReaderContextValue {
+  state: ReaderState;
+  /** True once an article is loaded (controls the global player bar). */
+  active: boolean;
+  /** The article currently loaded into the player, if any. */
+  nowPlaying: NowPlaying | null;
+  /** Read the given article from the top (or resume if already loaded). */
+  playArticle: (article: ArticleDetail) => void;
+  /** Read the given article starting from a selected passage. */
+  playFromSelection: (article: ArticleDetail, selectionText: string) => void;
+  /** Re-prepare the last article after an error. */
+  retry: () => void;
+  /** Sentences currently loaded for playback (in narration order). */
+  getSentences: () => Array<string>;
+  /** Current sentence index + 0..1 progress within it (for word highlight). */
+  getProgress: () => { index: number; fraction: number } | null;
+  toggle: () => void;
+  skip: (seconds: number) => void;
+  seekTo: (seconds: number) => void;
+  setRate: (rate: number) => void;
+  stop: () => void;
+}
+
+export const PageReaderContext = createContext<PageReaderContextValue | null>(
+  null,
+);
+
+export function usePageReader(): PageReaderContextValue {
+  const context = use(PageReaderContext);
+  if (!context) {
+    throw new Error("usePageReader must be used within a PageReaderProvider");
+  }
+  return context;
+}

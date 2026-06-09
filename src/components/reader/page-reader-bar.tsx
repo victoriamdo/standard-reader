@@ -1,0 +1,467 @@
+"use client";
+
+import * as stylex from "@stylexjs/stylex";
+import { Link } from "@tanstack/react-router";
+import { Button } from "#/design-system/button";
+import { IconButton } from "#/design-system/icon-button";
+import { Menu, MenuItem } from "#/design-system/menu";
+import { animationDuration } from "#/design-system/theme/animations.stylex";
+import { primaryColor, uiColor } from "#/design-system/theme/color.stylex";
+import { radius } from "#/design-system/theme/radius.stylex";
+import {
+  gap,
+  horizontalSpace,
+  verticalSpace,
+} from "#/design-system/theme/semantic-spacing.stylex";
+import { spacing } from "#/design-system/theme/spacing.stylex";
+import {
+  fontFamily,
+  fontSize,
+  fontWeight,
+  lineHeight,
+  tracking,
+} from "#/design-system/theme/typography.stylex";
+import { usePageReader } from "#/lib/page-reader/page-reader-context";
+import { Pause, Play, RotateCcw, SkipBack, X } from "lucide-react";
+import { useRef, useState } from "react";
+
+const SKIP_SECONDS = 15;
+const ARROW_SECONDS = 5;
+const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 1.75, 2];
+
+const DESKTOP = "@media (min-width: 60rem)";
+
+function formatRate(rate: number): string {
+  return `${rate}×`;
+}
+
+const rise = stylex.keyframes({
+  from: { opacity: 0, transform: "translateY(16px)" },
+  to: { opacity: 1, transform: "translateY(0)" },
+});
+
+const styles = stylex.create({
+  // The floating card. Positioning lives on the app-shell dock that hosts it;
+  // here we only own the look. Layered shadow + rise are lifted from the
+  // prototype's `.audiobar`.
+  card: {
+    borderColor: uiColor.border1,
+    borderRadius: radius.md,
+    borderStyle: "solid",
+    borderWidth: 1,
+    cornerShape: "squircle",
+    animationDuration: animationDuration.verySlow,
+    animationName: {
+      default: rise,
+      "@media (prefers-reduced-motion: reduce)": "none",
+    },
+    animationTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+    backgroundColor: uiColor.bg,
+    boxShadow:
+      "0 1px 1px oklch(0.3 0.03 60 / 0.04), 0 8px 22px -10px oklch(0.3 0.04 60 / 0.22), 0 20px 48px -22px oklch(0.3 0.05 60 / 0.3)",
+    boxSizing: "border-box",
+    display: "flex",
+    flexDirection: "column",
+    pointerEvents: "auto",
+    rowGap: gap.md,
+    maxWidth: { [DESKTOP]: "min(540px, calc(100vw - 36px))", default: "480px" },
+    paddingBottom: verticalSpace.lg,
+    paddingLeft: horizontalSpace.xl,
+    paddingRight: horizontalSpace.xl,
+    paddingTop: verticalSpace.lg,
+    width: { [DESKTOP]: "max-content", default: "calc(100vw - 24px)" },
+  },
+  row: {
+    alignItems: "center",
+    columnGap: gap["2xl"],
+    display: "flex",
+  },
+  now: {
+    alignItems: "center",
+    display: "flex",
+    flexBasis: "0%",
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  meta: {
+    textDecoration: "none",
+    display: "flex",
+    flexDirection: "column",
+    rowGap: gap.md,
+    minWidth: 0,
+  },
+  kicker: {
+    alignItems: "center",
+    color: uiColor.text1,
+    columnGap: gap.md,
+    display: "flex",
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: tracking.wider,
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+  },
+  kickerSep: { opacity: 0.5 },
+  kickerTime: {
+    color: uiColor.text2,
+    fontFamily: fontFamily.mono,
+    letterSpacing: tracking.normal,
+    textTransform: "none",
+  },
+  kickerOf: {
+    color: uiColor.text1,
+    letterSpacing: tracking.normal,
+    textTransform: "none",
+  },
+  title: {
+    overflow: "hidden",
+    color: uiColor.text2,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    lineHeight: lineHeight.sm,
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    maxWidth: { [DESKTOP]: "250px", default: "none" },
+  },
+  controls: {
+    alignItems: "center",
+    columnGap: gap.xs,
+    display: "flex",
+    flexShrink: 0,
+  },
+  roundBtn: {
+    borderRadius: radius.full,
+  },
+  playBtn: {
+    borderColor: "transparent",
+    borderRadius: radius.full,
+    backgroundColor: primaryColor.solid1,
+    boxShadow: `0 2px 9px -2px ${primaryColor.solid1}`,
+    color: primaryColor.textContrast,
+    filter: { default: "none", ":is([data-hovered])": "brightness(1.06)" },
+    transform: { default: "none", ":is([data-pressed])": "scale(0.94)" },
+  },
+  speedTrigger: {
+    borderColor: uiColor.border1,
+    borderRadius: radius.full,
+    flexShrink: 0,
+    fontFamily: fontFamily.mono,
+    fontVariantNumeric: "tabular-nums",
+  },
+  divider: {
+    backgroundColor: uiColor.border1,
+    flexShrink: 0,
+    height: spacing["5"],
+    marginLeft: horizontalSpace.xl,
+    marginRight: horizontalSpace.sm,
+    width: spacing.px,
+  },
+  trackHit: {
+    boxSizing: "border-box",
+    cursor: { default: "pointer", ":is([aria-disabled=true])": "default" },
+    position: "relative",
+    touchAction: "none",
+    paddingBottom: verticalSpace.xs,
+    paddingTop: verticalSpace.sm,
+    width: "100%",
+  },
+  track: {
+    borderRadius: radius.full,
+    overflow: "hidden",
+    backgroundColor: uiColor.component2,
+    position: "relative",
+    height: spacing["2"],
+    width: "100%",
+  },
+  trackDisabled: { opacity: 0.6 },
+  trackFill: {
+    borderRadius: radius.full,
+    backgroundColor: primaryColor.solid1,
+    position: "absolute",
+    transitionDuration: animationDuration.default,
+    transitionProperty: "width",
+    transitionTimingFunction: "linear",
+    height: "100%",
+    left: 0,
+    top: 0,
+  },
+});
+
+function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const total = Math.floor(seconds);
+  const minutes = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${minutes}:${secs.toString().padStart(2, "0")}`;
+}
+
+/**
+ * A thin, prototype-style seek track that is still draggable/clickable. We
+ * preview the position locally while dragging and only commit the seek on
+ * release, so a sweep across the bar doesn't repeatedly rebase synthesis.
+ */
+function SeekTrack({
+  fraction,
+  disabled,
+  durationSeconds,
+  currentSeconds,
+  onPreview,
+  onCommit,
+}: {
+  fraction: number;
+  disabled: boolean;
+  durationSeconds: number;
+  currentSeconds: number;
+  onPreview: (seconds: number) => void;
+  onCommit: (seconds: number) => void;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  const secondsFromClientX = (clientX: number): number => {
+    const el = trackRef.current;
+    if (!el || durationSeconds <= 0) return 0;
+    const rect = el.getBoundingClientRect();
+    const ratio =
+      rect.width > 0
+        ? Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+        : 0;
+    return ratio * durationSeconds;
+  };
+
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    draggingRef.current = true;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    onPreview(secondsFromClientX(event.clientX));
+  };
+
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    onPreview(secondsFromClientX(event.clientX));
+  };
+
+  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    onCommit(secondsFromClientX(event.clientX));
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      onCommit(Math.max(0, currentSeconds - ARROW_SECONDS));
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      onCommit(Math.min(durationSeconds, currentSeconds + ARROW_SECONDS));
+    }
+  };
+
+  const pct = Math.min(1, Math.max(0, fraction)) * 100;
+
+  return (
+    <div
+      ref={trackRef}
+      {...stylex.props(styles.trackHit)}
+      role="slider"
+      aria-label="Seek"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(durationSeconds)}
+      aria-valuenow={Math.round(currentSeconds)}
+      aria-valuetext={formatTime(currentSeconds)}
+      aria-disabled={disabled || undefined}
+      tabIndex={disabled ? -1 : 0}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onKeyDown={onKeyDown}
+    >
+      <div {...stylex.props(styles.track, disabled && styles.trackDisabled)}>
+        <span
+          {...stylex.props(styles.trackFill)}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The page reader's floating transport. It lives in the app-shell dock (above
+ * the bottom navigation, on every route) and shows whenever an article is
+ * loaded into the player. Tapping the title returns to the playing article.
+ */
+export function PageReaderBar() {
+  const {
+    state,
+    active,
+    nowPlaying,
+    toggle,
+    skip,
+    seekTo,
+    setRate,
+    stop,
+    retry,
+  } = usePageReader();
+  // While dragging the scrubber we preview the thumb position locally and only
+  // commit the seek on release.
+  const [scrubValue, setScrubValue] = useState<number | null>(null);
+  const {
+    status,
+    currentTime,
+    duration,
+    modelProgress,
+    generationProgress,
+    error,
+  } = state;
+
+  // Hooks must run before any early return; bail out once they have.
+  if (!active) return null;
+
+  const isLoading = status === "loading-model" || status === "generating";
+  const isError = status === "error";
+  const isPlaying = status === "playing";
+  const transportReady = status === "playing" || status === "paused";
+
+  let kickerLabel = "Reading aloud";
+  if (status === "loading-model") {
+    const percent = Math.round(modelProgress * 100);
+    kickerLabel = percent > 0 ? `Loading voice… ${percent}%` : "Loading voice…";
+  } else if (status === "generating") {
+    kickerLabel = `Generating audio… ${Math.round(generationProgress * 100)}%`;
+  } else if (isError) {
+    kickerLabel = error ?? "Something went wrong";
+  } else if (status === "paused") {
+    kickerLabel = "Paused";
+  }
+
+  const previewTime = scrubValue ?? currentTime;
+  const fraction = duration > 0 ? previewTime / duration : 0;
+  const rateKey = String(state.rate);
+
+  const playingParams =
+    nowPlaying && nowPlaying.did && nowPlaying.rkey
+      ? { did: nowPlaying.did, rkey: nowPlaying.rkey }
+      : null;
+  const title = nowPlaying?.title ?? "";
+
+  const metaInner = (
+    <>
+      <span {...stylex.props(styles.kicker)}>
+        <span>{kickerLabel}</span>
+        {transportReady ? (
+          <>
+            <span {...stylex.props(styles.kickerSep)}>·</span>
+            <span {...stylex.props(styles.kickerTime)}>
+              {formatTime(previewTime)}
+            </span>
+            <span {...stylex.props(styles.kickerOf)}>
+              / {formatTime(duration)}
+            </span>
+          </>
+        ) : null}
+      </span>
+      {title ? <span {...stylex.props(styles.title)}>{title}</span> : null}
+    </>
+  );
+
+  return (
+    <section {...stylex.props(styles.card)} aria-label="Read aloud">
+      <div {...stylex.props(styles.row)}>
+        <div {...stylex.props(styles.now)}>
+          {playingParams ? (
+            <Link
+              to="/a/$did/$rkey"
+              params={playingParams}
+              {...stylex.props(styles.meta)}
+            >
+              {metaInner}
+            </Link>
+          ) : (
+            <div {...stylex.props(styles.meta)}>{metaInner}</div>
+          )}
+        </div>
+
+        <div {...stylex.props(styles.controls)}>
+          <IconButton
+            variant="tertiary"
+            style={styles.roundBtn}
+            aria-label={`Back ${SKIP_SECONDS} seconds`}
+            isDisabled={!transportReady}
+            onPress={() => skip(-SKIP_SECONDS)}
+          >
+            <SkipBack size={18} />
+          </IconButton>
+
+          <IconButton
+            variant="tertiary"
+            size="lg"
+            style={styles.playBtn}
+            aria-label={isError ? "Retry" : isPlaying ? "Pause" : "Play"}
+            isPending={isLoading}
+            onPress={isError ? retry : toggle}
+          >
+            {isError ? (
+              <RotateCcw size={20} />
+            ) : isPlaying ? (
+              <Pause size={20} fill="currentColor" />
+            ) : (
+              <Play size={20} fill="currentColor" />
+            )}
+          </IconButton>
+
+          <Menu
+            placement="top"
+            selectionMode="single"
+            selectedKeys={new Set([rateKey])}
+            disallowEmptySelection
+            onAction={(key) => setRate(Number(key))}
+            trigger={
+              <Button
+                variant="tertiary"
+                aria-label={`Playback speed: ${formatRate(state.rate)}`}
+                style={styles.speedTrigger}
+              >
+                {formatRate(state.rate)}
+              </Button>
+            }
+          >
+            {SPEED_OPTIONS.map((speed) => (
+              <MenuItem key={speed} id={String(speed)}>
+                {formatRate(speed)}
+              </MenuItem>
+            ))}
+          </Menu>
+
+          <span {...stylex.props(styles.divider)} aria-hidden />
+
+          <IconButton
+            variant="tertiary"
+            style={styles.roundBtn}
+            aria-label="Stop reading"
+            onPress={stop}
+          >
+            <X size={18} />
+          </IconButton>
+        </div>
+      </div>
+
+      <SeekTrack
+        fraction={fraction}
+        disabled={!transportReady || duration <= 0}
+        durationSeconds={duration}
+        currentSeconds={previewTime}
+        onPreview={setScrubValue}
+        onCommit={(seconds) => {
+          setScrubValue(null);
+          seekTo(seconds);
+        }}
+      />
+    </section>
+  );
+}

@@ -6,6 +6,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { parseInternalRoute } from "#/lib/internal-route";
+import { PageReaderProvider } from "#/lib/page-reader/page-reader-provider";
 import { Compass, Home, Newspaper, Plus, Search } from "lucide-react";
 import {
   forwardRef,
@@ -39,6 +40,7 @@ import {
 import { NavbarAuth } from "../NavbarAuth";
 import { AddPublicationModal } from "./add-publication-modal";
 import { initials, publicationLinkParams } from "./format";
+import { PageReaderBar } from "./page-reader-bar";
 import {
   SubscriptionsSheet,
   SubscriptionsSwitcher,
@@ -214,8 +216,6 @@ const styles = stylex.create({
     flexShrink: "1",
     minHeight: 0,
     overflowY: "auto",
-    // Reserve room on mobile so trailing content clears the floating nav pill.
-    paddingBottom: { [DESKTOP]: 0, default: spacing["20"] },
   },
   mobileBar: {
     alignItems: "center",
@@ -240,18 +240,28 @@ const styles = stylex.create({
     flexShrink: 0,
     rowGap: gap.lg,
   },
+  // Floating dock anchored to the bottom of the content column. It stacks the
+  // page-reader bar above the bottom navigation (column, bottom-anchored) so the
+  // reader always floats just above the nav — and, since the nav is hidden at
+  // desktop widths, drops to the same bottom offset there.
+  dock: {
+    alignItems: "center",
+    display: "flex",
+    flexDirection: "column",
+    pointerEvents: "none",
+    position: "absolute",
+    rowGap: gap.lg,
+    zIndex: 30,
+    bottom: `calc(env(safe-area-inset-bottom, 0px) + ${verticalSpace["3xl"]})`,
+    left: 0,
+    paddingLeft: horizontalSpace["3xl"],
+    paddingRight: horizontalSpace["3xl"],
+    right: 0,
+  },
   bottomNav: {
     display: { [DESKTOP]: "none", default: "flex" },
     justifyContent: "center",
     pointerEvents: "none",
-    position: "absolute",
-    zIndex: 30,
-    bottom: 0,
-    left: 0,
-    paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${verticalSpace["2xl"]})`,
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
-    right: 0,
   },
   // Layered, soft floating shadow on boxShadow is lifted from the prototype.
   fabBar: {
@@ -605,75 +615,80 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div {...stylex.props(styles.shell)}>
-      <aside {...stylex.props(styles.sidebar)}>
-        <Brand style={styles.brandSidebar} />
-        <nav {...stylex.props(styles.nav)}>
-          {NAV.map((item) => (
-            <SidebarNavItem
-              key={item.to}
-              {...item}
-              count={item.to === "/latest" ? unreadCount : null}
-            />
-          ))}
-        </nav>
+    <PageReaderProvider>
+      <div {...stylex.props(styles.shell)}>
+        <aside {...stylex.props(styles.sidebar)}>
+          <Brand style={styles.brandSidebar} />
+          <nav {...stylex.props(styles.nav)}>
+            {NAV.map((item) => (
+              <SidebarNavItem
+                key={item.to}
+                {...item}
+                count={item.to === "/latest" ? unreadCount : null}
+              />
+            ))}
+          </nav>
 
-        <Flex align="center" justify="between" style={styles.sideLabel}>
-          <span>Subscriptions</span>
-          {following.length > 0 ? <span>{following.length}</span> : null}
-        </Flex>
-        <div {...stylex.props(styles.followList)}>
-          {following.length === 0 ? (
-            <span {...stylex.props(styles.emptyNote)}>
-              {signedIn ? "Nothing yet — go discover." : "Sign in to follow."}
-            </span>
-          ) : (
-            following.map((pub) => <FollowRow key={pub.uri} pub={pub} />)
-          )}
-        </div>
-
-        <Flex direction="column" gap="lg" style={styles.foot}>
-          <NavbarAuth variant="sidebar" menuPlacement="right bottom" />
-          <Button
-            variant="primary"
-            style={styles.addTrigger}
-            onPress={() => setAddModalOpen(true)}
-          >
-            <Plus size={16} /> Add publication
-          </Button>
-        </Flex>
-      </aside>
-
-      <main {...stylex.props(styles.main)}>
-        <Flex align="center" justify="between" style={styles.mobileBar}>
-          <Brand />
-          <div {...stylex.props(styles.mobileBarActions)}>
-            <SubscriptionsSwitcher
-              count={following.length}
-              onPress={() => setSubsSheetOpen(true)}
-            />
-            <NavbarAuth />
+          <Flex align="center" justify="between" style={styles.sideLabel}>
+            <span>Subscriptions</span>
+            {following.length > 0 ? <span>{following.length}</span> : null}
+          </Flex>
+          <div {...stylex.props(styles.followList)}>
+            {following.length === 0 ? (
+              <span {...stylex.props(styles.emptyNote)}>
+                {signedIn ? "Nothing yet — go discover." : "Sign in to follow."}
+              </span>
+            ) : (
+              following.map((pub) => <FollowRow key={pub.uri} pub={pub} />)
+            )}
           </div>
-        </Flex>
 
-        <div {...stylex.props(styles.scroller)} data-app-scroller>
-          {children}
-        </div>
+          <Flex direction="column" gap="lg" style={styles.foot}>
+            <NavbarAuth variant="sidebar" menuPlacement="right bottom" />
+            <Button
+              variant="primary"
+              style={styles.addTrigger}
+              onPress={() => setAddModalOpen(true)}
+            >
+              <Plus size={16} /> Add publication
+            </Button>
+          </Flex>
+        </aside>
 
-        <BottomNav hasUnread={hasUnread} />
-      </main>
+        <main {...stylex.props(styles.main)}>
+          <Flex align="center" justify="between" style={styles.mobileBar}>
+            <Brand />
+            <div {...stylex.props(styles.mobileBarActions)}>
+              <SubscriptionsSwitcher
+                count={following.length}
+                onPress={() => setSubsSheetOpen(true)}
+              />
+              <NavbarAuth />
+            </div>
+          </Flex>
 
-      <SubscriptionsSheet
-        isOpen={subsSheetOpen}
-        onOpenChange={setSubsSheetOpen}
-        following={following}
-        onAddPublication={openAddPublication}
-      />
-      <AddPublicationModal
-        isOpen={addModalOpen}
-        onOpenChange={setAddModalOpen}
-        showTrigger={false}
-      />
-    </div>
+          <div {...stylex.props(styles.scroller)} data-app-scroller>
+            {children}
+          </div>
+
+          <div {...stylex.props(styles.dock)}>
+            <PageReaderBar />
+            <BottomNav hasUnread={hasUnread} />
+          </div>
+        </main>
+
+        <SubscriptionsSheet
+          isOpen={subsSheetOpen}
+          onOpenChange={setSubsSheetOpen}
+          following={following}
+          onAddPublication={openAddPublication}
+        />
+        <AddPublicationModal
+          isOpen={addModalOpen}
+          onOpenChange={setAddModalOpen}
+          showTrigger={false}
+        />
+      </div>
+    </PageReaderProvider>
   );
 }

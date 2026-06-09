@@ -1,5 +1,7 @@
 "use client";
 
+import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
+
 import * as stylex from "@stylexjs/stylex";
 import { IconButton } from "#/design-system/icon-button";
 import { animationDuration } from "#/design-system/theme/animations.stylex";
@@ -12,12 +14,13 @@ import {
 import { shadow } from "#/design-system/theme/shadow.stylex";
 import { Toolbar, ToolbarGroup } from "#/design-system/toolbar";
 import { quoteShareApi } from "#/integrations/tanstack-query/api-quote-share.functions";
+import { usePageReader } from "#/lib/page-reader/page-reader-context";
 import {
   buildBlueskyComposeUrl,
   buildQuoteShareUrl,
   normalizeQuoteText,
 } from "#/lib/quote-share";
-import { Quote } from "lucide-react";
+import { Play, Quote } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -90,11 +93,13 @@ function eventTargetsToolbar(
 
 export function TextSelectionToolbar({
   rootRef,
+  article,
   documentUri,
   did,
   rkey,
 }: {
   rootRef: React.RefObject<HTMLElement | null>;
+  article: ArticleDetail;
   documentUri: string;
   did: string;
   rkey: string;
@@ -106,6 +111,7 @@ export function TextSelectionToolbar({
   );
   const [toolbar, setToolbar] = useState<ToolbarState | null>(null);
   const [composeHref, setComposeHref] = useState<string | null>(null);
+  const { playFromSelection } = usePageReader();
 
   const hideToolbar = useCallback(() => {
     pinnedRef.current = false;
@@ -244,6 +250,13 @@ export function TextSelectionToolbar({
     globalThis.getSelection()?.removeAllRanges();
   }, [composeHref, hideToolbar]);
 
+  const onPlayPress = useCallback(() => {
+    if (!toolbar) return;
+    playFromSelection(article, toolbar.text);
+    hideToolbar();
+    globalThis.getSelection()?.removeAllRanges();
+  }, [article, hideToolbar, playFromSelection, toolbar]);
+
   if (!toolbar || globalThis.document === undefined) return null;
 
   return createPortal(
@@ -256,6 +269,16 @@ export function TextSelectionToolbar({
         aria-label="Text selection actions"
         style={[styles.shell, styles.shellVisible]}
       >
+        <ToolbarGroup aria-label="Listen">
+          <IconButton
+            variant="tertiary"
+            size="lg"
+            aria-label="Read from here"
+            onPress={onPlayPress}
+          >
+            <Play size={18} />
+          </IconButton>
+        </ToolbarGroup>
         <ToolbarGroup aria-label="Share">
           <IconButton
             variant="tertiary"

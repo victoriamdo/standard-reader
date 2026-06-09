@@ -96,6 +96,29 @@ Sections, top to bottom:
 
 - Centered measure (~680px), drop-cap, pull quotes, hero image (if featured).
 - Sticky top bar: back, byline, follow, like, share; reading-progress bar.
+- **Listen (page reader):** a top-bar "Listen" button reads the article aloud
+  using on-device TTS (`kokoro-js`, lazy-loaded on first use). It narrates the
+  title, description, byline, then body — including embedded Bluesky posts
+  (author + content, fetched from the public AppView and inlined at their
+  position) — and infers a male/female voice from the author's name/handle via a
+  tiny on-device zero-shot classifier (`@huggingface/transformers`,
+  lazy-loaded). A passage can also be played from the selection toolbar
+  ("Read from here"). The player lives in the app shell (not the article), so
+  playback **persists across navigation**: a single floating action bar —
+  modelled on the prototype's `AudioBar` — docks just above the bottom navigation
+  on every route, in the same position on desktop and mobile. It shows status +
+  elapsed/total time, the article title (linking back to the document), a
+  back-15s button, an accent play/pause, a playback-speed menu, a close button,
+  and a thin draggable seek track (forward-seek rebases synthesis). The
+  article's own sticky chrome keeps its scroll-progress bar. While playing, the
+  current word is highlighted in place (CSS Custom Highlight API) and kept in
+  view — the engine's narration sentences are aligned word-by-word to the
+  rendered DOM, then the active word is derived from each sentence's audio
+  position by distributing the sentence's duration across its characters (Kokoro
+  exposes no per-word timestamps in JS, so this is the standard chunk-duration
+  approximation). Speed is applied at synthesis time via Kokoro's `speed` option so it
+  stays pitch-preserving (changing speed re-synthesizes from the current
+  sentence).
 - Footer: publication card + follow; "More from {publication}".
 - **Discussion:** Bluesky posts linking the article (external URL or app quote shares), read-only — reply counts link out to bsky threads.
 - Opening an article marks it read.

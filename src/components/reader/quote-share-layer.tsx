@@ -86,6 +86,7 @@ export function QuoteShareLayer({
         {linkParams ? (
           <TextSelectionToolbar
             rootRef={bodyRef}
+            article={article}
             documentUri={article.uri}
             did={linkParams.did}
             rkey={linkParams.rkey}

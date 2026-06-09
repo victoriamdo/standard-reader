@@ -4,6 +4,7 @@ import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
 import { parseArticleBlocks } from "#/lib/document/blocks";
 import { markdownPlaintext } from "#/lib/document/structured-content/markdown";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
+import { leafletBskyPostUris } from "#/lib/leaflet/blocks";
 import { leafletPlaintext } from "#/lib/leaflet/plaintext";
 import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
 import { offprintPlaintext } from "#/lib/offprint/plaintext";
@@ -35,14 +36,27 @@ function resolveContentType(article: ArticleBodyFields): string | null {
   return null;
 }
 
-/** Best-effort full text for reading-time estimates and search previews. */
-export function articleReadingText(article: ArticleDetail): string | null {
-  if (article.textContent?.trim()) return article.textContent;
+/** AT-URIs of Bluesky posts embedded in the article body (Leaflet only). */
+export function articleBskyPostUris(article: ArticleDetail): Array<string> {
+  if (resolveContentType(article) !== LEAFLET_CONTENT) return [];
+  return leafletBskyPostUris(article.contentJson);
+}
 
+/**
+ * Best-effort full text for reading-time estimates and search previews.
+ * `bskyPostText` optionally inlines narration for embedded Bluesky posts; it's
+ * ignored unless the body is rendered from blocks (Leaflet content).
+ */
+export function articleReadingText(
+  article: ArticleDetail,
+  bskyPostText?: Map<string, string>,
+): string | null {
   const contentType = resolveContentType(article);
   if (contentType === LEAFLET_CONTENT) {
-    return leafletPlaintext(article.contentJson);
+    return leafletPlaintext(article.contentJson, bskyPostText);
   }
+
+  if (article.textContent?.trim()) return article.textContent;
   if (contentType === PCKT_CONTENT) {
     return pcktPlaintext(article.contentJson);
   }
@@ -62,6 +76,41 @@ export function articleReadingText(article: ArticleDetail): string | null {
   }
 
   return article.description;
+}
+
+/** Author name for narration (lead contributor, else publication owner). */
+export function speechAuthor(article: ArticleDetail): string | null {
+  const lead = article.contributors[0];
+  if (lead?.displayName) return lead.displayName;
+  if (article.publicationOwnerDisplayName) {
+    return article.publicationOwnerDisplayName;
+  }
+  if (lead?.handle) return lead.handle;
+  if (article.publicationOwnerHandle) return article.publicationOwnerHandle;
+  return article.publication?.name ?? null;
+}
+
+/**
+ * Full narration text for the page reader: title, description, author byline,
+ * then the body content (each separated so the TTS pauses between them).
+ * `bskyPostText` optionally inlines narration for embedded Bluesky posts.
+ */
+export function articleSpeechText(
+  article: ArticleDetail,
+  bskyPostText?: Map<string, string>,
+): string | null {
+  const parts: Array<string> = [];
+
+  if (article.title?.trim()) parts.push(article.title.trim());
+  if (article.description?.trim()) parts.push(article.description.trim());
+
+  const author = speechAuthor(article);
+  if (author) parts.push(`By ${author}.`);
+
+  const content = articleReadingText(article, bskyPostText)?.trim();
+  if (content) parts.push(content);
+
+  return parts.length > 0 ? parts.join("\n\n") : null;
 }
 
 /** Reading-time input for feed cards (full body when indexed, else dek). */

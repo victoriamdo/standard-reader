@@ -14,7 +14,12 @@ const config = defineConfig({
   // used for OG image rendering). Vite's dependency optimizer tries to parse it
   // as JS and crashes ("stream did not contain valid UTF-8"), so keep it out of
   // the optimizer and treat it as external for SSR.
-  optimizeDeps: { exclude: ["@resvg/resvg-js"] },
+  // `kokoro-js` / `@huggingface/transformers` pull in onnxruntime-web + WASM and
+  // are loaded lazily client-side for the page reader; keep them out of the
+  // dependency optimizer so Vite doesn't try to pre-bundle the heavy graph.
+  optimizeDeps: {
+    exclude: ["@resvg/resvg-js", "kokoro-js", "@huggingface/transformers"],
+  },
   ssr: { external: ["@resvg/resvg-js"] },
   // StyleX emits one shared virtual stylesheet imported across the whole module
   // graph. With Vite 8 / Rolldown CSS code-splitting, that shared CSS gets

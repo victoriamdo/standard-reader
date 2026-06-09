@@ -146,9 +146,23 @@ export function leafletBlocks(content: unknown): Array<LeafletRenderableBlock> {
   return pages.flatMap((page) => blocksFromPage(page));
 }
 
-/** Plaintext lines contributed by a single leaflet block (for reading-time ingest). */
+/** AT-URIs of every embedded Bluesky post block, in document order. */
+export function leafletBskyPostUris(content: unknown): Array<string> {
+  return leafletBlocks(content)
+    .map((block) =>
+      block.kind === "bskyPost" ? block.block.postRef?.uri : undefined,
+    )
+    .filter((uri): uri is string => typeof uri === "string" && uri.length > 0);
+}
+
+/**
+ * Plaintext lines contributed by a single leaflet block (for reading-time
+ * ingest). `bskyPostText` optionally supplies narration text for embedded
+ * Bluesky posts (keyed by their AT-URI) so the page reader can speak them.
+ */
 export function plaintextLinesFromBlock(
   block: LeafletRenderableBlock,
+  bskyPostText?: Map<string, string>,
 ): Array<string> {
   switch (block.kind) {
     case "text": {
@@ -177,8 +191,12 @@ export function plaintextLinesFromBlock(
       const text = block.block.plaintext.trim();
       return text ? [text] : [];
     }
+    case "bskyPost": {
+      const uri = block.block.postRef?.uri;
+      const text = uri ? bskyPostText?.get(uri) : undefined;
+      return text ? [text] : [];
+    }
     case "horizontalRule":
-    case "bskyPost":
     case "image":
     case "iframe":
     case "unknown": {

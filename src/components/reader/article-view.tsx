@@ -13,9 +13,16 @@ import { AppLink } from "#/components/reader/app-link";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { parseInternalRoute } from "#/lib/internal-route";
+import { usePageReader } from "#/lib/page-reader/page-reader-context";
 import { buildBlueskyComposeUrl } from "#/lib/quote-share";
-import { ArrowLeft, Bookmark, ExternalLink, Share2 } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  Bookmark,
+  ExternalLink,
+  Headphones,
+  Share2,
+} from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { ArticleCard } from "../../integrations/tanstack-query/api-shapes";
 
@@ -40,6 +47,7 @@ import { ArticleContent } from "./content/article-content";
 import {
   articleCardReadingText,
   articleReadingText,
+  articleSpeechText,
 } from "./content/extract-text";
 import {
   articlePublicationUrl,
@@ -61,6 +69,7 @@ import {
 } from "./primitives";
 import { QuoteShareLayer } from "./quote-share-layer";
 import { applyMarkReadOptimisticUpdate } from "./read-optimistic";
+import { ReaderWordHighlighter } from "./reader-word-highlighter";
 
 const MEASURE = "80ch";
 
@@ -84,6 +93,9 @@ const styles = stylex.create({
     flexGrow: 1,
     flexShrink: 1,
     minHeight: 0,
+
+    "--current-word-highlight-background-color": primaryColor.solid1,
+    "--current-word-highlight-color": primaryColor.textContrast,
   },
   stickyChrome: {
     backgroundColor: `color-mix(in oklch, ${uiColor.bg} 95%, transparent)`,
@@ -124,6 +136,23 @@ const styles = stylex.create({
     flexShrink: 1,
     minHeight: 0,
     overflowY: "auto",
+    // The app shell's floating bottom-nav pill overlays this (own) scroller on
+    // mobile, so reserve room (plus the safe-area inset) for trailing content;
+    // the nav is hidden at desktop widths, so drop it there.
+    paddingBottom: {
+      default: `calc(env(safe-area-inset-bottom, 0px) + ${spacing["28"]})`,
+      "@media (min-width: 60rem)": 0,
+    },
+  },
+  // The floating page-reader bar overlays this scroller on every width while a
+  // document is playing, so reserve extra room for trailing content (footer /
+  // "more from"). On desktop the bottom-nav padding above is 0, so this is what
+  // clears the bar.
+  scrollBodyReader: {
+    paddingBottom: {
+      default: `calc(env(safe-area-inset-bottom, 0px) + ${spacing["40"]})`,
+      "@media (min-width: 60rem)": spacing["28"],
+    },
   },
   progressTrack: {
     backgroundColor: uiColor.component2,
@@ -543,7 +572,52 @@ function MoreFromRow({
   );
 }
 
-export function ArticleView({
+export function ArticleView(props: {
+  article: ArticleDetail;
+  sharedQuote?: string | null;
+}) {
+  return <ArticleViewBody {...props} />;
+}
+
+/** Top-bar control to start/pause reading this article aloud. */
+function TopListenButton({ article }: { article: ArticleDetail }) {
+  const { nowPlaying, state, playArticle } = usePageReader();
+  const available = useMemo(
+    () => (articleSpeechText(article)?.trim().length ?? 0) > 0,
+    [article],
+  );
+  if (!available) return null;
+
+  // Once this article is loaded into the global player, its transport lives in
+  // the playback toolbar — drop the header button to avoid a duplicate control.
+  const isCurrent = nowPlaying?.uri === article.uri;
+  if (isCurrent && state.status !== "idle") return null;
+
+  return (
+    <IconButton
+      variant="secondary"
+      size="md"
+      label="Listen"
+      onPress={() => playArticle(article)}
+    >
+      <Headphones size={18} />
+    </IconButton>
+  );
+}
+
+/** Scroll progress bar shown in the article's sticky chrome. */
+function ReaderProgress({ progress }: { progress: number }) {
+  return (
+    <div {...stylex.props(styles.progressTrack)} aria-hidden>
+      <div
+        {...stylex.props(styles.progress)}
+        style={{ width: `${progress * 100}%` }}
+      />
+    </div>
+  );
+}
+
+function ArticleViewBody({
   article,
   sharedQuote,
 }: {
@@ -551,7 +625,9 @@ export function ArticleView({
   sharedQuote?: string | null;
 }) {
   const router = useRouter();
+  const { active: readerActive } = usePageReader();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const articleRef = useRef<HTMLElement>(null);
   const [progress, setProgress] = useState(0);
   const pub = article.publication;
   const pubParams = pub ? publicationLinkParams(pub.uri) : null;
@@ -689,6 +765,7 @@ export function ArticleView({
           </div>
 
           <div {...stylex.props(styles.topActs)}>
+            <TopListenButton article={article} />
             {publicationArticleUrl ? (
               <IconButton
                 variant="secondary"
@@ -722,16 +799,18 @@ export function ArticleView({
           </div>
         </div>
 
-        <div {...stylex.props(styles.progressTrack)} aria-hidden>
-          <div
-            {...stylex.props(styles.progress)}
-            style={{ width: `${progress * 100}%` }}
-          />
-        </div>
+        <ReaderProgress progress={progress} />
       </div>
 
-      <div ref={scrollRef} {...stylex.props(styles.scrollBody)}>
-        <article {...stylex.props(styles.article)}>
+      <div
+        ref={scrollRef}
+        {...stylex.props(
+          styles.scrollBody,
+          readerActive && styles.scrollBodyReader,
+        )}
+      >
+        <ReaderWordHighlighter rootRef={articleRef} articleUri={article.uri} />
+        <article ref={articleRef} {...stylex.props(styles.article)}>
           {topic ? (
             <div {...stylex.props(styles.kicker)}>
               <Kicker>

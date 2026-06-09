@@ -9,12 +9,18 @@ export function leafletTextBlocks(content: unknown): Array<LeafletTextBlock> {
     .map((block) => block.block);
 }
 
-/** Flatten leaflet content to a single plaintext string (paragraphs joined). */
-export function leafletPlaintext(content: unknown): string | null {
+/**
+ * Flatten leaflet content to a single plaintext string (paragraphs joined).
+ * `bskyPostText` optionally inlines narration for embedded Bluesky posts.
+ */
+export function leafletPlaintext(
+  content: unknown,
+  bskyPostText?: Map<string, string>,
+): string | null {
   const blocks = leafletBlocks(content);
   if (blocks.length === 0) return null;
   const text = blocks
-    .flatMap((block) => plaintextLinesFromBlock(block))
+    .flatMap((block) => plaintextLinesFromBlock(block, bskyPostText))
     .join("\n\n");
   return text || null;
 }
