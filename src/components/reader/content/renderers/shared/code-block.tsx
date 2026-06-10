@@ -11,10 +11,21 @@ import { highlightApi } from "#/integrations/tanstack-query/api-highlight.functi
 import { codeBlockKey } from "#/lib/code-highlight";
 import { EMPTY_CODE_HIGHLIGHTS, pickCodeHighlight } from "#/lib/theme";
 import { useTheme } from "#/lib/use-theme";
+import { memo } from "react";
 
 import { articleBodyStyles } from "../../body-styles";
 
-function HighlightedCodeShell({ html }: { html: string }) {
+/**
+ * Shiki HTML is injected once and left alone. Parent re-renders during page
+ * reader playback must not reset `innerHTML` — that would replace every text
+ * node, trip the word-highlighter's MutationObserver, and make sentence
+ * highlights flash inside code blocks.
+ */
+const HighlightedCodeShell = memo(function HighlightedCodeShell({
+  html,
+}: {
+  html: string;
+}) {
   return (
     <div
       data-code-highlight=""
@@ -22,7 +33,7 @@ function HighlightedCodeShell({ html }: { html: string }) {
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
-}
+});
 
 function CodeBlockLazy({
   plaintext,
