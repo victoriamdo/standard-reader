@@ -1,12 +1,14 @@
 import type {
   ComAtprotoRepoDeleteRecord,
   ComAtprotoRepoGetRecord,
+  ComAtprotoRepoListRecords,
   ComAtprotoRepoPutRecord,
 } from "@atcute/atproto";
 import type { Client } from "@atcute/client";
 import type { InferInput } from "@atcute/lexicons/validations";
 
 import { ok } from "@atcute/client";
+import { now as tidNow } from "@atcute/tid";
 import { COLLECTION } from "#/lib/atproto/nsids";
 import { createHash } from "node:crypto";
 
@@ -30,6 +32,9 @@ type RepoPutRecordInput = InferInput<
 >;
 type RepoDeleteRecordInput = InferInput<
   (typeof ComAtprotoRepoDeleteRecord.mainSchema.input)["schema"]
+>;
+type RepoListRecordsParams = InferInput<
+  typeof ComAtprotoRepoListRecords.mainSchema.params
 >;
 
 /** Runtime values are validated by the PDS; narrow plain strings to lexicon-branded types. */
@@ -56,6 +61,15 @@ function lexDeleteRecordInput(args: {
   rkey: string;
 }): RepoDeleteRecordInput {
   return args as RepoDeleteRecordInput;
+}
+
+function lexListRecordsParams(args: {
+  repo: string;
+  collection: string;
+  limit?: number;
+  cursor?: string;
+}): RepoListRecordsParams {
+  return args as RepoListRecordsParams;
 }
 
 /**
@@ -214,6 +228,141 @@ export async function deleteReadRecord(
     repo,
     collection: COLLECTION.read,
     rkey: subjectRkey(documentUri),
+  });
+}
+
+// ── Publication lists (app.standard-reader.list / .listSave) ────────────────
+
+/** A raw record as listed from the repo (value validated by the caller). */
+export interface ListedRecord {
+  uri: string;
+  rkey: string;
+  value: unknown;
+}
+
+const LIST_RECORDS_PAGE = 100;
+
+/**
+ * Enumerate every record in one of the reader's own collections. Lists and
+ * list-saves aren't mirrored into the Neon read-model (they're app-personal
+ * state with no cross-network query), so the user's own repo is read directly
+ * — which also means an edit is visible on the next read, no ingest lag.
+ */
+export async function listCollectionRecords(
+  client: Client,
+  repo: string,
+  collection: string,
+): Promise<Array<ListedRecord>> {
+  const records: Array<ListedRecord> = [];
+  let cursor: string | undefined;
+  do {
+    const res = await ok(
+      client.get("com.atproto.repo.listRecords", {
+        params: lexListRecordsParams({
+          repo,
+          collection,
+          limit: LIST_RECORDS_PAGE,
+          cursor,
+        }),
+      }),
+    );
+    for (const record of res.records) {
+      const rkey = record.uri.slice(record.uri.lastIndexOf("/") + 1);
+      records.push({ uri: record.uri, rkey, value: record.value });
+    }
+    cursor = res.records.length === LIST_RECORDS_PAGE ? res.cursor : undefined;
+  } while (cursor);
+  return records;
+}
+
+/** New TID rkey for a list (creation-time sortable). */
+export function newListRkey(): string {
+  return tidNow();
+}
+
+/** Create or replace an `app.standard-reader.list` at `rkey`. */
+export async function putListRecord(
+  client: Client,
+  repo: string,
+  rkey: string,
+  list: {
+    name: string;
+    description?: string;
+    publications: Array<string>;
+    createdAt: string;
+  },
+): Promise<{ uri: string; cid: string }> {
+  return repoPutRecord(client, {
+    repo,
+    collection: COLLECTION.list,
+    rkey,
+    record: {
+      $type: COLLECTION.list,
+      name: list.name,
+      ...(list.description ? { description: list.description } : {}),
+      publications: list.publications,
+      createdAt: list.createdAt,
+    },
+  });
+}
+
+export async function deleteListRecord(
+  client: Client,
+  repo: string,
+  rkey: string,
+): Promise<void> {
+  return repoDeleteRecord(client, {
+    repo,
+    collection: COLLECTION.list,
+    rkey,
+  });
+}
+
+/**
+ * Write an `app.standard-reader.listSave` for `listUri` (adding someone
+ * else's list). Deterministic rkey, so save ⇄ unsave ⇄ status all address one
+ * record.
+ */
+export async function putListSaveRecord(
+  client: Client,
+  repo: string,
+  listUri: string,
+  createdAt: string,
+): Promise<{ uri: string; cid: string }> {
+  return repoPutRecord(client, {
+    repo,
+    collection: COLLECTION.listSave,
+    rkey: subjectRkey(listUri),
+    record: {
+      $type: COLLECTION.listSave,
+      list: listUri,
+      createdAt,
+    },
+  });
+}
+
+export async function deleteListSaveRecord(
+  client: Client,
+  repo: string,
+  listUri: string,
+): Promise<void> {
+  return repoDeleteRecord(client, {
+    repo,
+    collection: COLLECTION.listSave,
+    rkey: subjectRkey(listUri),
+  });
+}
+
+/** Whether the reader has saved `listUri` (an `app.standard-reader.listSave`). */
+export async function hasListSaveRecord(
+  client: Client,
+  repo: string,
+  listUri: string,
+): Promise<boolean> {
+  return repoHasRecord(client, {
+    repo,
+    collection: COLLECTION.listSave,
+    rkey: subjectRkey(listUri),
   });
 }
 

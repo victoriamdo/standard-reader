@@ -13,6 +13,8 @@
  */
 export const APP_NSID = {
   read: "app.standard-reader.read",
+  list: "app.standard-reader.list",
+  listSave: "app.standard-reader.listSave",
 } as const;
 
 /**

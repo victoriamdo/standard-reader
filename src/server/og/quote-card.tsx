@@ -129,19 +129,29 @@ function quoteOgMarkup(input: {
         }}
       >
         {input.publicationIcon ? (
-          <img
-            alt=""
-            height={64}
-            src={input.publicationIcon}
+          <div
             style={{
+              borderColor: colors.line,
               borderRadius: 10,
+              borderStyle: "solid",
+              borderWidth: 1.5,
+              display: "flex",
               flexShrink: 0,
-              height: 64,
-              objectFit: "cover",
-              width: 64,
+              overflow: "hidden",
             }}
-            width={64}
-          />
+          >
+            <img
+              alt=""
+              height={64}
+              src={input.publicationIcon}
+              style={{
+                height: 64,
+                objectFit: "cover",
+                width: 64,
+              }}
+              width={64}
+            />
+          </div>
         ) : (
           <div
             style={{

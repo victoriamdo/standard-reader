@@ -93,6 +93,8 @@ export function AutocompleteInput<T extends object>({
   const size = sizeProp || use(SizeContext);
   const popoverStyles = usePopoverStyles();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  /** Whether focus is inside the field — suggestions never open unfocused. */
+  const focusInsideRef = useRef(false);
   const [isOpenState, setIsOpenState] = useState(false);
 
   const firstItem = items ? [...items][0] : undefined;
@@ -105,9 +107,10 @@ export function AutocompleteInput<T extends object>({
   const hasItems = items && [...items].length > 0 && !isOnlyMatch;
   const isOpen = hasItems && isOpenState;
 
-  // Open popover when suggestions arrive (prop change)
+  // Open popover when suggestions arrive (prop change) while the user is in
+  // the field — items present on mount don't open it by default.
   useEffect(() => {
-    if (hasItems) {
+    if (hasItems && focusInsideRef.current) {
       // eslint-disable-next-line react-hooks/set-state-in-effect, @eslint-react/hooks-extra/no-direct-set-state-in-use-effect -- Sync open state when items prop updates
       setIsOpenState(true);
     }
@@ -122,6 +125,7 @@ export function AutocompleteInput<T extends object>({
         activeElement &&
         !wrapperRef.current.contains(activeElement)
       ) {
+        focusInsideRef.current = false;
         setIsOpenState(false);
       }
     }, 0);
@@ -129,6 +133,7 @@ export function AutocompleteInput<T extends object>({
 
   // Handle focus - reopen if there are items
   const handleFocusCapture = () => {
+    focusInsideRef.current = true;
     if (hasItems) {
       setIsOpenState(true);
     }

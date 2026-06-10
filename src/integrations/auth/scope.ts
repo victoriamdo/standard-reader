@@ -13,6 +13,8 @@ export const scope = [
       "site.standard.graph.subscription",
       "site.standard.graph.recommend",
       "app.standard-reader.read",
+      "app.standard-reader.list",
+      "app.standard-reader.listSave",
     ],
   }),
 ];

@@ -12,10 +12,8 @@ import {
 } from "#/server/atproto/repo-records";
 import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
-import {
-  selectFollowUris,
-  selectUnreadDocumentUris,
-} from "#/server/reader/queries";
+import { selectUnreadDocumentUris } from "#/server/reader/queries";
+import { effectiveFollowUris } from "#/server/reader/saved-lists";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
@@ -478,7 +476,8 @@ const markFollowsAllUnreadRead = createServerFn({ method: "POST" })
       }
       span.set("did", session.did);
 
-      const followUris = await selectFollowUris(
+      // Effective follows: subscriptions plus saved-list publications.
+      const followUris = await effectiveFollowUris(
         context.db,
         context.schema,
         session.did,

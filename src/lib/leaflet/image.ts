@@ -1,16 +1,10 @@
-import type { LeafletImageBlock } from "./types";
+import { blobCid } from "#/server/atproto/blob";
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import type { LeafletImageBlock } from "./types";
 
 /** Pull the CID string from a leaflet `image` blob field. */
 export function leafletImageCid(image: unknown): string | null {
-  if (!isRecord(image)) return null;
-  const ref = image.ref;
-  if (typeof ref === "string") return ref;
-  if (isRecord(ref) && typeof ref.$link === "string") return ref.$link;
-  return null;
+  return blobCid(image as Parameters<typeof blobCid>[0]);
 }
 
 /** Build a `com.atproto.sync.getBlob` URL for a blob on the authoring repo's PDS. */

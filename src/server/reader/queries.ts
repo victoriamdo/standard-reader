@@ -641,6 +641,12 @@ export async function discoverDirectoryPublications(
 export interface PublicationRailOpts {
   /** Publication URIs to omit (e.g. the current trending set). */
   excludeUris?: Array<string>;
+  /**
+   * Follow set to anchor on / exclude from suggestions. Pass the reader's
+   * *effective* follows (subscriptions + saved-list publications) so list
+   * members aren't re-suggested; defaults to raw subscriptions.
+   */
+  followUris?: Array<string>;
 }
 
 function mergeExcludeUris(...groups: Array<Array<string>>): Array<string> {
@@ -895,7 +901,8 @@ export async function recommendedPublications(
   opts: PublicationRailOpts = {},
 ): Promise<Array<PublicationCard>> {
   const excludeUris = opts.excludeUris ?? [];
-  const followUris = await selectFollowUris(db, schema, did);
+  const followUris =
+    opts.followUris ?? (await selectFollowUris(db, schema, did));
   if (followUris.length === 0) {
     return popularPublications(db, schema, limit, excludeUris);
   }
@@ -934,7 +941,8 @@ export async function followedByPeopleYouFollow(
   opts: PublicationRailOpts = {},
 ): Promise<Array<PublicationCard>> {
   const excludeUris = opts.excludeUris ?? [];
-  const followUris = await selectFollowUris(db, schema, did);
+  const followUris =
+    opts.followUris ?? (await selectFollowUris(db, schema, did));
   if (followUris.length === 0) {
     return [];
   }

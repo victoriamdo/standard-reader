@@ -50,6 +50,16 @@ export function publicationUriFromParams(did: string, rkey: string): string {
 }
 
 /**
+ * Route params (`{ did, rkey }`) for the on-site `/l/$did/$rkey` list page,
+ * parsed from an `app.standard-reader.list` AT-URI.
+ */
+export function listLinkParams(
+  uri: string,
+): { did: string; rkey: string } | null {
+  return publicationLinkParams(uri);
+}
+
+/**
  * Route params (`{ did, rkey }`) for the on-site `/a/$did/$rkey` article view,
  * parsed from a document AT-URI (`at://did/<collection>/rkey`).
  */

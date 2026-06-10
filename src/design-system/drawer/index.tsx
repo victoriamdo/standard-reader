@@ -152,6 +152,9 @@ const styles = stylex.create({
     marginTop: verticalSpace.lg,
     width: spacing["10"],
   },
+  headerTitle: {
+    margin: 0,
+  },
   header: {
     gap: gap["md"],
     alignItems: "center",
@@ -277,7 +280,7 @@ export interface DrawerHeaderProps extends StyleXComponentProps<
 export const DrawerHeader = ({ children, style }: DrawerHeaderProps) => {
   return (
     <div {...stylex.props(styles.header, typeramp.heading5, style)}>
-      <Heading>{children}</Heading>
+      <Heading {...stylex.props(styles.headerTitle)}>{children}</Heading>
       <IconButton label="Close" size="sm" variant="tertiary" slot="close">
         <X />
       </IconButton>

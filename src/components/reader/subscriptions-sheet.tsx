@@ -1,14 +1,19 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Compass, Plus } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ChevronRight, Compass, FolderPlus, Plus } from "lucide-react";
 import { Button as AriaButton } from "react-aria-components";
 
 import type { FollowingPublication } from "../../integrations/tanstack-query/api-feed.functions";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
+import {
+  Disclosure,
+  DisclosurePanel,
+  DisclosureTitle,
+} from "../../design-system/disclosure";
 import {
   Drawer,
   DrawerBody,
@@ -21,6 +26,7 @@ import { radius } from "../../design-system/theme/radius.stylex";
 import {
   gap,
   horizontalSpace,
+  size,
   verticalSpace,
 } from "../../design-system/theme/semantic-spacing.stylex";
 import { spacing } from "../../design-system/theme/spacing.stylex";
@@ -31,8 +37,17 @@ import {
   tracking,
 } from "../../design-system/theme/typography.stylex";
 import { parseInternalRoute } from "../../lib/internal-route";
-import { initials, publicationLinkParams } from "./format";
+import { initials, listLinkParams, publicationLinkParams } from "./format";
 import { Handle } from "./primitives";
+
+/** One sidebar list group (own or saved), precomputed by the app shell. */
+export interface SubscriptionListGroup {
+  key: string;
+  name: string;
+  /** AT-URI of the list; links the group to its public `/l/$did/$rkey` page. */
+  listUri: string;
+  pubs: Array<FollowingPublication>;
+}
 
 const styles = stylex.create({
   switcher: {
@@ -71,9 +86,16 @@ const styles = stylex.create({
     paddingRight: horizontalSpace.md,
     paddingTop: verticalSpace.none,
   },
-  addButton: {
+  actionRow: {
+    columnGap: gap.sm,
+    display: "flex",
+    rowGap: gap.sm,
     marginBottom: verticalSpace.sm,
-    width: "100%",
+  },
+  actionButton: {
+    flexBasis: "0%",
+    flexGrow: 1,
+    flexShrink: 1,
   },
   list: {
     display: "flex",
@@ -160,6 +182,7 @@ const styles = stylex.create({
     width: "100%",
   },
   sheetHeader: {
+    margin: 0,
     alignItems: "flex-start",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
@@ -189,6 +212,80 @@ const styles = stylex.create({
     textAlign: "center",
     paddingBottom: verticalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
+  },
+  /** Tiny uppercase group header row (mirrors the desktop sidebar). */
+  groupLabel: {
+    alignItems: "center",
+    color: uiColor.text1,
+    columnGap: gap.sm,
+    display: "flex",
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    justifyContent: "space-between",
+    letterSpacing: tracking.widest,
+    rowGap: gap.sm,
+    textTransform: "uppercase",
+    paddingBottom: verticalSpace.xxs,
+    paddingTop: verticalSpace.lg,
+  },
+  /** Group name as a link to the list's public page. */
+  groupTitleLink: {
+    textDecoration: {
+      default: "none",
+      ":hover": "underline",
+    },
+    alignItems: "center",
+    color: uiColor.text1,
+    display: "flex",
+    flexBasis: "0%",
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  groupName: {
+    overflow: "hidden",
+    flexBasis: "0%",
+    flexGrow: 1,
+    flexShrink: 1,
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    minWidth: 0,
+  },
+  groupActions: {
+    alignItems: "center",
+    columnGap: gap.sm,
+    display: "flex",
+    rowGap: gap.sm,
+  },
+  /** Chevron-only disclosure trigger; sized to match the sm IconButton. */
+  groupToggle: {
+    borderRadius: radius.sm,
+    justifyContent: "center",
+    height: size["2xl"],
+    paddingBottom: spacing["0"],
+    paddingLeft: spacing["0"],
+    paddingRight: spacing["0"],
+    paddingTop: spacing["0"],
+    width: size["2xl"],
+  },
+  groupPanelContent: {
+    paddingBottom: spacing["0"],
+    paddingLeft: spacing["0"],
+    paddingRight: spacing["0"],
+    paddingTop: spacing["0"],
+  },
+  /** Extra separation below an expanded group; collapses with the panel. */
+  groupSpacer: {
+    height: verticalSpace.sm,
+  },
+  groupEmpty: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.sm,
+    fontStyle: "italic",
+    paddingBottom: verticalSpace.lg,
+    paddingTop: verticalSpace.lg,
   },
 });
 
@@ -285,16 +382,76 @@ function SheetPubRow({
   );
 }
 
+function SheetListGroup({
+  group,
+  onNavigate,
+}: {
+  group: SubscriptionListGroup;
+  onNavigate: () => void;
+}) {
+  const link = listLinkParams(group.listUri);
+  const unreadTotal = group.pubs.reduce((sum, pub) => sum + pub.unreadCount, 0);
+
+  return (
+    <Disclosure defaultExpanded>
+      <div {...stylex.props(styles.groupLabel)}>
+        {link ? (
+          <Link
+            to="/l/$did/$rkey"
+            params={link}
+            aria-label={`Open list ${group.name}`}
+            onClick={onNavigate}
+            {...stylex.props(styles.groupTitleLink)}
+          >
+            <span {...stylex.props(styles.groupName)}>{group.name}</span>
+          </Link>
+        ) : (
+          <span {...stylex.props(styles.groupName)}>{group.name}</span>
+        )}
+        <div {...stylex.props(styles.groupActions)}>
+          {unreadTotal > 0 ? <span>{unreadTotal}</span> : null}
+          <DisclosureTitle
+            style={styles.groupToggle}
+            aria-label={`Toggle list ${group.name}`}
+          >
+            {null}
+          </DisclosureTitle>
+        </div>
+      </div>
+      <DisclosurePanel contentStyle={styles.groupPanelContent}>
+        <div {...stylex.props(styles.list)}>
+          {group.pubs.length === 0 ? (
+            <span {...stylex.props(styles.groupEmpty)}>Empty list.</span>
+          ) : (
+            group.pubs.map((pub) => (
+              <SheetPubRow key={pub.uri} pub={pub} onNavigate={onNavigate} />
+            ))
+          )}
+        </div>
+        <div {...stylex.props(styles.groupSpacer)} aria-hidden />
+      </DisclosurePanel>
+    </Disclosure>
+  );
+}
+
 export function SubscriptionsSheet({
   isOpen,
   onOpenChange,
   following,
+  ungrouped,
+  groups,
   onAddPublication,
+  onNewList,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   following: Array<FollowingPublication>;
+  /** Follows not shown inside a list group (rendered flat, no label). */
+  ungrouped: Array<FollowingPublication>;
+  groups: Array<SubscriptionListGroup>;
   onAddPublication: () => void;
+  /** Opens the new-list modal; omit when signed out. */
+  onNewList?: () => void;
 }) {
   const navigate = useNavigate();
   const countLabel = `${following.length} publication${following.length === 1 ? "" : "s"}`;
@@ -314,30 +471,46 @@ export function SubscriptionsSheet({
       size="md"
       trigger={<span hidden aria-hidden />}
     >
-      <DrawerHeader style={styles.sheetHeader}>Following</DrawerHeader>
+      <DrawerHeader style={styles.sheetHeader}>Subscriptions</DrawerHeader>
       <DrawerDescription style={styles.sheetSubtitle}>
         {countLabel}
       </DrawerDescription>
       <DrawerBody scroll>
-        <Button
-          variant="primary"
-          style={styles.addButton}
-          onPress={onAddPublication}
-        >
-          <Plus size={17} /> Add publication
-        </Button>
+        <div {...stylex.props(styles.actionRow)}>
+          <Button
+            variant="primary"
+            style={styles.actionButton}
+            onPress={onAddPublication}
+            size="lg"
+          >
+            <Plus size={17} /> Add publication
+          </Button>
+          {onNewList ? (
+            <Button
+              variant="secondary"
+              style={styles.actionButton}
+              onPress={onNewList}
+              size="lg"
+            >
+              <FolderPlus size={17} /> New list
+            </Button>
+          ) : null}
+        </div>
 
         <div {...stylex.props(styles.list)}>
-          {following.length === 0 ? (
+          {following.length === 0 && groups.length === 0 ? (
             <p {...stylex.props(styles.emptyNote)}>
               You aren&apos;t following anything yet.
             </p>
           ) : (
-            following.map((pub) => (
+            ungrouped.map((pub) => (
               <SheetPubRow key={pub.uri} pub={pub} onNavigate={close} />
             ))
           )}
         </div>
+        {groups.map((group) => (
+          <SheetListGroup key={group.key} group={group} onNavigate={close} />
+        ))}
 
         <AriaButton
           {...stylex.props(styles.discoverLink)}

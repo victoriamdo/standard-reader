@@ -4,10 +4,18 @@ import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
+import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { PageReaderProvider } from "#/lib/page-reader/page-reader-provider";
-import { Compass, Home, Newspaper, Plus, Search } from "lucide-react";
+import {
+  Compass,
+  FolderPlus,
+  Home,
+  Newspaper,
+  Plus,
+  Search,
+} from "lucide-react";
 import {
   forwardRef,
   useEffect,
@@ -17,16 +25,24 @@ import {
 } from "react";
 
 import type { FollowingPublication } from "../../integrations/tanstack-query/api-feed.functions";
+import type { SubscriptionListGroup } from "./subscriptions-sheet";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
+import {
+  Disclosure,
+  DisclosurePanel,
+  DisclosureTitle,
+} from "../../design-system/disclosure";
 import { Flex } from "../../design-system/flex";
+import { IconButton } from "../../design-system/icon-button";
 import { animationDuration } from "../../design-system/theme/animations.stylex";
 import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
 import {
   gap,
   horizontalSpace,
+  size,
   verticalSpace,
 } from "../../design-system/theme/semantic-spacing.stylex";
 import { spacing } from "../../design-system/theme/spacing.stylex";
@@ -39,7 +55,8 @@ import {
 } from "../../design-system/theme/typography.stylex";
 import { NavbarAuth } from "../NavbarAuth";
 import { AddPublicationModal } from "./add-publication-modal";
-import { initials, publicationLinkParams } from "./format";
+import { initials, listLinkParams, publicationLinkParams } from "./format";
+import { ListEditModal } from "./list-edit-modal";
 import { PageReaderBar } from "./page-reader-bar";
 import {
   SubscriptionsSheet,
@@ -151,6 +168,90 @@ const styles = stylex.create({
     paddingRight: horizontalSpace.lg,
     paddingTop: verticalSpace["3xl"],
   },
+  sideLabelActions: {
+    alignItems: "center",
+    columnGap: gap.sm,
+    display: "flex",
+    rowGap: gap.sm,
+  },
+  listLabel: {
+    alignItems: "center",
+    color: uiColor.text1,
+    fontFamily: fontFamily.sans,
+    fontSize: "0.65rem",
+    fontWeight: fontWeight.semibold,
+    letterSpacing: tracking.widest,
+    textTransform: "uppercase",
+    paddingBottom: verticalSpace.xxs,
+    paddingLeft: horizontalSpace.lg,
+    paddingRight: horizontalSpace.lg,
+    paddingTop: verticalSpace.lg,
+  },
+  /**
+   * Extra separation below an *expanded* group's rows. Lives inside the
+   * disclosure panel so collapsed groups stack tightly.
+   */
+  listGroupSpacer: {
+    height: verticalSpace.sm,
+  },
+  listName: {
+    overflow: "hidden",
+    flexBasis: "0%",
+    flexGrow: 1,
+    flexShrink: 1,
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    minWidth: 0,
+  },
+  /** Group name as a link to the list's public page. */
+  listTitleLink: {
+    textDecoration: {
+      default: "none",
+      ":hover": "underline",
+    },
+    alignItems: "center",
+    color: {
+      default: uiColor.text1,
+      ":is([data-sidebar-label]:hover *)": uiColor.text2,
+    },
+    display: "flex",
+    flexBasis: "0%",
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  /** Header icons: muted until the header row is hovered. */
+  headerIcon: {
+    color: {
+      default: uiColor.text1,
+      ":is([data-sidebar-label]:hover *)": uiColor.text2,
+    },
+  },
+  /** Chevron-only disclosure trigger; sized to match the sm IconButton. */
+  listToggle: {
+    borderRadius: radius.sm,
+    justifyContent: "center",
+    height: size["2xl"],
+    paddingBottom: spacing["0"],
+    paddingLeft: spacing["0"],
+    paddingRight: spacing["0"],
+    paddingTop: spacing["0"],
+    width: size["2xl"],
+  },
+  listPanelContent: {
+    paddingBottom: spacing["0"],
+    paddingLeft: spacing["0"],
+    paddingRight: spacing["0"],
+    paddingTop: spacing["0"],
+  },
+  listEmpty: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.sm,
+    fontStyle: "italic",
+    paddingLeft: horizontalSpace.lg,
+    paddingRight: horizontalSpace.lg,
+  },
   followList: {
     columnGap: gap.none,
     display: "flex",
@@ -215,12 +316,12 @@ const styles = stylex.create({
     columnGap: gap.xl,
     display: "flex",
     flexDirection: "column",
+    position: "sticky",
     rowGap: gap.xl,
     bottom: 0,
     marginTop: "auto",
     paddingBottom: verticalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
-    position: "sticky",
   },
   main: {
     overflow: "hidden",
@@ -515,6 +616,65 @@ function FollowRow({ pub }: { pub: FollowingPublication }) {
   );
 }
 
+function SidebarList({
+  name,
+  listUri,
+  pubs,
+}: {
+  name: string;
+  /** AT-URI of the list; links the group to its public `/l/$did/$rkey` page. */
+  listUri: string;
+  pubs: Array<FollowingPublication>;
+}) {
+  const link = listLinkParams(listUri);
+  const unreadTotal = pubs.reduce((sum, pub) => sum + pub.unreadCount, 0);
+
+  return (
+    <Disclosure defaultExpanded>
+      <Flex
+        align="center"
+        justify="between"
+        gap="sm"
+        data-sidebar-label="true"
+        style={styles.listLabel}
+      >
+        {link ? (
+          <Link
+            to="/l/$did/$rkey"
+            params={link}
+            aria-label={`Open list ${name}`}
+            {...stylex.props(styles.listTitleLink)}
+          >
+            <span {...stylex.props(styles.listName)}>{name}</span>
+          </Link>
+        ) : (
+          <span {...stylex.props(styles.listName)}>{name}</span>
+        )}
+        <div {...stylex.props(styles.sideLabelActions)}>
+          {unreadTotal > 0 ? <span>{unreadTotal}</span> : null}
+          <DisclosureTitle
+            style={styles.listToggle}
+            chevronStyle={styles.headerIcon}
+            aria-label={`Toggle list ${name}`}
+          >
+            {null}
+          </DisclosureTitle>
+        </div>
+      </Flex>
+      <DisclosurePanel contentStyle={styles.listPanelContent}>
+        <div {...stylex.props(styles.followList)}>
+          {pubs.length === 0 ? (
+            <span {...stylex.props(styles.listEmpty)}>Empty list.</span>
+          ) : (
+            pubs.map((pub) => <FollowRow key={pub.uri} pub={pub} />)
+          )}
+        </div>
+        <div {...stylex.props(styles.listGroupSpacer)} aria-hidden />
+      </DisclosurePanel>
+    </Disclosure>
+  );
+}
+
 const BottomNavItem = forwardRef<
   HTMLAnchorElement,
   NavLink & { isActive: boolean; showUnreadDot?: boolean }
@@ -643,9 +803,55 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [subsSheetOpen, setSubsSheetOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
 
+  const { data: listsData } = useQuery({
+    ...listApi.getListsQueryOptions(),
+    enabled: signedIn,
+  });
+  const lists = listsData ?? [];
+  const { data: savedListsData } = useQuery({
+    ...listApi.getSavedListsQueryOptions(),
+    enabled: signedIn,
+  });
+  const savedLists = savedListsData ?? [];
+  const followingByUri = new Map(following.map((pub) => [pub.uri, pub]));
+  // Own + saved lists as render-ready groups (shared by sidebar and sheet).
+  const listGroups: Array<SubscriptionListGroup> = [
+    ...lists.map((list) => ({
+      key: list.uri,
+      name: list.name,
+      listUri: list.uri,
+      pubs: list.publications
+        .map((uri) => followingByUri.get(uri))
+        .filter((pub): pub is FollowingPublication => pub != null),
+    })),
+    ...savedLists.map((saved) => ({
+      key: saved.list.uri,
+      name: saved.owner.handle
+        ? `${saved.list.name} · @${saved.owner.handle}`
+        : saved.list.name,
+      listUri: saved.list.uri,
+      pubs: saved.publications.map(
+        (pub) => followingByUri.get(pub.uri) ?? { ...pub, unreadCount: 0 },
+      ),
+    })),
+  ];
+  const hasListGroups = listGroups.length > 0;
+  // Subscriptions already shown in a list group stay out of the flat list.
+  const groupedUris = new Set(
+    listGroups.flatMap((group) => group.pubs.map((pub) => pub.uri)),
+  );
+  const ungrouped = following.filter((pub) => !groupedUris.has(pub.uri));
+  // Creation only — editing lives on the list's own page.
+  const [newListOpen, setNewListOpen] = useState(false);
+
   const openAddPublication = () => {
     setSubsSheetOpen(false);
     setAddModalOpen(true);
+  };
+
+  const openNewList = () => {
+    setSubsSheetOpen(false);
+    setNewListOpen(true);
   };
 
   return (
@@ -663,19 +869,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
 
-          <Flex align="center" justify="between" style={styles.sideLabel}>
+          <Flex
+            align="center"
+            justify="between"
+            data-sidebar-label="true"
+            style={styles.sideLabel}
+          >
             <span>Subscriptions</span>
-            {following.length > 0 ? <span>{following.length}</span> : null}
+            <div {...stylex.props(styles.sideLabelActions)}>
+              {signedIn ? (
+                <IconButton
+                  aria-label="New list"
+                  size="sm"
+                  variant="tertiary"
+                  style={styles.headerIcon}
+                  onPress={() => setNewListOpen(true)}
+                >
+                  <FolderPlus size={14} />
+                </IconButton>
+              ) : null}
+            </div>
           </Flex>
           <div {...stylex.props(styles.followList)}>
-            {following.length === 0 ? (
+            {following.length === 0 && !hasListGroups ? (
               <span {...stylex.props(styles.emptyNote)}>
                 {signedIn ? "Nothing yet — go discover." : "Sign in to follow."}
               </span>
             ) : (
-              following.map((pub) => <FollowRow key={pub.uri} pub={pub} />)
+              ungrouped.map((pub) => <FollowRow key={pub.uri} pub={pub} />)
             )}
           </div>
+          {listGroups.map((group) => (
+            <SidebarList
+              key={group.key}
+              name={group.name}
+              listUri={group.listUri}
+              pubs={group.pubs}
+            />
+          ))}
 
           <Flex direction="column" gap="lg" style={styles.foot}>
             <NavbarAuth variant="sidebar" menuPlacement="right bottom" />
@@ -715,12 +946,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           isOpen={subsSheetOpen}
           onOpenChange={setSubsSheetOpen}
           following={following}
+          ungrouped={ungrouped}
+          groups={listGroups}
           onAddPublication={openAddPublication}
+          onNewList={signedIn ? openNewList : undefined}
         />
         <AddPublicationModal
           isOpen={addModalOpen}
           onOpenChange={setAddModalOpen}
           showTrigger={false}
+        />
+        <ListEditModal
+          isOpen={newListOpen}
+          onOpenChange={setNewListOpen}
+          list={null}
+          following={following}
         />
       </div>
     </PageReaderProvider>

@@ -13,6 +13,7 @@ import {
   trendingPublicationUris,
   trendingPublications,
 } from "#/server/reader/queries";
+import { effectiveFollowUris } from "#/server/reader/saved-lists";
 import { z } from "zod";
 
 import type { PublicationCard } from "./api-shapes";
@@ -155,7 +156,10 @@ const getRecommendedPublications = createServerFn({ method: "GET" })
           schema,
           session.did,
           data.limit,
-          { excludeUris: trendingExclude },
+          {
+            excludeUris: trendingExclude,
+            followUris: await effectiveFollowUris(db, schema, session.did),
+          },
         );
         span.set("count", items.length);
         return items.filter((pub) => pub.documentCount > 0);
@@ -188,7 +192,10 @@ const getFollowedByPeopleYouFollow = createServerFn({ method: "GET" })
           schema,
           session.did,
           data.limit,
-          { excludeUris: trendingExclude },
+          {
+            excludeUris: trendingExclude,
+            followUris: await effectiveFollowUris(db, schema, session.did),
+          },
         );
         span.set("count", items.length);
         return items;

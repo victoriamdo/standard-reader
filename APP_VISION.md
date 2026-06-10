@@ -176,6 +176,19 @@ source of truth; Neon holds a derived view for speed and cross-network querying.
   (like toggle in reader).
 - **Read / unread:** an `app.standard-reader.read` record per article; opening an article
   marks it read.
+- **Publication lists (sidebar folders):** `app.standard-reader.list` records — a named, ordered,
+  shareable list of publications (one level deep; a publication may live in several lists).
+  Managed from the sidebar (new-list button in the Subscriptions header; per-list edit modal with
+  reorder / remove / add). Every list is also a public page at `/l/$did/$rkey` — like a Bluesky
+  user list, but for publications — and other readers can **add it to their app** via an
+  `app.standard-reader.listSave` record (saved lists render as extra sidebar groups). **Saving a
+  list acts like following its publications**: feeds, the sidebar, and unread counts operate on
+  the reader's _effective_ follow set (subscriptions ∪ saved-list publications, computed in
+  `src/server/reader/saved-lists.ts` with a short-TTL per-reader cache) — no individual
+  `site.standard.graph.subscription` records are written. Lists are
+  **not** mirrored into Neon: reads go straight to the owning repo's PDS (strongly consistent;
+  public pages use unauthenticated `getRecord`), and only the member publications are hydrated
+  from the read-model.
 - **Routing:** URL-backed routes (TanStack Router) for every view — home / latest / discover /
   search / article / publication — with real back/forward navigation and shareable links.
   _(The original prototype used an in-memory view stack; the port moves to real URLs.)_
@@ -199,6 +212,10 @@ source of truth; Neon holds a derived view for speed and cross-network querying.
     (`topic` = a publication's most frequent document tag; Discover chips = top-N topics).
 - **App-owned lexicons** under the `app.standard-reader` namespace (JSON in `lexicons/`):
   - `app.standard-reader.read` — an article marked read (`subject` = document at-uri).
+  - `app.standard-reader.list` — a publication list (`name` + optional `description` + ordered
+    `publications` at-uris of `site.standard.publication` records + `createdAt`; tid rkey).
+  - `app.standard-reader.listSave` — another reader's list saved into this app (`list` at-uri +
+    `createdAt`; deterministic rkey so save/unsave/status address one record).
 
 ---
 

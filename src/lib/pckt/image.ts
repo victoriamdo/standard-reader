@@ -1,3 +1,5 @@
+import { blobCid as sharedBlobCid } from "#/server/atproto/blob";
+
 import type { PcktImageBlock } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -5,11 +7,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function blobCid(blob: unknown): string | null {
-  if (!isRecord(blob)) return null;
-  const ref = blob.ref;
-  if (typeof ref === "string") return ref;
-  if (isRecord(ref) && typeof ref.$link === "string") return ref.$link;
-  return null;
+  return sharedBlobCid(blob as Parameters<typeof sharedBlobCid>[0]);
 }
 
 /** Pull a CID from `blob:CID` src strings or blob refs. */

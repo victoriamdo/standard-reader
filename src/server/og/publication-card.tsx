@@ -91,19 +91,29 @@ function publicationOgMarkup(input: {
         }}
       >
         {input.publicationIcon ? (
-          <img
-            alt=""
-            height={168}
-            src={input.publicationIcon}
+          <div
             style={{
+              borderColor: colors.line,
               borderRadius: 24,
+              borderStyle: "solid",
+              borderWidth: 2,
+              display: "flex",
               flexShrink: 0,
-              height: 168,
-              objectFit: "cover",
-              width: 168,
+              overflow: "hidden",
             }}
-            width={168}
-          />
+          >
+            <img
+              alt=""
+              height={168}
+              src={input.publicationIcon}
+              style={{
+                height: 168,
+                objectFit: "cover",
+                width: 168,
+              }}
+              width={168}
+            />
+          </div>
         ) : (
           <div
             style={{

@@ -108,6 +108,15 @@ stores in `src/integrations/auth/`, session/user server fns in
 
 - [x] Define app-owned lexicons under `app.standard-reader` (JSON in `lexicons/`):
   - [x] `app.standard-reader.read` (`subject` = document at-uri + `createdAt`)
+  - [x] `app.standard-reader.list` (publication list / sidebar folder: `name` + optional
+        `description` + ordered `publications` at-uris + `createdAt`, tid rkey) and
+        `app.standard-reader.listSave` (another reader's list added to this app: `list`
+        at-uri + `createdAt`, deterministic rkey). Not mirrored into Neon — read/written
+        directly against the owning repo (`listCollectionRecords`/`putListRecord`/
+        `putListSaveRecord` in `repo-records.ts`, `listApi` in `api-lists.functions.ts`;
+        public list pages fetch via unauthenticated `getRecord` on the owner's PDS).
+        OAuth scope includes both collections, so sessions created before this change
+        need a re-login to write lists.
   - [x] Likes reuse `site.standard.graph.recommend` (no app-owned like lexicon)
   - [x] Publish tooling via `goat` (`scripts/goat-lex.mjs`): `pnpm lex:lint`,
         `pnpm atproto:publish-lexicons`. Needs `LEXICON_PUBLISH_*` creds for the
@@ -202,6 +211,23 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
       when signed in (`drizzle/0011_*`); articles without a canonical URL fall back to the reader
       (`#/lib/open-links`, `useOpenLinks`, `OpenLinksMenuItem`).
 - [x] **Reader profile** — browse the signed-in user's likes (`site.standard.graph.recommend` records via `readerApi.getLikes`).
+- [x] **Publication lists (sidebar folders)** — named, ordered lists of publications
+      (one level deep, a publication can be in several lists): folder-plus button in the
+      Subscriptions header creates one, each list header has an edit (pencil) button opening
+      `ListEditModal` (name + description fields, drag-to-reorder ListBox with per-row remove,
+      react-aria autocomplete over the remaining subscriptions). List groups render above the
+      flat "All" list (desktop sidebar only).
+- [x] **Shareable list pages** — every list has a public route `/l/$did/$rkey` (hero with
+      name/description/owner handle, ranked publication rows with follow buttons, social meta).
+      Owners get an Edit button; other signed-in readers get **Add list / Remove list**, which
+      writes/deletes an `app.standard-reader.listSave` record — saved lists then render as
+      extra sidebar groups (attributed `name · @owner`, label links to the list page).
+- [x] **Saved lists act as virtual subscriptions** — feeds, the sidebar, unread counts, and
+      mark-all-read operate on the reader's _effective_ follow set (subscriptions ∪ saved-list
+      publications) via `effectiveFollowUris` in `src/server/reader/saved-lists.ts`; saved
+      lists are resolved from the PDSes with a 60s per-reader cache (busted on save/unsave),
+      and recommendation rails anchor on / exclude the effective set so list members aren't
+      re-suggested. No `site.standard.graph.subscription` records are written.
 - [x] **Per-page OG cards** — satori-rendered Open Graph images for the main routes (Today, Discover, Latest, Saved, Search, About, Sign in) in the site-card editorial style, served from `/api/og/page/$slug` (`src/server/og/page-card.tsx`); copy lives in `PAGE_OG_CARDS` and each route's `head` emits full social meta via `pageSocialMeta` (`src/lib/site-metadata.ts`). Article quote shares and the site-wide card already had their own OG endpoints.
 - [x] **Article + publication OG cards** — publication-themed satori cards for plain article links
       (`/api/og/article?did&rkey`, `src/server/og/article-card.tsx`: kicker, headline, description,
@@ -213,6 +239,12 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
       `articleOgImageUrl`/`publicationOgImageUrl`. `loadOgImage` fetches original blobs first
       (png/jpeg pass through, alpha preserved) and falls back to the Bluesky CDN `@png` variant
       for formats satori can't parse (webp blobs previously 500'd quote cards too).
+- [x] **List OG cards** — editorial-style satori cards for shared publication lists
+      (`/api/og/list?did&rkey`, `src/server/og/list-card.tsx`: "Publication list" kicker, name,
+      description, overlapping row of up to 6 member icons + "+N" bubble, by @owner +
+      publication-count footer). List record comes from the PDS (`fetchPublicList`); member
+      icons/owner handle hydrate from the read model. `/l/...` route `head` emits the card via
+      `listOgImageUrl`; cached more briefly than article cards since lists are editable.
 - [x] **standard.site discovery hints** — `/p/...` emits
       `<link rel="site.standard.publication" href="at://…">` and `/a/...` emits
       `rel="site.standard.document"` (+ the publication hint when the document belongs to one),

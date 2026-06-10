@@ -164,11 +164,14 @@ export interface DisclosureTitleProps extends StyleXComponentProps<
   Omit<AriaButtonProps, "slot" | "children">
 > {
   children: React.ReactNode;
+  /** Style overrides for the chevron icon (e.g. a contextual color). */
+  chevronStyle?: stylex.StyleXStyles;
 }
 
 export function DisclosureTitle({
   children,
   style,
+  chevronStyle,
   ...props
 }: DisclosureTitleProps) {
   return (
@@ -182,7 +185,7 @@ export function DisclosureTitle({
       )}
     >
       {children}
-      <ChevronDown size={16} {...stylex.props(styles.chevron)} />
+      <ChevronDown size={16} {...stylex.props(styles.chevron, chevronStyle)} />
     </Button>
   );
 }
@@ -192,16 +195,19 @@ export interface DisclosurePanelProps extends StyleXComponentProps<
 > {
   children: React.ReactNode;
   isQuiet?: boolean;
+  /** Style overrides for the inner content wrapper (e.g. to remove padding). */
+  contentStyle?: stylex.StyleXStyles;
 }
 
 export function DisclosurePanel({
   children,
   style,
+  contentStyle,
   ...props
 }: DisclosurePanelProps) {
   return (
     <AriaDisclosurePanel {...props} {...stylex.props(styles.panel, style)}>
-      <div {...stylex.props(styles.panelContent)}>{children}</div>
+      <div {...stylex.props(styles.panelContent, contentStyle)}>{children}</div>
     </AriaDisclosurePanel>
   );
 }

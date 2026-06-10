@@ -86,19 +86,29 @@ function publicationFooter(input: {
       }}
     >
       {input.publicationIcon ? (
-        <img
-          alt=""
-          height={56}
-          src={input.publicationIcon}
+        <div
           style={{
+            borderColor: colors.line,
             borderRadius: 9,
+            borderStyle: "solid",
+            borderWidth: 1.5,
+            display: "flex",
             flexShrink: 0,
-            height: 56,
-            objectFit: "cover",
-            width: 56,
+            overflow: "hidden",
           }}
-          width={56}
-        />
+        >
+          <img
+            alt=""
+            height={56}
+            src={input.publicationIcon}
+            style={{
+              height: 56,
+              objectFit: "cover",
+              width: 56,
+            }}
+            width={56}
+          />
+        </div>
       ) : (
         <div
           style={{

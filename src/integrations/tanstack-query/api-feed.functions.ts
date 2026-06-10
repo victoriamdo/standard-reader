@@ -12,10 +12,10 @@ import {
   popularPublications,
   recommendedPublications,
   selectArticleCards,
-  selectFollowUris,
   trendingArticles,
   trendingPublicationUris,
 } from "#/server/reader/queries";
+import { effectiveFollowUris } from "#/server/reader/saved-lists";
 import { z } from "zod";
 
 import type { ArticleCard, PublicationCard } from "./api-shapes";
@@ -102,7 +102,8 @@ const getSidebar = createServerFn({ method: "GET" })
         } satisfies SidebarData;
       }
 
-      const followUris = await selectFollowUris(db, schema, did);
+      // Effective follows: subscriptions plus saved-list publications.
+      const followUris = await effectiveFollowUris(db, schema, did);
       span.set("follows", followUris.length);
       const [following, counts, unreadByPublication] = await Promise.all([
         followedPublications(db, schema, followUris),
@@ -132,7 +133,7 @@ const getHomeFeed = createServerFn({ method: "GET" })
       const { db, schema } = context;
       const session = await getAtprotoSessionForRequest(getRequest());
       const did = session?.did;
-      const followUris = did ? await selectFollowUris(db, schema, did) : [];
+      const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
       const personalized = followUris.length > 0;
       span.set("did", did ?? null);
       span.set("follows", followUris.length);
@@ -164,6 +165,7 @@ const getHomeFeed = createServerFn({ method: "GET" })
         personalized && did
           ? await recommendedPublications(db, schema, did, HOME_RAIL_LIMIT, {
               excludeUris: trendingPubUris,
+              followUris,
             })
           : await popularPublications(
               db,
@@ -223,7 +225,7 @@ const getLatestFeed = createServerFn({ method: "GET" })
       const did = session?.did;
       span.set("did", did ?? null);
 
-      const followUris = did ? await selectFollowUris(db, schema, did) : [];
+      const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
       span.set("follows", followUris.length);
 
       // Signed-out readers always get the network-wide list.

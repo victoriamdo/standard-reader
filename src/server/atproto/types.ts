@@ -95,6 +95,23 @@ export interface ReadRecord {
   createdAt?: string;
 }
 
+/** `app.standard-reader.list` — a named, ordered, shareable publication list. */
+export interface ListRecord {
+  $type?: string;
+  name: string;
+  description?: string;
+  /** Ordered at-uris of the `site.standard.publication` records in the list. */
+  publications: Array<string>;
+  createdAt?: string;
+}
+
+/** `app.standard-reader.listSave` — another reader's list saved into this app. */
+export interface ListSaveRecord {
+  $type?: string;
+  list: string;
+  createdAt?: string;
+}
+
 /** `app.bsky.actor.profile`. */
 export interface BskyProfileRecord {
   $type?: string;
