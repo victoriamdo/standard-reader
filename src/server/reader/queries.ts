@@ -1203,3 +1203,137 @@ export async function publicationFollowedByCoReaders(
     total: sorted.length,
   };
 }
+
+/** Blend weights for cross-publication related-article ranking. */
+const RELATED_ARTICLE_BLEND = {
+  coRead: 2,
+  tagOverlap: 1,
+} as const;
+
+/** Fetch {@link ArticleCard}s for `uris`, preserving rank order. */
+async function articleCardsByOrderedUris(
+  db: Db,
+  schema: Schema,
+  uris: Array<string>,
+): Promise<Array<ArticleCard>> {
+  if (uris.length === 0) {
+    return [];
+  }
+
+  const d = schema.documents;
+  const p = schema.publications;
+  const pr = schema.profiles;
+  const rows = await db
+    .select(articleCardColumns(schema))
+    .from(d)
+    .leftJoin(p, eq(p.uri, d.publicationUri))
+    .leftJoin(pr, eq(pr.did, p.did))
+    .where(
+      and(
+        inArray(d.uri, uris),
+        eq(d.deleted, false),
+        documentPublishedNotInFuture(d),
+      ),
+    );
+
+  const byUri = new Map(rows.map((row) => [row.uri, toArticleCard(row)]));
+  return uris
+    .map((uri) => byUri.get(uri))
+    .filter((doc): doc is ArticleCard => doc != null);
+}
+
+async function coReadScoresForDocument(
+  db: Db,
+  documentUri: string,
+  publicationUri: string | null,
+): Promise<Array<ScoredUri>> {
+  const samePubFilter = publicationUri
+    ? sql`AND d.publication_uri IS DISTINCT FROM ${publicationUri}`
+    : sql``;
+
+  const result = await db.execute(sql`
+    SELECT r2.document_uri AS uri,
+           count(*)::float AS score
+    FROM reads r1
+    INNER JOIN reads r2 ON r1.owner_did = r2.owner_did
+    INNER JOIN documents d ON d.uri = r2.document_uri
+    WHERE r1.document_uri = ${documentUri}
+      AND r2.document_uri != ${documentUri}
+      AND d.deleted = false
+      AND d.published_at <= now()
+      ${samePubFilter}
+    GROUP BY r2.document_uri
+    ORDER BY count(*) DESC
+    LIMIT 30
+  `);
+
+  return result.rows as Array<ScoredUri>;
+}
+
+async function tagOverlapScoresForDocument(
+  db: Db,
+  documentUri: string,
+  publicationUri: string | null,
+): Promise<Array<ScoredUri>> {
+  const samePubFilter = publicationUri
+    ? sql`AND d.publication_uri IS DISTINCT FROM ${publicationUri}`
+    : sql``;
+
+  const result = await db.execute(sql`
+    WITH anchor_tags AS (
+      SELECT lower(btrim(tag)) AS tag
+      FROM documents d, unnest(d.tags) AS tag
+      WHERE d.uri = ${documentUri}
+        AND btrim(tag) <> ''
+    ),
+    shared AS (
+      SELECT d.uri,
+             count(*)::float AS score
+      FROM documents d,
+           unnest(d.tags) AS doc_tag
+      WHERE d.deleted = false
+        AND d.uri != ${documentUri}
+        AND d.published_at <= now()
+        ${samePubFilter}
+        AND lower(btrim(doc_tag)) IN (SELECT tag FROM anchor_tags)
+      GROUP BY d.uri
+    )
+    SELECT uri, score
+    FROM shared
+    ORDER BY score DESC
+    LIMIT 30
+  `);
+
+  return result.rows as Array<ScoredUri>;
+}
+
+/**
+ * Cross-publication articles related by shared tags and co-read patterns —
+ * complements same-publication "More from" rails.
+ */
+export async function relatedArticles(
+  db: Db,
+  schema: Schema,
+  opts: {
+    documentUri: string;
+    publicationUri: string | null;
+    limit: number;
+  },
+): Promise<Array<ArticleCard>> {
+  const [coRead, tagOverlap] = await Promise.all([
+    coReadScoresForDocument(db, opts.documentUri, opts.publicationUri),
+    tagOverlapScoresForDocument(db, opts.documentUri, opts.publicationUri),
+  ]);
+
+  const ranked = mergeScoredUris([
+    { weight: RELATED_ARTICLE_BLEND.coRead, scores: coRead },
+    { weight: RELATED_ARTICLE_BLEND.tagOverlap, scores: tagOverlap },
+  ]);
+
+  if (ranked.length === 0) {
+    return [];
+  }
+
+  const uris = ranked.slice(0, opts.limit).map((row) => row.uri);
+  return articleCardsByOrderedUris(db, schema, uris);
+}

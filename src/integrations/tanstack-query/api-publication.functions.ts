@@ -27,6 +27,7 @@ import {
   articleRecommendedPublications,
   publicationFollowedByCoReaders,
   readersAlsoFollow,
+  relatedArticles,
   selectArticleCards,
 } from "#/server/reader/queries";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
@@ -76,6 +77,7 @@ const articleInput = z.object({
 const articleExtrasInput = z.object({
   documentUri: z.string().min(1),
   alsoFollowLimit: z.number().int().min(1).max(20).default(3),
+  relatedLimit: z.number().int().min(1).max(10).default(3),
 });
 
 const socialProofInput = z.object({
@@ -174,6 +176,8 @@ export interface ArticleDetail {
 /** Below-the-fold article data — loaded client-side after the reading view paints. */
 export interface ArticleExtras {
   moreFrom: Array<ArticleCard>;
+  /** Cross-publication articles by tag overlap and co-read. */
+  relatedArticles: Array<ArticleCard>;
   readersAlsoFollow: Array<PublicationCard>;
 }
 
@@ -586,20 +590,25 @@ const getArticleExtras = createServerFn({ method: "GET" })
 
         if (!row) {
           span.set("found", false);
-          return { moreFrom: [], readersAlsoFollow: [] };
+          return { moreFrom: [], relatedArticles: [], readersAlsoFollow: [] };
         }
         span.set("found", true);
 
         const session = await getAtprotoSessionForRequest(getRequest());
         const readerDid = session?.did;
 
-        const [moreFromRaw, recommendedRaw] = await Promise.all([
+        const [moreFromRaw, relatedRaw, recommendedRaw] = await Promise.all([
           row.publicationUri
             ? selectArticleCards(db, schema, {
                 publicationUris: [row.publicationUri],
                 limit: 4,
               })
             : Promise.resolve([]),
+          relatedArticles(db, schema, {
+            documentUri: row.uri,
+            publicationUri: row.publicationUri,
+            limit: data.relatedLimit,
+          }),
           articleRecommendedPublications(db, schema, {
             publicationUri: row.publicationUri,
             readerDid,
@@ -610,14 +619,14 @@ const getArticleExtras = createServerFn({ method: "GET" })
         const moreFrom = moreFromRaw
           .filter((doc) => doc.uri !== row.uri)
           .slice(0, 3);
-        const moreFromWithComments = await attachCommentCountsToArticles(
-          db,
-          schema,
-          moreFrom,
-        );
+        const [moreFromWithComments, relatedWithComments] = await Promise.all([
+          attachCommentCountsToArticles(db, schema, moreFrom),
+          attachCommentCountsToArticles(db, schema, relatedRaw),
+        ]);
 
         return {
           moreFrom: moreFromWithComments,
+          relatedArticles: relatedWithComments,
           readersAlsoFollow: recommendedRaw,
         };
       },

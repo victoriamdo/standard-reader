@@ -10,13 +10,13 @@ import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
-import { buildBlueskyComposeUrl } from "#/lib/quote-share";
 import { listOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
-import { Pencil, Share2 } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { useState } from "react";
 
 import { PubDirectoryRow } from "../components/reader/cards";
 import { ListEditModal } from "../components/reader/list-edit-modal";
+import { ShareMenu } from "../components/reader/share-menu";
 import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
 import { Button } from "../design-system/button";
 import { uiColor } from "../design-system/theme/color.stylex";
@@ -206,14 +206,7 @@ function ListPage() {
 
   const { list, owner, publications, viewer } = page;
 
-  const onShare = () => {
-    const pageUrl = `${getPublicUrlClient()}/l/${did}/${rkey}`;
-    globalThis.open(
-      buildBlueskyComposeUrl(pageUrl),
-      "_blank",
-      "noopener,noreferrer",
-    );
-  };
+  const pageUrl = `${getPublicUrlClient()}/l/${did}/${rkey}`;
 
   return (
     <div>
@@ -248,9 +241,7 @@ function ListPage() {
           </div>
 
           <div {...stylex.props(styles.heroActs)}>
-            <Button variant="secondary" onPress={onShare}>
-              <Share2 size={14} /> Share
-            </Button>
+            <ShareMenu pageUrl={pageUrl} />
             {viewer.isOwner ? (
               <Button variant="secondary" onPress={() => setEditOpen(true)}>
                 <Pencil size={14} /> Edit list

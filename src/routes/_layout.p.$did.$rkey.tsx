@@ -12,6 +12,7 @@ import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { publicationOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
+import { ShareMenu } from "../components/reader/share-menu";
 import { ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -430,6 +431,10 @@ function PublicationProfile() {
           </div>
 
           <div {...stylex.props(styles.heroActs)}>
+            <ShareMenu
+              variant="icon"
+              pageUrl={`${getPublicUrlClient()}/p/${did}/${rkey}`}
+            />
             {pub.url ? (
               <IconButton
                 variant="secondary"
@@ -489,6 +494,7 @@ function PublicationProfile() {
                   key={article.uri}
                   article={article}
                   showByline={false}
+                  showSaveButton={false}
                   unread={isUnread(article.uri)}
                 />
               ))}

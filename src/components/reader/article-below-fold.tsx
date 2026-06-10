@@ -193,6 +193,32 @@ function MoreFromSection({
   );
 }
 
+function RelatedArticlesSection({
+  relatedArticles,
+}: {
+  relatedArticles: ArticleExtras["relatedArticles"];
+}) {
+  const { preference } = useReadingTypography();
+  if (relatedArticles.length === 0) return null;
+
+  return (
+    <div {...stylex.props(styles.moreFrom, articleMeasureStyle(preference))}>
+      <Flex direction="column">
+        <SectionHead kicker="Across the network" title="Related reading" />
+        <div>
+          {relatedArticles.map((doc) => (
+            <MoreFromRow
+              key={doc.uri}
+              article={doc}
+              publicationName={doc.publicationName?.trim() || "Publication"}
+            />
+          ))}
+        </div>
+      </Flex>
+    </div>
+  );
+}
+
 function ReadersAlsoFollowSection({
   readersAlsoFollow,
 }: {
@@ -236,6 +262,10 @@ export function ArticleBelowFold({
       ) : null}
 
       {showComments ? <CommentsSection documentUri={article.uri} /> : null}
+
+      {extras ? (
+        <RelatedArticlesSection relatedArticles={extras.relatedArticles} />
+      ) : null}
 
       {extras ? (
         <ReadersAlsoFollowSection

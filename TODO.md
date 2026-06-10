@@ -321,5 +321,6 @@ not offline body cache). Route slug **`/saved`**.
 After Tier 1–3, as appetite allows:
 
 - [ ] **Author view** — all publications from one DID (identity in [`profiles`](src/db/schema/publications.ts)).
-- [ ] **Related articles** — content similarity (tags, co-read) beyond “More from {publication}”.
-- [ ] **Share publication / list** — copy link + compose-to-bsky; OG cards exist for `/p/` and `/l/`.
+- [x] **Related articles** — “Related reading” rail on article footer (`relatedArticles` in
+      `getArticleExtras`: tag overlap + co-read blend, excludes same publication).
+- [x] **Share publication / list** — `ShareMenu` on `/p/` and `/l/` (copy link + compose-to-bsky).

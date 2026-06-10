@@ -130,7 +130,8 @@ Sections, top to bottom:
   approximation). Speed is applied at synthesis time via Kokoro's `speed` option so it
   stays pitch-preserving (changing speed re-synthesizes from the current
   sentence).
-- Footer: publication card + follow; "More from {publication}".
+- Footer: publication card + follow; "More from {publication}"; **Related reading** (cross-publication
+  articles ranked by shared tags and co-read patterns, loaded via `getArticleExtras`).
 - **Discussion:** Bluesky posts linking the article (external URL or app quote shares), plus direct replies to the author's linked announcement post (`bskyPostRef`), read-only — reply counts link out to bsky threads. The announcement post itself is not listed as a comment.
 - Opening an article marks it read.
 - **Open on original site (preference):** a user-menu toggle (cookie for
@@ -145,7 +146,8 @@ Sections, top to bottom:
 
 ### Publication profile
 
-- Banner + **inline header** (avatar, topic, name, description, stats, Copy DID, Follow).
+- Banner + **inline header** (avatar, topic, name, description, stats, Share, Follow).
+- **Share** menu: copy `/p/$did/$rkey` link + compose-to-Bluesky (OG card on `/p/`).
 - Recent writing (featured lead + rows).
 - Right rail: About + DID + "Readers also follow".
 - Social proof line ("Followed by …") when applicable.
@@ -199,7 +201,8 @@ source of truth; Neon holds a derived view for speed and cross-network querying.
   shareable list of publications (one level deep; a publication may live in several lists).
   Managed from the sidebar (new-list button in the Subscriptions header; per-list edit modal with
   reorder / remove / add). Every list is also a public page at `/l/$did/$rkey` — like a Bluesky
-  user list, but for publications — and other readers can **add it to their app** via an
+  user list, but for publications — with a **Share** menu (copy link + compose-to-Bluesky; OG card
+  on `/l/`). Other readers can **add it to their app** via an
   `app.standard-reader.listSave` record (saved lists render as extra sidebar groups). **Saving a
   list acts like following its publications**: feeds, the sidebar, and unread counts operate on
   the reader's _effective_ follow set (subscriptions ∪ saved-list publications, computed in
