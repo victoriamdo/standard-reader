@@ -44,6 +44,25 @@ body {
   color: var(--current-word-highlight-color, inherit);
 }
 
+/* Bluesky post embeds in dark mode. The head script sets
+   html[data-resolved-scheme] before paint; the embed wrapper's data-theme can
+   lag SSR/hydration and leave a white card with light inherited text. */
+html[data-resolved-scheme="dark"] .bsky-react-post-theme {
+  --post-skeleton-bg: rgb(63 63 70);
+  --post-border: 1px solid rgb(46 64 82);
+  --post-error-border: 1px solid rgb(252 165 165);
+  --post-font-color: rgb(247 249 249);
+  --post-error-font-color: rgb(252 165 165);
+  --post-font-color-secondary: rgb(148 163 184);
+  --post-bg-color: rgb(22 30 39);
+  --post-bg-color-hover: rgb(30 41 54 / 0.5);
+  --post-error-bg-color: rgb(69 10 10);
+  --post-color-blue-primary: rgb(10 122 255);
+  --post-color-blue-primary-hover: rgb(26 140 216);
+  --post-link-font-color: rgb(147 197 253);
+  color: var(--post-font-color);
+}
+
 /* Padding on the Shiki <pre> so its theme background fills the card border. */
 [data-code-highlight] .shiki {
   font-family: inherit;

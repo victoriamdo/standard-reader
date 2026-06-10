@@ -94,3 +94,44 @@ export function pickCodeHighlight(
 ): string | undefined {
   return highlights[scheme][key] ?? highlights.light[key];
 }
+
+/** Client-side subscription for `html[data-resolved-scheme]` + OS theme changes. */
+export function subscribeToResolvedScheme(
+  onStoreChange: () => void,
+): () => void {
+  if (globalThis.document === undefined) return () => {};
+
+  const root = globalThis.document.documentElement;
+  const media = globalThis.matchMedia("(prefers-color-scheme: dark)");
+  const observer = new MutationObserver(onStoreChange);
+  observer.observe(root, {
+    attributes: true,
+    attributeFilter: ["data-resolved-scheme", "data-theme"],
+  });
+
+  const onMediaChange = (event: MediaQueryListEvent) => {
+    if (root.getAttribute("data-theme") === "system") {
+      root.dataset.resolvedScheme = event.matches ? "dark" : "light";
+    }
+    onStoreChange();
+  };
+  media.addEventListener("change", onMediaChange);
+
+  return () => {
+    observer.disconnect();
+    media.removeEventListener("change", onMediaChange);
+  };
+}
+
+export function resolveSchemeForMode(mode: ThemeMode): ResolvedThemeScheme {
+  if (mode === "dark" || mode === "light") return mode;
+  return readDomResolvedScheme() ?? getSystemColorScheme();
+}
+
+/** SSR default when `mode` is `system` (no DOM / client hints in this path). */
+export function resolvedSchemeServerSnapshot(
+  mode: ThemeMode,
+): ResolvedThemeScheme {
+  if (mode === "dark" || mode === "light") return mode;
+  return "light";
+}

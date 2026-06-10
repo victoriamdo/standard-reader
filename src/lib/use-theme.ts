@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import type { ResolvedThemeScheme, ThemeMode } from "./theme";
 
 import {
   DEFAULT_THEME_MODE,
-  getSystemColorScheme,
   readInitialSystemColorScheme,
+  resolveSchemeForMode,
+  resolvedSchemeServerSnapshot,
+  subscribeToResolvedScheme,
 } from "./theme";
 
 export interface ThemeContextValue {
@@ -27,24 +29,11 @@ export function useTheme(): ThemeContextValue {
   });
   const mode = data?.mode ?? DEFAULT_THEME_MODE;
 
-  const [systemScheme, setSystemScheme] = useState<ResolvedThemeScheme>(
-    readInitialSystemColorScheme,
+  const resolvedScheme = useSyncExternalStore(
+    subscribeToResolvedScheme,
+    () => resolveSchemeForMode(mode),
+    () => resolvedSchemeServerSnapshot(mode),
   );
-
-  useEffect(() => {
-    setSystemScheme(getSystemColorScheme());
-
-    if (typeof globalThis.matchMedia !== "function") return;
-
-    const media = globalThis.matchMedia("(prefers-color-scheme: dark)");
-    const listener = (event: MediaQueryListEvent) => {
-      const next = event.matches ? "dark" : "light";
-      setSystemScheme(next);
-      globalThis.document.documentElement.dataset.resolvedScheme = next;
-    };
-    media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
-  }, []);
 
   const setMutation = useMutation({
     mutationFn: async (next: ThemeMode) => {
@@ -92,9 +81,6 @@ export function useTheme(): ThemeContextValue {
     },
     [mode, setMutation],
   );
-
-  const resolvedScheme: ResolvedThemeScheme =
-    mode === "system" ? systemScheme : mode;
 
   return {
     mode,

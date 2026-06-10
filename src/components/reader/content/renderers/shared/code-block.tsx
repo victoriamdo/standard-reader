@@ -11,7 +11,7 @@ import { highlightApi } from "#/integrations/tanstack-query/api-highlight.functi
 import { codeBlockKey } from "#/lib/code-highlight";
 import { EMPTY_CODE_HIGHLIGHTS, pickCodeHighlight } from "#/lib/theme";
 import { useTheme } from "#/lib/use-theme";
-import { memo } from "react";
+import { memo, useLayoutEffect, useRef } from "react";
 
 import { articleBodyStyles } from "../../body-styles";
 
@@ -26,10 +26,22 @@ const HighlightedCodeShell = memo(function HighlightedCodeShell({
 }: {
   html: string;
 }) {
+  const shellRef = useRef<HTMLDivElement>(null);
+
+  // SSR always emits the light variant; sync to the client-resolved html after
+  // hydration (and on theme toggle) without resetting on unrelated re-renders.
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+    if (!shell || shell.innerHTML === html) return;
+    shell.innerHTML = html;
+  }, [html]);
+
   return (
     <div
+      ref={shellRef}
       data-code-highlight=""
       {...stylex.props(articleBodyStyles.codeBlockShell)}
+      suppressHydrationWarning
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
