@@ -2,8 +2,8 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { and, eq, sql } from "drizzle-orm";
-import { getAtprotoSessionForRequest } from "#/middleware/auth";
 import { observe } from "#/server/observability/log";
+import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
 import {
   countFollowedDocuments,
@@ -98,9 +98,7 @@ const getSidebar = createServerFn({ method: "GET" })
   .handler(
     observe("feed.getSidebar", async ({ context }, span) => {
       const { db, schema } = context;
-      const session = await getAtprotoSessionForRequest(getRequest());
-      const did = session?.did;
-      span.set("did", did ?? null);
+      const did = await attachReaderSpanContext(span, getRequest());
       if (!did) {
         return {
           signedIn: false,
@@ -150,15 +148,13 @@ const getHomeFeed = createServerFn({ method: "GET" })
   .handler(
     observe("feed.getHomeFeed", async ({ context }, span) => {
       const { db, schema } = context;
-      const session = await getAtprotoSessionForRequest(getRequest());
-      const did = session?.did;
+      const did = await attachReaderSpanContext(span, getRequest());
       const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
       const personalized = followUris.length > 0;
       const trackReading =
         did == null
           ? false
           : await resolveTrackReadingHistoryEnabled(db, schema);
-      span.set("did", did ?? null);
       span.set("follows", followUris.length);
       span.set("personalized", personalized);
 
@@ -252,9 +248,7 @@ const getLatestFeed = createServerFn({ method: "GET" })
       span.set("filter", data.filter);
       span.set("offset", data.offset);
 
-      const session = await getAtprotoSessionForRequest(getRequest());
-      const did = session?.did;
-      span.set("did", did ?? null);
+      const did = await attachReaderSpanContext(span, getRequest());
 
       const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
       span.set("follows", followUris.length);
@@ -276,7 +270,7 @@ const getLatestFeed = createServerFn({ method: "GET" })
       const [items, followCounts, networkCount] = await Promise.all([
         selectArticleCards(db, schema, {
           ...cardQuery,
-          readForDid: trackReading ? did : undefined,
+          readForDid: trackReading && did ? did : undefined,
           limit: data.limit,
           offset: data.offset,
         }),

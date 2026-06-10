@@ -177,6 +177,7 @@ export function CommentCard({ comment }: { comment: DocumentComment }) {
   const handle = comment.author.handle ? `@${comment.author.handle}` : null;
   const replyLabel =
     comment.replyCount === 1 ? "1 reply" : `${comment.replyCount} replies`;
+  const replyContext = comment.source === "margin" ? "on Margin" : "on Bluesky";
 
   return (
     <a
@@ -219,7 +220,9 @@ export function CommentCard({ comment }: { comment: DocumentComment }) {
 
       <Flex align="center" gap="sm" style={commentStyles.footer}>
         <MessageCircle size={16} aria-hidden />
-        <span>{replyLabel}</span>
+        <span>
+          {replyLabel} {replyContext}
+        </span>
       </Flex>
     </a>
   );

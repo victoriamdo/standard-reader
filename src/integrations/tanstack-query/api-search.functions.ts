@@ -3,12 +3,14 @@ import type { PublicationRecord } from "#/server/atproto/types";
 import { isDid } from "@atcute/lexicons/syntax";
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { STANDARD_NSID } from "#/lib/atproto/nsids";
 import { withoutExcludedPublications } from "#/lib/publication/exclusions";
 import { blobCid, getBlobUrl } from "#/server/atproto/blob";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
+import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
 import {
   discoverEligiblePublicationWhere,
@@ -80,6 +82,7 @@ const searchPublications = createServerFn({ method: "GET" })
       const { db, schema } = context;
       span.set("q", data.q);
       span.set("offset", data.offset);
+      await attachReaderSpanContext(span, getRequest());
 
       const page = await searchIndexedPublications(
         db,
@@ -135,6 +138,7 @@ const searchArticles = createServerFn({ method: "GET" })
       const pr = schema.profiles;
       span.set("q", data.q);
       span.set("offset", data.offset);
+      await attachReaderSpanContext(span, getRequest());
 
       const tsq = sql`websearch_to_tsquery('english', ${data.q})`;
       const articleWhere = and(

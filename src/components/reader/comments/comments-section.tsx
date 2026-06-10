@@ -40,7 +40,7 @@ function CommentsContent({ documentUri }: { documentUri: string }) {
 export function CommentsSection({ documentUri }: { documentUri: string }) {
   return (
     <section {...stylex.props(commentStyles.section)} aria-label="Discussion">
-      <SectionHead kicker="Bluesky" title="Discussion" />
+      <SectionHead kicker="Across the Atmosphere" title="Discussions" />
       <Suspense fallback={<CommentsSkeleton />}>
         <CommentsContent documentUri={documentUri} />
       </Suspense>

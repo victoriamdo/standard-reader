@@ -1,6 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { observe } from "#/server/observability/log";
+import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import { fetchDocumentComments } from "#/server/reader/document-comments";
 import { z } from "zod";
 
@@ -21,6 +23,7 @@ const getDocumentComments = createServerFn({ method: "GET" })
   .handler(
     observe("comments.getDocumentComments", async ({ data, context }, span) => {
       span.set("documentUri", data.documentUri);
+      await attachReaderSpanContext(span, getRequest());
       const comments = await fetchDocumentComments(
         context.db,
         context.schema,

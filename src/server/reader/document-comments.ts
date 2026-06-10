@@ -20,6 +20,10 @@ import {
   getBacklinkCountForTarget,
   getPostBacklinksForTarget,
 } from "#/server/atproto/constellation";
+import {
+  countMarginNotesForUrls,
+  fetchMarginNotesForUrls,
+} from "#/server/atproto/margin-notes";
 import { buildCanonicalUrl } from "#/server/ingest/mappers";
 import { listQuoteSharesForDocument } from "#/server/reader/quote-shares";
 import { eq } from "drizzle-orm";
@@ -32,6 +36,7 @@ export interface DocumentCommentAuthor {
 }
 
 export interface DocumentComment {
+  source: "bluesky" | "margin";
   kind: "link" | "quote";
   postUri: string;
   postUrl: string;
@@ -204,11 +209,72 @@ function buildCommentTargets(
   return targets;
 }
 
-const COMMENT_COUNT_TTL_MS = 5 * 60 * 1000;
-const commentCountCache = new Map<
-  string,
-  { count: number; expiresAt: number }
->();
+interface CommentCountCacheEntry {
+  count: number;
+  updatedAt: number;
+}
+
+const commentCountCache = new Map<string, CommentCountCacheEntry>();
+const commentCountRevalidationInflight = new Set<string>();
+
+function peekCommentCount(documentUri: string): number {
+  return commentCountCache.get(documentUri)?.count ?? 0;
+}
+
+function scheduleCommentCountRevalidation(
+  dbClient: typeof db,
+  schemaModule: typeof schema,
+  documentUri: string,
+): void {
+  if (commentCountRevalidationInflight.has(documentUri)) return;
+  commentCountRevalidationInflight.add(documentUri);
+
+  void refreshCommentCount(dbClient, schemaModule, documentUri)
+    .catch(() => {
+      // Best-effort background refresh; keep serving the last cached value.
+    })
+    .finally(() => {
+      commentCountRevalidationInflight.delete(documentUri);
+    });
+}
+
+async function refreshCommentCount(
+  dbClient: typeof db,
+  schemaModule: typeof schema,
+  documentUri: string,
+): Promise<number> {
+  const stale = commentCountCache.get(documentUri);
+
+  try {
+    const context = await loadDocumentCommentTargets(
+      dbClient,
+      schemaModule,
+      documentUri,
+    );
+    if (!context) {
+      commentCountCache.set(documentUri, {
+        count: 0,
+        updatedAt: Date.now(),
+      });
+      return 0;
+    }
+
+    const linkUrls = context.targets.map((target) => target.url);
+    const [backlinkCount, replyCount, marginCount] = await Promise.all([
+      countConstellationBacklinksForTargets(context.targets),
+      countAuthorPostReplies(context.bskyPostUri),
+      countMarginNotesForUrls(linkUrls),
+    ]);
+    const count = backlinkCount + replyCount + marginCount;
+    commentCountCache.set(documentUri, {
+      count,
+      updatedAt: Date.now(),
+    });
+    return count;
+  } catch {
+    return stale?.count ?? 0;
+  }
+}
 
 async function discoverCommentPostMeta(
   targets: Array<CommentTarget>,
@@ -340,47 +406,23 @@ async function loadDocumentCommentTargets(
   };
 }
 
-/** Count Bluesky posts linking this document (Constellation counts + author-post replies). */
+/**
+ * Stale-while-revalidate comment total for one document.
+ * Returns the cached count (0 on first request) and refreshes in the background.
+ */
 export async function countDocumentComments(
   dbClient: typeof db,
   schemaModule: typeof schema,
   documentUri: string,
 ): Promise<number> {
-  const cached = commentCountCache.get(documentUri);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.count;
-  }
-
-  try {
-    const context = await loadDocumentCommentTargets(
-      dbClient,
-      schemaModule,
-      documentUri,
-    );
-    if (!context) {
-      commentCountCache.set(documentUri, {
-        count: 0,
-        expiresAt: Date.now() + COMMENT_COUNT_TTL_MS,
-      });
-      return 0;
-    }
-
-    const [backlinkCount, replyCount] = await Promise.all([
-      countConstellationBacklinksForTargets(context.targets),
-      countAuthorPostReplies(context.bskyPostUri),
-    ]);
-    const count = backlinkCount + replyCount;
-    commentCountCache.set(documentUri, {
-      count,
-      expiresAt: Date.now() + COMMENT_COUNT_TTL_MS,
-    });
-    return count;
-  } catch {
-    return cached?.count ?? 0;
-  }
+  scheduleCommentCountRevalidation(dbClient, schemaModule, documentUri);
+  return peekCommentCount(documentUri);
 }
 
-/** Attach `commentCount` to article cards (dedupes URIs, uses count cache). */
+/**
+ * Attach cached `commentCount` to article cards without blocking on Constellation.
+ * Revalidates counts in the background on every request (deduped per URI).
+ */
 export async function attachCommentCountsToArticles<
   T extends Pick<ArticleCard, "uri">,
 >(
@@ -391,18 +433,13 @@ export async function attachCommentCountsToArticles<
   if (articles.length === 0) return [];
 
   const uniqueUris = [...new Set(articles.map((article) => article.uri))];
-  const counts = await Promise.all(
-    uniqueUris.map(async (uri) =>
-      countDocumentComments(dbClient, schemaModule, uri),
-    ),
-  );
-  const countByUri = new Map(
-    uniqueUris.map((uri, index) => [uri, counts[index] ?? 0]),
-  );
+  for (const uri of uniqueUris) {
+    scheduleCommentCountRevalidation(dbClient, schemaModule, uri);
+  }
 
   return articles.map((article) => ({
     ...article,
-    commentCount: countByUri.get(article.uri) ?? 0,
+    commentCount: peekCommentCount(article.uri),
   }));
 }
 
@@ -419,40 +456,47 @@ export async function fetchDocumentComments(
   if (!context) return [];
 
   const { targets, stripUrls, bskyPostUri } = context;
-  const discovery = await discoverDocumentComments(targets, bskyPostUri);
+  const linkUrls = targets.map((target) => target.url);
 
-  if (discovery.postMeta.size === 0) return [];
+  const [discovery, marginComments] = await Promise.all([
+    discoverDocumentComments(targets, bskyPostUri),
+    fetchMarginNotesForUrls(linkUrls),
+  ]);
 
-  const posts = await getPosts([...discovery.postMeta.keys()]);
-  const comments: Array<DocumentComment> = [];
+  const comments: Array<DocumentComment> = [...marginComments];
 
-  for (const post of posts) {
-    if (!isDocumentCommentPost(post, discovery)) continue;
+  if (discovery.postMeta.size > 0) {
+    const posts = await getPosts([...discovery.postMeta.keys()]);
 
-    const meta = discovery.postMeta.get(post.uri);
-    if (!meta) continue;
+    for (const post of posts) {
+      if (!isDocumentCommentPost(post, discovery)) continue;
 
-    const postUrl = bskyPostUrl(post.uri);
-    if (!postUrl) continue;
+      const meta = discovery.postMeta.get(post.uri);
+      if (!meta) continue;
 
-    const { commentary, commentaryFacets } = deriveCommentary(
-      post.text,
-      post.facets,
-      meta,
-      stripUrls,
-    );
+      const postUrl = bskyPostUrl(post.uri);
+      if (!postUrl) continue;
 
-    comments.push({
-      kind: meta.kind,
-      postUri: post.uri,
-      postUrl,
-      author: toCommentAuthor(post),
-      commentary,
-      commentaryFacets,
-      quote: meta.kind === "quote" ? meta.quoteText : null,
-      replyCount: post.replyCount,
-      indexedAt: post.indexedAt || new Date().toISOString(),
-    });
+      const { commentary, commentaryFacets } = deriveCommentary(
+        post.text,
+        post.facets,
+        meta,
+        stripUrls,
+      );
+
+      comments.push({
+        source: "bluesky",
+        kind: meta.kind,
+        postUri: post.uri,
+        postUrl,
+        author: toCommentAuthor(post),
+        commentary,
+        commentaryFacets,
+        quote: meta.kind === "quote" ? meta.quoteText : null,
+        replyCount: post.replyCount,
+        indexedAt: post.indexedAt || new Date().toISOString(),
+      });
+    }
   }
 
   return comments.toSorted(

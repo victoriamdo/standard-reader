@@ -153,6 +153,72 @@ export async function selectArticleCards(
   return rows.map((row) => toArticleCard(row));
 }
 
+/**
+ * Article cards for a single publication profile — documents table only (no
+ * publication/profile join). Publication-scoped pages set `showByline={false}`,
+ * so per-card publication metadata is omitted.
+ */
+export async function selectPublicationArticleCards(
+  db: Db,
+  schema: Schema,
+  opts: {
+    publicationUri: string;
+    limit: number;
+    offset?: number;
+  },
+): Promise<Array<ArticleCard>> {
+  const d = schema.documents;
+  const rec = schema.recommends;
+
+  const rows = await db
+    .select({
+      uri: d.uri,
+      did: d.did,
+      title: d.title,
+      description: d.description,
+      path: d.path,
+      canonicalUrl: d.canonicalUrl,
+      coverImageUrl: d.coverImageUrl,
+      publishedAt: d.publishedAt,
+      featured: d.featured,
+      publicationUri: d.publicationUri,
+      tags: d.tags,
+      textContent: d.textContent,
+      hasRenderableBody: d.hasRenderableBody,
+      // Qualify the outer `documents.uri` — unqualified `${d.uri}` in a
+      // subquery compiles to `"uri"` and breaks correlation without a join.
+      recommendCount: sql<number>`coalesce((
+        select count(*)::int
+        from ${rec}
+        where ${rec.documentUri} = "documents"."uri"
+          and ${rec.deleted} = false
+      ), 0)`.mapWith(Number),
+    })
+    .from(d)
+    .where(
+      and(
+        eq(d.deleted, false),
+        documentPublishedNotInFuture(d),
+        eq(d.publicationUri, opts.publicationUri),
+      ),
+    )
+    .orderBy(desc(d.publishedAt), desc(d.uri))
+    .limit(opts.limit)
+    .offset(opts.offset ?? 0);
+
+  return rows.map((row) =>
+    toArticleCard({
+      ...row,
+      publicationName: null,
+      publicationIconUrl: null,
+      publicationOwnerAvatarUrl: null,
+      publicationOwnerHandle: null,
+      publicationBannerUrl: null,
+      publicationTopic: null,
+    }),
+  );
+}
+
 /** Unread document AT-URIs for a reader, optionally scoped to publications. */
 export async function selectUnreadDocumentUris(
   db: Db,

@@ -75,7 +75,7 @@ export interface ArticleCard {
   textContent: string | null;
   /** Network likes (`site.standard.graph.recommend`). */
   recommendCount: number;
-  /** Bluesky posts linking this article (Constellation, top-level only). */
+  /** Bluesky link/quote posts + margin.at notes on this article (Constellation). */
   commentCount: number;
   /**
    * Whether the reader can render an in-app body. `false` for "external" posts

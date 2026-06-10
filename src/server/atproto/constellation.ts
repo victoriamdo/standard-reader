@@ -20,6 +20,8 @@ export interface ConstellationBacklinksResult {
 const DEFAULT_CONSTELLATION_URL = "https://constellation.microcosm.blue";
 const FETCH_TIMEOUT_MS = 8000;
 const BSKY_POST_COLLECTION = "app.bsky.feed.post";
+const MARGIN_TARGET_PATH = ".target.source";
+const MARGIN_REPLY_ROOT_PATH = ".root.uri";
 
 /** JSON paths in `app.bsky.feed.post` where a linked URL may appear. */
 export const BSKY_POST_LINK_PATHS = [
@@ -31,6 +33,45 @@ export const BSKY_POST_LINK_PATHS = [
 export const BSKY_POST_LINK_SOURCES = BSKY_POST_LINK_PATHS.map(
   (path) => `${BSKY_POST_COLLECTION}:${path}` as const,
 );
+
+/** Margin note collections indexed by Constellation at `target.source`. */
+export const MARGIN_NOTE_COLLECTIONS = [
+  "at.margin.note",
+  "at.margin.annotation",
+  "at.margin.highlight",
+] as const;
+
+/** Cosmik card collection (Margin / Semble) indexed at page URL fields. */
+export const COSMIK_CARD_COLLECTION = "network.cosmik.card";
+
+/** JSON paths on `network.cosmik.card` where a linked URL may appear. */
+export const COSMIK_CARD_URL_PATHS = [".url", ".content.url"] as const;
+
+/** Margin + cosmik collections merged into Discussion. */
+export const MARGIN_DISCUSSION_COLLECTIONS = [
+  ...MARGIN_NOTE_COLLECTIONS,
+  COSMIK_CARD_COLLECTION,
+] as const;
+
+/** Margin note link sources as legacy `/links` collection + path specs. */
+export const MARGIN_NOTE_LINK_SOURCES = MARGIN_NOTE_COLLECTIONS.map(
+  (collection) => `${collection}:${MARGIN_TARGET_PATH}` as const,
+);
+
+/** Cosmik card link sources as legacy `/links` collection + path specs. */
+export const COSMIK_CARD_LINK_SOURCES = COSMIK_CARD_URL_PATHS.map(
+  (path) => `${COSMIK_CARD_COLLECTION}:${path}` as const,
+);
+
+/** All margin Discussion link sources (at.margin.* + network.cosmik.card). */
+export const MARGIN_DISCUSSION_LINK_SOURCES = [
+  ...MARGIN_NOTE_LINK_SOURCES,
+  ...COSMIK_CARD_LINK_SOURCES,
+] as const;
+
+/** Constellation source for `at.margin.reply` records pointing at a note root. */
+export const MARGIN_REPLY_LINK_SOURCE =
+  `at.margin.reply:${MARGIN_REPLY_ROOT_PATH}` as const;
 
 function constellationBaseUrl(): string {
   const configured = process.env.CONSTELLATION_URL?.trim();
@@ -282,7 +323,27 @@ export async function getBacklinkCountForTarget(
   return totals.reduce((sum, n) => sum + n, 0);
 }
 
-/** Query all configured link sources for a target and union the results. */
+function mergeBacklinkRecords(
+  results: Array<Array<ConstellationBacklinkRecord>>,
+  collections: ReadonlySet<string>,
+): Array<ConstellationBacklinkRecord> {
+  const seen = new Set<string>();
+  const merged: Array<ConstellationBacklinkRecord> = [];
+
+  for (const records of results) {
+    for (const record of records) {
+      if (!collections.has(record.collection)) continue;
+      const key = `${record.did}/${record.collection}/${record.rkey}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(record);
+    }
+  }
+
+  return merged;
+}
+
+/** Query all configured Bluesky post link sources for a target. */
 export async function getPostBacklinksForTarget(
   target: string,
 ): Promise<Array<ConstellationBacklinkRecord>> {
@@ -292,18 +353,40 @@ export async function getPostBacklinksForTarget(
     ),
   );
 
-  const seen = new Set<string>();
-  const merged: Array<ConstellationBacklinkRecord> = [];
+  return mergeBacklinkRecords(results, new Set([BSKY_POST_COLLECTION]));
+}
 
-  for (const records of results) {
-    for (const record of records) {
-      if (record.collection !== BSKY_POST_COLLECTION) continue;
-      const key = `${record.did}/${record.rkey}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      merged.push(record);
-    }
-  }
+/** Query all configured margin Discussion link sources for a target URL. */
+export async function getMarginNoteBacklinksForTarget(
+  target: string,
+): Promise<Array<ConstellationBacklinkRecord>> {
+  const results = await Promise.all(
+    MARGIN_DISCUSSION_LINK_SOURCES.map((source) =>
+      getAllBacklinksForSource(target, source),
+    ),
+  );
 
-  return merged;
+  return mergeBacklinkRecords(
+    results,
+    new Set(MARGIN_DISCUSSION_COLLECTIONS),
+  );
+}
+
+/** Cheap margin-note total for one URL (deduped across margin collections). */
+export async function getMarginNoteBacklinkCountForTarget(
+  target: string,
+): Promise<number> {
+  const records = await getMarginNoteBacklinksForTarget(target);
+  return records.length;
+}
+
+/** Reply count for a margin note AT-URI via Constellation. */
+export async function getMarginReplyCountForNote(
+  noteUri: string,
+): Promise<number> {
+  if (!noteUri.startsWith("at://")) return 0;
+  return fetchBacklinksCount({
+    target: noteUri,
+    source: MARGIN_REPLY_LINK_SOURCE,
+  });
 }

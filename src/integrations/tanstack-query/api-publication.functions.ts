@@ -18,6 +18,7 @@ import { authorPds } from "#/server/atproto/identity";
 import { resolveGreengaleContent } from "#/server/greengale/resolve";
 import { resolveLeafletContent } from "#/server/leaflet/resolve";
 import { observe } from "#/server/observability/log";
+import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import { resolvePcktContent } from "#/server/pckt/resolve";
 import {
   attachCommentCountsToArticles,
@@ -26,9 +27,9 @@ import {
 import {
   articleRecommendedPublications,
   publicationFollowedByCoReaders,
-  readersAlsoFollow,
   relatedArticles,
   selectArticleCards,
+  selectPublicationArticleCards,
 } from "#/server/reader/queries";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
 import { highlightLeafletCodeBlocks } from "#/server/shiki/highlighter";
@@ -50,18 +51,17 @@ import { dbMiddleware } from "./db-middleware";
  * Publication-profile and article reading queries (`APP_VISION.md` §5).
  *
  * The profile assembles the header (publication + owner identity + stats),
- * recent writing, and the "readers also follow" rail. The article query returns
+ * recent writing. The article query returns
  * full content plus its publication card, byline contributors, and recommend
  * count; below-the-fold rails load via `getArticleExtras` on the client.
- * Comment count uses Constellation count endpoints (started in parallel with
- * content resolution). Opening an article marks it read via `readerApi.markRead`
+ * Card `commentCount` uses stale-while-revalidate (cached value or 0, background
+ * Constellation refresh). Opening an article marks it read via `readerApi.markRead`
  * from the UI — this GET stays side-effect-free.
  */
 
 const profileInput = z.object({
   publicationUri: z.string().min(1),
   recentLimit: z.number().int().min(1).max(30).default(10),
-  alsoFollowLimit: z.number().int().min(1).max(20).default(6),
 });
 
 const documentsInput = z.object({
@@ -109,7 +109,6 @@ export interface PublicationProfile {
   publication: PublicationCard;
   owner: ProfileSummary;
   recentDocuments: Array<ArticleCard>;
-  readersAlsoFollow: Array<PublicationCard>;
 }
 
 export interface PublicationSocialProof {
@@ -165,7 +164,7 @@ export interface ArticleDetail {
   readCount: number;
   /** Network endorsements (`site.standard.graph.recommend`). */
   recommendCount: number;
-  /** Bluesky posts linking this article (Constellation, top-level only). */
+  /** Bluesky link/quote posts + margin.at notes on this article (Constellation). */
   commentCount: number;
   /** Other recent posts from the same publication (excludes this article). */
   moreFrom: Array<ArticleCard>;
@@ -193,8 +192,9 @@ const getPublicationProfile = createServerFn({ method: "GET" })
         const st = schema.publicationStats;
         const pr = schema.profiles;
         span.set("publicationUri", data.publicationUri);
+        await attachReaderSpanContext(span, getRequest());
 
-        const [headerRow, recentDocuments, alsoFollow] = await Promise.all([
+        const [headerRow, recentDocuments] = await Promise.all([
           db
             .select({
               ...publicationCardColumns(schema),
@@ -208,16 +208,10 @@ const getPublicationProfile = createServerFn({ method: "GET" })
             .leftJoin(pr, eq(pr.did, p.did))
             .where(eq(p.uri, data.publicationUri))
             .limit(1),
-          selectArticleCards(db, schema, {
-            publicationUris: [data.publicationUri],
+          selectPublicationArticleCards(db, schema, {
+            publicationUri: data.publicationUri,
             limit: data.recentLimit,
           }),
-          readersAlsoFollow(
-            db,
-            schema,
-            data.publicationUri,
-            data.alsoFollowLimit,
-          ),
         ]);
 
         const row = headerRow[0];
@@ -248,7 +242,6 @@ const getPublicationProfile = createServerFn({ method: "GET" })
           publication,
           owner,
           recentDocuments: recentWithComments,
-          readersAlsoFollow: alsoFollow,
         };
       },
     ),
@@ -264,9 +257,10 @@ const getPublicationDocuments = createServerFn({ method: "GET" })
         const { db, schema } = context;
         span.set("publicationUri", data.publicationUri);
         span.set("offset", data.offset);
+        await attachReaderSpanContext(span, getRequest());
 
-        const documents = await selectArticleCards(db, schema, {
-          publicationUris: [data.publicationUri],
+        const documents = await selectPublicationArticleCards(db, schema, {
+          publicationUri: data.publicationUri,
           limit: data.limit,
           offset: data.offset,
         });
@@ -302,6 +296,7 @@ const getArticle = createServerFn({ method: "GET" })
         const rec = schema.recommends;
         const reads = schema.reads;
         span.set("documentUri", data.documentUri);
+        await attachReaderSpanContext(span, getRequest());
 
         const [docRows, contributorRows, recommendRows, readRows] =
           await Promise.all([
@@ -547,9 +542,11 @@ const getPublicationSocialProof = createServerFn({ method: "GET" })
 
         const session = await getAtprotoSessionForRequest(getRequest());
         if (!session) {
+          span.set("signedIn", false);
           span.set("count", 0);
           return { readers: [], total: 0 };
         }
+        span.set("signedIn", true);
         span.set("did", session.did);
 
         const proof = await publicationFollowedByCoReaders(
@@ -578,6 +575,7 @@ const getArticleExtras = createServerFn({ method: "GET" })
         const { db, schema } = context;
         const d = schema.documents;
         span.set("documentUri", data.documentUri);
+        await attachReaderSpanContext(span, getRequest());
 
         const [row] = await db
           .select({
@@ -635,16 +633,13 @@ const getArticleExtras = createServerFn({ method: "GET" })
 
 function getPublicationProfileQueryOptions(
   publicationUri: string,
-  {
-    recentLimit = 10,
-    alsoFollowLimit = 6,
-  }: { recentLimit?: number; alsoFollowLimit?: number } = {},
+  { recentLimit = 10 }: { recentLimit?: number } = {},
 ) {
   return queryOptions({
-    queryKey: ["publication", "profile", publicationUri] as const,
+    queryKey: ["publication", "profile", publicationUri, recentLimit] as const,
     queryFn: async () =>
       getPublicationProfile({
-        data: { publicationUri, recentLimit, alsoFollowLimit },
+        data: { publicationUri, recentLimit },
       }),
   });
 }

@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { getAtprotoSessionForRequest } from "#/middleware/auth";
 import { observe } from "#/server/observability/log";
+import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import {
   countKnownPublications,
   discoverDirectoryPublications,
@@ -63,6 +64,7 @@ const getTopics = createServerFn({ method: "GET" })
   .handler(
     observe("discover.getTopics", async ({ data, context }, span) => {
       const { db } = context;
+      await attachReaderSpanContext(span, getRequest());
       const rows = await discoverPublicationTopics(db, data.limit);
       span.set("count", rows.length);
       return rows;
@@ -73,6 +75,7 @@ const getKnownPublicationCount = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
   .handler(
     observe("discover.getKnownPublicationCount", async ({ context }, span) => {
+      await attachReaderSpanContext(span, getRequest());
       const count = await countKnownPublications(context.db);
       span.set("count", count);
       return count;
@@ -85,6 +88,7 @@ const getPublications = createServerFn({ method: "GET" })
   .handler(
     observe("discover.getPublications", async ({ data, context }, span) => {
       const { db, schema } = context;
+      await attachReaderSpanContext(span, getRequest());
       span.set("topic", data.topic ?? null);
       span.set("sort", data.sort);
       span.set("offset", data.offset);

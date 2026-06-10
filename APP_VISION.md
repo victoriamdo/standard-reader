@@ -135,7 +135,7 @@ Sections, top to bottom:
   sentence).
 - Footer: publication card + follow; "More from {publication}"; **Related reading** (cross-publication
   articles ranked by shared tags and co-read patterns, loaded via `getArticleExtras`).
-- **Discussion:** Bluesky posts linking the article (external URL or app quote shares), plus direct replies to the author's linked announcement post (`bskyPostRef`), read-only — reply counts link out to bsky threads. The announcement post itself is not listed as a comment.
+- **Discussion:** Bluesky posts linking the article (external URL or app quote shares), plus direct replies to the author's linked announcement post (`bskyPostRef`), read-only — reply counts link out to bsky threads. The announcement post itself is not listed as a comment. **margin.at** notes (`at.margin.note` / `at.margin.annotation` / `at.margin.highlight` and `network.cosmik.card` NOTE cards) on the article's canonical URL are merged into the same feed via Constellation backlink discovery; passage-anchored notes render like Bluesky quote posts (blockquote + commentary) and link out to margin.at. Cosmik URL bookmarks are excluded from counts. Article-card `commentCount` badges use **stale-while-revalidate**: responses return the cached count (0 on first hit) immediately and refresh Constellation totals in the background.
 - Opening an article marks it read.
 - **Open on original site (preference):** a user-menu toggle (cookie for
   everyone; `user.open_links_externally` when signed in). When on, document
@@ -343,7 +343,7 @@ hand-tuned lists:
 
 ### Non-goals (for now)
 
-- A **read-first client**: no in-app posting or authoring publications. Discussion is surfaced read-only from Bluesky (link shares + quote shares); threads open on bsky.
+- A **read-first client**: no in-app posting or authoring publications. Discussion is surfaced read-only from Bluesky (link shares + quote shares) and margin.at (web annotations); threads open on bsky or margin.at.
 
 ---
 

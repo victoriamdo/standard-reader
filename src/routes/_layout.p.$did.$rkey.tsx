@@ -65,14 +65,16 @@ export const Route = createFileRoute("/_layout/p/$did/$rkey")({
     void context.queryClient.ensureQueryData(
       publicationApi.getPublicationSocialProofQueryOptions(uri),
     );
-    const profile = await context.queryClient.ensureQueryData(
-      publicationApi.getPublicationProfileQueryOptions(uri, {
-        recentLimit: PUBLICATION_RECENT_LIMIT,
-      }),
-    );
-    await context.queryClient.ensureQueryData(
-      readerApi.getFollowStatusQueryOptions(uri),
-    );
+    const [profile] = await Promise.all([
+      context.queryClient.ensureQueryData(
+        publicationApi.getPublicationProfileQueryOptions(uri, {
+          recentLimit: PUBLICATION_RECENT_LIMIT,
+        }),
+      ),
+      context.queryClient.ensureQueryData(
+        readerApi.getFollowStatusQueryOptions(uri),
+      ),
+    ]);
     if (profile?.recentDocuments.length) {
       await context.queryClient.ensureQueryData(
         readerApi.getReadDocumentsQueryOptions(

@@ -99,8 +99,10 @@ export const commentStyles = stylex.create({
     borderLeftStyle: "solid",
     borderLeftWidth: spacing["1"],
     marginBottom: verticalSpace.md,
+    marginLeft: horizontalSpace.none,
+    marginRight: horizontalSpace.none,
     marginTop: spacing["0"],
-    paddingLeft: horizontalSpace.lg,
+    paddingLeft: horizontalSpace.md,
   },
   commentary: {
     gap: gap.sm,
