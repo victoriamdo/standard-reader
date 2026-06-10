@@ -321,6 +321,7 @@ function Latest() {
                 key={article.uri}
                 article={article}
                 unread={signedIn && (filter === "unread" || isUnread(article))}
+                showSaveButton={false}
               />
             ))}
           </div>

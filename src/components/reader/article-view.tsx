@@ -472,6 +472,13 @@ function authorAvatarUrl(article: ArticleDetail): string | null {
   );
 }
 
+/** DID for the byline author (lead contributor, else publication owner). */
+function authorDid(article: ArticleDetail): string | null {
+  return (
+    article.contributors[0]?.did ?? article.publication?.did ?? article.did
+  );
+}
+
 function ArticleFollowButtonMd({
   publicationUri,
   signedIn,
@@ -619,6 +626,7 @@ function ArticleViewBody({
   const pubParams = pub ? publicationLinkParams(pub.uri) : null;
   const authorName = primaryAuthor(article);
   const handle = authorHandle(article);
+  const bylineDid = authorDid(article);
   const showHandle = handle != null && authorName !== `@${handle}`;
   const topic = articleTopic(article);
   const readingLabel = formatReadingTime(articleReadingText(article));
@@ -847,26 +855,28 @@ function ArticleViewBody({
             />
             <div {...stylex.props(styles.bylineWho)}>
               <div {...stylex.props(styles.bylineName)}>
-                {pubParams ? (
+                {bylineDid ? (
                   <Link
-                    to="/p/$did/$rkey"
-                    params={pubParams}
+                    to="/u/$did"
+                    params={{ did: bylineDid }}
                     {...stylex.props(styles.bylineNameLink)}
                   >
                     {authorName}
                   </Link>
-                ) : pub?.url ? (
-                  <AppLink href={pub.url} linkStyle={styles.bylineNameLink}>
-                    {authorName}
-                  </AppLink>
                 ) : (
                   authorName
                 )}
 
-                {showHandle ? (
-                  <>
+                {showHandle && bylineDid ? (
+                  <Link
+                    to="/u/$did"
+                    params={{ did: bylineDid }}
+                    {...stylex.props(styles.bylineNameLink)}
+                  >
                     <Handle>@{handle}</Handle>
-                  </>
+                  </Link>
+                ) : showHandle ? (
+                  <Handle>@{handle}</Handle>
                 ) : null}
               </div>
               <Flex align="center" gap="md" wrap style={styles.bylineMeta}>

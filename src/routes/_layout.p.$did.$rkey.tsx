@@ -6,7 +6,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
@@ -404,14 +404,13 @@ function PublicationProfile() {
             ) : null}
             <div {...stylex.props(styles.stats)}>
               {owner.handle ? (
-                <a
-                  href={`https://bsky.app/profile/${owner.handle}`}
-                  target="_blank"
-                  rel="noreferrer"
+                <Link
+                  to="/u/$did"
+                  params={{ did: owner.did }}
                   {...stylex.props(styles.handleLink)}
                 >
                   <Handle>@{owner.handle}</Handle>
-                </a>
+                </Link>
               ) : null}
               <Stat
                 value={formatReaders(pub.subscriberCount)}

@@ -18,10 +18,12 @@ export type StaticInternalRoute = (typeof STATIC_ROUTES)[number];
 export type InternalRoute =
   | { to: StaticInternalRoute; params?: undefined }
   | { to: "/a/$did/$rkey"; params: { did: string; rkey: string } }
-  | { to: "/p/$did/$rkey"; params: { did: string; rkey: string } };
+  | { to: "/p/$did/$rkey"; params: { did: string; rkey: string } }
+  | { to: "/u/$did"; params: { did: string } };
 
 const ARTICLE_PATH = /^\/a\/([^/]+)\/([^/]+)\/?$/;
 const PUBLICATION_PATH = /^\/p\/([^/]+)\/([^/]+)\/?$/;
+const AUTHOR_PATH = /^\/u\/([^/]+)\/?$/;
 
 function parseAtUri(href: string): InternalRoute | null {
   if (!href.startsWith("at://")) return null;
@@ -71,6 +73,14 @@ function parsePathname(pathname: string): InternalRoute | null {
         did: decodeURIComponent(publicationMatch[1] ?? ""),
         rkey: decodeURIComponent(publicationMatch[2] ?? ""),
       },
+    };
+  }
+
+  const authorMatch = AUTHOR_PATH.exec(pathname);
+  if (authorMatch) {
+    return {
+      to: "/u/$did",
+      params: { did: decodeURIComponent(authorMatch[1] ?? "") },
     };
   }
 

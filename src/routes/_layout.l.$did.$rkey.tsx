@@ -5,7 +5,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
@@ -16,8 +16,8 @@ import { useState } from "react";
 
 import { PubDirectoryRow } from "../components/reader/cards";
 import { ListEditModal } from "../components/reader/list-edit-modal";
-import { ShareMenu } from "../components/reader/share-menu";
 import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
+import { ShareMenu } from "../components/reader/share-menu";
 import { Button } from "../design-system/button";
 import { uiColor } from "../design-system/theme/color.stylex";
 import { spacing } from "../design-system/theme/spacing.stylex";
@@ -220,14 +220,13 @@ function ListPage() {
             ) : null}
             <div {...stylex.props(styles.stats)}>
               {owner?.handle ? (
-                <a
-                  href={`https://bsky.app/profile/${owner.handle}`}
-                  target="_blank"
-                  rel="noreferrer"
+                <Link
+                  to="/u/$did"
+                  params={{ did: owner.did }}
                   {...stylex.props(styles.handleLink)}
                 >
                   <Handle>by @{owner.handle}</Handle>
-                </a>
+                </Link>
               ) : null}
               <span>
                 <span {...stylex.props(styles.statValue)}>

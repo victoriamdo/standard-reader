@@ -57,6 +57,7 @@ Following list (sidebar) — quick links to followed publications
 Detail screens
 ├── Article (reading view)
 ├── Publication profile
+├── Author profile (`/u/$did` — all publications from one DID)
 └── Reader profile (saved / liked articles)
 ```
 
@@ -151,6 +152,20 @@ Sections, top to bottom:
 - Recent writing (featured lead + rows).
 - Right rail: About + DID + "Readers also follow".
 - Social proof line ("Followed by …") when applicable.
+- Owner `@handle` links to the **author profile** (`/u/$did`).
+
+### Author profile
+
+- Route `/u/$did` — all `site.standard.publication` records owned by one DID.
+- Identity from the read-model `profiles` row (handle, display name, avatar, bio),
+  with Bluesky public API + DID-doc fallbacks when fields are missing.
+- Header: avatar, display name, `@handle`, linkified bio (URLs + `@handles`,
+  preserved newlines), aggregate stats (publications, posts, readers, following,
+  likes), Share, and "View on Bluesky" when a handle is known.
+- **All publications** directory (sorted by recent activity); infinite scroll.
+- **Subscriptions** — publications they follow (`site.standard.graph.subscription`).
+- **Liked articles** — their network likes (`site.standard.graph.recommend`).
+- Linked from publication profiles, list pages, and article bylines.
 
 ### Reader profile (reading history)
 

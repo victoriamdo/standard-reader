@@ -187,7 +187,11 @@ function Home() {
           />
           <div>
             {feed.latestUnread.map((article) => (
-              <ArticleRow key={article.uri} article={article} />
+              <ArticleRow
+                key={article.uri}
+                article={article}
+                showSaveButton={false}
+              />
             ))}
           </div>
           {session?.user ? (

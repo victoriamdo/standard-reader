@@ -1337,3 +1337,255 @@ export async function relatedArticles(
   const uris = ranked.slice(0, opts.limit).map((row) => row.uri);
   return articleCardsByOrderedUris(db, schema, uris);
 }
+
+export interface AuthorProfileStats {
+  publicationCount: number;
+  documentCount: number;
+  subscriberCount: number;
+  subscriptionCount: number;
+  recommendationCount: number;
+}
+
+/** @deprecated Use {@link AuthorProfileStats}. */
+export type AuthorPublicationStats = AuthorProfileStats;
+
+/**
+ * Aggregate stats for an author profile header: owned publications plus
+ * `site.standard.graph.subscription` / `recommend` activity.
+ */
+export async function authorProfileStats(
+  db: Db,
+  schema: Schema,
+  did: string,
+): Promise<AuthorProfileStats> {
+  const p = schema.publications;
+  const st = schema.publicationStats;
+  const sub = schema.subscriptions;
+  const rec = schema.recommends;
+
+  const [pubRow, subRow, recRow] = await Promise.all([
+    db
+      .select({
+        publicationCount: sql<number>`count(*)::int`.mapWith(Number),
+        documentCount:
+          sql<number>`coalesce(sum(${st.documentCount}), 0)::int`.mapWith(
+            Number,
+          ),
+        subscriberCount:
+          sql<number>`coalesce(sum(${st.subscriberCount}), 0)::int`.mapWith(
+            Number,
+          ),
+      })
+      .from(p)
+      .leftJoin(st, eq(st.publicationUri, p.uri))
+      .where(
+        and(
+          eq(p.did, did),
+          eq(p.deleted, false),
+          sql`${p.url} not ilike ${EXCLUDED_PUBLICATION_URL_PATTERN}`,
+        ),
+      ),
+    db
+      .select({
+        count: sql<number>`count(distinct ${sub.publicationUri})::int`.mapWith(
+          Number,
+        ),
+      })
+      .from(sub)
+      .where(and(eq(sub.subscriberDid, did), eq(sub.deleted, false))),
+    db
+      .select({
+        count: sql<number>`count(*)::int`.mapWith(Number),
+      })
+      .from(rec)
+      .where(and(eq(rec.recommenderDid, did), eq(rec.deleted, false))),
+  ]);
+
+  return {
+    publicationCount: pubRow[0]?.publicationCount ?? 0,
+    documentCount: pubRow[0]?.documentCount ?? 0,
+    subscriberCount: pubRow[0]?.subscriberCount ?? 0,
+    subscriptionCount: subRow[0]?.count ?? 0,
+    recommendationCount: recRow[0]?.count ?? 0,
+  };
+}
+
+/** @deprecated Use {@link authorProfileStats}. */
+export const authorPublicationStats = authorProfileStats;
+
+/** Hydrate publication cards for `uris`, preserving order (no discover filter). */
+async function orderedPublicationCardsForUris(
+  db: Db,
+  schema: Schema,
+  uris: Array<string>,
+): Promise<Array<PublicationCard>> {
+  if (uris.length === 0) {
+    return [];
+  }
+
+  const p = schema.publications;
+  const st = schema.publicationStats;
+  const pr = schema.profiles;
+  const rows = await db
+    .select(publicationCardColumns(schema))
+    .from(p)
+    .leftJoin(st, eq(st.publicationUri, p.uri))
+    .leftJoin(pr, eq(pr.did, p.did))
+    .where(
+      and(
+        inArray(p.uri, uris),
+        eq(p.deleted, false),
+        sql`${p.url} not ilike ${EXCLUDED_PUBLICATION_URL_PATTERN}`,
+      ),
+    );
+
+  const byUri = new Map(rows.map((row) => [row.uri, toPublicationCard(row)]));
+  return uris
+    .map((uri) => byUri.get(uri))
+    .filter((pub): pub is PublicationCard => pub != null);
+}
+
+export interface AuthorActivityPage<T> {
+  items: Array<T>;
+  total: number;
+}
+
+/**
+ * Publications this DID subscribes to (`site.standard.graph.subscription`),
+ * newest subscription first.
+ */
+export async function authorSubscriptions(
+  db: Db,
+  schema: Schema,
+  opts: { did: string; limit: number; offset?: number },
+): Promise<AuthorActivityPage<PublicationCard>> {
+  const sub = schema.subscriptions;
+  const where = and(eq(sub.subscriberDid, opts.did), eq(sub.deleted, false));
+
+  const [countRow, uriRows] = await Promise.all([
+    db
+      .select({
+        count: sql<number>`count(distinct ${sub.publicationUri})::int`.mapWith(
+          Number,
+        ),
+      })
+      .from(sub)
+      .where(where),
+    db
+      .select({
+        publicationUri: sub.publicationUri,
+      })
+      .from(sub)
+      .where(where)
+      .groupBy(sub.publicationUri)
+      .orderBy(desc(sql`max(${sub.createdAt})`), asc(sub.publicationUri))
+      .limit(opts.limit)
+      .offset(opts.offset ?? 0),
+  ]);
+
+  const uris = uriRows.map((row) => row.publicationUri);
+  const items = await orderedPublicationCardsForUris(db, schema, uris);
+
+  return {
+    items,
+    total: countRow[0]?.count ?? 0,
+  };
+}
+
+/**
+ * Articles this DID has liked (`site.standard.graph.recommend`), newest first.
+ */
+export async function authorRecommendations(
+  db: Db,
+  schema: Schema,
+  opts: { did: string; limit: number; offset?: number },
+): Promise<AuthorActivityPage<ArticleCard>> {
+  const rec = schema.recommends;
+  const d = schema.documents;
+  const p = schema.publications;
+  const pr = schema.profiles;
+  const where = and(eq(rec.recommenderDid, opts.did), eq(rec.deleted, false));
+
+  const [countRow, rows] = await Promise.all([
+    db
+      .select({
+        count: sql<number>`count(*)::int`.mapWith(Number),
+      })
+      .from(rec)
+      .where(where),
+    db
+      .select(articleCardColumns(schema))
+      .from(rec)
+      .leftJoin(d, eq(d.uri, rec.documentUri))
+      .leftJoin(p, eq(p.uri, d.publicationUri))
+      .leftJoin(pr, eq(pr.did, p.did))
+      .where(and(where, eq(d.deleted, false)))
+      .orderBy(desc(rec.createdAt), desc(rec.uri))
+      .limit(opts.limit)
+      .offset(opts.offset ?? 0),
+  ]);
+
+  const items = rows
+    .filter(
+      (
+        row,
+      ): row is typeof row & {
+        uri: string;
+        did: string;
+        title: string;
+        publishedAt: Date;
+      } =>
+        row.uri != null &&
+        row.did != null &&
+        row.title != null &&
+        row.publishedAt != null,
+    )
+    .map((row) =>
+      toArticleCard({
+        ...row,
+        featured: row.featured ?? false,
+      }),
+    );
+
+  return {
+    items,
+    total: countRow[0]?.count ?? 0,
+  };
+}
+
+/**
+ * Publications owned by one DID, ordered by most recent activity then name.
+ * Excludes blento.app platform profiles.
+ */
+export async function authorPublications(
+  db: Db,
+  schema: Schema,
+  opts: { did: string; limit: number; offset?: number },
+): Promise<Array<PublicationCard>> {
+  const p = schema.publications;
+  const st = schema.publicationStats;
+  const pr = schema.profiles;
+  const sortName = publicationSortNameSql(p.name, p.url);
+
+  const rows = await db
+    .select(publicationCardColumns(schema))
+    .from(p)
+    .leftJoin(st, eq(st.publicationUri, p.uri))
+    .leftJoin(pr, eq(pr.did, p.did))
+    .where(
+      and(
+        eq(p.did, opts.did),
+        eq(p.deleted, false),
+        sql`${p.url} not ilike ${EXCLUDED_PUBLICATION_URL_PATTERN}`,
+      ),
+    )
+    .orderBy(
+      sql`${st.lastDocumentAt} desc nulls last`,
+      asc(sortName),
+      asc(p.uri),
+    )
+    .limit(opts.limit)
+    .offset(opts.offset ?? 0);
+
+  return rows.map((row) => toPublicationCard(row));
+}
