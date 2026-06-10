@@ -163,7 +163,10 @@ export function StructuredBlockView({
     }
     case "gallery": {
       return (
-        <PcktGalleryBlockView block={{ ref: block.ref }} blobContext={blobContext} />
+        <PcktGalleryBlockView
+          block={{ ref: block.ref }}
+          blobContext={blobContext}
+        />
       );
     }
     case "unknown": {

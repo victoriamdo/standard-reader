@@ -1,13 +1,54 @@
-import type { QueryClient } from "@tanstack/react-query";
+import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 
 import type {
   BookmarkStatus,
+  ReaderListPage,
   SavedArticleItem,
 } from "../../integrations/tanstack-query/api-reader.functions";
 
 export interface BookmarkOptimisticContext {
   prevStatus: BookmarkStatus | undefined;
   prevSavedEntries: Array<[readonly unknown[], unknown]>;
+}
+
+type SavedInfiniteData = InfiniteData<ReaderListPage<SavedArticleItem>>;
+
+function isSavedInfiniteData(data: unknown): data is SavedInfiniteData {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "pages" in data &&
+    Array.isArray((data as SavedInfiniteData).pages)
+  );
+}
+
+function removeFromSavedInfinite(
+  data: SavedInfiniteData | undefined,
+  documentUri: string,
+): SavedInfiniteData | undefined {
+  if (!data?.pages) return data;
+
+  let removed = false;
+  const pages = data.pages.map((page) => {
+    const items = page.items.filter((item) => {
+      if (item.documentUri === documentUri) {
+        removed = true;
+        return false;
+      }
+      return true;
+    });
+    return { ...page, items };
+  });
+
+  if (!removed) return data;
+
+  return {
+    ...data,
+    pages: pages.map((page) => ({
+      ...page,
+      total: Math.max(0, page.total - 1),
+    })),
+  };
 }
 
 function isBookmarkedInCache(
@@ -42,11 +83,12 @@ export function applyBookmarkOptimisticUpdate(
   });
 
   if (!bookmarked && wasBookmarked) {
-    queryClient.setQueriesData<Array<SavedArticleItem>>(
-      { queryKey: ["reader", "saved"] },
-      (saved) =>
-        saved?.filter((item) => item.documentUri !== documentUri) ?? saved,
-    );
+    queryClient.setQueriesData({ queryKey: ["reader", "saved"] }, (saved) => {
+      if (isSavedInfiniteData(saved)) {
+        return removeFromSavedInfinite(saved, documentUri);
+      }
+      return saved;
+    });
   }
 
   return { prevStatus, prevSavedEntries };

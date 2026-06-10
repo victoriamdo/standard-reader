@@ -329,16 +329,16 @@ export const articleBodyStyles = stylex.create({
     },
   },
   galleryList: {
-    display: "flex",
     gap: gap.md,
+    display: "flex",
     flexDirection: "column",
   },
   galleryCarousel: {
     gap: gap.md,
-    display: "flex",
     scrollSnapType: "x mandatory",
-    overflowX: "auto",
+    display: "flex",
     WebkitOverflowScrolling: "touch",
+    overflowX: "auto",
   },
   galleryCarouselItem: {
     flexShrink: 0,

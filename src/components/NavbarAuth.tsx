@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createLink, useNavigate } from "@tanstack/react-router";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { useLoginSearch } from "#/utils/use-login-search";
-import { Bookmark, Heart, LogOut } from "lucide-react";
+import { Bookmark, Heart, History, LogOut } from "lucide-react";
 import { Button as AriaButton } from "react-aria-components";
 
 import { Avatar, AvatarButton } from "../design-system/avatar";
@@ -199,6 +199,9 @@ export function NavbarAuth({
       >
         <MenuItemLink to="/saved" suffix={<Bookmark />}>
           Saved for later
+        </MenuItemLink>
+        <MenuItemLink to="/history" suffix={<History />}>
+          Reading history
         </MenuItemLink>
         <MenuItemLink to="/likes" suffix={<Heart />}>
           Liked articles

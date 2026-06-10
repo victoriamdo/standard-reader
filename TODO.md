@@ -211,7 +211,7 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
       publication site. Cookie `standard-reader-open-links` for everyone + `user.open_links_externally`
       when signed in (`drizzle/0011_*`); articles without a canonical URL fall back to the reader
       (`#/lib/open-links`, `useOpenLinks`, `OpenLinksMenuItem`).
-- [x] **Reader profile** — browse the signed-in user's likes (`site.standard.graph.recommend` records via `readerApi.getLikes`).
+- [x] **Reader profile** — browse the signed-in user's likes (`site.standard.graph.recommend` records via `readerApi.getLikes`); `/likes` infinite scroll (20 per page, IntersectionObserver sentinel).
 - [x] **Publication lists (sidebar folders)** — named, ordered lists of publications
       (one level deep, a publication can be in several lists): folder-plus button in the
       Subscriptions header creates one, each list header has an edit (pencil) button opening
@@ -311,8 +311,10 @@ not offline body cache). Route slug **`/saved`**.
 - [x] **Read-model + ingest** — `bookmarks` table (mirror [`reads`](src/db/schema/personal.ts)); tap
       collection filter + ingest handler + delete; `reader` track-reason on first write.
 - [x] **UI** — private `/saved` queue (separate from public `/likes`); distinct save toggle on article
-      bar + feed cards; user-menu link; empty state copy. Update [`APP_VISION.md`](APP_VISION.md) §5
+      bar + feed cards; user-menu link; empty state copy; infinite scroll (20 per page). Update [`APP_VISION.md`](APP_VISION.md) §5
       when landing.
+- [x] **Reading history** — private `/history` queue backed by existing
+      `app.standard-reader.read` / `reads` table (no new lexicon); `readerApi.getReadingHistory` + user-menu link + empty state; infinite scroll (20 per page). Update [`APP_VISION.md`](APP_VISION.md) when landing.
 
 ## 11. Post-v1 — bigger bets (Tier 4)
 
@@ -321,4 +323,3 @@ After Tier 1–3, as appetite allows:
 - [ ] **Author view** — all publications from one DID (identity in [`profiles`](src/db/schema/publications.ts)).
 - [ ] **Related articles** — content similarity (tags, co-read) beyond “More from {publication}”.
 - [ ] **Share publication / list** — copy link + compose-to-bsky; OG cards exist for `/p/` and `/l/`.
-

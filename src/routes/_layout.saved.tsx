@@ -1,7 +1,10 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import {
+  useSuspenseInfiniteQuery,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import { Link, createFileRoute, redirect } from "@tanstack/react-router";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
@@ -9,18 +12,16 @@ import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
 import { Bookmark } from "lucide-react";
+import { useCallback } from "react";
 
-import { ArticleRow } from "../components/reader/cards";
-import {
-  documentLinkParams,
-  formatRelativeTime,
-} from "../components/reader/format";
 import {
   Handle,
   Masthead,
   ReaderContent,
   SectionHead,
 } from "../components/reader/primitives";
+import { ReaderQueueRows } from "../components/reader/reader-queue-rows";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { Avatar } from "../design-system/avatar";
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
@@ -47,7 +48,9 @@ export const Route = createFileRoute("/_layout/saved")({
     }
   },
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(readerApi.getSavedQueryOptions());
+    await context.queryClient.ensureInfiniteQueryData(
+      readerApi.getSavedInfiniteQueryOptions(),
+    );
   },
   head: () => ({
     meta: pageSocialMeta("saved", getPublicUrlClient()),
@@ -111,33 +114,50 @@ const styles = stylex.create({
     fontSize: "0.88em",
     overflowWrap: "anywhere",
   },
-  unavailableRow: {
-    borderBottomColor: uiColor.border1,
-    borderBottomStyle: "solid",
-    borderBottomWidth: 1,
-    paddingBottom: spacing["6"],
-    paddingTop: spacing["6"],
+  loadSentinel: {
+    height: 1,
+    marginTop: spacing["6"],
+    width: "100%",
   },
-  unavailableTitle: {
-    color: uiColor.text2,
-    fontFamily: fontFamily.serif,
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.medium,
-    lineHeight: lineHeight.sm,
-  },
-  unavailableMeta: {
+  loadingNote: {
     color: uiColor.text1,
     fontFamily: fontFamily.sans,
     fontSize: fontSize.sm,
+    textAlign: "center",
+    marginTop: spacing["6"],
   },
 });
 
 function ReaderSaved() {
   const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
-  const { data: saved } = useSuspenseQuery(readerApi.getSavedQueryOptions());
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useSuspenseInfiniteQuery(readerApi.getSavedInfiniteQueryOptions());
+
+  const saved = data.pages.flatMap((page) => page.items);
+  const total = data.pages[0]?.total ?? 0;
   const userName = session?.user.name ?? "Reader";
   const userHandle = session?.user.handle;
   const initial = userName.charAt(0).toUpperCase();
+
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const loadMoreRef = useInfiniteScrollSentinel(
+    loadMore,
+    hasNextPage,
+    saved.length,
+  );
+
+  const queueRows = saved.map((item) => ({
+    id: item.bookmarkUri,
+    documentUri: item.documentUri,
+    article: item.article,
+    timestamp: item.savedAt,
+    actionLabel: "Saved",
+  }));
 
   return (
     <ReaderContent>
@@ -147,7 +167,7 @@ function ReaderSaved() {
         title="Saved for later"
         dek="Your private reading queue — only you can see these."
         metaLabel="Saved"
-        metaValue={String(saved.length)}
+        metaValue={String(total)}
       />
 
       <div {...stylex.props(styles.profile)}>
@@ -163,7 +183,7 @@ function ReaderSaved() {
         </Flex>
       </div>
 
-      {saved.length === 0 ? (
+      {total === 0 ? (
         <div {...stylex.props(styles.emptyCard)}>
           <Flex
             direction="column"
@@ -190,48 +210,20 @@ function ReaderSaved() {
       ) : (
         <>
           <SectionHead kicker="Queue" title="Recently saved" />
-          {saved.map((item, index) => {
-            if (item.article) {
-              return (
-                <ArticleRow
-                  key={item.bookmarkUri}
-                  article={item.article}
-                  isFirstInSection={index === 0}
-                />
-              );
-            }
-
-            const link = documentLinkParams(item.documentUri);
-            return (
-              <div
-                key={item.bookmarkUri}
-                {...stylex.props(styles.unavailableRow)}
-              >
-                <Flex direction="column" gap="sm">
-                  <span {...stylex.props(styles.unavailableTitle)}>
-                    Article unavailable
-                  </span>
-                  <span {...stylex.props(styles.unavailableMeta)}>
-                    {item.savedAt
-                      ? `Saved ${formatRelativeTime(item.savedAt)}`
-                      : "Saved"}
-                    {link ? (
-                      <>
-                        {" · "}
-                        <Link
-                          to="/a/$did/$rkey"
-                          params={link}
-                          {...stylex.props(styles.unavailableMeta)}
-                        >
-                          View record
-                        </Link>
-                      </>
-                    ) : null}
-                  </span>
-                </Flex>
-              </div>
-            );
-          })}
+          <ReaderQueueRows
+            items={queueRows}
+            saveButtonPlacement="besideMedia"
+          />
+          {isFetchingNextPage ? (
+            <p {...stylex.props(styles.loadingNote)}>Loading…</p>
+          ) : null}
+          {hasNextPage ? (
+            <div
+              ref={loadMoreRef}
+              aria-hidden
+              {...stylex.props(styles.loadSentinel)}
+            />
+          ) : null}
         </>
       )}
     </ReaderContent>

@@ -60,18 +60,18 @@ Without ingestion the app runs fine but the directory and feeds will be empty.
 
 ## Scripts
 
-| Script | Purpose |
-| --- | --- |
-| `pnpm dev` / `build` / `start` / `preview` | Dev server / production build / serve / preview |
-| `pnpm test` | Vitest |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm lint` / `format` / `format:check` | oxlint / oxfmt |
-| `pnpm check` | Format + lint `--fix` in one shot |
-| `pnpm fix-stylex-keys` | Autofix StyleX `sort-keys` / `valid-shorthands` |
-| `pnpm db:generate` / `db:migrate` / `db:push` / `db:studio` | Drizzle Kit |
-| `pnpm ingest:dev` / `ingest:start` | Standalone tap-consumer ingest worker |
-| `pnpm backfill:*` | One-off data backfills (blob URLs, search text, renderable bodies, content formats) |
-| `pnpm lex:lint` / `lex:status` / `atproto:publish-lexicons` | Validate / publish the `app.standard-reader.*` lexicons via `goat` |
+| Script                                                      | Purpose                                                                             |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `pnpm dev` / `build` / `start` / `preview`                  | Dev server / production build / serve / preview                                     |
+| `pnpm test`                                                 | Vitest                                                                              |
+| `pnpm typecheck`                                            | `tsc --noEmit`                                                                      |
+| `pnpm lint` / `format` / `format:check`                     | oxlint / oxfmt                                                                      |
+| `pnpm check`                                                | Format + lint `--fix` in one shot                                                   |
+| `pnpm fix-stylex-keys`                                      | Autofix StyleX `sort-keys` / `valid-shorthands`                                     |
+| `pnpm db:generate` / `db:migrate` / `db:push` / `db:studio` | Drizzle Kit                                                                         |
+| `pnpm ingest:dev` / `ingest:start`                          | Standalone tap-consumer ingest worker                                               |
+| `pnpm backfill:*`                                           | One-off data backfills (blob URLs, search text, renderable bodies, content formats) |
+| `pnpm lex:lint` / `lex:status` / `atproto:publish-lexicons` | Validate / publish the `app.standard-reader.*` lexicons via `goat`                  |
 
 ## Project structure
 
@@ -79,7 +79,7 @@ Without ingestion the app runs fine but the directory and feeds will be empty.
 src/
   routes/             # file-based routes: / (Today), /latest, /discover, /search,
                       #   /a/$did/$rkey (article), /p/… (publication), /l/… (list),
-                      #   /likes, /saved, /login, /about + /api/* (OAuth, OG images, ingest)
+                      #   /likes, /saved, /history, /login, /about + /api/* (OAuth, OG images, ingest)
   components/reader/  # app shell, feeds, article view, audio player, modals
   design-system/      # hip-ui (copy-and-own) + StyleX theme tokens
   server/             # server-only code: atproto, reader queries, ingest, og, content

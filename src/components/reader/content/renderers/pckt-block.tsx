@@ -13,12 +13,12 @@ import {
 
 import type { ContentBlobContext } from "../types";
 
+import { PcktGalleryBlockView } from "./pckt-gallery";
 import {
   PcktBulletListBlockView,
   PcktOrderedListBlockView,
   PcktTaskListBlockView,
 } from "./pckt-list";
-import { PcktGalleryBlockView } from "./pckt-gallery";
 import { PcktTableBlockView } from "./pckt-table";
 import { PcktWebsiteBlockView } from "./pckt-website";
 import { BlockquoteBlockView } from "./shared/blockquote-block";

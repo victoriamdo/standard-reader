@@ -4,10 +4,7 @@ import type { PcktGalleryBlock } from "#/lib/pckt/types";
 
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
-import {
-  fetchPcktGallery,
-  pcktImageBlockFromAttrs,
-} from "#/lib/pckt/gallery";
+import { fetchPcktGallery, pcktImageBlockFromAttrs } from "#/lib/pckt/gallery";
 import {
   pcktImageAlt,
   pcktImageAspectRatio,
@@ -22,15 +19,19 @@ import { ImageFigureView } from "./shared/image-figure";
 
 function galleryLayoutStyle(layout: string | undefined) {
   switch (layout) {
-    case "carousel":
+    case "carousel": {
       return articleBodyStyles.galleryCarousel;
-    case "masonry":
+    }
+    case "masonry": {
       return articleBodyStyles.galleryMasonry;
-    case "list":
+    }
+    case "list": {
       return articleBodyStyles.galleryList;
+    }
     case "grid":
-    default:
+    default: {
       return articleBodyStyles.galleryGrid;
+    }
   }
 }
 

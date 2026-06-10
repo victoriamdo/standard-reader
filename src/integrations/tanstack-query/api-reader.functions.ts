@@ -1,4 +1,8 @@
-import { mutationOptions, queryOptions } from "@tanstack/react-query";
+import {
+  infiniteQueryOptions,
+  mutationOptions,
+  queryOptions,
+} from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { getAtprotoSessionForRequest } from "#/middleware/auth";
@@ -16,7 +20,7 @@ import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
 import { selectUnreadDocumentUris } from "#/server/reader/queries";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import type { ArticleCard } from "./api-shapes";
@@ -45,9 +49,96 @@ const documentsInput = z.object({
   documentUris: z.array(z.string().min(1)).max(500),
 });
 
-const likesInput = z.object({
-  limit: z.number().int().min(1).max(100).default(50),
+/** Default page size for likes / saved / history infinite scroll. */
+export const READER_QUEUE_PAGE_SIZE = 20;
+
+const readerListInput = z.object({
+  limit: z.number().int().min(1).max(100).default(READER_QUEUE_PAGE_SIZE),
+  offset: z.number().int().min(0).default(0),
 });
+
+/** One offset page of a personal reader queue (likes, saved, history). */
+export interface ReaderListPage<T> {
+  items: Array<T>;
+  total: number;
+  nextOffset: number | null;
+}
+
+type JoinedArticleRow = {
+  uri: string | null;
+  did: string | null;
+  title: string | null;
+  description: string | null;
+  path: string | null;
+  canonicalUrl: string | null;
+  coverImageUrl: string | null;
+  publishedAt: Date | null;
+  featured: boolean | null;
+  publicationUri: string | null;
+  publicationName: string | null;
+  publicationIconUrl: string | null;
+  publicationOwnerAvatarUrl: string | null;
+  publicationOwnerHandle: string | null;
+  publicationBannerUrl: string | null;
+  publicationTopic: string | null;
+  tags: Array<string> | null;
+  textContent: string | null;
+  hasRenderableBody: boolean | null;
+  recommendCount: number | null;
+};
+
+function hydrateArticleFromRow(
+  row: JoinedArticleRow,
+  extra?: Pick<Partial<ArticleCard>, "isRead">,
+): ArticleCard | null {
+  if (
+    row.uri == null ||
+    row.did == null ||
+    row.title == null ||
+    row.publishedAt == null
+  ) {
+    return null;
+  }
+
+  return toArticleCard({
+    uri: row.uri,
+    did: row.did,
+    title: row.title,
+    description: row.description,
+    path: row.path,
+    canonicalUrl: row.canonicalUrl,
+    coverImageUrl: row.coverImageUrl,
+    publishedAt: row.publishedAt,
+    featured: row.featured ?? false,
+    publicationUri: row.publicationUri,
+    publicationName: row.publicationName,
+    publicationIconUrl: row.publicationIconUrl,
+    publicationOwnerAvatarUrl: row.publicationOwnerAvatarUrl,
+    publicationOwnerHandle: row.publicationOwnerHandle,
+    publicationBannerUrl: row.publicationBannerUrl,
+    publicationTopic: row.publicationTopic,
+    tags: row.tags,
+    textContent: row.textContent,
+    hasRenderableBody: row.hasRenderableBody,
+    recommendCount: row.recommendCount,
+    ...extra,
+  });
+}
+
+function buildReaderListPage<T>(
+  items: Array<T>,
+  offset: number,
+  total: number,
+): ReaderListPage<T> {
+  return {
+    items,
+    total,
+    nextOffset:
+      items.length > 0 && offset + items.length < total
+        ? offset + items.length
+        : null,
+  };
+}
 
 export interface FollowStatus {
   isFollowing: boolean;
@@ -83,6 +174,15 @@ export interface LikedArticleItem {
 export interface SavedArticleItem {
   bookmarkUri: string;
   savedAt: string | null;
+  documentUri: string;
+  /** Null when the document is no longer in the read-model. */
+  article: ArticleCard | null;
+}
+
+/** A read article (`app.standard-reader.read`) with hydrated card data. */
+export interface ReadHistoryItem {
+  readUri: string;
+  readAt: string | null;
   documentUri: string;
   /** Null when the document is no longer in the read-model. */
   article: ArticleCard | null;
@@ -225,70 +325,61 @@ const getRecommendStatus = createServerFn({ method: "GET" })
 
 const getLikes = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
-  .inputValidator(likesInput)
+  .inputValidator(readerListInput)
   .handler(
     observe("reader.getLikes", async ({ data, context }, span) => {
       const session = await getAtprotoSessionForRequest(getRequest());
       if (!session) {
-        return [] satisfies Array<LikedArticleItem>;
+        return buildReaderListPage<LikedArticleItem>([], data.offset, 0);
       }
       span.set("did", session.did);
       span.set("limit", data.limit);
+      span.set("offset", data.offset);
 
       const rec = context.schema.recommends;
       const d = context.schema.documents;
       const p = context.schema.publications;
       const pr = context.schema.profiles;
       const cols = articleCardColumns(context.schema);
-      const rows = await context.db
-        .select({
-          recommendUri: rec.uri,
-          likedAt: rec.createdAt,
-          documentUri: rec.documentUri,
-          ...cols,
-        })
-        .from(rec)
-        .leftJoin(d, eq(d.uri, rec.documentUri))
-        .leftJoin(p, eq(p.uri, d.publicationUri))
-        .leftJoin(pr, eq(pr.did, p.did))
-        .where(and(eq(rec.recommenderDid, session.did), eq(rec.deleted, false)))
-        .orderBy(desc(rec.createdAt))
-        .limit(data.limit);
+      const where = and(
+        eq(rec.recommenderDid, session.did),
+        eq(rec.deleted, false),
+      );
 
+      const [countRow, rows] = await Promise.all([
+        context.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(rec)
+          .where(where),
+        context.db
+          .select({
+            recommendUri: rec.uri,
+            likedAt: rec.createdAt,
+            documentUri: rec.documentUri,
+            ...cols,
+          })
+          .from(rec)
+          .leftJoin(d, eq(d.uri, rec.documentUri))
+          .leftJoin(p, eq(p.uri, d.publicationUri))
+          .leftJoin(pr, eq(pr.did, p.did))
+          .where(where)
+          .orderBy(desc(rec.createdAt))
+          .limit(data.limit)
+          .offset(data.offset),
+      ]);
+
+      const total = countRow[0]?.count ?? 0;
       span.set("count", rows.length);
-      return rows.map((row) => ({
+      span.set("total", total);
+
+      const items = rows.map((row) => ({
         recommendUri: row.recommendUri,
         likedAt: row.likedAt?.toISOString() ?? null,
         documentUri: row.documentUri,
-        article:
-          row.uri != null &&
-          row.did != null &&
-          row.title != null &&
-          row.publishedAt != null
-            ? toArticleCard({
-                uri: row.uri,
-                did: row.did,
-                title: row.title,
-                description: row.description,
-                path: row.path,
-                canonicalUrl: row.canonicalUrl,
-                coverImageUrl: row.coverImageUrl,
-                publishedAt: row.publishedAt,
-                featured: row.featured ?? false,
-                publicationUri: row.publicationUri,
-                publicationName: row.publicationName,
-                publicationIconUrl: row.publicationIconUrl,
-                publicationOwnerAvatarUrl: row.publicationOwnerAvatarUrl,
-                publicationOwnerHandle: row.publicationOwnerHandle,
-                publicationBannerUrl: row.publicationBannerUrl,
-                publicationTopic: row.publicationTopic,
-                tags: row.tags,
-                textContent: row.textContent,
-                hasRenderableBody: row.hasRenderableBody,
-                recommendCount: row.recommendCount,
-              })
-            : null,
+        article: hydrateArticleFromRow(row),
       })) satisfies Array<LikedArticleItem>;
+
+      return buildReaderListPage(items, data.offset, total);
     }),
   );
 
@@ -437,6 +528,63 @@ const markUnread = createServerFn({ method: "POST" })
     }),
   );
 
+const getReadingHistory = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(readerListInput)
+  .handler(
+    observe("reader.getReadingHistory", async ({ data, context }, span) => {
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) {
+        return buildReaderListPage<ReadHistoryItem>([], data.offset, 0);
+      }
+      span.set("did", session.did);
+      span.set("limit", data.limit);
+      span.set("offset", data.offset);
+
+      const r = context.schema.reads;
+      const d = context.schema.documents;
+      const p = context.schema.publications;
+      const pr = context.schema.profiles;
+      const cols = articleCardColumns(context.schema);
+      const where = and(eq(r.ownerDid, session.did), eq(r.deleted, false));
+
+      const [countRow, rows] = await Promise.all([
+        context.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(r)
+          .where(where),
+        context.db
+          .select({
+            readUri: r.uri,
+            readAt: r.createdAt,
+            documentUri: r.documentUri,
+            ...cols,
+          })
+          .from(r)
+          .leftJoin(d, eq(d.uri, r.documentUri))
+          .leftJoin(p, eq(p.uri, d.publicationUri))
+          .leftJoin(pr, eq(pr.did, p.did))
+          .where(where)
+          .orderBy(desc(r.createdAt))
+          .limit(data.limit)
+          .offset(data.offset),
+      ]);
+
+      const total = countRow[0]?.count ?? 0;
+      span.set("count", rows.length);
+      span.set("total", total);
+
+      const items = rows.map((row) => ({
+        readUri: row.readUri,
+        readAt: row.readAt?.toISOString() ?? null,
+        documentUri: row.documentUri,
+        article: hydrateArticleFromRow(row, { isRead: true }),
+      })) satisfies Array<ReadHistoryItem>;
+
+      return buildReaderListPage(items, data.offset, total);
+    }),
+  );
+
 // ── Save for later (app.standard-reader.bookmark) ───────────────────────────
 
 const getBookmarkStatus = createServerFn({ method: "GET" })
@@ -470,70 +618,58 @@ const getBookmarkStatus = createServerFn({ method: "GET" })
 
 const getSaved = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
-  .inputValidator(likesInput)
+  .inputValidator(readerListInput)
   .handler(
     observe("reader.getSaved", async ({ data, context }, span) => {
       const session = await getAtprotoSessionForRequest(getRequest());
       if (!session) {
-        return [] satisfies Array<SavedArticleItem>;
+        return buildReaderListPage<SavedArticleItem>([], data.offset, 0);
       }
       span.set("did", session.did);
       span.set("limit", data.limit);
+      span.set("offset", data.offset);
 
       const b = context.schema.bookmarks;
       const d = context.schema.documents;
       const p = context.schema.publications;
       const pr = context.schema.profiles;
       const cols = articleCardColumns(context.schema);
-      const rows = await context.db
-        .select({
-          bookmarkUri: b.uri,
-          savedAt: b.createdAt,
-          documentUri: b.documentUri,
-          ...cols,
-        })
-        .from(b)
-        .leftJoin(d, eq(d.uri, b.documentUri))
-        .leftJoin(p, eq(p.uri, d.publicationUri))
-        .leftJoin(pr, eq(pr.did, p.did))
-        .where(and(eq(b.ownerDid, session.did), eq(b.deleted, false)))
-        .orderBy(desc(b.createdAt))
-        .limit(data.limit);
+      const where = and(eq(b.ownerDid, session.did), eq(b.deleted, false));
 
+      const [countRow, rows] = await Promise.all([
+        context.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(b)
+          .where(where),
+        context.db
+          .select({
+            bookmarkUri: b.uri,
+            savedAt: b.createdAt,
+            documentUri: b.documentUri,
+            ...cols,
+          })
+          .from(b)
+          .leftJoin(d, eq(d.uri, b.documentUri))
+          .leftJoin(p, eq(p.uri, d.publicationUri))
+          .leftJoin(pr, eq(pr.did, p.did))
+          .where(where)
+          .orderBy(desc(b.createdAt))
+          .limit(data.limit)
+          .offset(data.offset),
+      ]);
+
+      const total = countRow[0]?.count ?? 0;
       span.set("count", rows.length);
-      return rows.map((row) => ({
+      span.set("total", total);
+
+      const items = rows.map((row) => ({
         bookmarkUri: row.bookmarkUri,
         savedAt: row.savedAt?.toISOString() ?? null,
         documentUri: row.documentUri,
-        article:
-          row.uri != null &&
-          row.did != null &&
-          row.title != null &&
-          row.publishedAt != null
-            ? toArticleCard({
-                uri: row.uri,
-                did: row.did,
-                title: row.title,
-                description: row.description,
-                path: row.path,
-                canonicalUrl: row.canonicalUrl,
-                coverImageUrl: row.coverImageUrl,
-                publishedAt: row.publishedAt,
-                featured: row.featured ?? false,
-                publicationUri: row.publicationUri,
-                publicationName: row.publicationName,
-                publicationIconUrl: row.publicationIconUrl,
-                publicationOwnerAvatarUrl: row.publicationOwnerAvatarUrl,
-                publicationOwnerHandle: row.publicationOwnerHandle,
-                publicationBannerUrl: row.publicationBannerUrl,
-                publicationTopic: row.publicationTopic,
-                tags: row.tags,
-                textContent: row.textContent,
-                hasRenderableBody: row.hasRenderableBody,
-                recommendCount: row.recommendCount,
-              })
-            : null,
+        article: hydrateArticleFromRow(row),
       })) satisfies Array<SavedArticleItem>;
+
+      return buildReaderListPage(items, data.offset, total);
     }),
   );
 
@@ -680,17 +816,39 @@ function getBookmarkStatusQueryOptions(documentUri: string) {
   });
 }
 
-function getLikesQueryOptions({ limit = 50 }: { limit?: number } = {}) {
-  return queryOptions({
+function getLikesInfiniteQueryOptions({
+  limit = READER_QUEUE_PAGE_SIZE,
+}: { limit?: number } = {}) {
+  return infiniteQueryOptions({
     queryKey: ["reader", "likes", limit] as const,
-    queryFn: async () => getLikes({ data: { limit } }),
+    queryFn: async ({ pageParam }) =>
+      getLikes({ data: { limit, offset: pageParam } }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset ?? undefined,
   });
 }
 
-function getSavedQueryOptions({ limit = 50 }: { limit?: number } = {}) {
-  return queryOptions({
+function getSavedInfiniteQueryOptions({
+  limit = READER_QUEUE_PAGE_SIZE,
+}: { limit?: number } = {}) {
+  return infiniteQueryOptions({
     queryKey: ["reader", "saved", limit] as const,
-    queryFn: async () => getSaved({ data: { limit } }),
+    queryFn: async ({ pageParam }) =>
+      getSaved({ data: { limit, offset: pageParam } }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset ?? undefined,
+  });
+}
+
+function getReadingHistoryInfiniteQueryOptions({
+  limit = READER_QUEUE_PAGE_SIZE,
+}: { limit?: number } = {}) {
+  return infiniteQueryOptions({
+    queryKey: ["reader", "history", limit] as const,
+    queryFn: async ({ pageParam }) =>
+      getReadingHistory({ data: { limit, offset: pageParam } }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset ?? undefined,
   });
 }
 
@@ -797,7 +955,7 @@ export const readerApi = {
   getRecommendStatus,
   getRecommendStatusQueryOptions,
   getLikes,
-  getLikesQueryOptions,
+  getLikesInfiniteQueryOptions,
   recommendDocument,
   recommendDocumentMutationOptions,
   unrecommendDocument,
@@ -815,11 +973,13 @@ export const readerApi = {
   markFollowsAllUnreadReadMutationOptions,
   markUnread,
   markUnreadMutationOptions,
+  getReadingHistory,
+  getReadingHistoryInfiniteQueryOptions,
   // save for later (app.standard-reader.bookmark)
   getBookmarkStatus,
   getBookmarkStatusQueryOptions,
   getSaved,
-  getSavedQueryOptions,
+  getSavedInfiniteQueryOptions,
   bookmarkDocument,
   bookmarkDocumentMutationOptions,
   unbookmarkDocument,

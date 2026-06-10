@@ -150,6 +150,12 @@ Sections, top to bottom:
 - Right rail: About + DID + "Readers also follow".
 - Social proof line ("Followed by …") when applicable.
 
+### Reader profile (reading history)
+
+- Signed-in reader's **reading history** (`app.standard-reader.read`), newest first — every
+  article opened while signed in.
+- Route `/history`; linked from the user menu. Requires auth (redirects to login).
+
 ### Reader profile (saved for later)
 
 - Signed-in reader's **private save queue** (`app.standard-reader.bookmark`), newest first.
@@ -188,7 +194,7 @@ source of truth; Neon holds a derived view for speed and cross-network querying.
 - **Save for later:** an `app.standard-reader.bookmark` record per saved article; a private queue
   at `/saved`, distinct from public likes.
 - **Read / unread:** an `app.standard-reader.read` record per article; opening an article
-  marks it read.
+  marks it read. Private **reading history** at `/history` lists these newest-first.
 - **Publication lists (sidebar folders):** `app.standard-reader.list` records — a named, ordered,
   shareable list of publications (one level deep; a publication may live in several lists).
   Managed from the sidebar (new-list button in the Subscriptions header; per-list edit modal with

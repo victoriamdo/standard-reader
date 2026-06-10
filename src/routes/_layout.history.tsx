@@ -11,7 +11,7 @@ import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
-import { Heart } from "lucide-react";
+import { History } from "lucide-react";
 import { useCallback } from "react";
 
 import {
@@ -35,7 +35,7 @@ import {
   lineHeight,
 } from "../design-system/theme/typography.stylex";
 
-export const Route = createFileRoute("/_layout/likes")({
+export const Route = createFileRoute("/_layout/history")({
   beforeLoad: async ({ context }) => {
     const session = await context.queryClient.ensureQueryData(
       user.getSessionQueryOptions,
@@ -43,19 +43,19 @@ export const Route = createFileRoute("/_layout/likes")({
     if (!session?.user) {
       throw redirect({
         to: "/login",
-        search: { redirect: buildAuthRedirectPath("/likes") },
+        search: { redirect: buildAuthRedirectPath("/history") },
       });
     }
   },
   loader: async ({ context }) => {
     await context.queryClient.ensureInfiniteQueryData(
-      readerApi.getLikesInfiniteQueryOptions(),
+      readerApi.getReadingHistoryInfiniteQueryOptions(),
     );
   },
   head: () => ({
-    meta: pageSocialMeta("likes", getPublicUrlClient()),
+    meta: pageSocialMeta("history", getPublicUrlClient()),
   }),
-  component: ReaderLikes,
+  component: ReaderHistory,
 });
 
 const styles = stylex.create({
@@ -128,12 +128,12 @@ const styles = stylex.create({
   },
 });
 
-function ReaderLikes() {
+function ReaderHistory() {
   const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useSuspenseInfiniteQuery(readerApi.getLikesInfiniteQueryOptions());
+    useSuspenseInfiniteQuery(readerApi.getReadingHistoryInfiniteQueryOptions());
 
-  const likes = data.pages.flatMap((page) => page.items);
+  const history = data.pages.flatMap((page) => page.items);
   const total = data.pages[0]?.total ?? 0;
   const userName = session?.user.name ?? "Reader";
   const userHandle = session?.user.handle;
@@ -148,25 +148,25 @@ function ReaderLikes() {
   const loadMoreRef = useInfiniteScrollSentinel(
     loadMore,
     hasNextPage,
-    likes.length,
+    history.length,
   );
 
-  const queueRows = likes.map((item) => ({
-    id: item.recommendUri,
+  const queueRows = history.map((item) => ({
+    id: item.readUri,
     documentUri: item.documentUri,
     article: item.article,
-    timestamp: item.likedAt,
-    actionLabel: "Liked",
+    timestamp: item.readAt,
+    actionLabel: "Read",
   }));
 
   return (
     <ReaderContent>
       <Masthead
         kicker="Your profile"
-        kickerIcon={<Heart size={14} aria-hidden />}
-        title="Liked articles"
-        dek="Articles you've liked across the network."
-        metaLabel="Likes"
+        kickerIcon={<History size={14} aria-hidden />}
+        title="Reading history"
+        dek="Articles you've opened — private to you, synced across devices."
+        metaLabel="Read"
         metaValue={String(total)}
       />
 
@@ -191,14 +191,14 @@ function ReaderLikes() {
             align="start"
             style={styles.emptyInner}
           >
-            <span {...stylex.props(styles.emptyTitle)}>No likes yet</span>
+            <span {...stylex.props(styles.emptyTitle)}>Nothing here yet</span>
             <p {...stylex.props(styles.emptyDek)}>
-              Tap the heart on any article to like it. Your likes live in your
-              repo as{" "}
+              Open any article while signed in and it&apos;ll show up here. Your
+              history lives in your repo as{" "}
               <code {...stylex.props(styles.emptyCode)}>
-                site.standard.graph.recommend
+                app.standard-reader.read
               </code>{" "}
-              records and help surface great writing across the network.
+              records.
             </p>
             <Link to="/">
               <Button variant="secondary" size="lg">
@@ -209,7 +209,7 @@ function ReaderLikes() {
         </div>
       ) : (
         <>
-          <SectionHead kicker="Likes" title="Recently liked" />
+          <SectionHead kicker="History" title="Recently read" />
           <ReaderQueueRows items={queueRows} showSaveButton={false} />
           {isFetchingNextPage ? (
             <p {...stylex.props(styles.loadingNote)}>Loading…</p>

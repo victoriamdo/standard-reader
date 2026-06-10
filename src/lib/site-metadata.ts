@@ -47,6 +47,11 @@ export const PAGE_OG_CARDS = {
     title: "Liked articles",
     tagline: "Articles you've liked across the network.",
   },
+  history: {
+    path: "/history",
+    title: "Reading history",
+    tagline: "Articles you've opened — private to you, synced across devices.",
+  },
   search: {
     path: "/search",
     title: "Search",

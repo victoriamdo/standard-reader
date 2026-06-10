@@ -142,6 +142,22 @@ const styles = stylex.create({
   rowNoMedia: {
     gridTemplateColumns: "1fr",
   },
+  rowNoMediaSaveAside: {
+    gridTemplateColumns: {
+      default: "1fr",
+      "@media (min-width: 40rem)": "1fr auto",
+    },
+  },
+  rowSaveBesideMedia: {
+    gridTemplateColumns: {
+      default: "1fr",
+      "@media (min-width: 40rem)": "1fr 150px auto",
+    },
+  },
+  rowSaveAside: {
+    alignSelf: "start",
+    flexShrink: 0,
+  },
   rowFirstInSection: {
     paddingTop: spacing["0"],
   },
@@ -1143,30 +1159,43 @@ export function ArticleRow({
   article,
   unread = false,
   showByline = true,
+  showSaveButton = true,
+  saveButtonPlacement = "header",
   isFirstInSection = false,
 }: {
   article: ArticleCard;
   unread?: boolean;
   showByline?: boolean;
+  showSaveButton?: boolean;
+  /** Where the save toggle sits — `besideMedia` places it to the right of the cover. */
+  saveButtonPlacement?: "header" | "besideMedia";
   /** Drop top padding when the section head already provides spacing above. */
   isFirstInSection?: boolean;
 }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
   const cover = coverImage(article);
+  const saveBesideMedia =
+    showSaveButton && saveButtonPlacement === "besideMedia";
+  const saveButton = showSaveButton ? (
+    <SaveButton documentUri={article.uri} signedIn={signedIn} />
+  ) : null;
+
   return (
     <ArticleLink
       article={article}
       extraStyles={[
         styles.row,
-        !cover && styles.rowNoMedia,
+        !cover && !saveBesideMedia && styles.rowNoMedia,
+        !cover && saveBesideMedia && styles.rowNoMediaSaveAside,
+        saveBesideMedia && cover && styles.rowSaveBesideMedia,
         isFirstInSection && styles.rowFirstInSection,
       ]}
     >
       <Flex direction="column" gap="2xl">
         <Flex align="center" style={styles.rowHeader}>
           {showByline ? <Byline article={article} includeDate /> : <span />}
-          <SaveButton documentUri={article.uri} signedIn={signedIn} />
+          {saveBesideMedia ? null : saveButton}
         </Flex>
         <ArticleTitleRow
           article={article}
@@ -1188,6 +1217,9 @@ export function ArticleRow({
         >
           <AspectRatioImage src={cover} alt="" referrerPolicy="no-referrer" />
         </AspectRatio>
+      ) : null}
+      {saveBesideMedia && saveButton ? (
+        <div {...stylex.props(styles.rowSaveAside)}>{saveButton}</div>
       ) : null}
     </ArticleLink>
   );

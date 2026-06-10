@@ -296,4 +296,5 @@ export function invalidateReadQueries(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: ["feed"] });
   void queryClient.invalidateQueries({ queryKey: ["reader", "readDocuments"] });
   void queryClient.invalidateQueries({ queryKey: ["reader", "readStatus"] });
+  void queryClient.invalidateQueries({ queryKey: ["reader", "history"] });
 }

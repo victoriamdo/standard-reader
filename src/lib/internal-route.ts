@@ -8,6 +8,7 @@ const STATIC_ROUTES = [
   "/latest",
   "/likes",
   "/saved",
+  "/history",
   "/login",
   "/search",
 ] as const;
