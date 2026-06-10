@@ -1,7 +1,11 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   DISCOVER_TOPICS_LIMIT,
@@ -41,6 +45,7 @@ import {
 import { Button } from "../design-system/button";
 import { Grid } from "../design-system/grid";
 import { SearchField } from "../design-system/search-field";
+import { Select, SelectItem } from "../design-system/select";
 import {
   SegmentedControl,
   SegmentedControlItem,
@@ -59,6 +64,8 @@ const DIRECTORY_SEARCH_DEBOUNCE_MS = 300;
 const DIRECTORY_SKELETON_COUNT = 8;
 const DIRECTORY_LOAD_MORE_SKELETON_COUNT = 3;
 const RAIL_LIMIT = 10;
+const TRENDING_LIMIT_OPTIONS = [5, 10, 20, 50, 100] as const;
+const DEFAULT_TRENDING_LIMIT = 5;
 const SOCIAL_PROOF_COLLAPSED = 3;
 const SOCIAL_PROOF_MAX = 60;
 
@@ -93,7 +100,9 @@ export const Route = createFileRoute("/_layout/discover")({
         }),
       ),
       context.queryClient.ensureQueryData(
-        discoverApi.getTrendingPublicationsQueryOptions({ limit: RAIL_LIMIT }),
+        discoverApi.getTrendingPublicationsQueryOptions({
+          limit: DEFAULT_TRENDING_LIMIT,
+        }),
       ),
       context.queryClient.ensureQueryData(
         discoverApi.getPublicationsQueryOptions({
@@ -207,6 +216,10 @@ const styles = stylex.create({
     lineHeight: lineHeight.sm,
     marginTop: spacing["4"],
   },
+  trendingLimitSelect: {
+    flexShrink: 0,
+    width: spacing["20"],
+  },
   kickerIcon: {
     height: spacing["3.5"],
     width: spacing["3.5"],
@@ -281,6 +294,7 @@ function Discover() {
   const [debouncedQ, setDebouncedQ] = useState("");
   const [socialProofExpanded, setSocialProofExpanded] = useState(false);
   const [hideFollowing, setHideFollowing] = useState(false);
+  const [trendingLimit, setTrendingLimit] = useState(DEFAULT_TRENDING_LIMIT);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
 
@@ -295,9 +309,12 @@ function Discover() {
       limit: SOCIAL_PROOF_MAX,
     }),
   );
-  const { data: trending } = useSuspenseQuery(
-    discoverApi.getTrendingPublicationsQueryOptions({ limit: RAIL_LIMIT }),
-  );
+  const { data: trending = [] } = useQuery({
+    ...discoverApi.getTrendingPublicationsQueryOptions({
+      limit: trendingLimit,
+    }),
+    placeholderData: keepPreviousData,
+  });
   const { data: directory } = useSuspenseQuery(
     discoverApi.getPublicationsQueryOptions({
       topic: topic ?? null,
@@ -538,15 +555,40 @@ function Discover() {
               <Flame size={13} />
             </SectionIcon>
           }
+          action={
+            <Select
+              aria-label="Publications shown"
+              items={TRENDING_LIMIT_OPTIONS.map((limit) => ({
+                id: limit,
+                label: String(limit),
+              }))}
+              size="sm"
+              style={styles.trendingLimitSelect}
+              value={trendingLimit}
+              variant="tertiary"
+              onChange={(key) => {
+                const next = Number(key);
+                if (
+                  TRENDING_LIMIT_OPTIONS.includes(
+                    next as (typeof TRENDING_LIMIT_OPTIONS)[number],
+                  )
+                ) {
+                  setTrendingLimit(next);
+                }
+              }}
+            >
+              {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
+            </Select>
+          }
         />
         {trending.length > 0 ? (
           <div>
-            {trending.slice(0, 5).map((pub, index) => (
+            {trending.map((pub, index) => (
               <PubDirectoryRow
                 key={pub.uri}
                 pub={pub}
                 rank={index + 1}
-                isLast={index === Math.min(trending.length, 5) - 1}
+                isLast={index === trending.length - 1}
               />
             ))}
           </div>

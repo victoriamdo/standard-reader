@@ -45,7 +45,7 @@ const directoryInput = z.object({
 });
 
 const railInput = z.object({
-  limit: z.number().int().min(1).max(60).default(12),
+  limit: z.number().int().min(1).max(100).default(12),
 });
 
 export interface TopicChip {
