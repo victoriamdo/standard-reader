@@ -9,7 +9,10 @@ import {
   leafletDocumentContent,
   structuredFormatBlocks,
 } from "#/lib/document/content-formats";
-import { markdownPlaintext } from "#/lib/document/structured-content/markdown";
+import {
+  markdownImageAlts,
+  markdownPlaintext,
+} from "#/lib/document/structured-content/markdown";
 import { structuredPlaintextFromBlocks } from "#/lib/document/structured-content/plaintext";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
 import { leafletBskyPostUris } from "#/lib/leaflet/blocks";
@@ -39,6 +42,11 @@ function resolveContentType(
     return article.contentJson.$type;
   }
   return null;
+}
+
+function withMarkdownImageAlts(text: string | null): string | null {
+  if (!text?.trim()) return text;
+  return markdownImageAlts(text);
 }
 
 /**
@@ -91,7 +99,7 @@ export function articleReadingText(
     if (text?.trim()) return text;
   }
   if (contentType === STANDARD_MARKDOWN_CONTENT) {
-    const text = markdownPlaintext(article.contentJson);
+    const text = withMarkdownImageAlts(markdownPlaintext(article.contentJson));
     if (text?.trim()) return text;
   }
 
@@ -100,7 +108,9 @@ export function articleReadingText(
     const text = structuredPlaintextFromBlocks(structured);
     if (text?.trim()) return text;
   }
-  const markdown = altMarkdownText(article.contentJson, contentType);
+  const markdown = withMarkdownImageAlts(
+    altMarkdownText(article.contentJson, contentType),
+  );
   if (markdown?.trim()) return markdown;
   const htmlText = htmlContentPlaintext(article.contentJson, contentType);
   if (htmlText?.trim()) return htmlText;

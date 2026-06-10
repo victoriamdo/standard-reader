@@ -109,7 +109,8 @@ Sections, top to bottom:
   using on-device TTS (`kokoro-js`, lazy-loaded on first use). It narrates the
   title, description, byline, then body — including embedded Bluesky posts
   (author + content, fetched from the public AppView and inlined at their
-  position). By default (**Auto**), voice is inferred from the author's
+  position) and image alt text when the content format provides it. By default
+  (**Auto**), voice is inferred from the author's
   name/handle via a tiny on-device zero-shot classifier
   (`@huggingface/transformers`, lazy-loaded); signed-in users can pick a fixed
   Kokoro American English voice from the account menu (with overall quality

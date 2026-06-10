@@ -11,6 +11,14 @@ export function normalizeImageAlt(
   return "";
 }
 
+/** Plaintext lines for the page reader when an image block carries alt text. */
+export function narrationImageLines(
+  ...candidates: Array<string | null | undefined>
+): Array<string> {
+  const alt = normalizeImageAlt(...candidates);
+  return alt ? [alt] : [];
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

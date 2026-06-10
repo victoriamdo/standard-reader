@@ -1,3 +1,5 @@
+import { narrationImageLines } from "#/lib/document/structured-content/image";
+
 import type {
   LeafletBlockquoteBlock,
   LeafletBskyPostBlock,
@@ -363,10 +365,12 @@ export function plaintextLinesFromBlock(
     case "standardSitePost": {
       return [];
     }
+    case "image": {
+      return narrationImageLines(block.block.alt);
+    }
     case "horizontalRule":
     case "separator":
     case "poll":
-    case "image":
     case "iframe":
     case "unknown": {
       return [];

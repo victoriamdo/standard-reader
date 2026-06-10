@@ -1,5 +1,7 @@
 import type { StructuredRenderableBlock } from "./types";
 
+import { narrationImageLines } from "./image";
+
 function textLines(text: { plaintext: string }): Array<string> {
   const trimmed = text.plaintext.trim();
   return trimmed ? [trimmed] : [];
@@ -42,9 +44,11 @@ export function plaintextLinesFromStructuredBlock(
         row.flatMap((cell) => textLines(cell.text)).join(" | "),
       );
     }
+    case "image": {
+      return narrationImageLines(block.alt);
+    }
     case "horizontalRule":
     case "blueskyEmbed":
-    case "image":
     case "iframe":
     case "gallery":
     case "unknown": {

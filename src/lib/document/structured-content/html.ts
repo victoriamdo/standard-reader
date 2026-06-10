@@ -163,8 +163,18 @@ function decodeEntities(text: string): string {
  * stripped. (Search text doesn't need perfect fidelity — the rendered article
  * is produced by the sanitizing renderer, not this.)
  */
+function inlineImgAlts(html: string): string {
+  return html.replaceAll(
+    /<img\b[^>]*\balt=(["'])(.*?)\1[^>]*>/gis,
+    (_match, _quote: string, alt: string) => {
+      const trimmed = alt.trim();
+      return trimmed ? `\n\n${trimmed}\n\n` : " ";
+    },
+  );
+}
+
 export function htmlPlaintext(html: string): string | null {
-  const text = html
+  const text = inlineImgAlts(html)
     // Drop non-content subtrees entirely.
     .replaceAll(/<(script|style|template)\b[\s\S]*?<\/\1>/gi, " ")
     .replaceAll(/<!--[\s\S]*?-->/g, " ")

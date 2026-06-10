@@ -1,3 +1,6 @@
+import { narrationImageLines } from "#/lib/document/structured-content/image";
+import { pcktImageAlt } from "#/lib/pckt/image";
+
 import type {
   PcktBlockquoteBlock,
   PcktBlueskyEmbedBlock,
@@ -232,8 +235,10 @@ export function plaintextLinesFromBlock(
       ].filter(Boolean);
       return parts.length > 0 ? [parts.join(": ")] : [];
     }
+    case "image": {
+      return narrationImageLines(pcktImageAlt(block.block));
+    }
     case "horizontalRule":
-    case "image":
     case "iframe":
     case "blueskyEmbed":
     case "gallery":
