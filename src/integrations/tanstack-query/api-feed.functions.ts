@@ -276,6 +276,9 @@ const getLatestFeed = createServerFn({ method: "GET" })
           ? Math.min(data.limit, TRENDING_PAGE_LIMIT - data.offset)
           : data.limit;
 
+      // Tab badges only need counts on the first page; pagination reuses cached counts.
+      const includeCounts = data.offset === 0;
+
       const [items, followCounts, networkCount, trendingCount] =
         await Promise.all([
           data.filter === "trending"
@@ -301,15 +304,19 @@ const getLatestFeed = createServerFn({ method: "GET" })
                 limit: data.limit,
                 offset: data.offset,
               }),
-          did
+          includeCounts && did
             ? countFollowedDocuments(db, schema, followUris, did)
             : Promise.resolve({ all: 0, unread: 0 }),
-          countNetworkDocuments(db, schema),
-          countTrendingDocuments(
-            db,
-            schema,
-            data.filter === "trending" ? "page" : "rail",
-          ),
+          includeCounts
+            ? countNetworkDocuments(db, schema)
+            : Promise.resolve(0),
+          includeCounts && did
+            ? countTrendingDocuments(
+                db,
+                schema,
+                data.filter === "trending" ? "page" : "rail",
+              )
+            : Promise.resolve(0),
         ]);
 
       span.set("count", items.length);

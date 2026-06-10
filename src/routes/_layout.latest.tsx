@@ -77,8 +77,8 @@ const LATEST_FILTERS = [
 export const Route = createFileRoute("/_layout/latest")({
   validateSearch: latestSearchSchema,
   loaderDeps: ({ search }) => ({ filter: search.filter }),
-  loader: ({ context, deps }) => {
-    void context.queryClient.prefetchQuery(
+  loader: async ({ context, deps }) => {
+    await context.queryClient.ensureQueryData(
       feedApi.getLatestFeedQueryOptions({
         filter: deps.filter,
         limit: latestFeedPageSize(deps.filter),
@@ -407,17 +407,39 @@ function Latest() {
   }, [filter, navigate, trackReading]);
 
   useEffect(() => {
-    for (const tabFilter of LATEST_FILTERS) {
-      if (tabFilter === "unread" && !trackReading) continue;
-      void queryClient.prefetchQuery(
-        feedApi.getLatestFeedQueryOptions({
-          filter: tabFilter,
-          limit: latestFeedPageSize(tabFilter),
-          offset: 0,
-        }),
-      );
-    }
-  }, [queryClient, trackReading]);
+    // Signed-out readers only see the active feed (no tab switcher) — prefetching
+    // other filters fires duplicate network-wide queries and extra count scans.
+    if (!signedIn) return;
+
+    const prefetchTabs = () => {
+      for (const tabFilter of LATEST_FILTERS) {
+        if (tabFilter === filter) continue;
+        if (tabFilter === "unread" && !trackReading) continue;
+        void queryClient.prefetchQuery(
+          feedApi.getLatestFeedQueryOptions({
+            filter: tabFilter,
+            limit: latestFeedPageSize(tabFilter),
+            offset: 0,
+          }),
+        );
+      }
+    };
+
+    const scheduleIdle =
+      globalThis.requestIdleCallback ??
+      ((callback: IdleRequestCallback) =>
+        globalThis.setTimeout(
+          () => callback({ didTimeout: false, timeRemaining: () => 0 }),
+          200,
+        ));
+
+    const cancelIdle =
+      globalThis.cancelIdleCallback ??
+      ((id: number) => globalThis.clearTimeout(id));
+
+    const idleId = scheduleIdle(prefetchTabs);
+    return () => cancelIdle(idleId);
+  }, [filter, queryClient, signedIn, trackReading]);
 
   const onFilterChange = (keys: Set<React.Key> | "all") => {
     const next = keys === "all" ? "all" : ([...keys][0] as LatestFilter);
