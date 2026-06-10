@@ -98,6 +98,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       meta: [
         { charSet: "utf8" },
         { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { name: "theme-color", content: "#c2502b" },
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        { name: "apple-mobile-web-app-title", content: "Standard Reader" },
         ...siteSocialMeta({
           url: baseUrl,
           ogImage: siteOgImageUrl(baseUrl),
@@ -105,6 +108,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       ],
       links: [
         { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+        {
+          rel: "apple-touch-icon",
+          href: "/apple-touch-icon.png",
+          sizes: "180x180",
+        },
         { rel: "manifest", href: "/manifest.json" },
         { rel: "preconnect", href: "https://fonts.googleapis.com" },
         {

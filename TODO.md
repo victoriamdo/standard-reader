@@ -281,17 +281,12 @@ Backend/API exists; UI or copy is missing.
 
 ## 9. Post-v1 — reader polish (Tier 2)
 
-- [ ] **Keyboard shortcuts** — [TanStack Hotkeys](https://tanstack.com/hotkeys/latest)
-      (`@tanstack/react-hotkeys`): `HotkeysProvider`, centralized `useHotkeys` in a new module,
-      `ignoreInputs`, route scopes. v1 map: `/` + optional `Mod+K` → search; `j`/`k` + `Enter` on
-      feed rows; `Shift+?` help dialog (hip-ui `Kbd` + `formatForDisplay`); `Escape` closes overlays.
-      Touch: [`app-shell.tsx`](src/components/reader/app-shell.tsx), [`cards.tsx`](src/components/reader/cards.tsx),
-      [`_layout.search.tsx`](src/routes/_layout.search.tsx).
 - [ ] **Reading typography preferences** — font size / measure (and optional sans body) on the
       article wrapper; cookie + optional `user` column (same pattern as [`open-links.ts`](src/lib/open-links.ts));
       menu item alongside [`OpenLinksMenuItem`](src/components/OpenLinksMenuItem.tsx).
-- [ ] **PWA install readiness** — Phase A: PNG icons (192/512), `apple-touch-icon`, expand
-      [`manifest.json`](public/manifest.json). _Open decision:_ Phase B service worker for asset
+- [x] **PWA install readiness** — Phase A: PNG icons (192/512), `apple-touch-icon`, expanded
+      [`manifest.json`](public/manifest.json) + head tags in [`__root.tsx`](src/routes/__root.tsx).
+      Regenerate via `pnpm icons:generate`. _Open decision:_ Phase B service worker for asset
       caching only (not offline articles).
 - [x] **Content rendering gaps** — PCKT gallery renderer (`blog.pckt.block.gallery`); prod scan
       found 54 documents — implemented grid/list/carousel/masonry layouts via
