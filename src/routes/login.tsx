@@ -2,13 +2,18 @@ import type { SavedHandle } from "#/utils/saved-handles";
 
 import * as stylex from "@stylexjs/stylex";
 import { useMutation } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useCanGoBack,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { auth } from "#/integrations/tanstack-query/api-auth.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
 import { unauthMiddleware } from "#/middleware/auth";
 import { getSavedHandles, saveHandle } from "#/utils/saved-handles";
-import { ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link as AriaLink } from "react-aria-components";
 import { z } from "zod";
@@ -17,6 +22,7 @@ import { UserHandleAutocomplete } from "../components/user-handle-autocomplete";
 import { Avatar } from "../design-system/avatar";
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
+import { IconButton } from "../design-system/icon-button";
 import { Form } from "../design-system/form";
 import { Separator } from "../design-system/separator";
 import { primaryColor, uiColor } from "../design-system/theme/color.stylex";
@@ -25,6 +31,7 @@ import { radius } from "../design-system/theme/radius.stylex";
 import { primary } from "../design-system/theme/semantic-color.stylex";
 import {
   gap as gapSpace,
+  horizontalSpace,
   size as sizeSpace,
   verticalSpace,
 } from "../design-system/theme/semantic-spacing.stylex";
@@ -110,6 +117,11 @@ const styles = stylex.create({
   logoContainer: {
     paddingBottom: verticalSpace["lg"],
   },
+  backButton: {
+    left: horizontalSpace["3xl"],
+    position: "absolute",
+    top: verticalSpace["3xl"],
+  },
 });
 
 export const Route = createFileRoute("/login")({
@@ -152,6 +164,8 @@ function AuthPage() {
   const { savedHandles: initialSavedHandles, redirects } =
     Route.useLoaderData();
   const navigate = useNavigate();
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
 
   const [handle, setHandle] = useState("");
   const [inputValue, setInputValue] = useState("");
@@ -202,8 +216,26 @@ function AuthPage() {
     savedHandles.length > 0 ? "saved-handles" : "login",
   );
 
+  const handleBack = () => {
+    if (canGoBack) {
+      router.history.back();
+      return;
+    }
+
+    void navigate({ to: "/" });
+  };
+
   return (
     <main {...stylex.props(styles.main)}>
+      <IconButton
+        variant="secondary"
+        size="md"
+        label="Back"
+        onPress={handleBack}
+        style={styles.backButton}
+      >
+        <ArrowLeft size={18} />
+      </IconButton>
       <div {...stylex.props(styles.container)}>
         <Form style={styles.content}>
           <Flex direction="column" gap="5xl" style={styles.form}>
