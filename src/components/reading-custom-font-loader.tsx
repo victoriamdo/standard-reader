@@ -4,7 +4,7 @@ import {
   googleFontsPreviewStylesheetUrl,
   googleFontsStylesheetUrl,
 } from "#/lib/google-fonts";
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 
 function linkIdForFamily(family: string, variant: "full" | "preview"): string {
   const slug = family.trim().toLowerCase().replace(/\s+/g, "-");
@@ -20,7 +20,7 @@ export function ReadingCustomFontLoader({
   family: string | null | undefined;
   variant?: "full" | "preview";
 }) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const normalized = family?.trim();
     if (!normalized) return;
 

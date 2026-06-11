@@ -497,22 +497,21 @@ export function UserSettingsView() {
               style={styles.segmentedControl}
             />
           </SettingRow>
-          {typography.bodyFont === "custom" ? (
-            <>
-              <Separator />
-              <SettingRow
-                label="Google Font"
-                description="Search and pick any family from the Google Fonts catalog."
-              >
-                <ReadingCustomFontPicker
-                  value={
-                    typography.customFontFamily ?? DEFAULT_CUSTOM_GOOGLE_FONT
-                  }
-                  onChange={setCustomFontFamily}
-                />
-              </SettingRow>
-            </>
-          ) : null}
+          <Separator />
+          <SettingRow
+            label="Google Font"
+            description={
+              typography.bodyFont === "custom"
+                ? "Search and pick any family from the Google Fonts catalog."
+                : "Select Custom above to choose a Google Font."
+            }
+          >
+            <ReadingCustomFontPicker
+              value={typography.customFontFamily ?? DEFAULT_CUSTOM_GOOGLE_FONT}
+              onChange={setCustomFontFamily}
+              isDisabled={typography.bodyFont !== "custom"}
+            />
+          </SettingRow>
           <Separator />
           <SettingRow
             label="Listen aloud voice"

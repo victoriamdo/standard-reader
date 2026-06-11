@@ -3,22 +3,22 @@
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { GoogleFontMenuLabel } from "#/components/google-font-menu-label";
+import { SizeContext } from "#/design-system/context";
 import { googleFontsApi } from "#/integrations/tanstack-query/api-google-fonts.functions";
 import { useEffect, useMemo, useState } from "react";
 
 import { ComboBox, ComboBoxItem } from "../design-system/combobox";
 import { spacing } from "../design-system/theme/spacing.stylex";
-import { SizeContext } from "#/design-system/context.ts";
 
 const styles = stylex.create({
   picker: {
     minWidth: {
-      "@media (max-width: 47.5rem)": "100%",
       default: spacing["56"],
+      "@media (max-width: 47.5rem)": "100%",
     },
     width: {
-      "@media (max-width: 47.5rem)": "100%",
       default: spacing["56"],
+      "@media (max-width: 47.5rem)": "100%",
     },
   },
 });
@@ -31,9 +31,11 @@ type GoogleFontItem = {
 export function ReadingCustomFontPicker({
   value,
   onChange,
+  isDisabled = false,
 }: {
   value: string;
   onChange: (family: string) => void;
+  isDisabled?: boolean;
 }) {
   const [search, setSearch] = useState(value);
 
@@ -71,7 +73,8 @@ export function ReadingCustomFontPicker({
   return (
     <ComboBox
       aria-label="Google Font"
-      placeholder={isPending ? "Loading fonts…" : "Search Google Fonts"}
+      size="lg"
+      placeholder="Search Google Fonts"
       items={items}
       inputValue={search}
       onInputChange={setSearch}
@@ -82,7 +85,7 @@ export function ReadingCustomFontPicker({
         setSearch(family);
         onChange(family);
       }}
-      isDisabled={isPending || isError}
+      isDisabled={isDisabled || isPending || isError}
       allowsEmptyCollection
       isVirtualized
       style={styles.picker}

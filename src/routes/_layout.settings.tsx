@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { googleFontsApi } from "#/integrations/tanstack-query/api-google-fonts.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
@@ -17,6 +18,25 @@ export const Route = createFileRoute("/_layout/settings")({
         search: { redirect: buildAuthRedirectPath("/settings") },
       });
     }
+  },
+  loader: async ({ context }) => {
+    await Promise.all([
+      context.queryClient.ensureQueryData(
+        user.getReadingTypographyPreferenceQueryOptions,
+      ),
+      context.queryClient.ensureQueryData(
+        user.getReaderVoicePreferenceQueryOptions,
+      ),
+      context.queryClient.ensureQueryData(
+        user.getOpenLinksPreferenceQueryOptions,
+      ),
+      context.queryClient.ensureQueryData(
+        user.getTrackReadingHistoryPreferenceQueryOptions,
+      ),
+      context.queryClient.prefetchQuery(
+        googleFontsApi.getGoogleFontFamiliesQueryOptions,
+      ),
+    ]);
   },
   head: () => ({
     meta: pageSocialMeta("settings", getPublicUrlClient()),
