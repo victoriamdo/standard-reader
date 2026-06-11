@@ -3,6 +3,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { DEFAULT_TRACK_READING_HISTORY } from "#/lib/track-reading-history";
 import { ArrowRight, Flame, Sparkles } from "lucide-react";
+import { Suspense } from "react";
 
 import {
   ArticleRow,
@@ -17,6 +18,7 @@ import {
 } from "../components/reader/primitives";
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
+import { Skeleton } from "../design-system/skeleton";
 import { primaryColor, uiColor } from "../design-system/theme/color.stylex";
 import { radius } from "../design-system/theme/radius.stylex";
 import { spacing } from "../design-system/theme/spacing.stylex";
@@ -33,6 +35,11 @@ import { getPublicUrlClient } from "../lib/public-url";
 import { pageSocialMeta } from "../lib/site-metadata";
 
 export const Route = createFileRoute("/_layout/")({
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(
+      feedApi.getHomeFeedQueryOptions(),
+    );
+  },
   head: () => ({
     meta: pageSocialMeta("today", getPublicUrlClient()),
   }),
@@ -114,6 +121,9 @@ const styles = stylex.create({
     lineHeight: lineHeight.sm,
     maxWidth: "52ch",
   },
+  homeSkeleton: {
+    marginTop: spacing["9"],
+  },
 });
 
 const TODAY_FMT = new Intl.DateTimeFormat("en-US", {
@@ -168,7 +178,39 @@ function homeFeedLabels({
   };
 }
 
+function HomeFeedSkeleton() {
+  return (
+    <ReaderContent>
+      <div aria-busy="true" aria-label="Loading today">
+        <Flex direction="column" gap="3xl">
+          <Skeleton variant="rectangle" height={spacing["4"]} width="36%" />
+          <Skeleton variant="rectangle" height={spacing["10"]} width="42%" />
+          <Skeleton variant="rectangle" height={spacing["5"]} width="68%" />
+        </Flex>
+        <Flex
+          direction="column"
+          gap="2xl"
+          style={styles.homeSkeleton}
+          aria-hidden
+        >
+          <Skeleton variant="rectangle" height={spacing["48"]} width="100%" />
+          <Skeleton variant="rectangle" height={spacing["24"]} width="100%" />
+          <Skeleton variant="rectangle" height={spacing["24"]} width="100%" />
+        </Flex>
+      </div>
+    </ReaderContent>
+  );
+}
+
 function Home() {
+  return (
+    <Suspense fallback={<HomeFeedSkeleton />}>
+      <HomeFeed />
+    </Suspense>
+  );
+}
+
+function HomeFeed() {
   const { data: feed } = useSuspenseQuery(feedApi.getHomeFeedQueryOptions());
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const { data: trackReadingPref } = useQuery({
