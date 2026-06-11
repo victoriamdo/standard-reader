@@ -55,6 +55,14 @@ import {
   invalidateFollowQueries,
   rollbackBulkFollowOptimisticUpdate,
 } from "#/components/reader/follow-optimistic";
+import {
+  AlertDialog,
+  AlertDialogActionButton,
+  AlertDialogCancelButton,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+} from "#/design-system/alert-dialog";
 import { Button } from "#/design-system/button";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
@@ -66,6 +74,8 @@ import type {
 } from "#/integrations/tanstack-query/api-tag.functions";
 
 const PAGE_SIZE = 24;
+/** Ask before bulk-follow when a tag has more than this many unfollowed publications. */
+const FOLLOW_ALL_CONFIRM_THRESHOLD = 100;
 const SKELETON_COUNT = 8;
 const LOAD_MORE_SKELETON_COUNT = 3;
 const ARTICLE_SKELETON_ROWS = 8;
@@ -758,6 +768,8 @@ function TagFollowAllButton({
 }) {
   const queryClient = useQueryClient();
   const loginSearch = useLoginSearch();
+  const displayTag = tagDisplayTitle(tag);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const followSummaryKey = tagApi.getTagFollowSummaryQueryOptions({
     tag,
   }).queryKey;
@@ -799,6 +811,7 @@ function TagFollowAllButton({
       }
     },
     onSuccess: (result) => {
+      setConfirmOpen(false);
       if (result.publications.length > 0) {
         applyBulkFollowOptimisticUpdate(queryClient, result.publications);
       }
@@ -825,24 +838,65 @@ function TagFollowAllButton({
 
   const unfollowedCount = followSummary?.unfollowedCount ?? publicationCount;
   const followingAll = unfollowedCount === 0;
+  const needsConfirm = unfollowedCount > FOLLOW_ALL_CONFIRM_THRESHOLD;
+
+  if (followingAll) {
+    return (
+      <Button variant="secondary" size="md" isDisabled>
+        <Check size={15} aria-hidden /> Following all
+      </Button>
+    );
+  }
+
+  const followAllLabel = (
+    <>
+      <Plus size={15} aria-hidden /> Follow all
+    </>
+  );
+
+  if (needsConfirm) {
+    return (
+      <AlertDialog
+        isOpen={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        trigger={
+          <Button variant="primary" size="md">
+            {followAllLabel}
+          </Button>
+        }
+      >
+        <AlertDialogHeader>
+          Follow {formatCount(unfollowedCount)} publications?
+        </AlertDialogHeader>
+        <AlertDialogDescription>
+          You&apos;re about to follow {formatCount(unfollowedCount)}{" "}
+          publications tagged {displayTag}. That&apos;s a lot to add to your
+          feed — only continue if you really want them all.
+        </AlertDialogDescription>
+        <AlertDialogFooter>
+          <AlertDialogCancelButton isDisabled={followAllMutation.isPending}>
+            Cancel
+          </AlertDialogCancelButton>
+          <AlertDialogActionButton
+            closeOnPress={false}
+            isPending={followAllMutation.isPending}
+            onPress={() => followAllMutation.mutate(tag)}
+          >
+            Follow all
+          </AlertDialogActionButton>
+        </AlertDialogFooter>
+      </AlertDialog>
+    );
+  }
 
   return (
     <Button
-      variant={followingAll ? "secondary" : "primary"}
+      variant="primary"
       size="md"
-      isDisabled={followingAll}
       isPending={followAllMutation.isPending}
       onPress={() => followAllMutation.mutate(tag)}
     >
-      {followingAll ? (
-        <>
-          <Check size={15} aria-hidden /> Following all
-        </>
-      ) : (
-        <>
-          <Plus size={15} aria-hidden /> Follow all
-        </>
-      )}
+      {followAllLabel}
     </Button>
   );
 }
