@@ -207,8 +207,8 @@ export function PrivacyView() {
           <strong>Reading activity.</strong> When reading history is enabled,
           articles you open are recorded as public AT Protocol records in{" "}
           <em>your</em> repository — not as private app-only data. You can turn
-          this off in your account settings; existing records remain in your
-          repo until you delete them elsewhere.
+          this off in Settings; existing records remain in your repo until you
+          delete them from the Personal data section.
         </p>
 
         <p {...stylex.props(styles.paragraph)}>
@@ -267,9 +267,10 @@ export function PrivacyView() {
         <p {...stylex.props(styles.paragraph)}>
           You can sign out at any time, which clears your app session cookie.
           You can clear site cookies in your browser to remove theme and
-          saved-handle preferences. You can disable reading-history tracking in
-          the app menu. To remove AT Protocol records you created through the
-          app, use a compatible client or your repository tools.
+          saved-handle preferences. You can change reading-history tracking and
+          delete personal data from Settings. To remove other AT Protocol
+          records you created through the app, use a compatible client or your
+          repository tools.
         </p>
 
         <h2 {...stylex.props(styles.sectionHeading)}>Changes</h2>

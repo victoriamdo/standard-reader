@@ -5,12 +5,14 @@ import {
 } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { APP_NSID } from "#/lib/atproto/nsids";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import {
   deleteBookmarkRecord,
   deleteReadRecord,
   deleteRecommendRecord,
   deleteSubscriptionRecords,
+  listCollectionRecords,
   putBookmarkRecord,
   putReadRecord,
   putRecommendRecord,
@@ -773,6 +775,78 @@ const unbookmarkDocument = createServerFn({ method: "POST" })
     }),
   );
 
+const deleteAllReadHistory = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
+  .handler(
+    observe("reader.deleteAllReadHistory", async ({ context }, span) => {
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) {
+        throw new Error("Sign in to manage your reading history.");
+      }
+      span.set("did", session.did);
+
+      const records = await listCollectionRecords(
+        session.client,
+        session.did,
+        APP_NSID.read,
+      );
+      await Promise.all(
+        records.map(async (record) => {
+          const value = record.value as { subject?: string };
+          if (typeof value.subject === "string") {
+            await deleteReadRecord(session.client, session.did, value.subject);
+          }
+        }),
+      );
+
+      await context.db
+        .delete(context.schema.reads)
+        .where(eq(context.schema.reads.ownerDid, session.did));
+
+      await trackReaderRepo(session.did);
+      span.set("deleted", records.length);
+      return { ok: true as const, deleted: records.length };
+    }),
+  );
+
+const deleteAllBookmarks = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
+  .handler(
+    observe("reader.deleteAllBookmarks", async ({ context }, span) => {
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) {
+        throw new Error("Sign in to manage your saved articles.");
+      }
+      span.set("did", session.did);
+
+      const records = await listCollectionRecords(
+        session.client,
+        session.did,
+        APP_NSID.bookmark,
+      );
+      await Promise.all(
+        records.map(async (record) => {
+          const value = record.value as { subject?: string };
+          if (typeof value.subject === "string") {
+            await deleteBookmarkRecord(
+              session.client,
+              session.did,
+              value.subject,
+            );
+          }
+        }),
+      );
+
+      await context.db
+        .delete(context.schema.bookmarks)
+        .where(eq(context.schema.bookmarks.ownerDid, session.did));
+
+      await trackReaderRepo(session.did);
+      span.set("deleted", records.length);
+      return { ok: true as const, deleted: records.length };
+    }),
+  );
+
 async function markDocumentsRead(
   session: NonNullable<Awaited<ReturnType<typeof getAtprotoSessionForRequest>>>,
   documentUris: Array<string>,
@@ -1009,6 +1083,22 @@ function markFollowsAllUnreadReadMutationOptions() {
   });
 }
 
+function deleteAllReadHistoryMutationOptions() {
+  return mutationOptions({
+    mutationKey: ["reader", "deleteAllReadHistory"] as const,
+    mutationFn: async () => deleteAllReadHistory(),
+    retry: false,
+  });
+}
+
+function deleteAllBookmarksMutationOptions() {
+  return mutationOptions({
+    mutationKey: ["reader", "deleteAllBookmarks"] as const,
+    mutationFn: async () => deleteAllBookmarks(),
+    retry: false,
+  });
+}
+
 export const readerApi = {
   // follow
   getFollowStatus,
@@ -1050,4 +1140,8 @@ export const readerApi = {
   bookmarkDocumentMutationOptions,
   unbookmarkDocument,
   unbookmarkDocumentMutationOptions,
+  deleteAllReadHistory,
+  deleteAllReadHistoryMutationOptions,
+  deleteAllBookmarks,
+  deleteAllBookmarksMutationOptions,
 };

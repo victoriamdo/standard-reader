@@ -3,12 +3,14 @@ import type { SubscriptionList } from "#/server/reader/saved-lists";
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { APP_NSID } from "#/lib/atproto/nsids";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { resolveIdentity } from "#/server/atproto/identity";
 import {
   deleteListRecord,
   deleteListSaveRecord,
   hasListSaveRecord,
+  listCollectionRecords,
   newListRkey,
   putListRecord,
   putListSaveRecord,
@@ -220,6 +222,30 @@ const deleteList = createServerFn({ method: "POST" })
       return { ok: true as const };
     }),
   );
+
+const deleteAllLists = createServerFn({ method: "POST" }).handler(
+  observe("lists.deleteAllLists", async (_, span) => {
+    const session = await getAtprotoSessionForRequest(getRequest());
+    if (!session) {
+      throw new Error("Sign in to manage lists.");
+    }
+    span.set("did", session.did);
+
+    const records = await listCollectionRecords(
+      session.client,
+      session.did,
+      APP_NSID.list,
+    );
+    await Promise.all(
+      records.map((record) =>
+        deleteListRecord(session.client, session.did, record.rkey),
+      ),
+    );
+    invalidateSavedLists(session.did);
+    span.set("deleted", records.length);
+    return { ok: true as const, deleted: records.length };
+  }),
+);
 
 // ── Public list page ─────────────────────────────────────────────────────────
 
@@ -435,6 +461,14 @@ function deleteListMutationOptions() {
   });
 }
 
+function deleteAllListsMutationOptions() {
+  return mutationOptions({
+    mutationKey: ["reader", "deleteAllLists"] as const,
+    mutationFn: async () => deleteAllLists(),
+    retry: false,
+  });
+}
+
 function saveListMutationOptions() {
   return mutationOptions({
     mutationKey: ["reader", "saveList"] as const,
@@ -457,6 +491,8 @@ export const listApi = {
   putListMutationOptions,
   deleteList,
   deleteListMutationOptions,
+  deleteAllLists,
+  deleteAllListsMutationOptions,
   // public page
   getList,
   getListQueryOptions,

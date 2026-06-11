@@ -70,6 +70,12 @@ export const PAGE_OG_CARDS = {
     tagline:
       "What Standard Reader collects, where your data lives, and your choices.",
   },
+  settings: {
+    path: "/settings",
+    title: "Settings",
+    tagline:
+      "Appearance, reading preferences, and personal data for your account.",
+  },
   login: {
     path: "/login",
     title: "Sign in",

@@ -6,7 +6,7 @@ import { createLink, useNavigate } from "@tanstack/react-router";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
-import { Heart, History, LogOut } from "lucide-react";
+import { Heart, History, LogOut, Settings } from "lucide-react";
 import { Button as AriaButton } from "react-aria-components";
 
 import { Avatar, AvatarButton } from "../design-system/avatar";
@@ -27,12 +27,7 @@ import {
   fontWeight,
   lineHeight,
 } from "../design-system/theme/typography.stylex";
-import { OpenLinksMenuItem } from "./OpenLinksMenuItem";
 import { Handle } from "./reader/primitives";
-import { ReaderVoiceSubMenu } from "./ReaderVoiceMenu";
-import { ReadingTypographySubMenu } from "./ReadingTypographyMenu";
-import { ThemeSubMenu } from "./ThemeMenu";
-import { TrackReadingHistoryMenuItem } from "./TrackReadingHistoryMenuItem";
 
 const ButtonLink = createLink(Button);
 const MenuItemLink = createLink(MenuItem);
@@ -211,12 +206,9 @@ export function NavbarAuth({
         <MenuItemLink to="/likes" suffix={<Heart />}>
           Liked articles
         </MenuItemLink>
-        <MenuSeparator />
-        <ThemeSubMenu />
-        <ReaderVoiceSubMenu />
-        <ReadingTypographySubMenu />
-        <OpenLinksMenuItem />
-        <TrackReadingHistoryMenuItem />
+        <MenuItemLink to="/settings" suffix={<Settings />}>
+          Settings
+        </MenuItemLink>
         <MenuSeparator />
         <MenuItem onPress={() => logoutMutation.mutate()} suffix={<LogOut />}>
           Log out
