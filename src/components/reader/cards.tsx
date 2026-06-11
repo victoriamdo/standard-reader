@@ -1147,9 +1147,9 @@ export function FeatureArticle({
   unread?: boolean;
 }) {
   const cover = coverImage(article);
-  const featureGridStyles = [
+  const featureGridStyles: Array<stylex.StyleXStyles | false | undefined> = [
     styles.featureGrid,
-    !cover && styles.featureTextOnly,
+    !cover ? styles.featureTextOnly : false,
   ];
   const articleBody = (
     <>
@@ -1196,7 +1196,7 @@ export function FeatureArticle({
   return (
     <ArticleLink
       article={article}
-      extraStyles={[styles.feature, !cover && styles.featureTextOnly]}
+      extraStyles={[styles.feature, !cover ? styles.featureTextOnly : false]}
     >
       {articleBody}
     </ArticleLink>
@@ -1272,7 +1272,7 @@ export function ArticleRow({
     <SaveButton documentUri={article.uri} signedIn={signedIn} />
   ) : null;
 
-  const gridStyles = [
+  const gridStyles: Array<stylex.StyleXStyles | false | undefined> = [
     showByline ? styles.rowGrid : styles.row,
     !cover && !saveBesideMedia ? styles.rowNoMedia : false,
     !cover && saveBesideMedia ? styles.rowNoMediaSaveAside : false,
