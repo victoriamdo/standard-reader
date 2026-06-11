@@ -7,6 +7,7 @@ import type {
 import * as stylex from "@stylexjs/stylex";
 import { MenuItem, MenuSeparator, SubMenu } from "#/design-system/menu";
 import { uiColor } from "#/design-system/theme/color.stylex";
+import { DEFAULT_CUSTOM_GOOGLE_FONT } from "#/lib/google-fonts";
 import {
   READING_BODY_FONTS,
   READING_FONT_SIZES,
@@ -85,7 +86,17 @@ export function ReadingTypographySubMenu() {
       {READING_BODY_FONTS.map((bodyFont: ReadingBodyFont) => (
         <MenuItem
           key={bodyFont}
-          onAction={() => setPreference({ bodyFont })}
+          onAction={() => {
+            if (bodyFont === "custom") {
+              setPreference({
+                bodyFont: "custom",
+                customFontFamily:
+                  preference.customFontFamily ?? DEFAULT_CUSTOM_GOOGLE_FONT,
+              });
+              return;
+            }
+            setPreference({ bodyFont, customFontFamily: undefined });
+          }}
           suffix={
             <SelectedSuffix selected={preference.bodyFont === bodyFont} />
           }

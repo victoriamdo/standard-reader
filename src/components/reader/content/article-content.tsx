@@ -16,7 +16,11 @@ import { useReadingTypography } from "#/lib/use-reading-typography";
 
 import type { ContentRendererProps } from "./types";
 
-import { articleBodyStyles, readingBodyStyleProps } from "./body-styles";
+import {
+  articleBodyStyles,
+  readingBodyStyleProps,
+  readingDropCapStyleProps,
+} from "./body-styles";
 import { CONTENT_RENDERERS } from "./renderers";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -86,7 +90,7 @@ function FallbackContent({
                 articleBodyStyles.dropCapParagraph,
               )}
             >
-              <span {...stylex.props(articleBodyStyles.dropCap)} aria-hidden>
+              <span {...readingDropCapStyleProps(preference)} aria-hidden>
                 <DropCapChar char={first} highlightRange={firstCharRange} />
               </span>
               <HighlightedPlaintext

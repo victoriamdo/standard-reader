@@ -1,22 +1,30 @@
 /**
  * Reading typography preferences shared types/helpers.
  *
- * Controls body text size, column measure, and optional sans-serif body on
- * the article wrapper. Persisted in the `standard-reader-reading` cookie (SSR
+ * Controls body text size, column measure, and body font (serif, sans, or a
+ * custom Google Font). Persisted in the `standard-reader-reading` cookie (SSR
  * for everyone). Signed-in users also store a compact encoding on
  * `user.reading_typography` (`null` = all defaults).
  */
+
+import {
+  DEFAULT_CUSTOM_GOOGLE_FONT,
+  isValidGoogleFontFamily,
+  normalizeGoogleFontFamily,
+} from "./google-fonts";
 
 export type ReadingFontSize = "small" | "default" | "large";
 
 export type ReadingMeasure = "narrow" | "default" | "wide";
 
-export type ReadingBodyFont = "serif" | "sans";
+export type ReadingBodyFont = "serif" | "sans" | "custom";
 
 export interface ReadingTypographyPreference {
   fontSize: ReadingFontSize;
   measure: ReadingMeasure;
   bodyFont: ReadingBodyFont;
+  /** Google Font family name when `bodyFont` is `custom`. */
+  customFontFamily?: string;
 }
 
 export const DEFAULT_READING_TYPOGRAPHY: ReadingTypographyPreference = {
@@ -33,7 +41,7 @@ export const READING_FONT_SIZES = ["small", "default", "large"] as const;
 
 export const READING_MEASURES = ["narrow", "default", "wide"] as const;
 
-export const READING_BODY_FONTS = ["serif", "sans"] as const;
+export const READING_BODY_FONTS = ["serif", "sans", "custom"] as const;
 
 const ENCODING_SEPARATOR = ":";
 
@@ -58,16 +66,44 @@ export function isReadingBodyFont(value: unknown): value is ReadingBodyFont {
   );
 }
 
+function normalizeCustomFontFamily(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = normalizeGoogleFontFamily(value);
+  return isValidGoogleFontFamily(normalized) ? normalized : undefined;
+}
+
+export function normalizeReadingTypographyPreference(
+  preference: ReadingTypographyPreference,
+): ReadingTypographyPreference {
+  if (preference.bodyFont !== "custom") {
+    return { ...preference, customFontFamily: undefined };
+  }
+
+  const customFontFamily =
+    normalizeCustomFontFamily(preference.customFontFamily) ??
+    DEFAULT_CUSTOM_GOOGLE_FONT;
+
+  return { ...preference, customFontFamily };
+}
+
 export function isReadingTypographyPreference(
   value: unknown,
 ): value is ReadingTypographyPreference {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
-  return (
-    isReadingFontSize(record.fontSize) &&
-    isReadingMeasure(record.measure) &&
-    isReadingBodyFont(record.bodyFont)
-  );
+  if (
+    !isReadingFontSize(record.fontSize) ||
+    !isReadingMeasure(record.measure) ||
+    !isReadingBodyFont(record.bodyFont)
+  ) {
+    return false;
+  }
+
+  if (record.bodyFont === "custom") {
+    return normalizeCustomFontFamily(record.customFontFamily) !== undefined;
+  }
+
+  return record.customFontFamily === undefined;
 }
 
 export function parseReadingTypographyCookie(
@@ -77,8 +113,10 @@ export function parseReadingTypographyCookie(
     return DEFAULT_READING_TYPOGRAPHY;
   }
 
-  const [fontSize, measure, bodyFont] = value.split(ENCODING_SEPARATOR);
-  return {
+  const parts = value.split(ENCODING_SEPARATOR);
+  const [fontSize, measure, bodyFont, encodedCustomFont] = parts;
+
+  const parsed: ReadingTypographyPreference = {
     fontSize: isReadingFontSize(fontSize)
       ? fontSize
       : DEFAULT_READING_TYPOGRAPHY.fontSize,
@@ -89,12 +127,35 @@ export function parseReadingTypographyCookie(
       ? bodyFont
       : DEFAULT_READING_TYPOGRAPHY.bodyFont,
   };
+
+  if (parsed.bodyFont === "custom" && encodedCustomFont) {
+    const customFontFamily = normalizeCustomFontFamily(
+      decodeURIComponent(encodedCustomFont),
+    );
+    if (customFontFamily) {
+      parsed.customFontFamily = customFontFamily;
+    } else {
+      parsed.bodyFont = DEFAULT_READING_TYPOGRAPHY.bodyFont;
+    }
+  }
+
+  return normalizeReadingTypographyPreference(parsed);
 }
 
 export function readingTypographyToCookieValue(
   preference: ReadingTypographyPreference,
 ): string {
-  return [preference.fontSize, preference.measure, preference.bodyFont].join(
+  const normalized = normalizeReadingTypographyPreference(preference);
+  if (normalized.bodyFont === "custom" && normalized.customFontFamily) {
+    return [
+      normalized.fontSize,
+      normalized.measure,
+      "custom",
+      encodeURIComponent(normalized.customFontFamily),
+    ].join(ENCODING_SEPARATOR);
+  }
+
+  return [normalized.fontSize, normalized.measure, normalized.bodyFont].join(
     ENCODING_SEPARATOR,
   );
 }
@@ -102,10 +163,11 @@ export function readingTypographyToCookieValue(
 export function readingTypographyIsDefault(
   preference: ReadingTypographyPreference,
 ): boolean {
+  const normalized = normalizeReadingTypographyPreference(preference);
   return (
-    preference.fontSize === DEFAULT_READING_TYPOGRAPHY.fontSize &&
-    preference.measure === DEFAULT_READING_TYPOGRAPHY.measure &&
-    preference.bodyFont === DEFAULT_READING_TYPOGRAPHY.bodyFont
+    normalized.fontSize === DEFAULT_READING_TYPOGRAPHY.fontSize &&
+    normalized.measure === DEFAULT_READING_TYPOGRAPHY.measure &&
+    normalized.bodyFont === DEFAULT_READING_TYPOGRAPHY.bodyFont
   );
 }
 
@@ -152,26 +214,50 @@ export function readingMeasureLabel(measure: ReadingMeasure): string {
 }
 
 export function readingBodyFontLabel(bodyFont: ReadingBodyFont): string {
-  return bodyFont === "sans" ? "Sans" : "Serif";
+  switch (bodyFont) {
+    case "sans": {
+      return "Sans";
+    }
+    case "custom": {
+      return "Custom";
+    }
+    default: {
+      return "Serif";
+    }
+  }
 }
 
 export function readingTypographySummary(
   preference: ReadingTypographyPreference,
 ): string {
-  if (readingTypographyIsDefault(preference)) {
+  const normalized = normalizeReadingTypographyPreference(preference);
+  if (readingTypographyIsDefault(normalized)) {
     return "Default";
   }
 
   const parts: Array<string> = [];
-  if (preference.fontSize !== DEFAULT_READING_TYPOGRAPHY.fontSize) {
-    parts.push(readingFontSizeLabel(preference.fontSize));
+  if (normalized.fontSize !== DEFAULT_READING_TYPOGRAPHY.fontSize) {
+    parts.push(readingFontSizeLabel(normalized.fontSize));
   }
-  if (preference.measure !== DEFAULT_READING_TYPOGRAPHY.measure) {
-    parts.push(readingMeasureLabel(preference.measure));
+  if (normalized.measure !== DEFAULT_READING_TYPOGRAPHY.measure) {
+    parts.push(readingMeasureLabel(normalized.measure));
   }
-  if (preference.bodyFont !== DEFAULT_READING_TYPOGRAPHY.bodyFont) {
-    parts.push(readingBodyFontLabel(preference.bodyFont));
+  if (normalized.bodyFont !== DEFAULT_READING_TYPOGRAPHY.bodyFont) {
+    if (normalized.bodyFont === "custom" && normalized.customFontFamily) {
+      parts.push(normalized.customFontFamily);
+    } else {
+      parts.push(readingBodyFontLabel(normalized.bodyFont));
+    }
   }
 
   return parts.join(" · ");
+}
+
+export function readingCustomFontFamily(
+  preference: ReadingTypographyPreference,
+): string | null {
+  const normalized = normalizeReadingTypographyPreference(preference);
+  return normalized.bodyFont === "custom"
+    ? (normalized.customFontFamily ?? null)
+    : null;
 }

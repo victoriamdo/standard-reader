@@ -1,5 +1,7 @@
 "use client";
 
+import { ReadingCustomFontLoader } from "#/components/reading-custom-font-loader";
+import { readingCustomFontFamily } from "#/lib/reading-typography";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 
 import { readingBodyStyleProps } from "../../body-styles";
@@ -13,5 +15,10 @@ export function ArticleBody({
 }) {
   const { preference } = useReadingTypography();
 
-  return <div {...readingBodyStyleProps(preference, hasHero)}>{children}</div>;
+  return (
+    <>
+      <ReadingCustomFontLoader family={readingCustomFontFamily(preference)} />
+      <div {...readingBodyStyleProps(preference, hasHero)}>{children}</div>
+    </>
+  );
 }

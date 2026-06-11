@@ -95,6 +95,18 @@ const styles = stylex.create({
       width: sizeSpace["md"],
     },
   },
+  itemFillSelection: {
+    backgroundColor: {
+      ":is([data-selected])": uiColor.bgSubtle,
+    },
+    boxShadow: {
+      ":is([data-selected])": shadow.sm,
+    },
+    zIndex: {
+      default: 1,
+      ":is([data-selected])": 1,
+    },
+  },
   /* eslint-enable @stylexjs/sort-keys */
   selectionIndicator: {
     borderRadius: radius.md,
@@ -165,16 +177,32 @@ export interface SegmentedControlItemProps extends StyleXComponentProps<
   Omit<AriaToggleButtonProps, "children">
 > {
   children?: React.ReactNode;
+  /**
+   * `indicator` — sliding pill (default). Avoid with controlled `selectedKeys`
+   * that update in the same commit as `onSelectionChange` (React DOM race).
+   * `fill` — paints the selected segment in place, no DOM reparenting.
+   */
+  selection?: "fill" | "indicator";
 }
 
 export const SegmentedControlItem = ({
   children,
+  selection = "indicator",
   style,
   ...props
 }: SegmentedControlItemProps) => {
   return (
-    <AriaToggleButton {...props} {...stylex.props(styles.item, style)}>
-      <SelectionIndicator {...stylex.props(styles.selectionIndicator)} />
+    <AriaToggleButton
+      {...props}
+      {...stylex.props(
+        styles.item,
+        selection === "fill" ? styles.itemFillSelection : undefined,
+        style,
+      )}
+    >
+      {selection === "indicator" ? (
+        <SelectionIndicator {...stylex.props(styles.selectionIndicator)} />
+      ) : null}
       {children}
     </AriaToggleButton>
   );

@@ -163,9 +163,11 @@ Sections, top to bottom:
   site in a new tab (marking it read) instead of the in-app reader, and
   `/a/$did/$rkey` itself redirects to the publication site. Articles without
   a canonical URL fall back to the in-app reader.
-- **Reading typography (preference):** user-menu control for body text size,
-  column measure, and optional sans-serif body on the article wrapper (cookie
-  for everyone; `user.reading_typography` when signed in).
+- **Reading typography (preference):** settings page + user-menu control for body
+  text size, column measure, and body font (serif, sans, or a custom Google Font
+  from a searchable catalog). Applied on the article wrapper; cookie for
+  everyone; `user.reading_typography` when signed in (`fontSize:measure:bodyFont`
+  encoding, with optional `:customFont` when body font is custom).
 
 ### Publication profile
 

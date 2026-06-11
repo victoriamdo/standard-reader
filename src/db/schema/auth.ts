@@ -31,7 +31,7 @@ export const user = pgTable("user", {
   /** `true` opens document links on their original site; `null`/`false` uses
    * the in-app reader (default). */
   openLinksExternally: boolean("open_links_externally"),
-  /** Compact `fontSize:measure:bodyFont` encoding; `null` = all defaults. */
+  /** Compact `fontSize:measure:bodyFont[:customFont]` encoding; `null` = defaults. */
   readingTypography: text("reading_typography"),
   /** `false` disables read tracking and unread UI; `null` = on (default). */
   trackReadingHistory: boolean("track_reading_history"),

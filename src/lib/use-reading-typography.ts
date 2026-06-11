@@ -4,7 +4,10 @@ import { useCallback } from "react";
 
 import type { ReadingTypographyPreference } from "./reading-typography";
 
-import { DEFAULT_READING_TYPOGRAPHY } from "./reading-typography";
+import {
+  DEFAULT_READING_TYPOGRAPHY,
+  normalizeReadingTypographyPreference,
+} from "./reading-typography";
 
 export interface ReadingTypographyContextValue {
   preference: ReadingTypographyPreference;
@@ -60,11 +63,15 @@ export function useReadingTypography(): ReadingTypographyContextValue {
 
   const setPreference = useCallback(
     (patch: Partial<ReadingTypographyPreference>) => {
-      const next = { ...preference, ...patch };
+      const next = normalizeReadingTypographyPreference({
+        ...preference,
+        ...patch,
+      });
       if (
         next.fontSize === preference.fontSize &&
         next.measure === preference.measure &&
-        next.bodyFont === preference.bodyFont
+        next.bodyFont === preference.bodyFont &&
+        (next.customFontFamily ?? "") === (preference.customFontFamily ?? "")
       ) {
         return;
       }

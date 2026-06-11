@@ -1,10 +1,6 @@
 "use client";
 
-import type {
-  ReadingBodyFont,
-  ReadingFontSize,
-  ReadingMeasure,
-} from "#/lib/reading-typography";
+import type { ReadingTypographyPreference } from "#/lib/reading-typography";
 import type { ThemeMode } from "#/lib/theme";
 
 import * as stylex from "@stylexjs/stylex";
@@ -13,6 +9,7 @@ import { invalidateReadQueries } from "#/components/reader/read-optimistic";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
+import { DEFAULT_CUSTOM_GOOGLE_FONT } from "#/lib/google-fonts";
 import { AMERICAN_ENGLISH_VOICES } from "#/lib/page-reader/voice-catalog";
 import { isReaderVoicePreference } from "#/lib/reader-voice";
 import {
@@ -30,7 +27,7 @@ import { useReadingTypography } from "#/lib/use-reading-typography";
 import { useTheme } from "#/lib/use-theme";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { Monitor, Moon, Sparkles, Sun } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   AlertDialog,
@@ -64,6 +61,8 @@ import {
   tracking,
 } from "../design-system/theme/typography.stylex";
 import { Masthead, ReaderContent } from "./reader/primitives";
+import { ReadingCustomFontPicker } from "./reading-custom-font-picker";
+import { ReadingSettingsPreview } from "./reading-settings-preview";
 
 const MOBILE = "@media (max-width: 47.5rem)";
 
@@ -76,14 +75,6 @@ const THEME_OPTIONS: Array<{
   { id: "dark", label: "Dark", icon: Moon },
   { id: "system", label: "System", icon: Monitor },
 ];
-
-const READER_VOICE_ITEMS = [
-  { id: "auto", label: "Auto" },
-  ...AMERICAN_ENGLISH_VOICES.map((voice) => ({
-    id: voice.id,
-    label: `${voice.name} (${voice.overallGrade})`,
-  })),
-] as const;
 
 const styles = stylex.create({
   section: {
@@ -195,6 +186,57 @@ const styles = stylex.create({
   },
 });
 
+function TypographySegmentedControl<T extends string>({
+  value,
+  options,
+  label,
+  onChange,
+  style,
+}: {
+  value: T;
+  options: ReadonlyArray<T>;
+  label: (option: T) => string;
+  onChange: (next: T) => void;
+  style?: stylex.StyleXStyles;
+}) {
+  const [selected, setSelected] = useState(value);
+
+  useEffect(() => {
+    setSelected(value);
+  }, [value]);
+
+  const selectedKeys = useMemo(() => new Set([selected]), [selected]);
+
+  const handleSelectionChange = useCallback(
+    (keys: Set<React.Key> | "all") => {
+      const key = keys === "all" ? undefined : String([...keys][0]);
+      if (
+        typeof key === "string" &&
+        (options as ReadonlyArray<string>).includes(key)
+      ) {
+        const next = key as T;
+        setSelected(next);
+        requestAnimationFrame(() => onChange(next));
+      }
+    },
+    [onChange, options],
+  );
+
+  return (
+    <SegmentedControl
+      selectedKeys={selectedKeys}
+      onSelectionChange={handleSelectionChange}
+      style={style}
+    >
+      {options.map((option) => (
+        <SegmentedControlItem key={option} id={option}>
+          {label(option)}
+        </SegmentedControlItem>
+      ))}
+    </SegmentedControl>
+  );
+}
+
 function SettingRow({
   label,
   description,
@@ -277,6 +319,38 @@ export function UserSettingsView() {
   const { preference: voice, setPreference: setVoice } = useReaderVoice();
   const { preference: typography, setPreference: setTypography } =
     useReadingTypography();
+  const setFontSize = useCallback(
+    (nextFontSize: ReadingTypographyPreference["fontSize"]) => {
+      setTypography({ fontSize: nextFontSize });
+    },
+    [setTypography],
+  );
+  const setMeasure = useCallback(
+    (measure: ReadingTypographyPreference["measure"]) => {
+      setTypography({ measure });
+    },
+    [setTypography],
+  );
+  const setBodyFont = useCallback(
+    (bodyFont: ReadingTypographyPreference["bodyFont"]) => {
+      if (bodyFont === "custom") {
+        setTypography({
+          bodyFont: "custom",
+          customFontFamily:
+            typography.customFontFamily ?? DEFAULT_CUSTOM_GOOGLE_FONT,
+        });
+        return;
+      }
+      setTypography({ bodyFont, customFontFamily: undefined });
+    },
+    [setTypography, typography.customFontFamily],
+  );
+  const setCustomFontFamily = useCallback(
+    (customFontFamily: string) => {
+      setTypography({ bodyFont: "custom", customFontFamily });
+    },
+    [setTypography],
+  );
   const { openExternally, setOpenExternally } = useOpenLinks();
   const { enabled: trackReading, setEnabled: setTrackReading } =
     useTrackReadingHistory();
@@ -393,71 +467,52 @@ export function UserSettingsView() {
       <section {...stylex.props(styles.section)}>
         <h2 {...stylex.props(styles.sectionHeading)}>Reading</h2>
         <div {...stylex.props(styles.settingGroup)}>
+          <ReadingSettingsPreview voicePreference={voice} />
           <SettingRow label="Text size">
-            <SegmentedControl
-              selectedKeys={new Set([typography.fontSize])}
-              onSelectionChange={(keys: Set<React.Key> | "all") => {
-                const key = keys === "all" ? undefined : String([...keys][0]);
-                if (
-                  typeof key === "string" &&
-                  (READING_FONT_SIZES as ReadonlyArray<string>).includes(key)
-                ) {
-                  setTypography({ fontSize: key as ReadingFontSize });
-                }
-              }}
+            <TypographySegmentedControl
+              value={typography.fontSize}
+              options={READING_FONT_SIZES}
+              label={readingFontSizeLabel}
+              onChange={setFontSize}
               style={styles.segmentedControl}
-            >
-              {READING_FONT_SIZES.map((fontSizeOption) => (
-                <SegmentedControlItem key={fontSizeOption} id={fontSizeOption}>
-                  {readingFontSizeLabel(fontSizeOption)}
-                </SegmentedControlItem>
-              ))}
-            </SegmentedControl>
+            />
           </SettingRow>
           <Separator />
           <SettingRow label="Column width">
-            <SegmentedControl
-              selectedKeys={new Set([typography.measure])}
-              onSelectionChange={(keys: Set<React.Key> | "all") => {
-                const key = keys === "all" ? undefined : String([...keys][0]);
-                if (
-                  typeof key === "string" &&
-                  (READING_MEASURES as ReadonlyArray<string>).includes(key)
-                ) {
-                  setTypography({ measure: key as ReadingMeasure });
-                }
-              }}
+            <TypographySegmentedControl
+              value={typography.measure}
+              options={READING_MEASURES}
+              label={readingMeasureLabel}
+              onChange={setMeasure}
               style={styles.segmentedControl}
-            >
-              {READING_MEASURES.map((measureOption) => (
-                <SegmentedControlItem key={measureOption} id={measureOption}>
-                  {readingMeasureLabel(measureOption)}
-                </SegmentedControlItem>
-              ))}
-            </SegmentedControl>
+            />
           </SettingRow>
           <Separator />
           <SettingRow label="Body font">
-            <SegmentedControl
-              selectedKeys={new Set([typography.bodyFont])}
-              onSelectionChange={(keys: Set<React.Key> | "all") => {
-                const key = keys === "all" ? undefined : String([...keys][0]);
-                if (
-                  typeof key === "string" &&
-                  (READING_BODY_FONTS as ReadonlyArray<string>).includes(key)
-                ) {
-                  setTypography({ bodyFont: key as ReadingBodyFont });
-                }
-              }}
+            <TypographySegmentedControl
+              value={typography.bodyFont}
+              options={READING_BODY_FONTS}
+              label={readingBodyFontLabel}
+              onChange={setBodyFont}
               style={styles.segmentedControl}
-            >
-              {READING_BODY_FONTS.map((bodyFontOption) => (
-                <SegmentedControlItem key={bodyFontOption} id={bodyFontOption}>
-                  {readingBodyFontLabel(bodyFontOption)}
-                </SegmentedControlItem>
-              ))}
-            </SegmentedControl>
+            />
           </SettingRow>
+          {typography.bodyFont === "custom" ? (
+            <>
+              <Separator />
+              <SettingRow
+                label="Google Font"
+                description="Search and pick any family from the Google Fonts catalog."
+              >
+                <ReadingCustomFontPicker
+                  value={
+                    typography.customFontFamily ?? DEFAULT_CUSTOM_GOOGLE_FONT
+                  }
+                  onChange={setCustomFontFamily}
+                />
+              </SettingRow>
+            </>
+          ) : null}
           <Separator />
           <SettingRow
             label="Listen aloud voice"
@@ -465,25 +520,30 @@ export function UserSettingsView() {
           >
             <Select
               aria-label="Reader voice"
-              items={READER_VOICE_ITEMS}
-              value={voice}
+              selectedKey={voice}
               style={styles.voiceSelect}
-              onChange={(key) => {
-                if (isReaderVoicePreference(key)) setVoice(key);
+              onSelectionChange={(key) => {
+                if (key == null) return;
+                const next = String(key);
+                if (isReaderVoicePreference(next)) setVoice(next);
               }}
             >
-              {(item) => (
-                <SelectItem id={item.id}>
-                  {item.id === "auto" ? (
-                    <Flex align="center" gap="xs">
-                      <Sparkles size={14} />
-                      Auto
-                    </Flex>
-                  ) : (
-                    item.label
-                  )}
+              <SelectItem
+                id="auto"
+                textValue="Auto"
+                prefix={<Sparkles size={14} />}
+              >
+                Auto
+              </SelectItem>
+              {AMERICAN_ENGLISH_VOICES.map((voiceOption) => (
+                <SelectItem
+                  key={voiceOption.id}
+                  id={voiceOption.id}
+                  textValue={`${voiceOption.name} (${voiceOption.overallGrade})`}
+                >
+                  {voiceOption.name} ({voiceOption.overallGrade})
                 </SelectItem>
-              )}
+              ))}
             </Select>
           </SettingRow>
         </div>

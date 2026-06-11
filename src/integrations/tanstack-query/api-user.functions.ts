@@ -37,6 +37,7 @@ import {
   READING_TYPOGRAPHY_COOKIE_MAX_AGE_SECONDS,
   dbValueToReadingTypography,
   isReadingTypographyPreference,
+  normalizeReadingTypographyPreference,
   parseReadingTypographyCookie,
   readingTypographyToCookieValue,
   readingTypographyToDbValue,
@@ -398,7 +399,8 @@ const readingTypographyInput = z.object({
   preference: z.object({
     fontSize: z.enum(["small", "default", "large"]),
     measure: z.enum(["narrow", "default", "wide"]),
-    bodyFont: z.enum(["serif", "sans"]),
+    bodyFont: z.enum(["serif", "sans", "custom"]),
+    customFontFamily: z.string().min(1).max(80).optional(),
   }),
 });
 
@@ -437,9 +439,11 @@ const setReadingTypographyPreference = createServerFn({ method: "POST" })
       throw new Error("Invalid reading typography preference");
     }
 
+    const preference = normalizeReadingTypographyPreference(data.preference);
+
     setCookie(
       READING_TYPOGRAPHY_COOKIE,
-      readingTypographyToCookieValue(data.preference),
+      readingTypographyToCookieValue(preference),
       {
         path: "/",
         sameSite: "lax",
@@ -451,12 +455,12 @@ const setReadingTypographyPreference = createServerFn({ method: "POST" })
       await context.db
         .update(context.schema.user)
         .set({
-          readingTypography: readingTypographyToDbValue(data.preference),
+          readingTypography: readingTypographyToDbValue(preference),
         })
         .where(eq(context.schema.user.id, context.session.user.id));
     }
 
-    return { preference: data.preference };
+    return { preference };
   });
 
 const getTrackReadingHistoryPreference = createServerFn({ method: "GET" })

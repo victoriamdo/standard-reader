@@ -16,11 +16,12 @@ import {
 import { authorProfilePath } from "#/lib/author-profile";
 import { segmentFacetedText, shiftFacets } from "#/lib/leaflet/facets";
 import { utf8ByteLength } from "#/lib/leaflet/utf8";
+import { useReadingTypography } from "#/lib/use-reading-typography";
 import { Fragment } from "react";
 
 import type { FacetFeature } from "./facets";
 
-import { articleBodyStyles } from "../../body-styles";
+import { articleBodyStyles, readingDropCapStyleProps } from "../../body-styles";
 import { findFacetFeature, hasFacetKind } from "./facets";
 
 function FacetSegment({
@@ -178,6 +179,7 @@ export function TextBlockView({
   dropCap?: boolean;
 }) {
   const tracker = useQuoteHighlightTracker();
+  const { preference } = useReadingTypography();
   const highlightRange = tracker?.consume(plaintext.length) ?? null;
 
   if (!plaintext) return null;
@@ -201,7 +203,7 @@ export function TextBlockView({
           articleBodyStyles.dropCapParagraph,
         )}
       >
-        <span {...stylex.props(articleBodyStyles.dropCap)} aria-hidden>
+        <span {...readingDropCapStyleProps(preference)} aria-hidden>
           <DropCapChar char={firstChar} highlightRange={firstCharRange} />
         </span>
         <HighlightedFacetedPlaintext

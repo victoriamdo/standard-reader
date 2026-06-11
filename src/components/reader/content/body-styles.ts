@@ -1,6 +1,9 @@
+import type { CSSProperties } from "react";
+
 import type { ReadingTypographyPreference } from "#/lib/reading-typography";
 
 import * as stylex from "@stylexjs/stylex";
+import { readingCustomFontFamily } from "#/lib/reading-typography";
 import { primaryColor, uiColor } from "#/design-system/theme/color.stylex";
 import { radius } from "#/design-system/theme/radius.stylex";
 import { gap, size } from "#/design-system/theme/semantic-spacing.stylex";
@@ -662,11 +665,11 @@ export const articleMeasureStyles = stylex.create({
   },
 });
 
-export function readingBodyStyleProps(
+export function readingBodyStyles(
   preference: ReadingTypographyPreference,
   hasHero?: boolean,
 ) {
-  return stylex.props(
+  return [
     articleBodyStyles.body,
     hasHero ? articleBodyStyles.bodyAfterHero : undefined,
     preference.fontSize === "small"
@@ -676,7 +679,59 @@ export function readingBodyStyleProps(
       ? articleBodyStyles.bodyFontSizeLarge
       : undefined,
     preference.bodyFont === "sans" ? articleBodyStyles.bodyFontSans : undefined,
+  ] as const;
+}
+
+type StyleXProps = ReturnType<typeof stylex.props>;
+
+export function readingBodyCustomFontStyle(
+  preference: ReadingTypographyPreference,
+): CSSProperties | undefined {
+  const family = readingCustomFontFamily(preference);
+  if (!family) return undefined;
+  return { fontFamily: `"${family}", serif` };
+}
+
+function mergeStylexProps(
+  props: StyleXProps,
+  extraStyle?: CSSProperties,
+): StyleXProps {
+  if (!extraStyle) return props;
+  const current = props as StyleXProps & { style?: CSSProperties };
+  return {
+    ...current,
+    style: { ...current.style, ...extraStyle },
+  };
+}
+
+export function readingBodyStyleProps(
+  preference: ReadingTypographyPreference,
+  hasHero?: boolean,
+  ...extra: ReadonlyArray<stylex.StyleXStyles | false | undefined | null>
+) {
+  return mergeStylexProps(
+    stylex.props(...readingBodyStyles(preference, hasHero), ...extra),
+    readingBodyCustomFontStyle(preference),
   );
+}
+
+export function readingDropCapStyleProps(
+  preference: ReadingTypographyPreference,
+) {
+  const customStyle = readingBodyCustomFontStyle(preference);
+  if (customStyle) {
+    return mergeStylexProps(
+      stylex.props(articleBodyStyles.dropCap),
+      customStyle,
+    );
+  }
+  if (preference.bodyFont === "sans") {
+    return stylex.props(
+      articleBodyStyles.dropCap,
+      articleBodyStyles.bodyFontSans,
+    );
+  }
+  return stylex.props(articleBodyStyles.dropCap);
 }
 
 export function articleMeasureStyle(preference: ReadingTypographyPreference) {

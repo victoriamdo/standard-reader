@@ -174,6 +174,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   shellComponent: RootDocument,
 });
 
+function isEmbedPath(pathname: string): boolean {
+  return pathname.startsWith("/embed/");
+}
+
 function isSubscribeEmbedPath(pathname: string): boolean {
   return pathname.startsWith("/embed/subscribe/");
 }
@@ -221,7 +225,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       >
         <PersistOAuthSavedHandle />
         <NavTelemetry />
-        <PlausibleAnalytics />
+        {!isEmbedPath(pathname) ? <PlausibleAnalytics /> : null}
         {children}
 
         <TanStackDevtools

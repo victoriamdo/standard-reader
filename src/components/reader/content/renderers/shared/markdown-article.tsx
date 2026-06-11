@@ -6,8 +6,9 @@ import * as stylex from "@stylexjs/stylex";
 import { AppLink } from "#/components/reader/app-link";
 import { spacing } from "#/design-system/theme/spacing.stylex";
 import { articleMarkdownSanitizeSchema } from "#/lib/markdown/article-sanitize-schema";
-import { createElement, useMemo, useRef } from 'react';
-import type { ComponentProps } from 'react';
+import { useReadingTypography } from "#/lib/use-reading-typography";
+import { createElement, useMemo, useRef } from "react";
+import type { ComponentProps } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
@@ -18,7 +19,7 @@ import "katex/dist/katex.min.css";
 
 import type { ContentRendererProps } from "../../types";
 
-import { articleBodyStyles } from "../../body-styles";
+import { articleBodyStyles, readingDropCapStyleProps } from "../../body-styles";
 import { ArticleBody } from "./article-body";
 import { CodeBlockView } from "./code-block";
 import { MarkdownIframeEmbed } from "./iframe-embed";
@@ -34,6 +35,7 @@ function useMarkdownComponents(
   codeHighlights: ContentRendererProps["codeHighlights"],
 ): Components {
   const dropCapApplied = useRef(false);
+  const { preference } = useReadingTypography();
 
   return useMemo(
     () => ({
@@ -88,7 +90,7 @@ function useMarkdownComponents(
                   articleBodyStyles.dropCapParagraph,
                 )}
               >
-                <span {...stylex.props(articleBodyStyles.dropCap)} aria-hidden>
+                <span {...readingDropCapStyleProps(preference)} aria-hidden>
                   {firstChar}
                 </span>
                 {rest}
@@ -241,7 +243,7 @@ function useMarkdownComponents(
         <MarkdownIframeEmbed src={src} width={width} height={height} />
       ),
     }),
-    [codeHighlights],
+    [codeHighlights, preference],
   );
 }
 
