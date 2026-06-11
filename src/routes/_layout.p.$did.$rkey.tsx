@@ -14,7 +14,14 @@ import { getPublicUrlClient } from "#/lib/public-url";
 import { publicationOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { ExternalLink } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { ArticleCard } from "../integrations/tanstack-query/api-shapes";
 
@@ -44,8 +51,13 @@ import { ShareMenu } from "../components/reader/share-menu";
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
 import { IconButton } from "../design-system/icon-button";
+import { Skeleton } from "../design-system/skeleton";
 import { uiColor } from "../design-system/theme/color.stylex";
-import { size as boxSize } from "../design-system/theme/semantic-spacing.stylex";
+import { radius } from "../design-system/theme/radius.stylex";
+import {
+  gap,
+  size as boxSize,
+} from "../design-system/theme/semantic-spacing.stylex";
 import { spacing } from "../design-system/theme/spacing.stylex";
 import {
   fontFamily,
@@ -59,6 +71,7 @@ import {
 const PUBLICATION_RECENT_LIMIT = 12;
 /** Page size for each subsequent infinite-scroll fetch. */
 const PUBLICATION_PAGE_SIZE = 20;
+const PUBLICATION_SKELETON_ROWS = 5;
 
 export const Route = createFileRoute("/_layout/p/$did/$rkey")({
   loader: async ({ context, params }) => {
@@ -120,7 +133,7 @@ export const Route = createFileRoute("/_layout/p/$did/$rkey")({
       ],
     };
   },
-  component: PublicationProfile,
+  component: PublicationProfilePage,
 });
 
 const styles = stylex.create({
@@ -242,6 +255,46 @@ const styles = stylex.create({
     textAlign: "center",
     marginTop: spacing["6"],
   },
+  featureSkeleton: {
+    alignItems: "center",
+    columnGap: spacing["9"],
+    display: "grid",
+    gridTemplateColumns: {
+      default: "1fr",
+      "@media (min-width: 48rem)": "1.05fr 1fr",
+    },
+    rowGap: spacing["9"],
+    borderBottomColor: uiColor.border1,
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    paddingBottom: spacing["9"],
+  },
+  featureMediaSkeleton: {
+    aspectRatio: "4 / 3",
+    borderRadius: radius.md,
+    width: "100%",
+  },
+  articleSkeleton: {
+    alignItems: "start",
+    columnGap: gap["5xl"],
+    display: "grid",
+    gridTemplateColumns: {
+      default: "1fr",
+      "@media (min-width: 40rem)": "1fr 150px",
+    },
+    rowGap: gap["5xl"],
+    borderBottomColor: uiColor.border1,
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    paddingBottom: spacing["6"],
+    paddingTop: spacing["6"],
+  },
+  articleSkeletonLast: {
+    borderBottomWidth: 0,
+  },
+  heroSkeletonLine: {
+    marginTop: spacing["2"],
+  },
 });
 
 function lastActive(iso: string | null): string {
@@ -262,6 +315,127 @@ function Stat({ value, label }: { value: string; label: string }) {
       <span {...stylex.props(styles.statValue)}>{value}</span>
       {label}
     </span>
+  );
+}
+
+function PublicationFeatureSkeleton() {
+  return (
+    <div aria-hidden {...stylex.props(styles.featureSkeleton)}>
+      <Skeleton
+        variant="rectangle"
+        height="auto"
+        width="100%"
+        style={styles.featureMediaSkeleton}
+      />
+      <Flex direction="column" gap="5xl">
+        <Skeleton variant="rectangle" height={spacing["10"]} width="88%" />
+        <Skeleton variant="rectangle" height={spacing["5"]} width="100%" />
+        <Skeleton variant="rectangle" height={spacing["4"]} width="92%" />
+        <Skeleton variant="rectangle" height={spacing["3.5"]} width="34%" />
+      </Flex>
+    </div>
+  );
+}
+
+function PublicationArticleRowSkeleton({
+  isLast = false,
+}: {
+  isLast?: boolean;
+}) {
+  return (
+    <div
+      aria-hidden
+      {...stylex.props(
+        styles.articleSkeleton,
+        isLast && styles.articleSkeletonLast,
+      )}
+    >
+      <Flex direction="column" gap="2xl">
+        <Skeleton variant="rectangle" height={spacing["6"]} width="72%" />
+        <Skeleton variant="rectangle" height={spacing["4"]} width="88%" />
+        <Skeleton variant="rectangle" height={spacing["3.5"]} width="34%" />
+      </Flex>
+      <Skeleton
+        variant="rectangle"
+        height={spacing["20"]}
+        width={spacing["28"]}
+      />
+    </div>
+  );
+}
+
+function PublicationProfileSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading publication">
+      <div {...stylex.props(styles.hero)}>
+        <div {...stylex.props(styles.heroInner)}>
+          <Skeleton variant="circle" size="lg" style={styles.avRing} />
+          <div {...stylex.props(styles.heroInfo)}>
+            <Skeleton variant="rectangle" height={spacing["3.5"]} width="18%" />
+            <Skeleton
+              variant="rectangle"
+              height={spacing["10"]}
+              width="52%"
+              style={styles.heroSkeletonLine}
+            />
+            <Skeleton
+              variant="rectangle"
+              height={spacing["5"]}
+              width="72%"
+              style={styles.heroSkeletonLine}
+            />
+            <Flex gap="6xl" wrap style={styles.stats}>
+              <Skeleton variant="rectangle" height={spacing["4"]} width="22%" />
+              <Skeleton variant="rectangle" height={spacing["4"]} width="18%" />
+              <Skeleton variant="rectangle" height={spacing["4"]} width="16%" />
+            </Flex>
+          </div>
+          <Flex gap="sm" wrap style={styles.heroActs}>
+            <Skeleton
+              variant="rectangle"
+              height={boxSize["xl"]}
+              width={boxSize["xl"]}
+            />
+            <Skeleton
+              variant="rectangle"
+              height={boxSize["xl"]}
+              width={boxSize["xl"]}
+            />
+            <Skeleton
+              variant="rectangle"
+              height={spacing["9"]}
+              width={spacing["24"]}
+            />
+          </Flex>
+        </div>
+      </div>
+
+      <ReaderContent>
+        <Flex direction="column" gap="6xl" style={styles.writing}>
+          <SectionHead kicker="Latest" title="Recent writing" />
+          <div>
+            <PublicationFeatureSkeleton />
+            {Array.from(
+              { length: PUBLICATION_SKELETON_ROWS - 1 },
+              (_, index) => (
+                <PublicationArticleRowSkeleton
+                  key={index}
+                  isLast={index === PUBLICATION_SKELETON_ROWS - 2}
+                />
+              ),
+            )}
+          </div>
+        </Flex>
+      </ReaderContent>
+    </div>
+  );
+}
+
+function PublicationProfilePage() {
+  return (
+    <Suspense fallback={<PublicationProfileSkeleton />}>
+      <PublicationProfile />
+    </Suspense>
   );
 }
 
