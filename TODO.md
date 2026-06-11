@@ -38,10 +38,13 @@ Check items off as they land.
       when `HONEYCOMB_API_KEY` is set (`src/server/observability/honeycomb.ts`). Set
       `HONEYCOMB_DATASET=standard-reader` on Railway `web` + `ingest` services; dashboards track
       error rate, slow endpoints, and ingest health.
-- [x] **Nav perf (Honeycomb audit).** Conditional shell prefetch (`loadShellQueries` — block only
-      on cold cache), 5m `staleTime` on sidebar/lists, `_layout` route `staleTime`, combined
-      `tag.getPage` loader (one round trip), parallel article status fetches, deferred comments
-      (`useQuery` below fold), subscription skeleton in AppShell, client `nav.transition` telemetry.
+- [x] **Nav perf (Honeycomb audit).** `getShellBootstrap` seeds session, theme, track-reading,
+      home scope, and (signed-in) one `loadShellSnapshot` round trip (sidebar + own lists + saved
+      lists). `_layout` blocks on sidebar for signed-in readers; guests prefetch sidebar in the
+      background. 5m `staleTime` on shell queries; `getHomePage` / `getHomeExtras` read prefs from
+      the auth session row (no extra `user.findFirst`). Combined `tag.getPage` loader, parallel
+      article status fetches, deferred comments, subscription skeleton in AppShell, client
+      `nav.transition` telemetry.
 - [x] **Load perf regression suite.** Playwright budgets for guest + signed-in views
       (`pnpm perf:test`, `perf/load-regression.spec.ts`); JSON report in `perf/results/latest.json`;
       fixture discovery via `pnpm perf:discover-fixtures`; signed-in auth via

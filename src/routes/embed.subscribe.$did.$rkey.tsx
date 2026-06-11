@@ -1,17 +1,17 @@
 import * as stylex from "@stylexjs/stylex";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { z } from "zod";
 import { publicationUriFromParams } from "#/components/reader/format";
 import { SubscribeCard } from "#/components/reader/subscribe-card";
+import { publicationThemeColors } from "#/components/reader/subscribe-card";
 import { SubscribeEmbedResizeReporter } from "#/components/reader/subscribe-embed-resize";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
-import { publicationThemeColors } from "#/components/reader/subscribe-card";
 import {
   subscribeEmbedPageBackgroundCss,
   subscribePageUrl,
 } from "#/lib/publication-embed";
+import { z } from "zod";
 
 const embedSubscribeSearchSchema = z.object({
   layout: z.enum(["portrait"]).optional(),

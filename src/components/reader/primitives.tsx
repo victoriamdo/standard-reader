@@ -35,6 +35,7 @@ const styles = stylex.create({
   },
   handle: {
     color: uiColor.text1,
+    display: "inline-flex",
     fontFamily: fontFamily.mono,
     fontSize: fontSize.xs,
     letterSpacing: tracking.tight,
@@ -145,10 +146,6 @@ const styles = stylex.create({
   },
   mastheadMetaWithAccessory: {
     display: "flex",
-  },
-  mastheadMetaAccessory: {
-    alignSelf: "flex-end",
-    width: "fit-content",
   },
   metaDate: {
     color: uiColor.text1,

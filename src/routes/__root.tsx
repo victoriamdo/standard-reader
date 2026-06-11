@@ -22,6 +22,11 @@ import {
 import { ui } from "../design-system/theme/semantic-color.stylex";
 import { PlausibleAnalytics } from "../integrations/plausible/analytics";
 import { user } from "../integrations/tanstack-query/api-user.functions";
+import {
+  listsQueryOptions,
+  savedListsQueryOptions,
+  sidebarQueryOptions,
+} from "../integrations/tanstack-query/shell-queries";
 import { getPublicUrlClient } from "../lib/public-url";
 import { siteOgImageUrl, siteSocialMeta } from "../lib/site-metadata";
 import { DEFAULT_THEME_MODE, RESOLVED_SCHEME_SCRIPT } from "../lib/theme";
@@ -113,6 +118,24 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       user.getTrackReadingHistoryPreferenceQueryOptions.queryKey,
       bootstrap.trackReading,
     );
+    context.queryClient.setQueryData(
+      user.getHomeScopePreferenceQueryOptions.queryKey,
+      bootstrap.homeScope,
+    );
+    if (bootstrap.shell) {
+      context.queryClient.setQueryData(
+        sidebarQueryOptions().queryKey,
+        bootstrap.shell.sidebar,
+      );
+      context.queryClient.setQueryData(
+        listsQueryOptions().queryKey,
+        bootstrap.shell.lists,
+      );
+      context.queryClient.setQueryData(
+        savedListsQueryOptions().queryKey,
+        bootstrap.shell.savedLists,
+      );
+    }
   },
   head: () => {
     const baseUrl = getPublicUrlClient();

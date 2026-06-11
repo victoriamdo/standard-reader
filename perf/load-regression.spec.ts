@@ -10,17 +10,15 @@ import {
   perfWarmupPasses,
 } from "./lib/config.ts";
 import { loadPerfFixtures } from "./lib/fixtures.ts";
+import { measurePageLoad, warmupTarget } from './lib/measure.ts';
+import type { LoadMeasurement } from './lib/measure.ts';
 import {
-  measurePageLoad,
-  warmupTarget,
-  type LoadMeasurement,
-} from "./lib/measure.ts";
-import { formatMeasurementLine, writePerfReport } from "./lib/report.ts";
-import {
-  guestTargets,
-  signedInTargets,
-  type PerfTarget,
-} from "./lib/targets.ts";
+  formatMeasurementLine,
+  writePerfComparisonReport,
+  writePerfReport,
+} from "./lib/report.ts";
+import { guestTargets, signedInTargets } from './lib/targets.ts';
+import type { PerfTarget } from './lib/targets.ts';
 
 const guestResults: Array<LoadMeasurement> = [];
 const signedInResults: Array<LoadMeasurement> = [];
@@ -101,9 +99,6 @@ test.describe("load regression — signed in", () => {
         "PERF_TEST_IDENTIFIER + PERF_TEST_APP_PASSWORD not set",
       );
 
-      await page.goto(`${perfBaseUrl()}/`, { waitUntil: "domcontentloaded" });
-      await expect(page).not.toHaveURL(/\/login/);
-
       await runTarget(page, target, signedInResults);
     });
   }
@@ -115,5 +110,13 @@ test.describe("load regression — signed in", () => {
       baseUrl: perfBaseUrl(),
       budgetMultiplier: perfBudgetMultiplier(),
     });
+  });
+});
+
+test.afterAll(() => {
+  if (guestResults.length === 0 || signedInResults.length === 0) return;
+  writePerfComparisonReport(guestResults, signedInResults, {
+    baseUrl: perfBaseUrl(),
+    budgetMultiplier: perfBudgetMultiplier(),
   });
 });

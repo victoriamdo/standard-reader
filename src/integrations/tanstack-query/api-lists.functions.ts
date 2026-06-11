@@ -3,14 +3,12 @@ import type { SubscriptionList } from "#/server/reader/saved-lists";
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { APP_NSID } from "#/lib/atproto/nsids";
-import { getAtprotoSessionForRequest } from "#/middleware/auth";
+import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { resolveIdentity } from "#/server/atproto/identity";
 import {
   deleteListRecord,
   deleteListSaveRecord,
   hasListSaveRecord,
-  listCollectionRecords,
   newListRkey,
   putListRecord,
   putListSaveRecord,
@@ -25,9 +23,11 @@ import {
   fetchPublicList,
   invalidateSavedLists,
   listUriFromParams,
-  savedListsForReader,
-  toSubscriptionList,
 } from "#/server/reader/saved-lists";
+import {
+  loadOwnSubscriptionLists,
+  loadSavedListsHydrated,
+} from "#/server/reader/shell-snapshot.server";
 import {
   articleCardsAsAllRead,
   resolveTrackReadingHistoryEnabled,
@@ -176,17 +176,7 @@ const getLists = createServerFn({ method: "GET" }).handler(
     }
     span.set("did", session.did);
 
-    const records = await listCollectionRecords(
-      session.client,
-      session.did,
-      APP_NSID.list,
-    );
-    const lists = records
-      .map((record) =>
-        toSubscriptionList(record.uri, record.rkey, record.value),
-      )
-      .filter((list): list is SubscriptionList => list !== null)
-      .toSorted((a, b) => a.rkey.localeCompare(b.rkey));
+    const lists = await loadOwnSubscriptionLists(session.client, session.did);
     span.set("count", lists.length);
     return lists satisfies Array<SubscriptionList>;
   }),
@@ -345,40 +335,13 @@ const getSavedLists = createServerFn({ method: "GET" }).handler(
     }
     span.set("did", session.did);
 
-    const lists = await savedListsForReader(session.did);
     const [{ db }, schema] = await Promise.all([
       import("#/db/index.server"),
       import("#/db/schema"),
     ]);
-    const allUris = [...new Set(lists.flatMap((list) => list.publications))];
-    const [cards, owners] = await Promise.all([
-      followedPublications(db, schema, allUris),
-      lookupOwners(
-        db,
-        schema,
-        lists.map(
-          (list) => list.uri.slice("at://".length).split("/")[0] as string,
-        ),
-      ),
-    ]);
-    const cardByUri = new Map(cards.map((card) => [card.uri, card]));
-
-    span.set("count", lists.length);
-    return lists.map((list) => {
-      const ownerDid = list.uri.slice("at://".length).split("/")[0] as string;
-      return {
-        list,
-        owner: owners.get(ownerDid) ?? {
-          did: ownerDid,
-          handle: null,
-          displayName: null,
-          avatarUrl: null,
-        },
-        publications: list.publications
-          .map((uri) => cardByUri.get(uri))
-          .filter((card): card is PublicationCard => card != null),
-      };
-    }) satisfies Array<SavedList>;
+    const savedLists = await loadSavedListsHydrated(db, schema, session.did);
+    span.set("count", savedLists.length);
+    return savedLists satisfies Array<SavedList>;
   }),
 );
 

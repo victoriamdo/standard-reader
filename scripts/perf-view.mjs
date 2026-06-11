@@ -69,5 +69,5 @@ server.listen(port, "127.0.0.1", () => {
   // eslint-disable-next-line no-console
   console.log(`Perf viewer at ${url}`);
   // eslint-disable-next-line no-console
-  console.log(`Latest report: ${url}/results/latest.json`);
+  console.log(`Latest comparison: ${url}/results/latest-comparison.json`);
 });

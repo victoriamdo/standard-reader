@@ -25,11 +25,11 @@ import {
 } from "../src/lib/document/structured-content/image.ts";
 import { markdownPlaintext } from "../src/lib/document/structured-content/markdown.ts";
 import { STANDARD_MARKDOWN_CONTENT } from "../src/lib/document/structured-content/types.ts";
-import { markpubPlaintext } from "../src/lib/markpub/markdown.ts";
-import { MARKPUB_MARKDOWN } from "../src/lib/markpub/types.ts";
 import { leafletBlocks } from "../src/lib/leaflet/blocks.ts";
 import { leafletImageCid } from "../src/lib/leaflet/image.ts";
 import { LEAFLET_CONTENT } from "../src/lib/leaflet/types.ts";
+import { markpubPlaintext } from "../src/lib/markpub/markdown.ts";
+import { MARKPUB_MARKDOWN } from "../src/lib/markpub/types.ts";
 import { offprintBlocks } from "../src/lib/offprint/blocks.ts";
 import { OFFPRINT_CONTENT } from "../src/lib/offprint/types.ts";
 import { pcktBlocks } from "../src/lib/pckt/blocks.ts";

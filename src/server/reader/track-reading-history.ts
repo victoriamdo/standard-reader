@@ -10,22 +10,19 @@ import {
   dbValueToTrackReadingHistory,
   parseTrackReadingHistoryCookie,
 } from "#/lib/track-reading-history";
-import { getAtprotoSessionForRequest } from "#/middleware/auth";
-import { eq } from "drizzle-orm";
+import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 
 /** Whether this request should record reads and surface unread state. */
 export async function resolveTrackReadingHistoryEnabled(
-  db: Db,
-  schema: Schema,
+  _db: Db,
+  _schema: Schema,
 ): Promise<boolean> {
   const request = getRequest();
   const session = await getAtprotoSessionForRequest(request);
   if (session?.session.user.id) {
-    const row = await db.query.user.findFirst({
-      where: eq(schema.user.id, session.session.user.id),
-      columns: { trackReadingHistory: true },
-    });
-    return dbValueToTrackReadingHistory(row?.trackReadingHistory ?? null);
+    return dbValueToTrackReadingHistory(
+      session.session.user.trackReadingHistory ?? null,
+    );
   }
 
   return parseTrackReadingHistoryCookie(

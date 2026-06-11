@@ -4,9 +4,9 @@ import {
   LEAFLET_DOCUMENT_FORMAT,
   STRUCTURED_BLOCK_FORMATS,
 } from "#/lib/document/content-formats";
-import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
 import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
+import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
 import { OFFPRINT_CONTENT } from "#/lib/offprint/types";
 import { PCKT_CONTENT } from "#/lib/pckt/types";
 

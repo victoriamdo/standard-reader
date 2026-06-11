@@ -2,14 +2,14 @@
  * Postgres `ts_headline` emits HTML-escaped text with only `<mark>` (or `<b>`)
  * wrapper tags. Strip everything else before rendering.
  */
-const MARK_OPEN = "\x00MARK_OPEN\x00";
-const MARK_CLOSE = "\x00MARK_CLOSE\x00";
+const MARK_OPEN = "\u0000MARK_OPEN\u0000";
+const MARK_CLOSE = "\u0000MARK_CLOSE\u0000";
 
 export function sanitizeTsHeadlineHtml(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
 
-  const withPlaceholders = trimmed.replace(/<\/?mark>/gi, (tag) =>
+  const withPlaceholders = trimmed.replaceAll(/<\/?mark>/gi, (tag) =>
     tag.toLowerCase() === "<mark>" ? MARK_OPEN : MARK_CLOSE,
   );
 

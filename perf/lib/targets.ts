@@ -1,9 +1,9 @@
-import { loadPerfFixtures } from "./fixtures.ts";
 import {
   perfBaseUrl,
   perfBudgetMultiplier,
   perfDefaultTimeoutMs,
 } from "./config.ts";
+import { loadPerfFixtures } from "./fixtures.ts";
 
 export type PerfAuthMode = "guest" | "signed-in";
 
@@ -22,6 +22,14 @@ export interface PerfTarget {
   required?: boolean;
 }
 
+interface SharedRouteDef {
+  id: string;
+  name: string;
+  path: string;
+  budgetMs: number;
+  required?: boolean;
+}
+
 function scaleBudget(ms: number): number {
   return Math.round(ms * perfBudgetMultiplier());
 }
@@ -37,120 +45,102 @@ function target(
   };
 }
 
-/** Guest-visible routes — always run in CI. */
-export function guestTargets(): Array<PerfTarget> {
+/** Routes measured for both guest and signed-in sessions (same path + budget). */
+function sharedRouteDefs(): Array<SharedRouteDef> {
   const fixtures = loadPerfFixtures();
-  const base = perfBaseUrl();
 
-  void base;
-
-  const targets: Array<PerfTarget> = [
-    target({
+  const routes: Array<SharedRouteDef> = [
+    {
       id: "home",
       name: "Home",
       path: "/",
-      auth: "guest",
       budgetMs: 3500,
-    }),
-    target({
+    },
+    {
       id: "latest.subscriptions",
       name: "Latest (subscriptions)",
       path: "/latest",
-      auth: "guest",
       budgetMs: 4000,
-    }),
-    target({
+    },
+    {
       id: "latest.trending",
       name: "Latest (trending)",
       path: "/latest?filter=trending",
-      auth: "guest",
       budgetMs: 4500,
-    }),
-    target({
+    },
+    {
       id: "discover",
       name: "Discover",
       path: "/discover",
-      auth: "guest",
       budgetMs: 5000,
-    }),
-    target({
+    },
+    {
       id: "search",
       name: "Search",
       path: `/search?q=${encodeURIComponent(fixtures.searchQuery)}`,
-      auth: "guest",
       budgetMs: 4000,
-    }),
-    target({
+    },
+    {
       id: "about",
       name: "About",
       path: "/about",
-      auth: "guest",
       budgetMs: 2500,
-    }),
-    target({
+    },
+    {
       id: "tag.feed",
       name: `Tag feed (${fixtures.tag})`,
       path: `/tag/${encodeURIComponent(fixtures.tag)}`,
-      auth: "guest",
       budgetMs: 5500,
-    }),
-    target({
+    },
+    {
       id: "tag.publications",
       name: `Tag publications (${fixtures.tag})`,
       path: `/tag/${encodeURIComponent(fixtures.tag)}?view=publications`,
-      auth: "guest",
       budgetMs: 5500,
-    }),
+    },
   ];
 
   if (fixtures.publicationPath) {
-    targets.push(
-      target({
-        id: "publication",
-        name: "Publication profile",
-        path: fixtures.publicationPath,
-        auth: "guest",
-        budgetMs: 3500,
-        required: false,
-      }),
-    );
+    routes.push({
+      id: "publication",
+      name: "Publication profile",
+      path: fixtures.publicationPath,
+      budgetMs: 3500,
+      required: false,
+    });
   }
 
   if (fixtures.articlePath) {
-    targets.push(
-      target({
-        id: "article",
-        name: "Article",
-        path: fixtures.articlePath,
-        auth: "guest",
-        budgetMs: 4500,
-        required: false,
-      }),
-    );
+    routes.push({
+      id: "article",
+      name: "Article",
+      path: fixtures.articlePath,
+      budgetMs: 4500,
+      required: false,
+    });
   }
 
-  return targets;
+  return routes;
 }
 
-/** Signed-in routes — skipped when PERF_TEST_SESSION_TOKEN is unset. */
-export function signedInTargets(): Array<PerfTarget> {
-  const fixtures = loadPerfFixtures();
+function sharedTargets(auth: PerfAuthMode): Array<PerfTarget> {
+  const signedIn = auth === "signed-in";
 
-  const targets: Array<PerfTarget> = [
+  return sharedRouteDefs().map((route) =>
     target({
-      id: "home.signed-in",
-      name: "Home (signed in)",
-      path: "/",
-      auth: "signed-in",
-      budgetMs: 4500,
+      id: signedIn ? `${route.id}.signed-in` : route.id,
+      name: signedIn ? `${route.name} (signed in)` : route.name,
+      path: route.path,
+      auth,
+      budgetMs: route.budgetMs,
+      required: route.required,
     }),
-    target({
-      id: "latest.signed-in",
-      name: "Latest (signed in)",
-      path: "/latest",
-      auth: "signed-in",
-      budgetMs: 4500,
-    }),
+  );
+}
+
+/** Signed-in-only routes (no guest counterpart). */
+function signedInOnlyTargets(): Array<PerfTarget> {
+  return [
     target({
       id: "saved",
       name: "Saved for later",
@@ -173,21 +163,17 @@ export function signedInTargets(): Array<PerfTarget> {
       budgetMs: 5000,
     }),
   ];
+}
 
-  if (fixtures.articlePath) {
-    targets.push(
-      target({
-        id: "article.signed-in",
-        name: "Article (signed in)",
-        path: fixtures.articlePath,
-        auth: "signed-in",
-        budgetMs: 4500,
-        required: false,
-      }),
-    );
-  }
+/** Guest-visible routes — always run in CI. */
+export function guestTargets(): Array<PerfTarget> {
+  void perfBaseUrl();
+  return sharedTargets("guest");
+}
 
-  return targets;
+/** Signed-in routes — skipped when perf auth credentials are unset. */
+export function signedInTargets(): Array<PerfTarget> {
+  return [...sharedTargets("signed-in"), ...signedInOnlyTargets()];
 }
 
 export function allTargets(): Array<PerfTarget> {
@@ -196,4 +182,9 @@ export function allTargets(): Array<PerfTarget> {
 
 export function targetUrl(target: PerfTarget): string {
   return `${perfBaseUrl()}${target.path}`;
+}
+
+/** Base route id shared by guest + signed-in targets (strips `.signed-in`). */
+export function sharedRouteId(targetId: string): string {
+  return targetId.replace(/\.signed-in$/, "");
 }

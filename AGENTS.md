@@ -162,6 +162,158 @@ wired up too (see "Linting & formatting"). `pnpm lint`, `pnpm format:check`, `pn
 - `pnpm lex:lint` / `pnpm atproto:publish-lexicons` — validate / publish the app-owned
   `app.standard-reader.*` lexicons in `./lexicons/` via the `goat` CLI
   (`scripts/goat-lex.mjs`; needs `LEXICON_PUBLISH_*` creds + `_lexicon.*` DNS).
+- `pnpm perf:test` — Playwright load-regression suite (`perf/load-regression.spec.ts`); dev server
+  must be running (`pnpm dev`). Writes JSON reports to `perf/results/` (`latest-guest.json`,
+  `latest-signed-in.json`, `latest-comparison.json`).
+- `pnpm perf:test:guest` / `pnpm perf:test:signed-in` — run one auth mode from the suite.
+- `pnpm perf:view` — open the latest perf report in the browser.
+- `pnpm perf:discover-fixtures` — refresh perf fixture paths (article/publication URLs in `.env`).
+
+## Performance & tabbed routes
+
+Load budgets live in `perf/lib/targets.ts`; results land in `perf/results/latest-comparison.json`
+(guest vs signed-in on the same routes) plus per-mode `latest-{guest|signed-in}.json`. Fix perf
+**one route at a time** and re-run `pnpm perf:test` (or a filtered grep target) so UX does not
+regress.
+
+Reference implementations:
+
+- **Tabbed directory views:** `src/routes/_layout.tag.$tag.tsx`
+- **Tabbed feed filters + idle prefetch:** `src/routes/_layout.latest.tsx`
+- **Combined loader + cache seeding:** `src/integrations/tanstack-query/api-tag.functions.ts`
+  (`getTagPage`, `seedTagPageCaches`)
+- **Home feed — critical path + deferred extras:** `src/routes/_layout.index.tsx`,
+  `src/integrations/tanstack-query/api-feed.functions.ts` (`getHomePage`, `loadHomeFeedCritical`,
+  `getHomeExtras`, `loadHomeFeedExtras`)
+- **Latest feed — critical path + deferred tab counts:** `src/routes/_layout.latest.tsx`,
+  `src/integrations/tanstack-query/api-feed.functions.ts` (`getLatestFeed`, `loadLatestFeedCritical`,
+  `getLatestFeedCounts`, `loadLatestFeedCounts`)
+- **Discover — critical shell + deferred rails:** `src/routes/_layout.discover.tsx`,
+  `src/integrations/tanstack-query/api-discover.functions.ts` (`getDiscoverExtras`,
+  `loadDiscoverExtras`)
+
+### Home feed: critical path + deferred extras
+
+Not every server query belongs on the route loader. Split home into two tiers:
+
+| Tier         | Server fn                              | What loads                                                                                                     | When                                         |
+| ------------ | -------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| **Critical** | `getHomePage` → `loadHomeFeedCritical` | Featured lead, latest rows, comment counts on those articles, scope toggle, masthead structure, section titles | Route loader (blocks first paint)            |
+| **Deferred** | `getHomeExtras` → `loadHomeFeedExtras` | Unread count scan, Trending rail, “You might follow” rail                                                      | Client `useQuery` after critical feed paints |
+
+Implementation notes:
+
+- Critical feed returns `unreadCount: null`, empty `trending` / `youMightFollow`. Seed the home feed
+  cache from the loader as today (`getHomeFeedQueryOptions`).
+- Extras query key includes `scope` + `excludeUris` (featured + latest article URIs) so trending
+  does not duplicate main-column articles.
+- **Stable masthead:** do not substitute row length or other proxies for the unread count — copy
+  jumps when the real count arrives. While the count is pending, use neutral dek text (no number)
+  and skeleton the count badge / dek line until extras resolve.
+- **Skeleton placeholders:** show skeletons in the slots deferred data fills — masthead count/dek
+  and both rails (`HomeTrendingRailSkeleton`, `HomeYouMightFollowRailSkeleton`) while
+  `extrasPending`. Rails keep their real section headers; only row content is skeletonized. Mark
+  skeleton containers with `aria-busy="true"`.
+- Deferred work must **not** sit on the page-level `aria-busy` chain — Playwright perf tests clear
+  when the critical path is ready (`perf/lib/measure.ts`); extras loading afterward is intentional.
+- **Loader cache priming:** after seeding the critical cache, kick off deferred queries in the route
+  loader. On **navigation** (`preload: false`), `await ensureQueryData` for above-the-fold extras so
+  masthead counts and rails resolve before paint. On **link-hover preload** (`preload: true`), use
+  `void prefetchQuery(...)` only — warm the cache without blocking.
+
+Reuse this split elsewhere when below-the-fold or badge counts can wait (e.g. Latest tab badge
+counts — see below).
+
+### Latest feed: critical path + deferred tab counts
+
+Same tiered pattern as home, applied to `/latest`:
+
+| Tier         | Server fn                                      | What loads                                       | When                                                                |
+| ------------ | ---------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------- |
+| **Critical** | `getLatestFeed` → `loadLatestFeedCritical`     | Active filter’s article rows + pagination cursor | Route loader / tab `useSuspenseQuery`                               |
+| **Deferred** | `getLatestFeedCounts` → `loadLatestFeedCounts` | All four tab badge totals + masthead meta count  | Client `useQuery` (`["feed", "latest", "counts"]`) after rows paint |
+
+Implementation notes:
+
+- Critical feed returns `counts: null`. Pagination (`offset > 0`) never re-fetches counts.
+- One shared counts query serves every tab — prefetch it once on idle alongside inactive tab feeds.
+- **Stable chrome:** tab labels and masthead `metaValue` use skeleton placeholders while counts
+  pending; do not show `Mark all as read` until counts are loaded. When the active filter’s rows are
+  empty but empty-state copy depends on `subscriptions === 0` vs “all caught up”, show a row
+  skeleton until counts resolve.
+- Optimistic read updates must touch both latest feed item caches and the counts cache key (see
+  `read-optimistic.ts`).
+- **Loader cache priming:** on navigation, `await ensureQueryData` for the critical feed and
+  `getLatestFeedCounts` in parallel. On link-hover preload, `void prefetchQuery` both without
+  awaiting.
+
+### Discover: critical shell + deferred rails
+
+Discover defers **All publications** (and topic chips) via `DeferredMount`. Masthead, Recommended,
+Social proof, and Trending load in the route loader on navigation.
+
+| Tier                      | Server fn                                       | What loads                                | When                                        |
+| ------------------------- | ----------------------------------------------- | ----------------------------------------- | ------------------------------------------- |
+| **Critical (navigation)** | `getDiscoverExtras` + `getTrendingPublications` | Masthead, Recommended rail, Trending list | Route loader `await ensureQueryData`        |
+| **Critical (preload)**    | same                                            | same keys                                 | Route loader `void prefetchQuery`           |
+| **Deferred**              | topics + directory page                         | Topic chips, All publications             | `DeferredMount` + client `useSuspenseQuery` |
+
+Implementation notes:
+
+- One extras round trip shares `trendingPublicationUris` + `effectiveFollowUris` across both rails.
+- **Do not** put `aria-busy="true"` on deferred section skeletons — they must stay off the perf
+  ready chain (`perf/lib/measure.ts`). Directory skeletons follow the same rule.
+- **Loader cache priming:** kick off all discover queries in the route loader. **Navigation:**
+  `await ensureQueryData` for extras and trending (above the fold); `void prefetchQuery` for topics
+  and default directory (below fold / `DeferredMount`). **Link-hover preload:** `void prefetchQuery`
+  for everything — no awaits.
+- **Client queries:** extras and trending use loader-seeded cache (`useSuspenseQuery` / `useQuery`) —
+  do not re-defer them with skeleton toggles or `DeferredMount` after the loader awaits them.
+
+### Server data: one round trip for the active view
+
+For routes with tabs/search-driven views, prefer **one server fn** that returns shared metadata
+(counts) plus the **active tab’s first page**, then seed per-query React Query caches from that
+response (see `getTagPage` + `seedTagPageCaches`). Wire the route loader with `loaderDeps` on the
+search params that change the fetch (`view`, `sort`, etc.) and a sensible `staleTime`.
+
+Do **not** mount inactive tabs’ `useQuery` hooks — hidden tab panels still mount in the DOM, so an
+enabled query on the inactive panel duplicates server work on every load. Only render the active
+panel’s content (or pass `enabled: false` until selected).
+
+### Lazy prefetch of inactive tabs
+
+After the active view finishes loading, **`requestIdleCallback`**-prefetch the inactive tab’s
+query into the same cache keys the panel will use. Wait until `useRouterState(… isLoading)` is false
+so prefetch does not compete with the critical path. Pattern: `_layout.latest.tsx` (all filters),
+`_layout.tag.$tag.tsx` (articles ↔ publications).
+
+Skip idle prefetch when it would fire expensive unrelated work (e.g. signed-out Latest does not
+prefetch every filter).
+
+### Loading UX on tab switches
+
+- **Delayed skeleton:** wait **150ms** before showing a skeleton (`useDelayedLoading` in
+  `_layout.tag.$tag.tsx`). If data arrives within the grace period, never show skeleton — avoids
+  flash on fast loads and prefetched tabs.
+- **During the grace period:** keep static chrome visible; use a minimal `aria-busy` placeholder,
+  not the empty state.
+- **Skeleton scope:** skeleton replaces **rows/content only**, not page chrome. Example: publications
+  tab keeps the “All publications” `SectionHead` and sort/layout controls mounted; only the
+  directory grid/list skeletons below.
+- **Revisits:** rely on React Query cache + prefetch — do not show loading again when cached data
+  exists. Do not key skeleton off loader-populated cache checks alone (loaders seed cache before
+  paint, so that always reads “cached”).
+- **Optimistic tab UI:** set local `pendingView` on tab click and drive `Tabs selectedKey` from
+  `pendingView ?? view`; clear when `isLoading` becomes false.
+- **Load-more** pagination may show skeleton immediately (no delay) — only initial tab loads use
+  the grace period.
+
+### Perf test “ready” signal
+
+Playwright perf tests wait for `[data-app-scroller]` and `aria-busy='true'` to clear
+(`perf/lib/measure.ts`). Skeletons and loading placeholders must use `aria-busy="true"` until
+content is ready.
 
 ## Linting & formatting (oxc + oxfmt)
 

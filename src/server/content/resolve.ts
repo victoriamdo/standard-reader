@@ -1,3 +1,5 @@
+import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
+import { GREENGALE_CONTENT_REF } from "#/lib/greengale/types";
 /**
  * Ingest-time resolution for content formats whose body lives outside the
  * document record and needs an extra fetch:
@@ -11,8 +13,6 @@
  * unchanged so re-ingest/backfill can retry later.
  */
 import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
-import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
-import { GREENGALE_CONTENT_REF } from "#/lib/greengale/types";
 import { resolveGreengaleContent } from "#/server/greengale/resolve";
 import { resolveMarkpubContent } from "#/server/markpub/resolve";
 

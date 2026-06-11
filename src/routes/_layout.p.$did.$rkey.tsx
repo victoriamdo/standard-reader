@@ -1,6 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
 import {
-  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -47,6 +46,7 @@ import { PublicationSocialProofLine } from "../components/reader/publication-soc
 import {
   applyMarkReadManyOptimisticUpdate,
   invalidateReadQueries,
+  isArticleUnreadForReader,
 } from "../components/reader/read-optimistic";
 import { ShareMenu } from "../components/reader/share-menu";
 import { Button } from "../design-system/button";
@@ -56,8 +56,8 @@ import { Skeleton } from "../design-system/skeleton";
 import { uiColor } from "../design-system/theme/color.stylex";
 import { radius } from "../design-system/theme/radius.stylex";
 import {
-  gap,
   size as boxSize,
+  gap,
 } from "../design-system/theme/semantic-spacing.stylex";
 import { spacing } from "../design-system/theme/spacing.stylex";
 import {
@@ -77,6 +77,10 @@ const PUBLICATION_SKELETON_ROWS = 5;
 export const Route = createFileRoute("/_layout/p/$did/$rkey")({
   loader: async ({ context, params }) => {
     const uri = publicationUriFromParams(params.did, params.rkey);
+    const session = await context.queryClient.ensureQueryData(
+      user.getSessionQueryOptions,
+    );
+    const readerScope = user.readerQueryScope(session);
     void context.queryClient.ensureQueryData(
       publicationApi.getPublicationSocialProofQueryOptions(uri),
     );
@@ -84,6 +88,7 @@ export const Route = createFileRoute("/_layout/p/$did/$rkey")({
       context.queryClient.ensureQueryData(
         publicationApi.getPublicationProfileQueryOptions(uri, {
           recentLimit: PUBLICATION_RECENT_LIMIT,
+          readerScope,
         }),
       ),
       context.queryClient.ensureQueryData(
@@ -93,13 +98,6 @@ export const Route = createFileRoute("/_layout/p/$did/$rkey")({
         publicationApi.getPublicationEmbedMetaQueryOptions(uri),
       ),
     ]);
-    if (profile?.recentDocuments.length) {
-      await context.queryClient.ensureQueryData(
-        readerApi.getReadDocumentsQueryOptions(
-          profile.recentDocuments.map((doc) => doc.uri),
-        ),
-      );
-    }
     return {
       publicationName: profile?.publication.name ?? null,
       publicationDescription: profile?.publication.description ?? null,
@@ -271,8 +269,8 @@ const styles = stylex.create({
     paddingBottom: spacing["9"],
   },
   featureMediaSkeleton: {
-    aspectRatio: "4 / 3",
     borderRadius: radius.md,
+    aspectRatio: "4 / 3",
     width: "100%",
   },
   articleSkeleton: {
@@ -444,9 +442,12 @@ function PublicationProfile() {
   const { did, rkey } = Route.useParams();
   const uri = publicationUriFromParams(did, rkey);
   const queryClient = useQueryClient();
+  const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
+  const readerScope = user.readerQueryScope(session);
   const { data: profile } = useSuspenseQuery(
     publicationApi.getPublicationProfileQueryOptions(uri, {
       recentLimit: PUBLICATION_RECENT_LIMIT,
+      readerScope,
     }),
   );
   const { data: follow } = useSuspenseQuery(
@@ -455,7 +456,6 @@ function PublicationProfile() {
   const { data: embedMeta } = useSuspenseQuery(
     publicationApi.getPublicationEmbedMetaQueryOptions(uri),
   );
-  const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
 
   const { data: socialProof } = useQuery({
@@ -486,25 +486,23 @@ function PublicationProfile() {
     );
   }, [profile]);
 
-  const documentUris = useMemo(
-    () => documents.map((doc) => doc.uri),
-    [documents],
-  );
-  const { data: readUris } = useQuery({
-    ...readerApi.getReadDocumentsQueryOptions(documentUris),
-    enabled: signedIn && documentUris.length > 0,
-    placeholderData: keepPreviousData,
-  });
-  const readSet = useMemo(() => new Set(readUris ?? []), [readUris]);
   const { enabled: trackReading } = useTrackReadingHistory();
-  const isUnread = (documentUri: string) =>
-    trackReading && signedIn && !readSet.has(documentUri);
+  const isUnread = (article: ArticleCard) =>
+    isArticleUnreadForReader(queryClient, article, {
+      trackReading,
+      signedIn,
+    });
   const unreadDocumentUris = useMemo(
     () =>
       documents
-        .filter((doc) => signedIn && !readSet.has(doc.uri))
+        .filter((doc) =>
+          isArticleUnreadForReader(queryClient, doc, {
+            trackReading,
+            signedIn,
+          }),
+        )
         .map((doc) => doc.uri),
-    [documents, readSet, signedIn],
+    [documents, queryClient, trackReading, signedIn],
   );
 
   const { mutate: markAllRead, isPending: markingAllRead } = useMutation({
@@ -513,6 +511,11 @@ function PublicationProfile() {
       applyMarkReadManyOptimisticUpdate(queryClient, unreadDocumentUris, {
         publicationUri: uri,
       });
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          unreadDocumentUris.includes(doc.uri) ? { ...doc, isRead: true } : doc,
+        ),
+      );
     },
     onError: () => {
       invalidateReadQueries(queryClient);
@@ -682,7 +685,7 @@ function PublicationProfile() {
                 <FeatureArticle
                   article={lead}
                   showByline={false}
-                  unread={isUnread(lead.uri)}
+                  unread={isUnread(lead)}
                 />
               ) : null}
               {rest.map((article) => (
@@ -691,7 +694,7 @@ function PublicationProfile() {
                   article={article}
                   showByline={false}
                   showSaveButton={false}
-                  unread={isUnread(article.uri)}
+                  unread={isUnread(article)}
                 />
               ))}
             </div>

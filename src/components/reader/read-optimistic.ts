@@ -3,9 +3,14 @@ import type { QueryClient } from "@tanstack/react-query";
 import type {
   HomeFeed,
   LatestFeed,
+  LatestFeedCounts,
   SidebarData,
 } from "../../integrations/tanstack-query/api-feed.functions";
 import type { ReadStatus } from "../../integrations/tanstack-query/api-reader.functions";
+import type {
+  PublicationDocumentsPage,
+  PublicationProfile,
+} from "../../integrations/tanstack-query/api-publication.functions";
 import type { ArticleCard } from "../../integrations/tanstack-query/api-shapes";
 
 function decrement(count: number | null | undefined): number | null {
@@ -16,6 +21,42 @@ function decrement(count: number | null | undefined): number | null {
 /** Returns the card flipped to read, or the same reference when it doesn't match. */
 function flipCard(card: ArticleCard, uri: string): ArticleCard {
   return card.uri === uri && !card.isRead ? { ...card, isRead: true } : card;
+}
+
+function markCardRead(card: ArticleCard, uri: string): ArticleCard {
+  return card.uri === uri ? { ...card, isRead: true } : card;
+}
+
+function isPublicationProfile(data: unknown): data is PublicationProfile {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "recentDocuments" in data &&
+    "publication" in data
+  );
+}
+
+function isPublicationDocumentsPage(
+  data: unknown,
+): data is PublicationDocumentsPage {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "items" in data &&
+    "nextOffset" in data
+  );
+}
+
+function isLatestFeedCounts(data: unknown): data is LatestFeedCounts {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "unread" in data &&
+    "subscriptions" in data &&
+    "all" in data &&
+    "trending" in data &&
+    !("items" in data)
+  );
 }
 
 function isLatestFeed(data: unknown): data is LatestFeed {
@@ -96,9 +137,10 @@ function updateFeedCache(
     return {
       ...data,
       items: data.items.map((card) => flipCard(card, uri)),
-      counts: wasUnread
-        ? { ...data.counts, unread: Math.max(0, data.counts.unread - 1) }
-        : data.counts,
+      counts:
+        wasUnread && data.counts
+          ? { ...data.counts, unread: Math.max(0, data.counts.unread - 1) }
+          : data.counts,
     } satisfies LatestFeed;
   }
 
@@ -145,6 +187,23 @@ function isDocumentReadInCache(
   return false;
 }
 
+/** Unread dot for feeds and publication lists using inline SQL `isRead` + optimistic cache. */
+export function isArticleUnreadForReader(
+  queryClient: QueryClient,
+  article: Pick<ArticleCard, "uri" | "isRead">,
+  {
+    trackReading,
+    signedIn,
+  }: {
+    trackReading: boolean;
+    signedIn: boolean;
+  },
+): boolean {
+  if (!trackReading || !signedIn) return false;
+  if (isDocumentReadInCache(queryClient, article.uri)) return false;
+  return !article.isRead;
+}
+
 /**
  * Optimistically mark a document read across every cache the UI reads from —
  * feed rails (`isRead` + unread counters), batch read-status lookups, and the
@@ -162,6 +221,38 @@ export function applyMarkReadOptimisticUpdate(
   queryClient.setQueriesData({ queryKey: ["feed"] }, (data) =>
     updateFeedCache(data, documentUri, wasUnread, pubUri),
   );
+
+  queryClient.setQueriesData(
+    { queryKey: ["publication", "profile"] },
+    (data) => {
+      if (!isPublicationProfile(data)) return data;
+      return {
+        ...data,
+        recentDocuments: data.recentDocuments.map((card) =>
+          markCardRead(card, documentUri),
+        ),
+      } satisfies PublicationProfile;
+    },
+  );
+
+  queryClient.setQueriesData(
+    { queryKey: ["publication", "documents"] },
+    (data) => {
+      if (!isPublicationDocumentsPage(data)) return data;
+      return {
+        ...data,
+        items: data.items.map((card) => markCardRead(card, documentUri)),
+      } satisfies PublicationDocumentsPage;
+    },
+  );
+
+  if (wasUnread) {
+    queryClient.setQueryData<LatestFeedCounts>(
+      ["feed", "latest", "counts"],
+      (data) =>
+        data ? { ...data, unread: Math.max(0, data.unread - 1) } : data,
+    );
+  }
 
   queryClient.setQueriesData<Array<string>>(
     { queryKey: ["reader", "readDocuments"] },
@@ -199,6 +290,30 @@ export function applyMarkReadManyOptimisticUpdate(
 
     queryClient.setQueriesData({ queryKey: ["feed"] }, (data) =>
       updateFeedCache(data, documentUri, wasUnread, pubUri, true),
+    );
+
+    queryClient.setQueriesData(
+      { queryKey: ["publication", "profile"] },
+      (data) => {
+        if (!isPublicationProfile(data)) return data;
+        return {
+          ...data,
+          recentDocuments: data.recentDocuments.map((card) =>
+            markCardRead(card, documentUri),
+          ),
+        } satisfies PublicationProfile;
+      },
+    );
+
+    queryClient.setQueriesData(
+      { queryKey: ["publication", "documents"] },
+      (data) => {
+        if (!isPublicationDocumentsPage(data)) return data;
+        return {
+          ...data,
+          items: data.items.map((card) => markCardRead(card, documentUri)),
+        } satisfies PublicationDocumentsPage;
+      },
     );
 
     queryClient.setQueriesData<Array<string>>(
@@ -266,8 +381,20 @@ export function applyMarkReadManyOptimisticUpdate(
         items: data.items.map((card) =>
           card.isRead ? card : { ...card, isRead: true },
         ),
-        counts: { ...data.counts, unread: 0 },
+        counts: data.counts ? { ...data.counts, unread: 0 } : data.counts,
       } satisfies LatestFeed;
+    }
+
+    if (isLatestFeedCounts(data)) {
+      if (clearAllFollowingUnread) {
+        return { ...data, unread: 0 } satisfies LatestFeedCounts;
+      }
+      if (newlyReadCount > 0) {
+        return {
+          ...data,
+          unread: Math.max(0, data.unread - newlyReadCount),
+        } satisfies LatestFeedCounts;
+      }
     }
 
     if (clearAllFollowingUnread && isHomeFeed(data)) {
@@ -297,4 +424,8 @@ export function invalidateReadQueries(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: ["reader", "readDocuments"] });
   void queryClient.invalidateQueries({ queryKey: ["reader", "readStatus"] });
   void queryClient.invalidateQueries({ queryKey: ["reader", "history"] });
+  void queryClient.invalidateQueries({ queryKey: ["publication", "profile"] });
+  void queryClient.invalidateQueries({
+    queryKey: ["publication", "documents"],
+  });
 }

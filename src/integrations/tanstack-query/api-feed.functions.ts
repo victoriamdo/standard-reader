@@ -1,15 +1,20 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
+import { getCookie, getRequest } from "@tanstack/react-start/server";
+import {
+  HOME_SCOPE_COOKIE,
+  dbValueToHomeScope,
+  parseHomeScope,
+} from "#/lib/home-scope";
+import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { observe } from "#/server/observability/log";
+import type { Span } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
 import {
   countFollowedDocuments,
   countNetworkDocuments,
   countTrendingDocuments,
-  countUnreadByPublication,
-  followedPublications,
   popularPublications,
   recommendedPublications,
   selectArticleCards,
@@ -17,14 +22,14 @@ import {
   trendingPublicationUris,
 } from "#/server/reader/queries";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
+import { loadSidebarData } from "#/server/reader/shell-snapshot.server";
 import {
   articleCardsAsAllRead,
   resolveTrackReadingHistoryEnabled,
 } from "#/server/reader/track-reading-history";
-import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import type { ArticleCard, PublicationCard } from "./api-shapes";
+import type { ArticleCard, Db, PublicationCard, Schema } from "./api-shapes";
 
 import { dbMiddleware } from "./db-middleware";
 
@@ -83,22 +88,51 @@ export interface HomeFeed {
   personalized: boolean;
   /** True when the signed-in reader has at least one follow. */
   hasFollows: boolean;
-  /** Unread count across follows (null when not personalized). */
+  /**
+   * Unread count across follows. `null` on the critical path — loaded lazily via
+   * {@link getHomeExtras} so the first paint is not blocked on a count scan.
+   */
   unreadCount: number | null;
+}
+
+/** Rails + unread badge — deferred after the critical home feed paints. */
+export interface HomeFeedExtras {
+  unreadCount: number | null;
+  trending: Array<ArticleCard>;
+  youMightFollow: Array<PublicationCard>;
+}
+
+export interface HomePageData {
+  scope: HomeScope;
+  feed: HomeFeed;
+}
+
+const homePageInput = z.object({
+  scope: z.enum(["follows", "network"]).optional(),
+});
+
+const homeExtrasInput = homeInput.extend({
+  excludeUris: z.array(z.string()).max(100).default([]),
+});
+
+export interface LatestFeedCounts {
+  /** Unread documents across the reader's subscriptions. */
+  unread: number;
+  /** All documents across the reader's subscriptions. */
+  subscriptions: number;
+  /** All discover-eligible documents across the network. */
+  all: number;
+  /** Articles in the trending candidate set. */
+  trending: number;
 }
 
 export interface LatestFeed {
   items: Array<ArticleCard>;
-  counts: {
-    /** Unread documents across the reader's subscriptions. */
-    unread: number;
-    /** All documents across the reader's subscriptions. */
-    subscriptions: number;
-    /** All discover-eligible documents across the network. */
-    all: number;
-    /** Articles in the trending candidate set. */
-    trending: number;
-  };
+  /**
+   * Tab badges + masthead totals. `null` on the critical path — loaded lazily via
+   * {@link getLatestFeedCounts} so the first paint is not blocked on count scans.
+   */
+  counts: LatestFeedCounts | null;
   /** Offset for the next page, or null when the last page was reached. */
   nextOffset: number | null;
 }
@@ -121,55 +155,164 @@ export interface SidebarData {
 const getSidebar = createServerFn({ method: "GET" }).handler(
   observe("feed.getSidebar", async (_, span) => {
     const did = await attachReaderSpanContext(span, getRequest());
-    if (!did) {
-      return {
-        signedIn: false,
-        hasFollows: false,
-        following: [],
-        unreadCount: null,
-        savedCount: null,
-      } satisfies SidebarData;
-    }
 
     const [{ db }, schema] = await Promise.all([
       import("#/db/index.server"),
       import("#/db/schema"),
     ]);
 
-    const trackReading = await resolveTrackReadingHistoryEnabled(db, schema);
+    const trackReading = did
+      ? await resolveTrackReadingHistoryEnabled(db, schema)
+      : false;
+    if (did) {
+      span.set("did", did);
+      const followUris = await effectiveFollowUris(db, schema, did);
+      span.set("follows", followUris.length);
+    }
 
-    // Effective follows: subscriptions plus saved-list publications.
-    const followUris = await effectiveFollowUris(db, schema, did);
-    const hasFollows = followUris.length > 0;
-    span.set("follows", followUris.length);
-    const b = schema.bookmarks;
-    const [following, counts, unreadByPublication, savedCountRow] =
-      await Promise.all([
-        followedPublications(db, schema, followUris),
-        trackReading && followUris.length > 0
-          ? countFollowedDocuments(db, schema, followUris, did)
-          : Promise.resolve(null),
-        trackReading && followUris.length > 0
-          ? countUnreadByPublication(db, schema, followUris, did)
-          : Promise.resolve(new Map<string, number>()),
-        db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(b)
-          .where(and(eq(b.ownerDid, did), eq(b.deleted, false))),
-      ]);
-
-    return {
-      signedIn: true,
-      hasFollows,
-      following: following.map((pub) => ({
-        ...pub,
-        unreadCount: trackReading ? (unreadByPublication.get(pub.uri) ?? 0) : 0,
-      })),
-      unreadCount: trackReading ? (counts?.unread ?? null) : 0,
-      savedCount: savedCountRow[0]?.count ?? 0,
-    } satisfies SidebarData;
+    return loadSidebarData(db, schema, did, trackReading);
   }),
 );
+
+async function resolveHomeFeedContext(
+  db: Db,
+  schema: Schema,
+  did: string | null | undefined,
+  scope: HomeScope,
+  span: Span,
+  { trackReading: trackReadingOverride }: { trackReading?: boolean } = {},
+) {
+  const trackReadingPromise =
+    trackReadingOverride !== undefined
+      ? Promise.resolve(trackReadingOverride)
+      : did
+        ? resolveTrackReadingHistoryEnabled(db, schema)
+        : Promise.resolve(false);
+
+  const [followUris, trackReading] = await Promise.all([
+    did ? effectiveFollowUris(db, schema, did) : Promise.resolve([]),
+    trackReadingPromise,
+  ]);
+  const hasFollows = followUris.length > 0;
+  const personalized = hasFollows && scope === "follows";
+  span.set("follows", followUris.length);
+  span.set("scope", scope);
+  span.set("personalized", personalized);
+
+  const rowQuery = personalized
+    ? {
+        publicationUris: followUris,
+        ...(trackReading && did ? { readForDid: did, unreadForDid: did } : {}),
+      }
+    : { discoverOnly: true };
+
+  return {
+    did,
+    followUris,
+    trackReading,
+    hasFollows,
+    personalized,
+    rowQuery,
+  };
+}
+
+async function loadHomeFeedCritical(
+  db: Db,
+  schema: Schema,
+  did: string | null | undefined,
+  scope: HomeScope,
+  span: Span,
+  options: { trackReading?: boolean } = {},
+): Promise<HomeFeed> {
+  const { trackReading, hasFollows, personalized, rowQuery } =
+    await resolveHomeFeedContext(db, schema, did, scope, span, options);
+
+  const [featuredLead, rows] = await Promise.all([
+    selectArticleCards(db, schema, {
+      ...rowQuery,
+      featuredOnly: true,
+      limit: 1,
+    }),
+    selectArticleCards(db, schema, {
+      ...rowQuery,
+      limit: HOME_ROW_LIMIT + 1,
+    }),
+  ]);
+
+  let featured: ArticleCard | null = featuredLead[0] ?? rows[0] ?? null;
+  let latestUnread = rows
+    .filter((row) => row.uri !== featured?.uri)
+    .slice(0, HOME_ROW_LIMIT);
+
+  if (!trackReading || !personalized) {
+    featured = featured ? { ...featured, isRead: true } : null;
+    latestUnread = articleCardsAsAllRead(latestUnread);
+  }
+
+  span.set("rows", latestUnread.length);
+
+  const enriched = await attachCommentCountsToArticles(db, schema, [
+    ...(featured ? [featured] : []),
+    ...latestUnread,
+  ]);
+  const byUri = new Map(enriched.map((article) => [article.uri, article]));
+
+  return {
+    featured: featured ? (byUri.get(featured.uri) ?? featured) : null,
+    latestUnread: latestUnread.map(
+      (article) => byUri.get(article.uri) ?? article,
+    ),
+    trending: [],
+    youMightFollow: [],
+    personalized,
+    hasFollows,
+    unreadCount: null,
+  } satisfies HomeFeed;
+}
+
+async function loadHomeFeedExtras(
+  db: Db,
+  schema: Schema,
+  did: string | null | undefined,
+  scope: HomeScope,
+  excludeUris: ReadonlyArray<string>,
+  span: Span,
+  options: { trackReading?: boolean } = {},
+): Promise<HomeFeedExtras> {
+  const { trackReading, personalized, followUris } =
+    await resolveHomeFeedContext(db, schema, did, scope, span, options);
+  const exclude = new Set(excludeUris);
+
+  const [counts, trendingRaw, trendingPubUris] = await Promise.all([
+    personalized && did && trackReading
+      ? countFollowedDocuments(db, schema, followUris, did)
+      : Promise.resolve(null),
+    trendingArticles(db, schema, HOME_RAIL_LIMIT),
+    trendingPublicationUris(db, schema, HOME_RAIL_LIMIT),
+  ]);
+
+  const trendingFiltered = trendingRaw
+    .filter((article) => !exclude.has(article.uri))
+    .slice(0, HOME_RAIL_LIMIT);
+
+  const [youMightFollowRaw, trending] = await Promise.all([
+    personalized && did
+      ? recommendedPublications(db, schema, did, HOME_RAIL_LIMIT, {
+          excludeUris: trendingPubUris,
+          followUris,
+        })
+      : popularPublications(db, schema, HOME_RAIL_LIMIT, trendingPubUris),
+    attachCommentCountsToArticles(db, schema, trendingFiltered),
+  ]);
+
+  span.set("trending", trending.length);
+
+  return {
+    unreadCount: personalized && trackReading ? (counts?.unread ?? null) : 0,
+    trending,
+    youMightFollow: youMightFollowRaw,
+  } satisfies HomeFeedExtras;
+}
 
 const getHomeFeed = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
@@ -178,99 +321,143 @@ const getHomeFeed = createServerFn({ method: "GET" })
     observe("feed.getHomeFeed", async ({ data, context }, span) => {
       const { db, schema } = context;
       const did = await attachReaderSpanContext(span, getRequest());
-      const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
-      const hasFollows = followUris.length > 0;
-      const personalized = hasFollows && data.scope === "follows";
-      const trackReading =
-        did == null
-          ? false
-          : await resolveTrackReadingHistoryEnabled(db, schema);
-      span.set("follows", followUris.length);
-      span.set("scope", data.scope);
-      span.set("personalized", personalized);
-
-      const rowQuery = personalized
-        ? {
-            publicationUris: followUris,
-            ...(trackReading && did ? { unreadForDid: did } : {}),
-          }
-        : { discoverOnly: true };
-
-      const [featuredLead, rows, trendingRaw, trendingPubUris, counts] =
-        await Promise.all([
-          selectArticleCards(db, schema, {
-            ...rowQuery,
-            featuredOnly: true,
-            limit: 1,
-          }),
-          selectArticleCards(db, schema, {
-            ...rowQuery,
-            limit: HOME_ROW_LIMIT + 1,
-          }),
-          trendingArticles(db, schema, HOME_RAIL_LIMIT),
-          trendingPublicationUris(db, schema, HOME_RAIL_LIMIT),
-          personalized && did && trackReading
-            ? countFollowedDocuments(db, schema, followUris, did)
-            : Promise.resolve(null),
-        ]);
-
-      const youMightFollowRaw =
-        personalized && did
-          ? await recommendedPublications(db, schema, did, HOME_RAIL_LIMIT, {
-              excludeUris: trendingPubUris,
-              followUris,
-            })
-          : await popularPublications(
-              db,
-              schema,
-              HOME_RAIL_LIMIT,
-              trendingPubUris,
-            );
-
-      let featured: ArticleCard | null = featuredLead[0] ?? rows[0] ?? null;
-      let latestUnread = rows
-        .filter((row) => row.uri !== featured?.uri)
-        .slice(0, HOME_ROW_LIMIT);
-
-      if (!trackReading || !personalized) {
-        featured = featured ? { ...featured, isRead: true } : null;
-        latestUnread = articleCardsAsAllRead(latestUnread);
-      }
-
-      const excludeUris = new Set(
-        [featured?.uri, ...latestUnread.map((row) => row.uri)].filter(
-          (uri): uri is string => uri != null,
-        ),
-      );
-      const trending = trendingRaw
-        .filter((article) => !excludeUris.has(article.uri))
-        .slice(0, HOME_RAIL_LIMIT);
-      const youMightFollow = youMightFollowRaw;
-
-      span.set("rows", latestUnread.length);
-      span.set("trending", trending.length);
-
-      const enriched = await attachCommentCountsToArticles(db, schema, [
-        ...(featured ? [featured] : []),
-        ...latestUnread,
-        ...trending,
-      ]);
-      const byUri = new Map(enriched.map((article) => [article.uri, article]));
-
-      return {
-        featured: featured ? (byUri.get(featured.uri) ?? featured) : null,
-        latestUnread: latestUnread.map(
-          (article) => byUri.get(article.uri) ?? article,
-        ),
-        trending: trending.map((article) => byUri.get(article.uri) ?? article),
-        youMightFollow,
-        personalized,
-        hasFollows,
-        unreadCount:
-          personalized && trackReading ? (counts?.unread ?? null) : 0,
-      } satisfies HomeFeed;
+      return loadHomeFeedCritical(db, schema, did, data.scope, span);
     }),
   );
+
+/** Scope preference + home feed in one round trip for the route loader. */
+const getHomePage = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(homePageInput)
+  .handler(
+    observe("feed.getHomePage", async ({ data, context }, span) => {
+      const { db, schema } = context;
+      const did = await attachReaderSpanContext(span, getRequest());
+      const authSession = did
+        ? await getAtprotoSessionForRequest(getRequest())
+        : undefined;
+
+      let scope: HomeScope;
+      if (authSession?.session.user) {
+        scope =
+          data.scope ??
+          dbValueToHomeScope(authSession.session.user.homeScope ?? null);
+      } else {
+        scope = data.scope ?? parseHomeScope(getCookie(HOME_SCOPE_COOKIE));
+      }
+
+      const feed = await loadHomeFeedCritical(db, schema, did, scope, span);
+      return { scope, feed } satisfies HomePageData;
+    }),
+  );
+
+/** Rails + unread badge — loaded after the critical feed paints. */
+const getHomeExtras = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(homeExtrasInput)
+  .handler(
+    observe("feed.getHomeExtras", async ({ data, context }, span) => {
+      const { db, schema } = context;
+      const did = await attachReaderSpanContext(span, getRequest());
+
+      return loadHomeFeedExtras(
+        db,
+        schema,
+        did,
+        data.scope,
+        data.excludeUris,
+        span,
+      );
+    }),
+  );
+
+async function loadLatestFeedCritical(
+  db: Db,
+  schema: Schema,
+  did: string | null | undefined,
+  data: z.infer<typeof latestInput>,
+  span: Span,
+): Promise<LatestFeed> {
+  span.set("filter", data.filter);
+  span.set("offset", data.offset);
+
+  const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
+  span.set("follows", followUris.length);
+  const trackReading =
+    did == null ? false : await resolveTrackReadingHistoryEnabled(db, schema);
+
+  const trendingLimit =
+    data.filter === "trending"
+      ? Math.min(data.limit, TRENDING_PAGE_LIMIT - data.offset)
+      : data.limit;
+
+  const items =
+    data.filter === "trending"
+      ? trendingLimit > 0
+        ? await trendingArticles(db, schema, trendingLimit, {
+            offset: data.offset,
+            readForDid: trackReading && did ? did : undefined,
+            scope: "page",
+          })
+        : []
+      : await selectArticleCards(db, schema, {
+          ...(!did || data.filter === "all"
+            ? { discoverOnly: true }
+            : {
+                publicationUris: followUris,
+                unreadForDid:
+                  trackReading && data.filter === "unread" ? did : undefined,
+              }),
+          readForDid: trackReading && did ? did : undefined,
+          limit: data.limit,
+          offset: data.offset,
+        });
+
+  span.set("count", items.length);
+  const enrichedItems = await attachCommentCountsToArticles(
+    db,
+    schema,
+    trackReading ? items : articleCardsAsAllRead(items),
+  );
+
+  return {
+    items: enrichedItems,
+    counts: null,
+    nextOffset:
+      data.filter === "trending"
+        ? null
+        : items.length === data.limit
+          ? data.offset + data.limit
+          : null,
+  } satisfies LatestFeed;
+}
+
+async function loadLatestFeedCounts(
+  db: Db,
+  schema: Schema,
+  did: string | null | undefined,
+  span: Span,
+): Promise<LatestFeedCounts> {
+  const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
+  span.set("follows", followUris.length);
+  const trackReading =
+    did == null ? false : await resolveTrackReadingHistoryEnabled(db, schema);
+
+  const [followCounts, networkCount, trendingCount] = await Promise.all([
+    did
+      ? countFollowedDocuments(db, schema, followUris, did)
+      : Promise.resolve({ all: 0, unread: 0 }),
+    countNetworkDocuments(db, schema),
+    did ? countTrendingDocuments(db, schema, "rail") : Promise.resolve(0),
+  ]);
+
+  return {
+    unread: trackReading ? followCounts.unread : 0,
+    subscriptions: followCounts.all,
+    all: networkCount,
+    trending: trendingCount,
+  } satisfies LatestFeedCounts;
+}
 
 const getLatestFeed = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
@@ -278,89 +465,29 @@ const getLatestFeed = createServerFn({ method: "GET" })
   .handler(
     observe("feed.getLatestFeed", async ({ data, context }, span) => {
       const { db, schema } = context;
-      span.set("filter", data.filter);
-      span.set("offset", data.offset);
-
       const did = await attachReaderSpanContext(span, getRequest());
-
-      const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
-      span.set("follows", followUris.length);
-      const trackReading =
-        did == null
-          ? false
-          : await resolveTrackReadingHistoryEnabled(db, schema);
-
-      const trendingLimit =
-        data.filter === "trending"
-          ? Math.min(data.limit, TRENDING_PAGE_LIMIT - data.offset)
-          : data.limit;
-
-      // Tab badges only need counts on the first page; pagination reuses cached counts.
-      const includeCounts = data.offset === 0;
-
-      const [items, followCounts, networkCount, trendingCount] =
-        await Promise.all([
-          data.filter === "trending"
-            ? trendingLimit > 0
-              ? trendingArticles(db, schema, trendingLimit, {
-                  offset: data.offset,
-                  readForDid: trackReading && did ? did : undefined,
-                  scope: "page",
-                })
-              : Promise.resolve([])
-            : selectArticleCards(db, schema, {
-                // Signed-out readers always get the network-wide list.
-                ...(!did || data.filter === "all"
-                  ? { discoverOnly: true }
-                  : {
-                      publicationUris: followUris,
-                      unreadForDid:
-                        trackReading && data.filter === "unread"
-                          ? did
-                          : undefined,
-                    }),
-                readForDid: trackReading && did ? did : undefined,
-                limit: data.limit,
-                offset: data.offset,
-              }),
-          includeCounts && did
-            ? countFollowedDocuments(db, schema, followUris, did)
-            : Promise.resolve({ all: 0, unread: 0 }),
-          includeCounts
-            ? countNetworkDocuments(db, schema)
-            : Promise.resolve(0),
-          includeCounts && did
-            ? countTrendingDocuments(
-                db,
-                schema,
-                data.filter === "trending" ? "page" : "rail",
-              )
-            : Promise.resolve(0),
-        ]);
-
-      span.set("count", items.length);
-      const enrichedItems = await attachCommentCountsToArticles(
-        db,
-        schema,
-        trackReading ? items : articleCardsAsAllRead(items),
-      );
-      return {
-        items: enrichedItems,
-        counts: {
-          unread: trackReading ? followCounts.unread : 0,
-          subscriptions: followCounts.all,
-          all: networkCount,
-          trending: trendingCount,
-        },
-        nextOffset:
-          data.filter === "trending"
-            ? null
-            : items.length === data.limit
-              ? data.offset + data.limit
-              : null,
-      } satisfies LatestFeed;
+      return loadLatestFeedCritical(db, schema, did, data, span);
     }),
   );
+
+/** Tab badges + masthead totals — loaded after the critical latest feed paints. */
+const getLatestFeedCounts = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .handler(
+    observe("feed.getLatestFeedCounts", async ({ context }, span) => {
+      const { db, schema } = context;
+      const did = await attachReaderSpanContext(span, getRequest());
+      return loadLatestFeedCounts(db, schema, did, span);
+    }),
+  );
+
+function getLatestFeedCountsQueryOptions() {
+  return queryOptions({
+    queryKey: ["feed", "latest", "counts"] as const,
+    queryFn: async () => getLatestFeedCounts(),
+    staleTime: 60_000,
+  });
+}
 
 function getHomeFeedQueryOptions({
   scope = "follows",
@@ -368,6 +495,17 @@ function getHomeFeedQueryOptions({
   return queryOptions({
     queryKey: ["feed", "home", scope] as const,
     queryFn: async () => getHomeFeed({ data: { scope } }),
+  });
+}
+
+function getHomeExtrasQueryOptions({
+  scope = "follows",
+  excludeUris = [],
+}: z.input<typeof homeExtrasInput> = {}) {
+  return queryOptions({
+    queryKey: ["feed", "home", "extras", scope, excludeUris] as const,
+    queryFn: async () => getHomeExtras({ data: { scope, excludeUris } }),
+    staleTime: 60_000,
   });
 }
 
@@ -397,7 +535,12 @@ function getSidebarQueryOptions() {
 export const feedApi = {
   getHomeFeed,
   getHomeFeedQueryOptions,
+  getHomeExtras,
+  getHomeExtrasQueryOptions,
+  getHomePage,
   getLatestFeed,
+  getLatestFeedCounts,
+  getLatestFeedCountsQueryOptions,
   getLatestFeedQueryOptions,
   getSidebar,
   getSidebarQueryOptions,

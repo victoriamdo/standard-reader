@@ -1,7 +1,8 @@
+import type { SubscribeCardPhase } from "#/components/reader/subscribe-card";
+
 import { useMutation, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { publicationUriFromParams } from "#/components/reader/format";
-import type { SubscribeCardPhase } from "#/components/reader/subscribe-card";
 import { SubscribeCard } from "#/components/reader/subscribe-card";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";

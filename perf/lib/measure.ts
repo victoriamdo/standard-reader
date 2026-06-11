@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import type { PerfTarget } from "./targets.ts";
+
 import { targetUrl } from "./targets.ts";
 
 export interface LoadMeasurement {

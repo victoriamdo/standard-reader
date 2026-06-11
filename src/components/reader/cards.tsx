@@ -8,12 +8,12 @@ import { Link, createLink } from "@tanstack/react-router";
 import { AuthorProfileLink } from "#/components/reader/author-profile-link";
 import { PublicationNameLink } from "#/components/reader/publication-name-link";
 import { SearchHeadline } from "#/components/reader/search-headline";
-import { tsHeadlineHasMatch } from "#/lib/search-headline";
 import { gap } from "#/design-system/theme/semantic-spacing.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex.tsx";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { parseInternalRoute } from "#/lib/internal-route";
+import { tsHeadlineHasMatch } from "#/lib/search-headline";
 import { useOpenLinks } from "#/lib/use-open-links";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
@@ -76,6 +76,28 @@ const styles = stylex.create({
     color: "inherit",
     cursor: "pointer",
     display: "block",
+  },
+  cardShell: {
+    textDecoration: "none",
+    position: "relative",
+    color: "inherit",
+    cursor: "pointer",
+    display: "block",
+  },
+  cardOverlay: {
+    inset: 0,
+    position: "absolute",
+    borderRadius: "inherit",
+    zIndex: 0,
+  },
+  cardInertRoot: {
+    display: "contents",
+    pointerEvents: "none",
+  },
+  cardInteractive: {
+    pointerEvents: "auto",
+    position: "relative",
+    zIndex: 1,
   },
   byline: {
     color: uiColor.text2,
@@ -160,10 +182,10 @@ const styles = stylex.create({
   rowShell: {
     borderBottomColor: uiColor.border1,
     borderBottomStyle: "solid",
-    borderBottomWidth: 1,
     display: "flex",
-    flexDirection: "column",
+    borderBottomWidth: 1,
     gap: gap["2xl"],
+    flexDirection: "column",
     paddingBottom: spacing["6"],
     paddingTop: spacing["6"],
   },
@@ -183,10 +205,10 @@ const styles = stylex.create({
   featureShell: {
     borderBottomColor: uiColor.border1,
     borderBottomStyle: "solid",
-    borderBottomWidth: 1,
     display: "flex",
-    flexDirection: "column",
+    borderBottomWidth: 1,
     gap: gap["5xl"],
+    flexDirection: "column",
     paddingBottom: spacing["9"],
   },
   featureGrid: {
@@ -813,7 +835,10 @@ export function FollowButton({
 
 function OwnerHandleLink({ did, handle }: { did: string; handle: string }) {
   return (
-    <AuthorProfileLink authorRef={did} linkStyle={styles.ownerHandleLink}>
+    <AuthorProfileLink
+      authorRef={did}
+      linkStyle={[styles.ownerHandleLink, styles.cardInteractive]}
+    >
       <Handle>@{handle}</Handle>
     </AuthorProfileLink>
   );
@@ -1086,24 +1111,24 @@ function ArticleLink({
   return <div {...stylex.props(...extraStyles)}>{children}</div>;
 }
 
-function PublicationLink({
+function PublicationStretchedLink({
   pub,
-  children,
-  extraStyles = [],
   onNavigate,
 }: {
   pub: PublicationCard;
-  children: React.ReactNode;
-  extraStyles?: Array<stylex.StyleXStyles | false | undefined>;
   onNavigate?: () => void;
 }) {
+  const overlay = stylex.props(styles.cardOverlay);
   const params = publicationLinkParams(pub.uri);
-  const merged = stylex.props(styles.cardLink, ...extraStyles);
   if (params) {
     return (
-      <Link to="/p/$did/$rkey" params={params} onClick={onNavigate} {...merged}>
-        {children}
-      </Link>
+      <Link
+        to="/p/$did/$rkey"
+        params={params}
+        onClick={onNavigate}
+        aria-label={`Open ${pub.name}`}
+        {...overlay}
+      />
     );
   }
   const href = pub.url;
@@ -1115,17 +1140,19 @@ function PublicationLink({
           to={internal.to}
           params={internal.params}
           onClick={onNavigate}
-          {...merged}
-        >
-          {children}
-        </Link>
+          aria-label={`Open ${pub.name}`}
+          {...overlay}
+        />
       );
     }
     if (internal) {
       return (
-        <Link to={internal.to} onClick={onNavigate} {...merged}>
-          {children}
-        </Link>
+        <Link
+          to={internal.to}
+          onClick={onNavigate}
+          aria-label={`Open ${pub.name}`}
+          {...overlay}
+        />
       );
     }
     return (
@@ -1134,13 +1161,39 @@ function PublicationLink({
         target="_blank"
         rel="noreferrer"
         onClick={onNavigate}
-        {...merged}
-      >
-        {children}
-      </a>
+        aria-label={`Open ${pub.name} (opens in a new tab)`}
+        {...overlay}
+      />
     );
   }
-  return <div {...stylex.props(...extraStyles)}>{children}</div>;
+  return null;
+}
+
+function PublicationLink({
+  pub,
+  children,
+  extraStyles = [],
+  onNavigate,
+}: {
+  pub: PublicationCard;
+  children: React.ReactNode;
+  extraStyles?: Array<stylex.StyleXStyles | false | undefined>;
+  onNavigate?: () => void;
+}) {
+  const shell = stylex.props(styles.cardShell, ...extraStyles);
+  const hasLinkTarget =
+    publicationLinkParams(pub.uri) != null || Boolean(pub.url);
+
+  if (!hasLinkTarget) {
+    return <div {...stylex.props(...extraStyles)}>{children}</div>;
+  }
+
+  return (
+    <div {...shell}>
+      <PublicationStretchedLink pub={pub} onNavigate={onNavigate} />
+      <div {...stylex.props(styles.cardInertRoot)}>{children}</div>
+    </div>
+  );
 }
 
 /** Cover for an article: only its own cover image (never the Bluesky banner). */
@@ -1565,7 +1618,10 @@ function FollowSlot({
   style?: stylex.StyleXStyles;
 }) {
   return (
-    <div role="presentation" {...stylex.props(styles.followSlot, style)}>
+    <div
+      role="presentation"
+      {...stylex.props(styles.followSlot, styles.cardInteractive, style)}
+    >
       <FollowButton
         publicationUri={publicationUri}
         signedIn={signedIn}
@@ -1723,7 +1779,10 @@ export function PubDirectoryRow({
           {...stylex.props(styles.pubDirTop, hasRank && styles.pubDirTopRanked)}
         >
           {pub.searchNameHtml && tsHeadlineHasMatch(pub.searchNameHtml) ? (
-            <SearchHeadline html={pub.searchNameHtml} style={styles.pubDirName} />
+            <SearchHeadline
+              html={pub.searchNameHtml}
+              style={styles.pubDirName}
+            />
           ) : (
             <span {...stylex.props(styles.pubDirName)}>{pub.name}</span>
           )}

@@ -20,6 +20,7 @@ import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 import { APP_NSID } from "#/lib/atproto/nsids";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { selectFollowUris } from "#/server/reader/queries";
+import { cache as reactCache } from "react";
 
 const RECORD_FETCH_TIMEOUT_MS = 8000;
 const LIST_RECORDS_PAGE = 100;
@@ -209,12 +210,7 @@ export async function savedListPublicationUris(
   return [...new Set(lists.flatMap((list) => list.publications))];
 }
 
-/**
- * The reader's *effective* follow set: real subscriptions plus every
- * publication in their saved lists. This is what the sidebar, feeds, and
- * unread counts operate on — saving a list acts like following its members.
- */
-export async function effectiveFollowUris(
+async function effectiveFollowUrisImpl(
   db: Db,
   schema: Schema,
   did: string,
@@ -225,3 +221,10 @@ export async function effectiveFollowUris(
   ]);
   return [...new Set([...followUris, ...listUris])];
 }
+
+/**
+ * The reader's *effective* follow set: real subscriptions plus every
+ * publication in their saved lists. This is what the sidebar, feeds, and
+ * unread counts operate on — saving a list acts like following its members.
+ */
+export const effectiveFollowUris = reactCache(effectiveFollowUrisImpl);

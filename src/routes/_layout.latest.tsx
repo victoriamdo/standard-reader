@@ -1,10 +1,7 @@
 "use client";
 
-import type { LatestFilter } from "#/integrations/tanstack-query/api-feed.functions";
-
 import * as stylex from "@stylexjs/stylex";
 import {
-  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -33,6 +30,10 @@ import {
 } from "react";
 import { z } from "zod";
 
+import type {
+  LatestFeedCounts,
+  LatestFilter,
+} from "../integrations/tanstack-query/api-feed.functions";
 import type { ArticleCard } from "../integrations/tanstack-query/api-shapes";
 
 import { ArticleRow } from "../components/reader/cards";
@@ -77,14 +78,24 @@ const LATEST_FILTERS = [
 export const Route = createFileRoute("/_layout/latest")({
   validateSearch: latestSearchSchema,
   loaderDeps: ({ search }) => ({ filter: search.filter }),
-  loader: async ({ context, deps }) => {
-    await context.queryClient.ensureQueryData(
-      feedApi.getLatestFeedQueryOptions({
-        filter: deps.filter,
-        limit: latestFeedPageSize(deps.filter),
-        offset: 0,
-      }),
-    );
+  loader: async ({ context, deps, preload }) => {
+    const feedOptions = feedApi.getLatestFeedQueryOptions({
+      filter: deps.filter,
+      limit: latestFeedPageSize(deps.filter),
+      offset: 0,
+    });
+    const countsOptions = feedApi.getLatestFeedCountsQueryOptions();
+
+    if (preload) {
+      void context.queryClient.prefetchQuery(countsOptions);
+      void context.queryClient.prefetchQuery(feedOptions);
+      return;
+    }
+
+    await Promise.all([
+      context.queryClient.ensureQueryData(feedOptions),
+      context.queryClient.ensureQueryData(countsOptions),
+    ]);
   },
   head: () => ({
     meta: pageSocialMeta("latest", getPublicUrlClient()),
@@ -168,6 +179,15 @@ const styles = stylex.create({
     textAlign: "center",
     marginTop: spacing["6"],
   },
+  tabLabel: {
+    alignItems: "center",
+    columnGap: spacing["1.5"],
+    display: "inline-flex",
+    rowGap: spacing["1.5"],
+  },
+  tabCountSkeleton: {
+    flexShrink: 0,
+  },
 });
 
 function ArticleRowSkeleton({
@@ -215,7 +235,43 @@ function LatestFeedSkeleton({ rows = SKELETON_ROWS }: { rows?: number }) {
   );
 }
 
-function LatestFeedPanel({ filter }: { filter: LatestFilter }) {
+function LatestTabLabel({
+  name,
+  count,
+  pending,
+  formatCountValue = (value) => String(value),
+}: {
+  name: string;
+  count: number;
+  pending: boolean;
+  formatCountValue?: (value: number) => string;
+}) {
+  return (
+    <span {...stylex.props(styles.tabLabel)}>
+      {name}
+      {pending ? (
+        <Skeleton
+          variant="rectangle"
+          height={spacing["4"]}
+          width={spacing["10"]}
+          style={styles.tabCountSkeleton}
+        />
+      ) : (
+        ` (${formatCountValue(count)})`
+      )}
+    </span>
+  );
+}
+
+function LatestFeedPanel({
+  filter,
+  counts,
+  countsPending,
+}: {
+  filter: LatestFilter;
+  counts: LatestFeedCounts;
+  countsPending: boolean;
+}) {
   const navigate = useNavigate({ from: Route.fullPath });
   const pageSize = latestFeedPageSize(filter);
 
@@ -290,6 +346,10 @@ function LatestFeedPanel({ filter }: { filter: LatestFilter }) {
   const isNetwork = !signedIn || filter === "all" || isTrending;
 
   if (items.length === 0) {
+    if (countsPending && signedIn && !isNetwork && !isTrending) {
+      return <LatestFeedSkeleton rows={3} />;
+    }
+
     return (
       <>
         {isTrending ? (
@@ -309,7 +369,7 @@ function LatestFeedPanel({ filter }: { filter: LatestFilter }) {
               Nothing has been published across the network recently.
             </span>
           </Flex>
-        ) : feed.counts.subscriptions === 0 ? (
+        ) : counts.subscriptions === 0 ? (
           <Flex direction="column" gap="2xl" style={styles.emptyCard}>
             <span {...stylex.props(styles.emptyTitle)}>Nothing here yet</span>
             <span {...stylex.props(styles.emptyDek)}>
@@ -380,21 +440,24 @@ function Latest() {
   const queryClient = useQueryClient();
   const pageSize = latestFeedPageSize(filter);
 
-  const { data: feedMeta } = useQuery({
-    ...feedApi.getLatestFeedQueryOptions({
-      filter,
-      limit: pageSize,
-      offset: 0,
-    }),
-    placeholderData: keepPreviousData,
+  const {
+    data: tabCounts,
+    isPending: countsQueryPending,
+    isFetching: countsFetching,
+  } = useQuery({
+    ...feedApi.getLatestFeedCountsQueryOptions(),
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
-  const counts = feedMeta?.counts ?? {
+  const counts = tabCounts ?? {
     unread: 0,
     subscriptions: 0,
     all: 0,
     trending: 0,
   };
+  const countsPending =
+    tabCounts == null && (countsQueryPending || countsFetching);
 
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const { enabled: trackReading } = useTrackReadingHistory();
@@ -412,6 +475,7 @@ function Latest() {
     if (!signedIn) return;
 
     const prefetchTabs = () => {
+      void queryClient.prefetchQuery(feedApi.getLatestFeedCountsQueryOptions());
       for (const tabFilter of LATEST_FILTERS) {
         if (tabFilter === filter) continue;
         if (tabFilter === "unread" && !trackReading) continue;
@@ -458,22 +522,44 @@ function Latest() {
     },
   });
 
-  const allCount = formatCount(counts.all);
-  const trendingCount = formatCount(
-    Math.min(counts.trending, TRENDING_PAGE_LIMIT),
+  const unreadLabel = (
+    <LatestTabLabel
+      name="Unread"
+      count={counts.unread}
+      pending={countsPending}
+    />
   );
-  const unreadLabel = `Unread (${counts.unread})`;
-  const subscriptionsLabel = `Subscriptions (${counts.subscriptions})`;
-  const allLabel = `All (${allCount})`;
-  const trendingLabel = `Trending (${trendingCount})`;
+  const subscriptionsLabel = (
+    <LatestTabLabel
+      name="Subscriptions"
+      count={counts.subscriptions}
+      pending={countsPending}
+    />
+  );
+  const allLabel = (
+    <LatestTabLabel
+      name="All"
+      count={counts.all}
+      pending={countsPending}
+      formatCountValue={formatCount}
+    />
+  );
+  const trendingLabel = (
+    <LatestTabLabel
+      name="Trending"
+      count={Math.min(counts.trending, TRENDING_PAGE_LIMIT)}
+      pending={countsPending}
+      formatCountValue={formatCount}
+    />
+  );
 
   const isTrending = filter === "trending";
   const isNetwork = !signedIn || filter === "all" || isTrending;
 
-  const metaValue = isTrending
-    ? `${trendingCount} articles`
+  const metaValueText = isTrending
+    ? `${formatCount(Math.min(counts.trending, TRENDING_PAGE_LIMIT))} articles`
     : isNetwork
-      ? `${allCount} articles`
+      ? `${formatCount(counts.all)} articles`
       : filter === "unread"
         ? `${counts.unread} unread`
         : `${counts.subscriptions} articles`;
@@ -495,7 +581,17 @@ function Latest() {
               : "Everything published recently across the publications you follow."
         }
         metaLabel={isTrending || isNetwork ? "On the network" : "In your feed"}
-        metaValue={metaValue}
+        metaValue={
+          countsPending ? (
+            <Skeleton
+              variant="rectangle"
+              height={spacing["8"]}
+              width={spacing["16"]}
+            />
+          ) : (
+            metaValueText
+          )
+        }
       />
 
       <div {...stylex.props(styles.controls)}>
@@ -528,6 +624,7 @@ function Latest() {
         {trackReading &&
         signedIn &&
         filter === "unread" &&
+        !countsPending &&
         counts.unread > 0 ? (
           <Button
             variant="tertiary"
@@ -544,7 +641,11 @@ function Latest() {
         key={filter}
         fallback={<LatestFeedSkeleton rows={skeletonRows} />}
       >
-        <LatestFeedPanel filter={filter} />
+        <LatestFeedPanel
+          filter={filter}
+          counts={counts}
+          countsPending={countsPending}
+        />
       </Suspense>
     </ReaderContent>
   );

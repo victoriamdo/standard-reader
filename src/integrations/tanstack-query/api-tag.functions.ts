@@ -4,7 +4,7 @@ import type { TagPublicationCard } from "#/server/reader/queries";
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { getAtprotoSessionForRequest } from "#/middleware/auth";
+import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import {
   putSubscriptionRecord,
   subjectRkey,

@@ -1,12 +1,12 @@
 import type { BrowserContext } from "@playwright/test";
 
+import { readPerfAuthState } from "./bootstrap-session.ts";
 import {
   hasPerfAppPasswordCredentials,
   perfBaseUrl,
   perfSessionToken,
   SESSION_COOKIE_NAME,
 } from "./config.ts";
-import { readPerfAuthState } from "./bootstrap-session.ts";
 
 export function hasPerfSignedInCredentials(): boolean {
   if (perfSessionToken()) return true;

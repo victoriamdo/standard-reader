@@ -1,7 +1,9 @@
+import type { Span } from "#/server/observability/log";
+
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { getAtprotoSessionForRequest } from "#/middleware/auth";
+import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import {
@@ -17,7 +19,7 @@ import {
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
 import { z } from "zod";
 
-import type { PublicationCard } from "./api-shapes";
+import type { PublicationCard, Db, Schema } from "./api-shapes";
 
 import { dbMiddleware } from "./db-middleware";
 
@@ -58,6 +60,85 @@ export interface PublicationDirectoryPage {
   nextOffset: number | null;
 }
 
+/** Masthead count + above-the-fold rails — deferred after shell paints. */
+export interface DiscoverExtras {
+  knownPublicationCount: number;
+  recommended: Array<PublicationCard>;
+  followedBy: Array<PublicationCard>;
+}
+
+const discoverExtrasInput = z.object({
+  recommendedLimit: z.number().int().min(1).max(100).default(12),
+  socialProofLimit: z.number().int().min(1).max(100).default(12),
+});
+
+async function loadRecommendedRail(
+  db: Db,
+  schema: Schema,
+  did: string | null | undefined,
+  limit: number,
+  trendingExclude: Array<string>,
+  followUris: Array<string>,
+): Promise<Array<PublicationCard>> {
+  const items =
+    did == null
+      ? await popularPublications(db, schema, limit, trendingExclude)
+      : await recommendedPublications(db, schema, did, limit, {
+          excludeUris: trendingExclude,
+          followUris,
+        });
+  return items.filter((pub) => pub.documentCount > 0);
+}
+
+async function loadDiscoverExtras(
+  db: Db,
+  schema: Schema,
+  did: string | null | undefined,
+  { recommendedLimit, socialProofLimit }: z.infer<typeof discoverExtrasInput>,
+  span: Span,
+): Promise<DiscoverExtras> {
+  const trendingLimit = Math.max(recommendedLimit, socialProofLimit);
+  span.set("personalized", did != null);
+  if (did) {
+    span.set("did", did);
+  }
+
+  const [knownPublicationCount, trendingExclude, followUris] =
+    await Promise.all([
+      countKnownPublications(db),
+      trendingPublicationUris(db, schema, trendingLimit),
+      did ? effectiveFollowUris(db, schema, did) : Promise.resolve([]),
+    ]);
+
+  span.set("trendingExclude", trendingExclude.length);
+
+  const [recommended, followedBy] = await Promise.all([
+    loadRecommendedRail(
+      db,
+      schema,
+      did,
+      recommendedLimit,
+      trendingExclude,
+      followUris,
+    ),
+    did
+      ? followedByPeopleYouFollow(db, schema, did, socialProofLimit, {
+          excludeUris: trendingExclude,
+          followUris,
+        })
+      : Promise.resolve([]),
+  ]);
+
+  span.set("recommended", recommended.length);
+  span.set("followedBy", followedBy.length);
+
+  return {
+    knownPublicationCount,
+    recommended,
+    followedBy,
+  } satisfies DiscoverExtras;
+}
+
 const getTopics = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
   .inputValidator(topicsInput)
@@ -79,6 +160,18 @@ const getKnownPublicationCount = createServerFn({ method: "GET" })
       const count = await countKnownPublications(context.db);
       span.set("count", count);
       return count;
+    }),
+  );
+
+/** Masthead count + rails — loaded after the discover shell paints. */
+const getDiscoverExtras = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(discoverExtrasInput)
+  .handler(
+    observe("discover.getDiscoverExtras", async ({ data, context }, span) => {
+      const { db, schema } = context;
+      const did = await attachReaderSpanContext(span, getRequest());
+      return loadDiscoverExtras(db, schema, did, data, span);
     }),
   );
 
@@ -227,6 +320,23 @@ const getFollowedByPeopleYouFollow = createServerFn({ method: "GET" })
     ),
   );
 
+function getDiscoverExtrasQueryOptions({
+  recommendedLimit = 12,
+  socialProofLimit = 12,
+}: z.input<typeof discoverExtrasInput> = {}) {
+  return queryOptions({
+    queryKey: [
+      "discover",
+      "extras",
+      recommendedLimit,
+      socialProofLimit,
+    ] as const,
+    queryFn: async () =>
+      getDiscoverExtras({ data: { recommendedLimit, socialProofLimit } }),
+    staleTime: 60_000,
+  });
+}
+
 function getKnownPublicationCountQueryOptions() {
   return queryOptions({
     queryKey: ["discover", "known-count"] as const,
@@ -300,6 +410,8 @@ function getEffectiveFollowUrisQueryOptions() {
 }
 
 export const discoverApi = {
+  getDiscoverExtras,
+  getDiscoverExtrasQueryOptions,
   getKnownPublicationCount,
   getKnownPublicationCountQueryOptions,
   getTopics,

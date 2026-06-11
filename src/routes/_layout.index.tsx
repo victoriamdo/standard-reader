@@ -3,7 +3,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { DEFAULT_TRACK_READING_HISTORY } from "#/lib/track-reading-history";
 import { ArrowRight, Flame, Sparkles } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { z } from "zod";
 
 import type { HomeScope } from "../integrations/tanstack-query/api-feed.functions";
@@ -49,15 +49,34 @@ const homeSearchSchema = z.object({
 export const Route = createFileRoute("/_layout/")({
   validateSearch: homeSearchSchema,
   loaderDeps: ({ search }) => ({ scope: search.scope }),
-  loader: async ({ context, deps }) => {
-    const { scope: savedScope } = await context.queryClient.ensureQueryData(
-      user.getHomeScopePreferenceQueryOptions,
+  loader: async ({ context, deps, preload }) => {
+    const page = await feedApi.getHomePage({
+      data: { scope: deps.scope },
+    });
+    context.queryClient.setQueryData(
+      user.getHomeScopePreferenceQueryOptions.queryKey,
+      { scope: page.scope },
     );
-    const scope = deps.scope ?? savedScope;
-    await context.queryClient.ensureQueryData(
-      feedApi.getHomeFeedQueryOptions({ scope }),
+    context.queryClient.setQueryData(
+      feedApi.getHomeFeedQueryOptions({ scope: page.scope }).queryKey,
+      page.feed,
     );
-    return { scope };
+    const excludeUris = [
+      page.feed.featured?.uri,
+      ...page.feed.latestUnread.map((article) => article.uri),
+    ].filter((uri): uri is string => uri != null);
+    const extrasOptions = feedApi.getHomeExtrasQueryOptions({
+      scope: page.scope,
+      excludeUris,
+    });
+
+    if (preload) {
+      void context.queryClient.prefetchQuery(extrasOptions);
+    } else {
+      await context.queryClient.ensureQueryData(extrasOptions);
+    }
+
+    return { scope: page.scope };
   },
   head: () => ({
     meta: pageSocialMeta("today", getPublicUrlClient()),
@@ -146,6 +165,33 @@ const styles = stylex.create({
   homeSkeleton: {
     marginTop: spacing["9"],
   },
+  railRows: {
+    paddingTop: spacing["2"],
+  },
+  railRowSkeleton: {
+    paddingBottom: spacing["4"],
+    paddingTop: spacing["4"],
+  },
+  railRowSkeletonLast: {
+    paddingBottom: spacing["0"],
+  },
+  railRankSkeleton: {
+    flexShrink: 0,
+  },
+  railGrow: {
+    flexGrow: 1,
+  },
+  railMiniRowSkeleton: {
+    alignItems: "center",
+    paddingBottom: spacing["4"],
+    paddingTop: spacing["4"],
+  },
+  railMiniRowSkeletonLast: {
+    paddingBottom: spacing["0"],
+  },
+  railLinkSkeleton: {
+    marginTop: spacing["3"],
+  },
 });
 
 const TODAY_FMT = new Intl.DateTimeFormat("en-US", {
@@ -173,20 +219,25 @@ function homeFeedLabels({
   personalized,
   trackReading,
   unreadCount,
-  unreadFallback = 0,
+  unreadCountPending = false,
 }: {
   weekday: string;
   today: string;
   personalized: boolean;
   trackReading: boolean;
   unreadCount: number | null | undefined;
-  unreadFallback?: number;
+  unreadCountPending?: boolean;
 }) {
-  const unreadLabel =
-    !trackReading || unreadCount == null ? "Fresh" : `${unreadCount} new`;
+  const unreadLabel = trackReading
+    ? unreadCountPending || unreadCount == null
+      ? undefined
+      : `${unreadCount} new`
+    : "Fresh";
   const dek = personalized
     ? trackReading
-      ? `${unreadCount ?? unreadFallback} unread across the publications you follow.`
+      ? unreadCountPending
+        ? "The latest writing from the publications you follow."
+        : `${unreadCount ?? 0} unread across the publications you follow.`
       : "The latest writing from the publications you follow."
     : "The latest long-form writing from across the network.";
 
@@ -221,6 +272,107 @@ function HomeFeedSkeleton() {
         </Flex>
       </div>
     </ReaderContent>
+  );
+}
+
+const TRENDING_RAIL_SKELETON_ROWS = 4;
+const FOLLOW_RAIL_SKELETON_ROWS = 3;
+
+function HomeTrendingRailSkeleton() {
+  return (
+    <div
+      {...stylex.props(styles.railCard)}
+      aria-busy="true"
+      aria-label="Loading trending articles"
+    >
+      <div {...stylex.props(styles.railHead)}>
+        <Flame size={14} {...stylex.props(styles.railIcon)} /> Trending articles
+      </div>
+      <Flex direction="column" style={styles.railRows} aria-hidden>
+        {Array.from({ length: TRENDING_RAIL_SKELETON_ROWS }, (_, index) => (
+          <Flex
+            key={index}
+            align="start"
+            gap="md"
+            style={[
+              styles.railRowSkeleton,
+              index === TRENDING_RAIL_SKELETON_ROWS - 1 &&
+                styles.railRowSkeletonLast,
+            ]}
+          >
+            <Skeleton
+              variant="rectangle"
+              height={spacing["5"]}
+              width={spacing["6"]}
+              style={styles.railRankSkeleton}
+            />
+            <Flex direction="column" gap="sm" style={styles.railGrow}>
+              <Skeleton variant="rectangle" height={spacing["5"]} width="92%" />
+              <Skeleton
+                variant="rectangle"
+                height={spacing["3.5"]}
+                width="56%"
+              />
+            </Flex>
+          </Flex>
+        ))}
+      </Flex>
+      <Skeleton
+        variant="rectangle"
+        height={spacing["8"]}
+        width="44%"
+        style={styles.railLinkSkeleton}
+      />
+    </div>
+  );
+}
+
+function HomeYouMightFollowRailSkeleton() {
+  return (
+    <div
+      {...stylex.props(styles.railCard)}
+      aria-busy="true"
+      aria-label="Loading recommendations"
+    >
+      <div {...stylex.props(styles.railHead)}>
+        <Sparkles size={14} {...stylex.props(styles.railIcon)} /> You might
+        follow
+      </div>
+      <Flex direction="column" style={styles.railRows} aria-hidden>
+        {Array.from({ length: FOLLOW_RAIL_SKELETON_ROWS }, (_, index) => (
+          <Flex
+            key={index}
+            gap="md"
+            style={[
+              styles.railMiniRowSkeleton,
+              index === FOLLOW_RAIL_SKELETON_ROWS - 1 &&
+                styles.railMiniRowSkeletonLast,
+            ]}
+          >
+            <Skeleton variant="circle" size="lg" />
+            <Flex direction="column" gap="sm" style={styles.railGrow}>
+              <Skeleton variant="rectangle" height={spacing["5"]} width="48%" />
+              <Skeleton
+                variant="rectangle"
+                height={spacing["3.5"]}
+                width="36%"
+              />
+            </Flex>
+            <Skeleton
+              variant="rectangle"
+              height={spacing["4"]}
+              width={spacing["4"]}
+            />
+          </Flex>
+        ))}
+      </Flex>
+      <Skeleton
+        variant="rectangle"
+        height={spacing["8"]}
+        width="52%"
+        style={styles.railLinkSkeleton}
+      />
+    </div>
   );
 }
 
@@ -259,6 +411,32 @@ function HomeFeed({ scope }: { scope: HomeScope }) {
       ? (trackReadingPref?.enabled ?? DEFAULT_TRACK_READING_HISTORY)
       : false;
 
+  const excludeUris = useMemo(
+    () =>
+      [
+        feed.featured?.uri,
+        ...feed.latestUnread.map((article) => article.uri),
+      ].filter((uri): uri is string => uri != null),
+    [feed.featured, feed.latestUnread],
+  );
+
+  const hasMainContent = Boolean(
+    feed.featured || feed.latestUnread.length > 0 || feed.personalized,
+  );
+
+  const { data: extras, isPending: extrasPending } = useQuery({
+    ...feedApi.getHomeExtrasQueryOptions({ scope, excludeUris }),
+    enabled: hasMainContent,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const trending = extras?.trending ?? feed.trending;
+  const youMightFollow = extras?.youMightFollow ?? feed.youMightFollow;
+  const unreadCount = extras?.unreadCount ?? feed.unreadCount;
+  const unreadCountPending =
+    trackReading && feed.personalized && unreadCount == null;
+
   const onScopeChange = (keys: Set<React.Key> | "all") => {
     const next = keys === "all" ? "follows" : [...keys][0];
     if (next === "follows" || next === "network") {
@@ -273,8 +451,8 @@ function HomeFeed({ scope }: { scope: HomeScope }) {
     today: TODAY_FMT.format(now),
     personalized: feed.personalized,
     trackReading,
-    unreadCount: feed.unreadCount,
-    unreadFallback: feed.latestUnread.length,
+    unreadCount,
+    unreadCountPending,
   });
 
   if (!feed.personalized && feed.latestUnread.length === 0 && !feed.featured) {
@@ -306,9 +484,25 @@ function HomeFeed({ scope }: { scope: HomeScope }) {
       <Masthead
         kicker={labels.kicker}
         title="Today"
-        dek={labels.dek}
+        dek={
+          unreadCountPending ? (
+            <Skeleton variant="rectangle" height={spacing["5"]} width="68%" />
+          ) : (
+            labels.dek
+          )
+        }
         metaLabel={labels.metaLabel}
-        metaValue={labels.unreadLabel}
+        metaValue={
+          unreadCountPending ? (
+            <Skeleton
+              variant="rectangle"
+              height={spacing["8"]}
+              width={spacing["16"]}
+            />
+          ) : (
+            labels.unreadLabel
+          )
+        }
         metaAccessory={
           signedIn && feed.hasFollows ? (
             <SegmentedControl
@@ -355,14 +549,16 @@ function HomeFeed({ scope }: { scope: HomeScope }) {
         </Flex>
 
         <Flex direction="column" gap="2xl">
-          {feed.trending.length > 0 ? (
+          {extrasPending ? (
+            <HomeTrendingRailSkeleton />
+          ) : trending.length > 0 ? (
             <div {...stylex.props(styles.railCard)}>
               <div {...stylex.props(styles.railHead)}>
                 <Flame size={14} {...stylex.props(styles.railIcon)} /> Trending
                 articles
               </div>
               <div>
-                {feed.trending.map((article, i) => (
+                {trending.map((article, i) => (
                   <CompactRow
                     key={article.uri}
                     article={article}
@@ -382,14 +578,16 @@ function HomeFeed({ scope }: { scope: HomeScope }) {
             </div>
           ) : null}
 
-          {feed.youMightFollow.length > 0 ? (
+          {extrasPending ? (
+            <HomeYouMightFollowRailSkeleton />
+          ) : youMightFollow.length > 0 ? (
             <div {...stylex.props(styles.railCard)}>
               <div {...stylex.props(styles.railHead)}>
                 <Sparkles size={14} {...stylex.props(styles.railIcon)} /> You
                 might follow
               </div>
               <div>
-                {feed.youMightFollow.slice(0, 3).map((pub, i, pubs) => (
+                {youMightFollow.slice(0, 3).map((pub, i, pubs) => (
                   <MiniPubRow
                     key={pub.uri}
                     pub={pub}

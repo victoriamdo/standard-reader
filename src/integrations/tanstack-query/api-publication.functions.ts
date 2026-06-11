@@ -15,7 +15,7 @@ import { OFFPRINT_CONTENT } from "#/lib/offprint/types";
 import { pcktBlocks, pcktCodeLanguage } from "#/lib/pckt/blocks";
 import { PCKT_CONTENT } from "#/lib/pckt/types";
 import { EMPTY_CODE_HIGHLIGHTS } from "#/lib/theme";
-import { getAtprotoSessionForRequest } from "#/middleware/auth";
+import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { authorPds } from "#/server/atproto/identity";
 import { resolveGreengaleContent } from "#/server/greengale/resolve";
 import { buildCanonicalUrl } from "#/server/ingest/mappers";
@@ -39,6 +39,7 @@ import {
   selectPublicationArticleCards,
 } from "#/server/reader/queries";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
+import { resolveTrackReadingHistoryEnabled } from "#/server/reader/track-reading-history";
 import { highlightLeafletCodeBlocks } from "#/server/shiki/highlighter";
 import { themeModeForRequest } from "#/server/theme-preference";
 import { and, eq, sql } from "drizzle-orm";
@@ -227,7 +228,12 @@ const getPublicationProfile = createServerFn({ method: "GET" })
         const st = schema.publicationStats;
         const pr = schema.profiles;
         span.set("publicationUri", data.publicationUri);
-        await attachReaderSpanContext(span, getRequest());
+        const did = await attachReaderSpanContext(span, getRequest());
+        const trackReading =
+          did == null
+            ? false
+            : await resolveTrackReadingHistoryEnabled(db, schema);
+        const readForDid = trackReading && did ? did : undefined;
 
         const [headerRow, recentDocuments] = await Promise.all([
           db
@@ -246,6 +252,7 @@ const getPublicationProfile = createServerFn({ method: "GET" })
           selectPublicationArticleCards(db, schema, {
             publicationUri: data.publicationUri,
             limit: data.recentLimit,
+            readForDid,
           }),
         ]);
 
@@ -292,12 +299,18 @@ const getPublicationDocuments = createServerFn({ method: "GET" })
         const { db, schema } = context;
         span.set("publicationUri", data.publicationUri);
         span.set("offset", data.offset);
-        await attachReaderSpanContext(span, getRequest());
+        const did = await attachReaderSpanContext(span, getRequest());
+        const trackReading =
+          did == null
+            ? false
+            : await resolveTrackReadingHistoryEnabled(db, schema);
+        const readForDid = trackReading && did ? did : undefined;
 
         const documents = await selectPublicationArticleCards(db, schema, {
           publicationUri: data.publicationUri,
           limit: data.limit,
           offset: data.offset,
+          readForDid,
         });
         const items = await attachCommentCountsToArticles(
           db,
@@ -783,10 +796,19 @@ const getArticleExtras = createServerFn({ method: "GET" })
 
 function getPublicationProfileQueryOptions(
   publicationUri: string,
-  { recentLimit = 10 }: { recentLimit?: number } = {},
+  {
+    recentLimit = 10,
+    readerScope = "guest",
+  }: { recentLimit?: number; readerScope?: string } = {},
 ) {
   return queryOptions({
-    queryKey: ["publication", "profile", publicationUri, recentLimit] as const,
+    queryKey: [
+      "publication",
+      "profile",
+      publicationUri,
+      recentLimit,
+      readerScope,
+    ] as const,
     queryFn: async () =>
       getPublicationProfile({
         data: { publicationUri, recentLimit },
@@ -796,7 +818,11 @@ function getPublicationProfileQueryOptions(
 
 function getPublicationDocumentsQueryOptions(
   publicationUri: string,
-  { limit = 20, offset = 0 }: { limit?: number; offset?: number } = {},
+  {
+    limit = 20,
+    offset = 0,
+    readerScope = "guest",
+  }: { limit?: number; offset?: number; readerScope?: string } = {},
 ) {
   return queryOptions({
     queryKey: [
@@ -805,6 +831,7 @@ function getPublicationDocumentsQueryOptions(
       publicationUri,
       limit,
       offset,
+      readerScope,
     ] as const,
     queryFn: async () =>
       getPublicationDocuments({ data: { publicationUri, limit, offset } }),

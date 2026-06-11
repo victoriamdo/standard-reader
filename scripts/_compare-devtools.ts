@@ -29,8 +29,7 @@ async function listPdsDocuments(pds: string) {
       cursor?: string;
     };
     all.push(...(body.records ?? []));
-    cursor =
-      body.records?.length === 100 ? body.cursor : undefined;
+    cursor = body.records?.length === 100 ? body.cursor : undefined;
   } while (cursor);
   return all;
 }
@@ -51,7 +50,7 @@ async function main() {
   console.log("PDS latest 8:");
   for (const r of pdsDocs.slice(0, 8)) {
     console.log(
-      " ",
+      "",
       r.uri.split("/").pop(),
       "|",
       r.value.title,
@@ -79,7 +78,7 @@ async function main() {
   console.log("DB latest 8:");
   for (const r of dbRows.slice(0, 8)) {
     console.log(
-      " ",
+      "",
       r.uri.split("/").pop(),
       "|",
       r.title,
@@ -95,7 +94,7 @@ async function main() {
   const missing = pdsDocs.filter((r) => !dbUris.has(r.uri));
   console.log("\nOn PDS but missing from DB:", missing.length);
   for (const r of missing.slice(0, 10)) {
-    console.log(" ", r.uri, r.value.title);
+    console.log("", r.uri, r.value.title);
   }
 
   const pdsUris = new Set(pdsDocs.map((r) => r.uri));

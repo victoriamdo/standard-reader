@@ -18,6 +18,7 @@ import type {
   PublicationCard,
   Schema,
 } from "#/integrations/tanstack-query/api-shapes";
+import type { SQL } from "drizzle-orm";
 
 import {
   articleCardColumns,
@@ -50,7 +51,6 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
 
 /** Blend weights for personalized publication ranking (tunable). */
 const RECOMMENDATION_BLEND = {
@@ -78,6 +78,24 @@ export interface ArticleCardQuery {
   tag?: string;
   limit: number;
   offset?: number;
+}
+
+/**
+ * Inline `isRead` for a reader. Qualifies the outer `documents.uri` — unqualified
+ * `${d.uri}` in a subquery compiles to `"uri"` and breaks correlation.
+ */
+function documentReadExistsColumn(
+  schema: Schema,
+  readForDid: string,
+): SQL<boolean> {
+  const r = schema.reads;
+  return sql<boolean>`exists(
+    select 1
+    from ${r}
+    where ${r.documentUri} = "documents"."uri"
+      and ${r.ownerDid} = ${readForDid}
+      and ${r.deleted} = false
+  )`.mapWith(Boolean);
 }
 
 /**
@@ -121,13 +139,7 @@ export async function selectArticleCards(
   const selection = opts.readForDid
     ? {
         ...columns,
-        isRead: sql<boolean>`exists(
-          select 1
-          from ${r}
-          where ${r.documentUri} = ${d.uri}
-            and ${r.ownerDid} = ${opts.readForDid}
-            and ${r.deleted} = false
-        )`.mapWith(Boolean),
+        isRead: documentReadExistsColumn(schema, opts.readForDid),
       }
     : columns;
 
@@ -171,35 +183,46 @@ export async function selectPublicationArticleCards(
     publicationUri: string;
     limit: number;
     offset?: number;
+    /** Inline read flag for the requesting reader (see {@link ArticleCardQuery.readForDid}). */
+    readForDid?: string;
   },
 ): Promise<Array<ArticleCard>> {
   const d = schema.documents;
   const rec = schema.recommends;
 
-  const rows = await db
-    .select({
-      uri: d.uri,
-      did: d.did,
-      title: d.title,
-      description: d.description,
-      path: d.path,
-      canonicalUrl: d.canonicalUrl,
-      coverImageUrl: d.coverImageUrl,
-      publishedAt: d.publishedAt,
-      featured: d.featured,
-      publicationUri: d.publicationUri,
-      tags: d.tags,
-      textContent: d.textContent,
-      hasRenderableBody: d.hasRenderableBody,
-      // Qualify the outer `documents.uri` — unqualified `${d.uri}` in a
-      // subquery compiles to `"uri"` and breaks correlation without a join.
-      recommendCount: sql<number>`coalesce((
+  const baseSelection = {
+    uri: d.uri,
+    did: d.did,
+    title: d.title,
+    description: d.description,
+    path: d.path,
+    canonicalUrl: d.canonicalUrl,
+    coverImageUrl: d.coverImageUrl,
+    publishedAt: d.publishedAt,
+    featured: d.featured,
+    publicationUri: d.publicationUri,
+    tags: d.tags,
+    textContent: d.textContent,
+    hasRenderableBody: d.hasRenderableBody,
+    // Qualify the outer `documents.uri` — unqualified `${d.uri}` in a
+    // subquery compiles to `"uri"` and breaks correlation without a join.
+    recommendCount: sql<number>`coalesce((
         select count(*)::int
         from ${rec}
         where ${rec.documentUri} = "documents"."uri"
           and ${rec.deleted} = false
       ), 0)`.mapWith(Number),
-    })
+  };
+
+  const selection = opts.readForDid
+    ? {
+        ...baseSelection,
+        isRead: documentReadExistsColumn(schema, opts.readForDid),
+      }
+    : baseSelection;
+
+  const rows = await db
+    .select(selection)
     .from(d)
     .where(
       and(
@@ -457,20 +480,12 @@ function trendingArticleWhere(
 }
 
 function trendingArticleSelection(schema: Schema, readForDid?: string) {
-  const d = schema.documents;
-  const r = schema.reads;
   const columns = articleCardColumns(schema);
 
   return readForDid
     ? {
         ...columns,
-        isRead: sql<boolean>`exists(
-          select 1
-          from ${r}
-          where ${r.documentUri} = ${d.uri}
-            and ${r.ownerDid} = ${readForDid}
-            and ${r.deleted} = false
-        )`.mapWith(Boolean),
+        isRead: documentReadExistsColumn(schema, readForDid),
       }
     : columns;
 }

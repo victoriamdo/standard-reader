@@ -84,7 +84,7 @@ export function SubscribeEmbedPreview({
         return;
       }
 
-      const frame = document.getElementById(iframeId);
+      const frame = document.querySelector(`#${iframeId}`);
       if (
         frame instanceof HTMLIFrameElement &&
         event.source === frame.contentWindow

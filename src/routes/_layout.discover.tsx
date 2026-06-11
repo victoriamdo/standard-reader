@@ -74,7 +74,6 @@ const DIRECTORY_SKELETON_COUNT = 8;
 const DIRECTORY_LOAD_MORE_SKELETON_COUNT = 3;
 const DEFERRED_ROOT_MARGIN = "600px 0px";
 const RAIL_LIMIT = 10;
-const RAIL_SKELETON_COUNT = 4;
 const TRENDING_LIMIT_OPTIONS = [5, 10, 20, 50, 100] as const;
 const DEFAULT_TRENDING_LIMIT = 5;
 const SOCIAL_PROOF_COLLAPSED = 3;
@@ -88,30 +87,39 @@ const discoverSearchSchema = z.object({
 
 export const Route = createFileRoute("/_layout/discover")({
   validateSearch: discoverSearchSchema,
-  loader: async ({ context }) => {
-    const session = await context.queryClient.ensureQueryData(
-      user.getSessionQueryOptions,
-    );
+  loaderDeps: ({ search }) => ({ topic: search.topic, sort: search.sort }),
+  loader: async ({ context, deps, preload }) => {
+    const extrasOptions = discoverApi.getDiscoverExtrasQueryOptions({
+      recommendedLimit: RAIL_LIMIT,
+      socialProofLimit: SOCIAL_PROOF_MAX,
+    });
+    const trendingOptions = discoverApi.getTrendingPublicationsQueryOptions({
+      limit: DEFAULT_TRENDING_LIMIT,
+    });
+    const topicsOptions = discoverApi.getTopicsQueryOptions({
+      limit: DISCOVER_TOPICS_LIMIT,
+    });
+    const directoryOptions = discoverApi.getPublicationsQueryOptions({
+      topic: deps.topic ?? null,
+      sort: deps.sort,
+      limit: DIRECTORY_PAGE_SIZE,
+      offset: 0,
+    });
+
+    if (preload) {
+      void context.queryClient.prefetchQuery(extrasOptions);
+      void context.queryClient.prefetchQuery(trendingOptions);
+      void context.queryClient.prefetchQuery(topicsOptions);
+      void context.queryClient.prefetchQuery(directoryOptions);
+      return;
+    }
 
     await Promise.all([
-      context.queryClient.ensureQueryData(
-        discoverApi.getKnownPublicationCountQueryOptions(),
-      ),
-      context.queryClient.ensureQueryData(
-        discoverApi.getRecommendedPublicationsQueryOptions({
-          limit: RAIL_LIMIT,
-        }),
-      ),
-      ...(session?.user
-        ? [
-            context.queryClient.ensureQueryData(
-              discoverApi.getFollowedByPeopleYouFollowQueryOptions({
-                limit: SOCIAL_PROOF_MAX,
-              }),
-            ),
-          ]
-        : []),
+      context.queryClient.ensureQueryData(extrasOptions),
+      context.queryClient.ensureQueryData(trendingOptions),
     ]);
+    void context.queryClient.prefetchQuery(topicsOptions);
+    void context.queryClient.prefetchQuery(directoryOptions);
   },
   head: () => ({
     meta: pageSocialMeta("discover", getPublicUrlClient()),
@@ -263,7 +271,6 @@ function DiscoverDirectorySkeleton({
   if (view === "grid") {
     return (
       <Grid
-        aria-busy="true"
         aria-label="Loading publications"
         columnGap="lg"
         rowGap="lg"
@@ -277,7 +284,7 @@ function DiscoverDirectorySkeleton({
   }
 
   return (
-    <div aria-busy="true" aria-label="Loading publications">
+    <div aria-label="Loading publications">
       {Array.from({ length: count }, (_, index) => (
         <PubDirectoryRowSkeleton key={index} isLast={index === count - 1} />
       ))}
@@ -301,7 +308,27 @@ function DeferredMount({
     const node = rootRef.current;
     if (!node) return;
 
-    const root = node.closest("[data-app-scroller]");
+    const scroller = node.closest("[data-app-scroller]");
+    if (!scroller) {
+      setMounted(true);
+      return;
+    }
+
+    const marginY = Number.parseInt(DEFERRED_ROOT_MARGIN, 10) || 600;
+    const isNearView = () => {
+      const nodeRect = node.getBoundingClientRect();
+      const rootRect = scroller.getBoundingClientRect();
+      return (
+        nodeRect.bottom >= rootRect.top - marginY &&
+        nodeRect.top <= rootRect.bottom + marginY
+      );
+    };
+
+    if (isNearView()) {
+      setMounted(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
@@ -309,7 +336,7 @@ function DeferredMount({
           observer.disconnect();
         }
       },
-      { root, rootMargin: DEFERRED_ROOT_MARGIN, threshold: 0 },
+      { root: scroller, rootMargin: DEFERRED_ROOT_MARGIN, threshold: 0 },
     );
 
     observer.observe(node);
@@ -351,89 +378,10 @@ function DiscoverDirectoryToolbarSkeleton() {
   );
 }
 
-function DiscoverRecommendedSkeleton({ signedIn }: { signedIn: boolean }) {
-  return (
-    <div
-      {...stylex.props(styles.section)}
-      aria-busy="true"
-      aria-label="Loading recommendations"
-    >
-      <SectionHead
-        kicker={signedIn ? "Tuned to your follows" : "Established reads"}
-        title={signedIn ? "Recommended for you" : "Recommended"}
-        icon={
-          <SectionIcon>
-            <Sparkles size={13} />
-          </SectionIcon>
-        }
-      />
-      <div {...stylex.props(styles.railWrap)}>
-        <div {...stylex.props(styles.railScroll)}>
-          {Array.from({ length: RAIL_SKELETON_COUNT }, (_, index) => (
-            <PubCardSkeleton key={index} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DiscoverSocialProofSkeleton() {
-  return (
-    <div
-      {...stylex.props(styles.section)}
-      aria-busy="true"
-      aria-label="Loading social proof"
-    >
-      <SectionHead
-        kicker="Social proof"
-        title="Followed by people you follow"
-        icon={
-          <SectionIcon>
-            <Users size={13} />
-          </SectionIcon>
-        }
-      />
-      <Grid columnGap="lg" rowGap="lg" style={styles.socialGrid}>
-        {Array.from({ length: SOCIAL_PROOF_COLLAPSED }, (_, index) => (
-          <PubCardSkeleton key={index} />
-        ))}
-      </Grid>
-    </div>
-  );
-}
-
-function DiscoverTrendingSkeleton() {
-  return (
-    <div
-      {...stylex.props(styles.section)}
-      aria-busy="true"
-      aria-label="Loading trending publications"
-    >
-      <SectionHead
-        kicker="Most active this week"
-        title="Trending publications"
-        icon={
-          <SectionIcon>
-            <Flame size={13} />
-          </SectionIcon>
-        }
-      />
-      {Array.from({ length: DEFAULT_TRENDING_LIMIT }, (_, index) => (
-        <PubDirectoryRowSkeleton
-          key={index}
-          isLast={index === DEFAULT_TRENDING_LIMIT - 1}
-        />
-      ))}
-    </div>
-  );
-}
-
 function DiscoverDirectorySectionSkeleton({ view }: { view: "grid" | "list" }) {
   return (
     <div
       {...stylex.props(styles.section)}
-      aria-busy="true"
       aria-label="Loading publication directory"
     >
       <SectionHead kicker="Browse everything" title="All publications" />
@@ -443,11 +391,13 @@ function DiscoverDirectorySectionSkeleton({ view }: { view: "grid" | "list" }) {
   );
 }
 
-function DiscoverRecommendedSection({ signedIn }: { signedIn: boolean }) {
-  const { data: recommended } = useSuspenseQuery(
-    discoverApi.getRecommendedPublicationsQueryOptions({ limit: RAIL_LIMIT }),
-  );
-
+function DiscoverRecommendedSection({
+  signedIn,
+  recommended,
+}: {
+  signedIn: boolean;
+  recommended: Array<PublicationCard>;
+}) {
   const recommendedKicker = signedIn
     ? "Tuned to your follows"
     : "Established reads";
@@ -475,12 +425,11 @@ function DiscoverRecommendedSection({ signedIn }: { signedIn: boolean }) {
   );
 }
 
-function DiscoverSocialProofSection() {
-  const { data: followedBy } = useSuspenseQuery(
-    discoverApi.getFollowedByPeopleYouFollowQueryOptions({
-      limit: SOCIAL_PROOF_MAX,
-    }),
-  );
+function DiscoverSocialProofSection({
+  followedBy,
+}: {
+  followedBy: Array<PublicationCard>;
+}) {
   const [socialProofExpanded, setSocialProofExpanded] = useState(false);
 
   return (
@@ -883,11 +832,38 @@ function DiscoverDirectoryDeferred({ signedIn }: { signedIn: boolean }) {
   );
 }
 
+function DiscoverMastheadDek({
+  knownPublicationCount,
+}: {
+  knownPublicationCount: number;
+}) {
+  if (knownPublicationCount <= 0) {
+    return (
+      <>
+        Every publication the network knows about — follow the ones worth your
+        mornings.
+      </>
+    );
+  }
+
+  return (
+    <>
+      Every publication the network knows about —{" "}
+      {formatCount(knownPublicationCount)} and counting. Follow the ones worth
+      your mornings.
+    </>
+  );
+}
+
 function Discover() {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
-  const { data: knownPublicationCount = 0 } = useSuspenseQuery(
-    discoverApi.getKnownPublicationCountQueryOptions(),
+
+  const { data: extras } = useSuspenseQuery(
+    discoverApi.getDiscoverExtrasQueryOptions({
+      recommendedLimit: RAIL_LIMIT,
+      socialProofLimit: SOCIAL_PROOF_MAX,
+    }),
   );
 
   return (
@@ -897,31 +873,28 @@ function Discover() {
         kickerIcon={<Compass size={13} />}
         title="Discover"
         dek={
-          knownPublicationCount > 0
-            ? `Every publication the network knows about — ${formatCount(knownPublicationCount)} and counting. Follow the ones worth your mornings.`
-            : "Every publication the network knows about — follow the ones worth your mornings."
+          <DiscoverMastheadDek
+            knownPublicationCount={extras.knownPublicationCount}
+          />
         }
         metaLabel="Known publications"
         metaValue={
-          knownPublicationCount > 0
-            ? formatCount(knownPublicationCount)
+          extras.knownPublicationCount > 0
+            ? formatCount(extras.knownPublicationCount)
             : undefined
         }
       />
 
-      <Suspense fallback={<DiscoverRecommendedSkeleton signedIn={signedIn} />}>
-        <DiscoverRecommendedSection signedIn={signedIn} />
-      </Suspense>
+      <DiscoverRecommendedSection
+        signedIn={signedIn}
+        recommended={extras.recommended}
+      />
 
       {signedIn ? (
-        <Suspense fallback={<DiscoverSocialProofSkeleton />}>
-          <DiscoverSocialProofSection />
-        </Suspense>
+        <DiscoverSocialProofSection followedBy={extras.followedBy} />
       ) : null}
 
-      <DeferredMount fallback={<DiscoverTrendingSkeleton />}>
-        <DiscoverTrendingSection />
-      </DeferredMount>
+      <DiscoverTrendingSection />
 
       <SectionDivider />
 

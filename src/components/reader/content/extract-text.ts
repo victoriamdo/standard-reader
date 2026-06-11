@@ -15,11 +15,11 @@ import {
 } from "#/lib/document/structured-content/markdown";
 import { structuredPlaintextFromBlocks } from "#/lib/document/structured-content/plaintext";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
-import { markpubNarrationText } from "#/lib/markpub/markdown";
-import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
 import { leafletBskyPostUris } from "#/lib/leaflet/blocks";
 import { leafletPlaintext } from "#/lib/leaflet/plaintext";
 import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
+import { markpubNarrationText } from "#/lib/markpub/markdown";
+import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
 import { offprintPlaintext } from "#/lib/offprint/plaintext";
 import { OFFPRINT_CONTENT } from "#/lib/offprint/types";
 import { pcktPlaintext } from "#/lib/pckt/plaintext";

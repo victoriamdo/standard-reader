@@ -1,5 +1,4 @@
 import "dotenv/config";
-
 import { defineConfig, devices } from "@playwright/test";
 
 const baseURL = process.env.PERF_TEST_BASE_URL ?? "http://127.0.0.1:3000";

@@ -59,12 +59,13 @@ import {
 } from "#/lib/track-reading-history";
 import { maybeAuthMiddleware } from "#/middleware/auth";
 import { resolveIdentity } from "#/server/atproto/identity";
+import { loadShellSnapshot } from "#/server/reader/shell-snapshot.server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { dbMiddleware } from "./db-middleware";
-
 import type { HomeScope } from "./api-feed.functions";
+
+import { dbMiddleware } from "./db-middleware";
 
 function parseCookies(cookieHeader: string | null): Record<string, string> {
   if (!cookieHeader) return {};
@@ -95,6 +96,7 @@ async function loadSessionFromToken(sessionToken: string) {
           updatedAt: true,
           themeMode: true,
           trackReadingHistory: true,
+          homeScope: true,
         },
       },
     },
@@ -146,48 +148,67 @@ async function loadSessionFromToken(sessionToken: string) {
     },
     themeMode: userRow.themeMode,
     trackReadingHistory: userRow.trackReadingHistory,
+    homeScope: userRow.homeScope,
+    client,
   };
 }
 
-/** One round trip for root shell SSR: session + theme preference. */
+/** One round trip for root shell SSR: session, prefs, and signed-in shell data. */
 const getShellBootstrap = createServerFn({ method: "GET" }).handler(
   async () => {
     const request = getRequest();
     const cookies = parseCookies(request.headers.get("cookie"));
     const sessionToken = cookies[AUTH_SESSION_TOKEN_COOKIE];
 
+    const guestBootstrap = {
+      session: null,
+      theme: { mode: parseThemeMode(cookies[THEME_COOKIE]) },
+      trackReading: {
+        enabled: parseTrackReadingHistoryCookie(
+          cookies[TRACK_READING_HISTORY_COOKIE],
+        ),
+      },
+      homeScope: {
+        scope: parseHomeScope(cookies[HOME_SCOPE_COOKIE]),
+      },
+      shell: null,
+    };
+
     if (!sessionToken) {
-      return {
-        session: null,
-        theme: { mode: parseThemeMode(cookies[THEME_COOKIE]) },
-        trackReading: {
-          enabled: parseTrackReadingHistoryCookie(
-            cookies[TRACK_READING_HISTORY_COOKIE],
-          ),
-        },
-      };
+      return guestBootstrap;
     }
 
     const loaded = await loadSessionFromToken(sessionToken);
     if (!loaded) {
-      return {
-        session: null,
-        theme: { mode: parseThemeMode(cookies[THEME_COOKIE]) },
-        trackReading: {
-          enabled: parseTrackReadingHistoryCookie(
-            cookies[TRACK_READING_HISTORY_COOKIE],
-          ),
-        },
-      };
+      return guestBootstrap;
     }
 
-    const { themeMode, trackReadingHistory, ...sessionPayload } = loaded;
+    const {
+      themeMode,
+      trackReadingHistory,
+      homeScope,
+      client,
+      user,
+      session: sessionRow,
+    } = loaded;
+    const trackReading = dbValueToTrackReadingHistory(trackReadingHistory);
+
+    const [{ db }, schema] = await Promise.all([
+      import("#/db/index.server"),
+      import("#/db/schema"),
+    ]);
+    const shell = await loadShellSnapshot(db, schema, {
+      did: user.did,
+      client,
+      trackReading,
+    });
+
     return {
-      session: sessionPayload,
+      session: { user, session: sessionRow },
       theme: { mode: dbValueToThemeMode(themeMode) },
-      trackReading: {
-        enabled: dbValueToTrackReadingHistory(trackReadingHistory),
-      },
+      trackReading: { enabled: trackReading },
+      homeScope: { scope: dbValueToHomeScope(homeScope) },
+      shell,
     };
   },
 );
@@ -218,6 +239,13 @@ const getSessionQueryOptions = queryOptions({
     return await getSession();
   },
 });
+
+/** Scopes read-personalized query caches to the signed-in reader (or guest). */
+export function readerQueryScope(
+  session: { user?: { did?: string | null } | null } | null | undefined,
+): string {
+  return session?.user?.did ?? "guest";
+}
 
 const getThemePreference = createServerFn({ method: "GET" })
   .middleware([maybeAuthMiddleware])
@@ -436,12 +464,10 @@ const getTrackReadingHistoryPreference = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<{ enabled: boolean }> => {
     const session = context?.session;
     if (session?.user) {
-      const row = await context.db.query.user.findFirst({
-        where: eq(context.schema.user.id, session.user.id),
-        columns: { trackReadingHistory: true },
-      });
       return {
-        enabled: dbValueToTrackReadingHistory(row?.trackReadingHistory ?? null),
+        enabled: dbValueToTrackReadingHistory(
+          session.user.trackReadingHistory ?? null,
+        ),
       };
     }
 
@@ -493,11 +519,7 @@ const getHomeScopePreference = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<{ scope: HomeScope }> => {
     const session = context?.session;
     if (session?.user) {
-      const row = await context.db.query.user.findFirst({
-        where: eq(context.schema.user.id, session.user.id),
-        columns: { homeScope: true },
-      });
-      return { scope: dbValueToHomeScope(row?.homeScope ?? null) };
+      return { scope: dbValueToHomeScope(session.user.homeScope ?? null) };
     }
 
     return { scope: parseHomeScope(getCookie(HOME_SCOPE_COOKIE)) };
@@ -574,6 +596,7 @@ export const user = {
   getShellBootstrap,
   getSession,
   getSessionQueryOptions,
+  readerQueryScope,
   getThemePreference,
   getThemePreferenceQueryOptions,
   setThemePreference,

@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { getAtprotoSessionForRequest } from "#/middleware/auth";
+import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import {
   deleteBookmarkRecord,
   deleteReadRecord,

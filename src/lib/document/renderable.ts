@@ -10,10 +10,10 @@ import {
 } from "#/lib/document/content-formats";
 import { markdownPlaintext } from "#/lib/document/structured-content/markdown";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
-import { markpubPlaintext } from "#/lib/markpub/markdown";
-import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
 import { leafletBlocks } from "#/lib/leaflet/blocks";
 import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
+import { markpubPlaintext } from "#/lib/markpub/markdown";
+import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
 import { offprintBlocks } from "#/lib/offprint/blocks";
 import { OFFPRINT_CONTENT } from "#/lib/offprint/types";
 import { pcktBlocks } from "#/lib/pckt/blocks";

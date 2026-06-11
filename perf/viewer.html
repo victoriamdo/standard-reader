@@ -354,11 +354,21 @@
       }
 
       function renderMeta(report) {
+        if (report.pairs) {
+          metaEl.innerHTML = [
+            `<span><strong>Report</strong> guest vs signed-in comparison</span>`,
+            `<span><strong>Generated</strong> ${escapeHtml(formatWhen(report.generatedAt))}</span>`,
+            `<span><strong>Base URL</strong> ${escapeHtml(report.baseUrl ?? "—")}</span>`,
+            `<span><strong>Shared routes</strong> ${escapeHtml(String(report.sharedRouteCount ?? report.pairs.length))}</span>`,
+          ].join("");
+          return;
+        }
+
         metaEl.innerHTML = [
-          `<span><strong>Mode</strong> ${escapeHtml(report.mode)}</span>`,
+          `<span><strong>Mode</strong> ${escapeHtml(report.mode ?? "—")}</span>`,
           `<span><strong>Generated</strong> ${escapeHtml(formatWhen(report.generatedAt))}</span>`,
-          `<span><strong>Base URL</strong> ${escapeHtml(report.baseUrl)}</span>`,
-          `<span><strong>Budget multiplier</strong> ${escapeHtml(String(report.budgetMultiplier))}</span>`,
+          `<span><strong>Base URL</strong> ${escapeHtml(report.baseUrl ?? "—")}</span>`,
+          `<span><strong>Budget multiplier</strong> ${escapeHtml(String(report.budgetMultiplier ?? 1))}</span>`,
         ].join("");
       }
 
@@ -383,6 +393,145 @@
           card("Slowest", slowest ? `${slowest.ms} ms` : "—"),
           card("Average", rows.length ? `${avg} ms` : "—"),
         ].join("");
+      }
+
+      function renderComparisonCards(report) {
+        const pairs = report.pairs ?? [];
+        const signedInOnly = report.signedInOnly ?? [];
+        const deltas = pairs
+          .map((pair) => pair.deltaMs)
+          .filter((value) => typeof value === "number");
+        const avgDelta =
+          deltas.length === 0
+            ? 0
+            : Math.round(
+                deltas.reduce((sum, value) => sum + value, 0) / deltas.length,
+              );
+        const largestDelta = deltas.length
+          ? deltas.reduce(
+              (max, value) => (Math.abs(value) > Math.abs(max) ? value : max),
+              deltas[0],
+            )
+          : null;
+
+        cardsEl.innerHTML = [
+          card("Shared routes", String(pairs.length)),
+          card("Signed-in only", String(signedInOnly.length)),
+          card(
+            "Avg Δ",
+            deltas.length ? `${avgDelta > 0 ? "+" : ""}${avgDelta} ms` : "—",
+          ),
+          card(
+            "Largest Δ",
+            largestDelta == null
+              ? "—"
+              : `${largestDelta > 0 ? "+" : ""}${largestDelta} ms`,
+          ),
+        ].join("");
+      }
+
+      function renderComparisonTable(report) {
+        const pairs = [...(report.pairs ?? [])].sort(
+          (a, b) =>
+            Math.max(b.signedIn?.ms ?? 0, b.guest?.ms ?? 0) -
+            Math.max(a.signedIn?.ms ?? 0, a.guest?.ms ?? 0),
+        );
+        const signedInOnly = report.signedInOnly ?? [];
+
+        if (pairs.length === 0 && signedInOnly.length === 0) {
+          tableWrap.innerHTML = `<div class="empty">No comparison data in this report.</div>`;
+          return;
+        }
+
+        const scale = pairs.reduce(
+          (max, pair) =>
+            Math.max(
+              max,
+              pair.budgetMs,
+              pair.guest?.ms ?? 0,
+              pair.signedIn?.ms ?? 0,
+            ),
+          0,
+        );
+
+        const pairRows = pairs
+          .map((pair) => {
+            const guestMs = pair.guest?.ms ?? null;
+            const signedMs = pair.signedIn?.ms ?? null;
+            const delta =
+              pair.deltaMs == null
+                ? "—"
+                : `${pair.deltaMs > 0 ? "+" : ""}${pair.deltaMs} ms`;
+            const guestWidth =
+              guestMs == null
+                ? 0
+                : Math.max(2, Math.round((guestMs / scale) * 100));
+            const signedWidth =
+              signedMs == null
+                ? 0
+                : Math.max(2, Math.round((signedMs / scale) * 100));
+            const budgetLeft = Math.min(
+              100,
+              Math.round((pair.budgetMs / scale) * 100),
+            );
+
+            return `<tr>
+              <td><strong>${escapeHtml(pair.id)}</strong><div class="bar-label">${escapeHtml(pair.path)}</div></td>
+              <td class="bar-cell">
+                <div class="bar-wrap">
+                  <div class="bar-fill" style="width:${guestWidth}%"></div>
+                  <div class="bar-budget" style="left:${budgetLeft}%"></div>
+                </div>
+                <div class="bar-label">${guestMs ?? "—"} ms</div>
+              </td>
+              <td class="bar-cell">
+                <div class="bar-wrap">
+                  <div class="bar-fill" style="width:${signedWidth}%"></div>
+                  <div class="bar-budget" style="left:${budgetLeft}%"></div>
+                </div>
+                <div class="bar-label">${signedMs ?? "—"} ms</div>
+              </td>
+              <td>${escapeHtml(delta)}</td>
+              <td>${pair.budgetMs} ms</td>
+            </tr>`;
+          })
+          .join("");
+
+        const onlyRows = signedInOnly
+          .map((row) => {
+            const width = Math.max(2, Math.round((row.ms / scale) * 100));
+            const budgetLeft = Math.min(
+              100,
+              Math.round((row.budgetMs / scale) * 100),
+            );
+            return `<tr>
+              <td><strong>${escapeHtml(row.name)}</strong><div class="bar-label">${escapeHtml(row.id)}</div></td>
+              <td>—</td>
+              <td class="bar-cell">
+                <div class="bar-wrap">
+                  <div class="bar-fill" style="width:${width}%"></div>
+                  <div class="bar-budget" style="left:${budgetLeft}%"></div>
+                </div>
+                <div class="bar-label">${row.ms} ms</div>
+              </td>
+              <td>—</td>
+              <td>${row.budgetMs} ms</td>
+            </tr>`;
+          })
+          .join("");
+
+        tableWrap.innerHTML = `<table>
+          <thead>
+            <tr>
+              <th>Route</th>
+              <th>Guest</th>
+              <th>Signed in</th>
+              <th>Δ (signed − guest)</th>
+              <th>Budget</th>
+            </tr>
+          </thead>
+          <tbody>${pairRows}${onlyRows ? `<tr><td colspan="5"><strong>Signed-in only</strong></td></tr>${onlyRows}` : ""}</tbody>
+        </table>`;
       }
 
       function card(label, value, tone = "") {
@@ -443,6 +592,11 @@
       function render(report) {
         errorEl.hidden = true;
         renderMeta(report);
+        if (report.pairs) {
+          renderComparisonCards(report);
+          renderComparisonTable(report);
+          return;
+        }
         renderCards(report);
         renderTable(report);
       }
@@ -505,7 +659,7 @@
 
       reloadBtn.addEventListener("click", () => {
         if (served) {
-          loadReport(`/${runSelect.value || "results/latest.json"}`);
+          loadReport(`/${runSelect.value || "results/latest-comparison.json"}`);
         } else {
           fileInput.click();
         }
@@ -514,7 +668,9 @@
       (async function init() {
         await loadRuns();
         if (served) {
-          await loadReport(`/${runSelect.value || "results/latest.json"}`);
+          await loadReport(
+            `/${runSelect.value || "results/latest-comparison.json"}`,
+          );
         } else {
           showError(
             "Run `pnpm perf:view`, then open http://127.0.0.1:3098 — or load a JSON file.",

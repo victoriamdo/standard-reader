@@ -27,10 +27,15 @@ const styles = stylex.create({
     textTransform: "uppercase",
   },
   link: {
-    cursor: "pointer",
     textDecoration: { default: "none", ":hover": "underline" },
+    cursor: "pointer",
     textDecorationColor: "currentColor",
     textUnderlineOffset: "2px",
+  },
+  nestedInteractive: {
+    pointerEvents: "auto",
+    position: "relative",
+    zIndex: 1,
   },
 });
 
@@ -78,7 +83,7 @@ export function Topic({ name, linkable = true, nested = false }: TopicProps) {
             goToTag();
           }
         }}
-        {...mergedStyle}
+        {...stylex.props(styles.topic, styles.link, styles.nestedInteractive)}
       >
         {name}
       </span>

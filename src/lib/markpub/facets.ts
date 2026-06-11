@@ -93,7 +93,7 @@ function slugifyId(text: string): string {
     .replaceAll(/[^\w\s-]/g, "")
     .replaceAll(/\s+/g, "-")
     .replaceAll(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replaceAll(/^-|-$/g, "");
 }
 
 function headerLevel(features: Array<LeafletFacetFeature>): number {
@@ -179,7 +179,7 @@ export function applyMarkpubFacets(
   markdown: string,
   facets: Array<LeafletFacet>,
 ): string {
-  if (!facets.length) return markdown;
+  if (facets.length === 0) return markdown;
 
   let result = markdown;
   const ordered = facets.toSorted(

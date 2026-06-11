@@ -110,7 +110,7 @@ export function subscribeToResolvedScheme(
   });
 
   const onMediaChange = (event: MediaQueryListEvent) => {
-    if (root.getAttribute("data-theme") === "system") {
+    if (root.dataset.theme === "system") {
       root.dataset.resolvedScheme = event.matches ? "dark" : "light";
     }
     onStoreChange();

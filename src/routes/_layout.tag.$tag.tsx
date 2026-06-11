@@ -1,6 +1,11 @@
 "use client";
 
 import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
+import type {
+  TagFollowSummary,
+  TagPublicationCard,
+  TagPublicationDirectoryPage,
+} from "#/integrations/tanstack-query/api-tag.functions";
 
 import * as stylex from "@stylexjs/stylex";
 import {
@@ -10,7 +15,12 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import {
   ArticleRow,
   PubCard,
@@ -19,11 +29,25 @@ import {
   PubDirectoryRowSkeleton,
 } from "#/components/reader/cards";
 import {
+  applyBulkFollowOptimisticUpdate,
+  invalidateFollowQueries,
+  rollbackBulkFollowOptimisticUpdate,
+} from "#/components/reader/follow-optimistic";
+import { tagDisplayTitle } from "#/components/reader/format";
+import {
   Kicker,
   ReaderContent,
   SectionHead,
 } from "#/components/reader/primitives";
-import { tagDisplayTitle } from "#/components/reader/format";
+import {
+  AlertDialog,
+  AlertDialogActionButton,
+  AlertDialogCancelButton,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+} from "#/design-system/alert-dialog";
+import { Button } from "#/design-system/button";
 import { Flex } from "#/design-system/flex";
 import { Grid } from "#/design-system/grid";
 import {
@@ -50,28 +74,8 @@ import { SITE_NAME, siteSocialMeta } from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
 import { Check, LayoutGrid, List, Plus, Tag } from "lucide-react";
-import {
-  applyBulkFollowOptimisticUpdate,
-  invalidateFollowQueries,
-  rollbackBulkFollowOptimisticUpdate,
-} from "#/components/reader/follow-optimistic";
-import {
-  AlertDialog,
-  AlertDialogActionButton,
-  AlertDialogCancelButton,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-} from "#/design-system/alert-dialog";
-import { Button } from "#/design-system/button";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
-
-import type {
-  TagFollowSummary,
-  TagPublicationCard,
-  TagPublicationDirectoryPage,
-} from "#/integrations/tanstack-query/api-tag.functions";
 
 const PAGE_SIZE = 24;
 /** Ask before bulk-follow when a tag has more than this many unfollowed publications. */
@@ -79,6 +83,29 @@ const FOLLOW_ALL_CONFIRM_THRESHOLD = 100;
 const SKELETON_COUNT = 8;
 const LOAD_MORE_SKELETON_COUNT = 3;
 const ARTICLE_SKELETON_ROWS = 8;
+/** Grace period before tab skeletons appear (avoids flash on fast loads). */
+const TAB_SKELETON_DELAY_MS = 150;
+
+function useDelayedLoading(active: boolean, delayMs: number): boolean {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (!active) {
+      setShow(false);
+      return;
+    }
+
+    const timer = globalThis.setTimeout(() => {
+      setShow(true);
+    }, delayMs);
+
+    return () => {
+      globalThis.clearTimeout(timer);
+    };
+  }, [active, delayMs]);
+
+  return show;
+}
 
 /** Legacy URLs used `view=grid|list` for publication layout before tabs shipped. */
 function normalizeTagSearch(search: unknown) {
@@ -432,7 +459,7 @@ function TagArticlesPanel({ tag }: { tag: string }) {
       if (previousQuery?.queryKey[2] === tag) {
         return keepPreviousData(previousData);
       }
-      return undefined;
+      return;
     },
   });
 
@@ -457,6 +484,7 @@ function TagArticlesPanel({ tag }: { tag: string }) {
     loadedMore.length > 0 ? loadedMoreNextOffset : (feed?.nextOffset ?? null);
 
   const isLoading = feedPending || (feedFetching && items.length === 0);
+  const showSkeleton = useDelayedLoading(isLoading, TAB_SKELETON_DELAY_MS);
 
   const loadMore = useCallback(async () => {
     if (nextOffset == null || loadingMoreRef.current) return;
@@ -494,8 +522,12 @@ function TagArticlesPanel({ tag }: { tag: string }) {
     return () => observer.disconnect();
   }, [loadMore, nextOffset]);
 
-  if (isLoading) {
+  if (showSkeleton) {
     return <TagArticlesSkeleton />;
+  }
+
+  if (isLoading) {
+    return <div aria-busy="true" aria-label="Loading articles" />;
   }
 
   if (items.length === 0) {
@@ -572,7 +604,7 @@ function TagPublicationsPanel({
       if (previousQuery?.queryKey[2] === tag) {
         return keepPreviousData(previousData);
       }
-      return undefined;
+      return;
     },
   });
 
@@ -592,6 +624,10 @@ function TagPublicationsPanel({
 
   const isDirectoryLoading =
     directoryPending || (directoryFetching && directoryItems.length === 0);
+  const showDirectorySkeleton = useDelayedLoading(
+    isDirectoryLoading,
+    TAB_SKELETON_DELAY_MS,
+  );
 
   const updateSearch = (patch: Partial<Pick<TagSearch, "sort" | "layout">>) => {
     void navigate({
@@ -689,8 +725,10 @@ function TagPublicationsPanel({
         }
       />
 
-      {isDirectoryLoading ? (
+      {showDirectorySkeleton ? (
         <TagDirectorySkeleton layout={layout} />
+      ) : isDirectoryLoading ? (
+        <div aria-busy="true" aria-label="Loading publications" />
       ) : directoryItems.length === 0 ? (
         <p {...stylex.props(styles.empty)}>
           No publications match this tag yet.
@@ -906,6 +944,8 @@ function TagPage() {
   const tag = decodeURIComponent(rawTag);
   const { view, sort, layout } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const routePending = useRouterState({ select: (state) => state.isLoading });
+  const [pendingView, setPendingView] = useState<TagView | null>(null);
 
   const { data: articleCount = 0 } = useSuspenseQuery(
     tagApi.getArticleCountQueryOptions({ tag }),
@@ -914,11 +954,67 @@ function TagPage() {
     tagApi.getPublicationCountQueryOptions({ tag }),
   );
 
+  useEffect(() => {
+    setPendingView(null);
+  }, [tag]);
+
+  useEffect(() => {
+    if (routePending) return;
+    setPendingView(null);
+  }, [routePending]);
+
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (routePending) return;
+
+    const prefetchOtherTab = () => {
+      if (view === "feed") {
+        void queryClient.prefetchQuery(
+          tagApi.getPublicationsQueryOptions({
+            tag,
+            sort,
+            limit: PAGE_SIZE,
+            offset: 0,
+          }),
+        );
+        return;
+      }
+
+      void queryClient.prefetchQuery(
+        tagApi.getArticlesQueryOptions({
+          tag,
+          limit: PAGE_SIZE,
+          offset: 0,
+        }),
+      );
+    };
+
+    const scheduleIdle =
+      globalThis.requestIdleCallback ??
+      ((callback: IdleRequestCallback) =>
+        globalThis.setTimeout(
+          () => callback({ didTimeout: false, timeRemaining: () => 0 }),
+          200,
+        ));
+
+    const cancelIdle =
+      globalThis.cancelIdleCallback ??
+      ((id: number) => globalThis.clearTimeout(id));
+
+    const idleId = scheduleIdle(prefetchOtherTab);
+    return () => cancelIdle(idleId);
+  }, [queryClient, routePending, sort, tag, view]);
+
+  const activeView = pendingView ?? view;
   const displayTag = tagDisplayTitle(tag);
-  const isFeed = view === "feed";
+  const isFeed = activeView === "feed";
 
   const onViewChange = (key: React.Key) => {
     const next = key as TagView;
+    if (next !== view) {
+      setPendingView(next);
+    }
     void navigate({ search: (prev: TagSearch) => ({ ...prev, view: next }) });
   };
 
@@ -955,7 +1051,7 @@ function TagPage() {
       </div>
 
       <Tabs
-        selectedKey={view}
+        selectedKey={activeView}
         onSelectionChange={onViewChange}
         style={styles.tabs}
       >
@@ -971,10 +1067,12 @@ function TagPage() {
 
         <ReaderContent>
           <TabPanel id="feed" style={styles.tabPanel}>
-            <TagArticlesPanel tag={tag} />
+            {isFeed ? <TagArticlesPanel tag={tag} /> : null}
           </TabPanel>
           <TabPanel id="publications" style={styles.tabPanel}>
-            <TagPublicationsPanel tag={tag} sort={sort} layout={layout} />
+            {!isFeed ? (
+              <TagPublicationsPanel tag={tag} sort={sort} layout={layout} />
+            ) : null}
           </TabPanel>
         </ReaderContent>
       </Tabs>

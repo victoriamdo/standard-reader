@@ -9,7 +9,7 @@ describe("sanitizeTsHeadlineHtml", () => {
   it("preserves mark wrappers and escapes other HTML", () => {
     expect(
       sanitizeTsHeadlineHtml(
-        'A <mark>climate</mark> story about <script>alert(1)</script>',
+        "A <mark>climate</mark> story about <script>alert(1)</script>",
       ),
     ).toBe(
       "A <mark>climate</mark> story about &lt;script&gt;alert(1)&lt;/script&gt;",

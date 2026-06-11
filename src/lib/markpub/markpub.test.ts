@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import {
   applyMarkpubFacets,
   normalizeMarkpubFacets,
@@ -10,6 +8,7 @@ import {
 } from "#/lib/markpub/markdown";
 import { parseMarkpubContent } from "#/lib/markpub/parse";
 import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
+import { describe, expect, it } from "vitest";
 
 const minimalMarkpub = {
   $type: MARKPUB_MARKDOWN,

@@ -1,5 +1,5 @@
-import { parseAtUri } from "../../src/server/atproto/uri.ts";
 import { STANDARD_NSID } from "../../src/lib/atproto/nsids.ts";
+import { parseAtUri } from "../../src/server/atproto/uri.ts";
 
 export interface PerfFixtures {
   articlePath: string | null;

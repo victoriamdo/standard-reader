@@ -1,10 +1,9 @@
 "use client";
 
-import type { Key } from "react-aria-components";
-
 import type { Size } from "#/design-system/theme/types";
 import type { PublicationEmbedMeta } from "#/integrations/tanstack-query/api-publication.functions";
 import type { SubscribeEmbedTab } from "#/lib/publication-embed";
+import type { Key } from "react-aria-components";
 
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "#/design-system/button";

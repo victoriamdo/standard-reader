@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import { feedApi } from "./api-feed.functions";
 import { listApi } from "./api-lists.functions";
+import { shellApi } from "./api-shell.functions";
 
 /** Sidebar + list metadata — refresh in the background, not on every child nav. */
 export const SHELL_QUERY_STALE_TIME_MS = 5 * 60_000;
@@ -21,38 +22,40 @@ export function savedListsQueryOptions() {
   return listApi.getSavedListsQueryOptions();
 }
 
+/** Seed sidebar + list queries from a single snapshot when bootstrap did not. */
+async function ensureShellSnapshot(queryClient: QueryClient): Promise<void> {
+  const sidebarOpts = sidebarQueryOptions();
+  if (queryClient.getQueryData(sidebarOpts.queryKey) !== undefined) {
+    return;
+  }
+
+  const snapshot = await shellApi.getShellSnapshot();
+  if (!snapshot) {
+    return;
+  }
+
+  queryClient.setQueryData(sidebarOpts.queryKey, snapshot.sidebar);
+  queryClient.setQueryData(listsQueryOptions().queryKey, snapshot.lists);
+  queryClient.setQueryData(
+    savedListsQueryOptions().queryKey,
+    snapshot.savedLists,
+  );
+}
+
 /**
- * Warm shell queries for AppShell. Blocks only on a cold cache (first paint);
- * otherwise prefetches in the background so child route loaders are not gated.
+ * Warm shell queries for AppShell. Guests prefetch sidebar in the background.
+ * Signed-in readers block on sidebar data (seeded by bootstrap or one snapshot
+ * round trip) so the nav renders on first paint without skeleton flicker.
  */
 export async function loadShellQueries(
   queryClient: QueryClient,
   signedIn: boolean,
 ): Promise<void> {
-  const sidebar = sidebarQueryOptions();
-
   if (!signedIn) {
-    void queryClient.prefetchQuery(sidebar);
+    void queryClient.prefetchQuery(sidebarQueryOptions());
     return;
   }
 
-  const lists = listsQueryOptions();
-  const savedLists = savedListsQueryOptions();
-  const cold =
-    queryClient.getQueryData(sidebar.queryKey) === undefined ||
-    queryClient.getQueryData(lists.queryKey) === undefined ||
-    queryClient.getQueryData(savedLists.queryKey) === undefined;
-
-  if (cold) {
-    await Promise.all([
-      queryClient.ensureQueryData(sidebar),
-      queryClient.ensureQueryData(lists),
-      queryClient.ensureQueryData(savedLists),
-    ]);
-    return;
-  }
-
-  void queryClient.prefetchQuery(sidebar);
-  void queryClient.prefetchQuery(lists);
-  void queryClient.prefetchQuery(savedLists);
+  await ensureShellSnapshot(queryClient);
+  await queryClient.ensureQueryData(sidebarQueryOptions());
 }

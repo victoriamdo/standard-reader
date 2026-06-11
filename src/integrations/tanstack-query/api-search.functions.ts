@@ -229,10 +229,7 @@ async function searchIndexedPublications(
       .select({
         ...publicationCardColumns(schema),
         searchNameHtml: publicationSearchNameHeadline(p.name, tsq),
-        searchSnippetHtml: publicationSearchSnippetHeadline(
-          p.description,
-          tsq,
-        ),
+        searchSnippetHtml: publicationSearchSnippetHeadline(p.description, tsq),
       })
       .from(p)
       .leftJoin(st, eq(st.publicationUri, p.uri))
