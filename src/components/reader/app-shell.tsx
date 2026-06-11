@@ -57,6 +57,7 @@ import {
   tracking,
 } from "../../design-system/theme/typography.stylex";
 import { NavbarAuth } from "../NavbarAuth";
+import { SiteFooter } from "../site-footer";
 import { AddPublicationModal } from "./add-publication-modal";
 import { initials, listLinkParams, publicationLinkParams } from "./format";
 import { ListEditModal } from "./list-edit-modal";
@@ -324,28 +325,6 @@ const styles = stylex.create({
     marginTop: "auto",
     paddingBottom: verticalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
-  },
-  sideAbout: {
-    textDecoration: "none",
-    backgroundColor: "transparent",
-    color: {
-      default: uiColor.text1,
-      ":hover": uiColor.text2,
-    },
-    fontFamily: fontFamily.sans,
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    textAlign: "center",
-    transitionDuration: animationDuration.fast,
-    transitionProperty: "color",
-    transitionTimingFunction: "ease-in-out",
-    paddingBottom: verticalSpace.xs,
-    paddingLeft: horizontalSpace.xs,
-    paddingRight: horizontalSpace.xs,
-    paddingTop: verticalSpace.xs,
-  },
-  sideAboutActive: {
-    color: primaryColor.text2,
   },
   mobileDetailBar: {
     alignItems: "center",
@@ -880,7 +859,7 @@ function Brand({ style }: { style?: stylex.StyleXStyles }) {
   );
 }
 
-function MobileAboutBar() {
+function MobileStaticPageBar({ title }: { title: string }) {
   const router = useRouter();
 
   return (
@@ -893,7 +872,7 @@ function MobileAboutBar() {
       >
         <ArrowLeft size={18} />
       </IconButton>
-      <span {...stylex.props(styles.mobileDetailTitle)}>About</span>
+      <span {...stylex.props(styles.mobileDetailTitle)}>{title}</span>
       <span aria-hidden {...stylex.props(styles.mobileDetailSpacer)} />
     </div>
   );
@@ -902,6 +881,8 @@ function MobileAboutBar() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onAbout = pathname === "/about";
+  const onPrivacy = pathname === "/privacy";
+  const staticPageTitle = onAbout ? "About" : onPrivacy ? "Privacy" : null;
   const { data: sidebar } = useQuery(feedApi.getSidebarQueryOptions());
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -1027,30 +1008,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <Flex direction="column" gap="lg" style={styles.foot}>
             <NavbarAuth variant="sidebar" menuPlacement="right bottom" />
-            <Flex direction="column" gap="md">
-              <Button
-                variant="primary"
-                style={styles.addTrigger}
-                onPress={() => setAddModalOpen(true)}
-              >
-                <Plus size={16} /> Add publication
-              </Button>
-              <Link
-                to="/about"
-                {...stylex.props(
-                  styles.sideAbout,
-                  onAbout && styles.sideAboutActive,
-                )}
-              >
-                About Standard Reader
-              </Link>
-            </Flex>
+            <Button
+              variant="primary"
+              style={styles.addTrigger}
+              onPress={() => setAddModalOpen(true)}
+            >
+              <Plus size={16} /> Add publication
+            </Button>
           </Flex>
         </aside>
 
         <main {...stylex.props(styles.main)}>
-          {onAbout ? (
-            <MobileAboutBar />
+          {staticPageTitle ? (
+            <MobileStaticPageBar title={staticPageTitle} />
           ) : (
             <Flex align="center" justify="between" style={styles.mobileBar}>
               <Brand />
@@ -1066,6 +1036,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div {...stylex.props(styles.scroller)} data-app-scroller>
             {children}
+            <SiteFooter />
           </div>
 
           <div {...stylex.props(styles.dock)}>

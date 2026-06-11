@@ -64,6 +64,12 @@ export const PAGE_OG_CARDS = {
     title: "About",
     tagline: "What Standard Reader is, and how it fits the Atmosphere.",
   },
+  privacy: {
+    path: "/privacy",
+    title: "Privacy",
+    tagline:
+      "What Standard Reader collects, where your data lives, and your choices.",
+  },
   login: {
     path: "/login",
     title: "Sign in",

@@ -288,6 +288,9 @@ Backend/API exists; UI or copy is missing.
 - [x] **About page** — replace placeholder in [`_layout.about.tsx`](src/routes/_layout.about.tsx)
       with product copy (what Standard Reader is, AT Proto ownership, link to standard.site docs,
       privacy/data model). OG metadata already in [`site-metadata.ts`](src/lib/site-metadata.ts).
+- [x] **Privacy policy + site footer** — [`/_layout/privacy`](src/routes/_layout.privacy.tsx) with
+      [`PrivacyView`](src/components/reader/privacy-view.tsx); minimal [`SiteFooter`](src/components/site-footer.tsx)
+      on layout pages and legal links on [`/login`](src/routes/login.tsx).
 
 ## 9. Post-v1 — reader polish (Tier 2)
 

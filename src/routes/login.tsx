@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { Link as AriaLink } from "react-aria-components";
 import { z } from "zod";
 
+import { SiteLegalLinks } from "../components/site-legal-links";
 import { UserHandleAutocomplete } from "../components/user-handle-autocomplete";
 import { Avatar } from "../design-system/avatar";
 import { Button } from "../design-system/button";
@@ -122,6 +123,12 @@ const styles = stylex.create({
     position: "absolute",
     left: horizontalSpace["3xl"],
     top: verticalSpace["3xl"],
+  },
+  legalLinks: {
+    paddingBottom: verticalSpace["4xl"],
+    paddingLeft: horizontalSpace["3xl"],
+    paddingRight: horizontalSpace["3xl"],
+    paddingTop: verticalSpace["3xl"],
   },
 });
 
@@ -377,6 +384,7 @@ function AuthPage() {
           </Flex>
         </Form>
       </div>
+      <SiteLegalLinks style={styles.legalLinks} />
     </main>
   );
 }
