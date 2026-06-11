@@ -52,6 +52,7 @@ import {
   documentLinkParams,
   formatDate,
   formatReaders,
+  formatTaggedPostCount,
   publicationLinkParams,
 } from "./format";
 import {
@@ -1128,7 +1129,7 @@ function TopicMeta({ article }: { article: ArticleCard }) {
               ·
             </span>
           ) : null}
-          <Topic name={topic} />
+          <Topic name={topic} nested />
         </Fragment>
       ))}
     </>
@@ -1410,7 +1411,13 @@ export function MiniPubRow({
 
 /* ── Compact publication row with topic + readers (directory style) ─────── */
 
-export function PubMetaRow({ pub }: { pub: PublicationCard }) {
+export function PubMetaRow({
+  pub,
+  hideTopic = false,
+}: {
+  pub: PublicationCard;
+  hideTopic?: boolean;
+}) {
   const readers =
     pub.subscriberCount > 0
       ? `${formatReaders(pub.subscriberCount)} readers`
@@ -1418,13 +1425,14 @@ export function PubMetaRow({ pub }: { pub: PublicationCard }) {
         ? `${formatReaders(pub.documentCount)} articles`
         : null;
 
-  if (!pub.topic && !readers) {
+  const showTopic = !hideTopic && Boolean(pub.topic);
+  if (!showTopic && !readers) {
     return null;
   }
 
   return (
     <MetaLine>
-      <Topic name={pub.topic} />
+      {showTopic ? <Topic name={pub.topic} nested /> : null}
       {readers ? <Handle>{readers}</Handle> : null}
     </MetaLine>
   );
@@ -1435,23 +1443,36 @@ function PubReadersMeta({ pub }: { pub: PublicationCard }) {
   return <Handle>{formatReaders(pub.subscriberCount)} readers</Handle>;
 }
 
-function PubDirectoryStats({ pub }: { pub: PublicationCard }) {
+function PubDirectoryStats({
+  pub,
+  hideTopic = false,
+  tagPostCount,
+}: {
+  pub: PublicationCard;
+  hideTopic?: boolean;
+  /** Tagged-post tally for tag directory rows. */
+  tagPostCount?: number;
+}) {
   const stats: Array<string> = [];
+  if (tagPostCount != null) {
+    stats.push(formatTaggedPostCount(tagPostCount));
+  }
   if (pub.subscriberCount > 0) {
     stats.push(`${formatReaders(pub.subscriberCount)} readers`);
   }
-  if (pub.documentCount > 0) {
+  if (tagPostCount == null && pub.documentCount > 0) {
     stats.push(`${formatReaders(pub.documentCount)} posts`);
   }
   const statsText = stats.join(" · ");
 
-  if (!pub.topic && !statsText) {
+  const showTopic = !hideTopic && Boolean(pub.topic);
+  if (!showTopic && !statsText) {
     return null;
   }
 
   return (
     <MetaLine>
-      <Topic name={pub.topic} />
+      {showTopic ? <Topic name={pub.topic} nested /> : null}
       {statsText ? (
         <MetaGroup>
           <Handle>{statsText}</Handle>
@@ -1461,8 +1482,21 @@ function PubDirectoryStats({ pub }: { pub: PublicationCard }) {
   );
 }
 
-function PubCardFoot({ pub }: { pub: PublicationCard }) {
-  if (!pub.topic && pub.subscriberCount <= 0) return null;
+function PubCardFoot({
+  pub,
+  hideTopic = false,
+  tagPostCount,
+}: {
+  pub: PublicationCard;
+  hideTopic?: boolean;
+  tagPostCount?: number;
+}) {
+  const showTopic = !hideTopic && Boolean(pub.topic);
+  const taggedMeta =
+    tagPostCount != null ? formatTaggedPostCount(tagPostCount) : null;
+  if (!showTopic && !taggedMeta && pub.subscriberCount <= 0) {
+    return null;
+  }
   return (
     <div {...stylex.props(styles.pubCardFootWrap)}>
       <Flex
@@ -1471,7 +1505,11 @@ function PubCardFoot({ pub }: { pub: PublicationCard }) {
         gap="md"
         style={styles.pubCardFoot}
       >
-        <Topic name={pub.topic} />
+        {showTopic ? (
+          <Topic name={pub.topic} nested />
+        ) : taggedMeta ? (
+          <Handle>{taggedMeta}</Handle>
+        ) : null}
         <PubReadersMeta pub={pub} />
       </Flex>
     </div>
@@ -1505,9 +1543,15 @@ function FollowSlot({
 export function PubCard({
   pub,
   rail = false,
+  hideTopic = false,
+  tagPostCount,
 }: {
   pub: PublicationCard;
   rail?: boolean;
+  /** Omit topic chips when the surrounding page already names the tag. */
+  hideTopic?: boolean;
+  /** Tagged-post tally for tag directory cards. */
+  tagPostCount?: number;
 }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -1530,7 +1574,11 @@ export function PubCard({
       ) : (
         <div aria-hidden {...stylex.props(styles.pubCardGrow)} />
       )}
-      <PubCardFoot pub={pub} />
+      <PubCardFoot
+        pub={pub}
+        hideTopic={hideTopic}
+        tagPostCount={tagPostCount}
+      />
     </PublicationLink>
   );
 }
@@ -1596,12 +1644,18 @@ export function PubDirectoryRow({
   rank,
   isLast = false,
   isFirstInSection = false,
+  hideTopic = false,
+  tagPostCount,
 }: {
   pub: PublicationCard;
   rank?: number;
   isLast?: boolean;
   /** Drop top padding when the section head already provides spacing above. */
   isFirstInSection?: boolean;
+  /** Omit topic chips when the surrounding page already names the tag. */
+  hideTopic?: boolean;
+  /** Tagged-post tally for tag directory rows. */
+  tagPostCount?: number;
 }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -1637,9 +1691,10 @@ export function PubDirectoryRow({
           ) : null}
         </div>
         {pub.description ||
-        pub.topic ||
+        (!hideTopic && pub.topic) ||
+        tagPostCount != null ||
         pub.subscriberCount > 0 ||
-        pub.documentCount > 0 ? (
+        (tagPostCount == null && pub.documentCount > 0) ? (
           <div
             {...stylex.props(
               styles.pubDirExtra,
@@ -1649,7 +1704,11 @@ export function PubDirectoryRow({
             {pub.description ? (
               <p {...stylex.props(styles.pubDirDesc)}>{pub.description}</p>
             ) : null}
-            <PubDirectoryStats pub={pub} />
+            <PubDirectoryStats
+              pub={pub}
+              hideTopic={hideTopic}
+              tagPostCount={tagPostCount}
+            />
           </div>
         ) : null}
       </Flex>

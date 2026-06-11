@@ -41,6 +41,7 @@ import {
   PublicationAvatar,
   ReaderContent,
   SectionHead,
+  Topic,
 } from "../components/reader/primitives";
 import { PublicationSocialProofLine } from "../components/reader/publication-social-proof";
 import {
@@ -583,7 +584,11 @@ function PublicationProfile() {
           </div>
 
           <div {...stylex.props(styles.heroInfo)}>
-            {pub.topic ? <Kicker>{pub.topic}</Kicker> : null}
+            {pub.topic ? (
+              <Kicker>
+                <Topic name={pub.topic} />
+              </Kicker>
+            ) : null}
             <h1 {...stylex.props(styles.heroName)}>{pub.name}</h1>
             {pub.description ? (
               <p {...stylex.props(styles.heroDesc)}>{pub.description}</p>

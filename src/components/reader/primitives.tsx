@@ -63,14 +63,6 @@ const styles = stylex.create({
   commentCountSm: {
     fontSize: fontSize.sm,
   },
-  topic: {
-    color: primaryColor.text2,
-    fontFamily: fontFamily.sans,
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-    letterSpacing: tracking.wide,
-    textTransform: "uppercase",
-  },
   sectionTitle: {
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
@@ -338,10 +330,7 @@ export function ArticleEngagement({
   );
 }
 
-export function Topic({ name }: { name: string | null }) {
-  if (!name) return null;
-  return <span {...stylex.props(styles.topic)}>{name}</span>;
-}
+export { Topic } from "./topic-link";
 
 export function SectionHead({
   kicker,

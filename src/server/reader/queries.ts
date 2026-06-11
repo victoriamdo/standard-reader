@@ -50,6 +50,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 
 /** Blend weights for personalized publication ranking (tunable). */
 const RECOMMENDATION_BLEND = {
@@ -73,6 +74,8 @@ export interface ArticleCardQuery {
   featuredOnly?: boolean;
   /** Only documents that belong to a discover-eligible publication. */
   discoverOnly?: boolean;
+  /** Match documents whose `tags` array includes this label (case-insensitive). */
+  tag?: string;
   limit: number;
   offset?: number;
 }
@@ -109,6 +112,9 @@ export async function selectArticleCards(
       isNotNull(d.publicationUri),
       discoverEligiblePublicationWhere(p),
     );
+  }
+  if (opts.tag) {
+    conds.push(documentCarriesTagWhere(d, opts.tag));
   }
 
   const columns = articleCardColumns(schema);
@@ -624,6 +630,25 @@ function publicationEffectiveTopicSql(
   )`;
 }
 
+/** Match a tag against a publication's effective topic or any indexed document tag. */
+function publicationTagMatchSql(
+  p: Schema["publications"],
+  effectiveTopic: ReturnType<typeof publicationEffectiveTopicSql>,
+  tag: string,
+): ReturnType<typeof sql<boolean>> {
+  return sql<boolean>`(
+    lower(btrim(${effectiveTopic})) = lower(btrim(${tag}))
+    OR exists (
+      select 1
+      from documents doc, unnest(doc.tags) as doc_tag
+      where doc.publication_uri = ${p.uri}
+        and doc.deleted = false
+        and btrim(doc_tag) <> ''
+        and lower(btrim(doc_tag)) = lower(btrim(${tag}))
+    )
+  )`;
+}
+
 /**
  * Total publications the network knows about: every non-deleted publication
  * that isn't an excluded platform profile (blento.app). Deliberately ignores
@@ -684,17 +709,22 @@ export async function discoverPublicationTopics(
  * (Readers), latest indexed article (Active), or display name (A–Z). The stats
  * are refreshed on a schedule by `recomputeDerived()`.
  */
+export type DiscoverDirectoryTopicMatch = "effective" | "document";
+
 export async function discoverDirectoryPublications(
   db: Db,
   schema: Schema,
   {
     topic = null,
+    topicMatch = "effective",
     sort,
     limit,
     offset,
     query = null,
   }: {
     topic?: string | null;
+    /** `effective` = publication topic only; `document` = topic or any document tag. */
+    topicMatch?: DiscoverDirectoryTopicMatch;
     sort: DiscoverDirectorySort;
     limit: number;
     offset: number;
@@ -709,7 +739,11 @@ export async function discoverDirectoryPublications(
 
   const conds = [discoverEligiblePublicationWhere(p)];
   if (topic) {
-    conds.push(sql`lower(btrim(${effectiveTopic})) = lower(btrim(${topic}))`);
+    conds.push(
+      topicMatch === "document"
+        ? publicationTagMatchSql(p, effectiveTopic, topic)
+        : sql`lower(btrim(${effectiveTopic})) = lower(btrim(${topic}))`,
+    );
   }
 
   const trimmedQuery = query?.trim() ?? "";
@@ -786,6 +820,191 @@ export async function discoverDirectoryPublications(
     .offset(offset);
 
   return rows.map((row) => toPublicationCard(row));
+}
+
+/** Document `tags` array includes `tag` (case-insensitive). */
+function documentCarriesTagWhere(d: Schema["documents"], tag: string): SQL {
+  return sql`exists (
+    select 1
+    from unnest(${d.tags}) as doc_tag
+    where btrim(doc_tag) <> ''
+      and lower(btrim(doc_tag)) = lower(btrim(${tag}))
+  )`;
+}
+
+/** Count indexed, published articles carrying a tag on discover-eligible pubs. */
+export async function countTagArticles(
+  db: Db,
+  schema: Schema,
+  tag: string,
+): Promise<number> {
+  const d = schema.documents;
+  const p = schema.publications;
+
+  const row = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(d)
+    .leftJoin(p, eq(p.uri, d.publicationUri))
+    .where(
+      and(
+        eq(d.deleted, false),
+        documentPublishedNotInFuture(d),
+        isNotNull(d.publicationUri),
+        discoverEligiblePublicationWhere(p),
+        documentCarriesTagWhere(d, tag),
+      ),
+    );
+
+  return row[0]?.count ?? 0;
+}
+
+/** Publication has at least one indexed, published document carrying `tag`. */
+function publicationHasTaggedDocumentSql(
+  p: Schema["publications"],
+  d: Schema["documents"],
+  tag: string,
+): SQL {
+  return sql`exists (
+    select 1
+    from ${d} doc, unnest(doc.tags) as doc_tag
+    where doc.publication_uri = ${p.uri}
+      and doc.deleted = false
+      and doc.published_at <= now()
+      and btrim(doc_tag) <> ''
+      and lower(btrim(doc_tag)) = lower(btrim(${tag}))
+  )`;
+}
+
+/** Indexed, published documents on a publication that carry a given tag. */
+function publicationTaggedPostCountSql(
+  p: Schema["publications"],
+  d: Schema["documents"],
+  tag: string,
+): ReturnType<typeof sql<number>> {
+  return sql<number>`coalesce((
+    select count(*)::int
+    from ${d} doc, unnest(doc.tags) as doc_tag
+    where doc.publication_uri = ${p.uri}
+      and doc.deleted = false
+      and doc.published_at <= now()
+      and btrim(doc_tag) <> ''
+      and lower(btrim(doc_tag)) = lower(btrim(${tag}))
+  ), 0)`;
+}
+
+export interface TagPublicationCard extends PublicationCard {
+  /** Posts on this publication indexed with the directory tag. */
+  taggedPostCount: number;
+}
+
+export type TagDirectorySort = DiscoverDirectorySort | "tagged";
+
+/**
+ * Tag directory — discover-eligible publications with at least one indexed,
+ * published document carrying the tag, plus per-publication tagged-post counts.
+ */
+export async function tagDirectoryPublications(
+  db: Db,
+  schema: Schema,
+  {
+    tag,
+    sort,
+    limit,
+    offset,
+  }: {
+    tag: string;
+    sort: TagDirectorySort;
+    limit: number;
+    offset: number;
+  },
+): Promise<Array<TagPublicationCard>> {
+  const p = schema.publications;
+  const pr = schema.profiles;
+  const st = schema.publicationStats;
+  const d = schema.documents;
+
+  const effectiveTopic = publicationEffectiveTopicSql(p);
+  const taggedPostCount = publicationTaggedPostCountSql(p, d, tag);
+
+  const conds = [
+    discoverEligiblePublicationWhere(p),
+    publicationHasTaggedDocumentSql(p, d, tag),
+  ];
+
+  const sortName = publicationSortNameSql(p.name, p.url);
+
+  const sortTieBreak =
+    sort === "tagged"
+      ? [desc(taggedPostCount), asc(sortName), asc(p.uri)]
+      : sort === "az"
+        ? [asc(sortName), asc(p.uri)]
+        : sort === "active"
+          ? [
+              sql`${st.lastDocumentAt} desc nulls last`,
+              asc(sortName),
+              asc(p.uri),
+            ]
+          : [
+              sql`(coalesce(${st.subscriberCount}, 0) * 2.0 + coalesce(${st.recommendCount}, 0) * 1.0) desc`,
+              asc(sortName),
+              asc(p.uri),
+            ];
+
+  const rows = await db
+    .select({
+      uri: p.uri,
+      did: p.did,
+      name: p.name,
+      url: p.url,
+      description: p.description,
+      iconUrl: p.iconUrl,
+      ownerAvatarUrl: pr.avatarUrl,
+      ownerHandle: pr.handle,
+      topic: effectiveTopic,
+      verified: p.verified,
+      subscriberCount: sql<number>`coalesce(${st.subscriberCount}, 0)`.mapWith(
+        Number,
+      ),
+      documentCount: sql<number>`coalesce(${st.documentCount}, 0)`.mapWith(
+        Number,
+      ),
+      lastDocumentAt: st.lastDocumentAt,
+      taggedPostCount: taggedPostCount.mapWith(Number),
+    })
+    .from(p)
+    .leftJoin(st, eq(st.publicationUri, p.uri))
+    .leftJoin(pr, eq(pr.did, p.did))
+    .where(and(...conds))
+    .orderBy(...sortTieBreak)
+    .limit(limit)
+    .offset(offset);
+
+  return rows.map((row) => ({
+    ...toPublicationCard(row),
+    taggedPostCount: row.taggedPostCount,
+  }));
+}
+
+/** Count discover-eligible publications with indexed posts carrying `tag`. */
+export async function countTagPublications(
+  db: Db,
+  schema: Schema,
+  tag: string,
+): Promise<number> {
+  const p = schema.publications;
+  const d = schema.documents;
+
+  const row = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(p)
+    .where(
+      and(
+        discoverEligiblePublicationWhere(p),
+        publicationHasTaggedDocumentSql(p, d, tag),
+      ),
+    );
+
+  return row[0]?.count ?? 0;
 }
 
 export interface PublicationRailOpts {

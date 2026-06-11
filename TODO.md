@@ -153,6 +153,9 @@ in structured o11y (`observe`) and reads from the Neon read-model.
       sort, pagination) + Trending/Recommended rails for Discover. `discoverApi` in
       `api-discover.functions.ts` (rankings are simple reads over the precomputed
       aggregates; quality tuning stays in §7).
+- [x] Tag directory: `/tag/$tag` lists publications with indexed posts carrying the tag
+      and per-publication tagged-post counts; topic chips on cards link there.
+      `tagApi` in `api-tag.functions.ts`.
 - [x] Publication profile query (header + owner identity, recent writing,
       readers-also-follow). `publicationApi.getPublicationProfile`.
 - [x] Article query (full content + publication card + byline contributors +

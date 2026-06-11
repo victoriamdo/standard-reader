@@ -59,6 +59,7 @@ Detail screens
 ├── Article (reading view)
 ├── Publication profile
 ├── Author profile (`/u/$did` — all publications from one DID)
+├── Tag directory (`/tag/$tag` — articles and publications for that tag)
 └── Reader profile (saved / liked articles)
 ```
 
@@ -100,6 +101,16 @@ Sections, top to bottom:
 ### Search
 
 - Big editorial search field; live results split into **Publications** and **Articles**.
+
+### Tag directory
+
+- Route `/tag/$tag`; linked from topic chips on article cards, publication cards, and
+  article kickers.
+- **Articles** tab: chronological feed of indexed, published articles carrying the tag
+  (case-insensitive) on discover-eligible publications.
+- **Publications** tab: discover-eligible publications with at least one such document,
+  with per-publication **tagged-post counts**, Most posts / Readers / Active / A–Z sort,
+  and grid ⇄ list toggle.
 
 ### Article (reading view)
 

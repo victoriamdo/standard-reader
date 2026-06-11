@@ -84,6 +84,21 @@ export function documentUriFromParams(did: string, rkey: string): string {
   return `at://${did}/${STANDARD_NSID.document}/${rkey}`;
 }
 
+/** Canonical path for the tag directory (`/tag/$tag`). */
+export function tagPagePath(tag: string): string {
+  return `/tag/${encodeURIComponent(tag)}`;
+}
+
+/** Title-case a tag slug for mastheads (`travel` → `Travel`). */
+export function tagDisplayTitle(tag: string): string {
+  return tag
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 /** Canonical URL for an article on its publication site (indexed or derived). */
 export function articlePublicationUrl(article: {
   canonicalUrl: string | null;
@@ -129,6 +144,11 @@ export function initials(name: string): string {
 export function formatReaders(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`;
   return String(n);
+}
+
+/** Tag directory meta: posts on a publication carrying the page tag. */
+export function formatTaggedPostCount(count: number): string {
+  return count === 1 ? "1 tagged post" : `${formatReaders(count)} tagged posts`;
 }
 
 /** Article byline meta: read count only (omits zero). Likes use `LikeCount`. */

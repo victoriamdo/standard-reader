@@ -340,6 +340,7 @@ function ListFeedPanel({
             article={article}
             isFirstInSection={index === 0}
             unread={trackReading && signedIn && !article.isRead}
+            showSaveButton={false}
           />
         ))}
       </div>

@@ -14,13 +14,16 @@ const STATIC_ROUTES = [
   "/search",
 ] as const;
 
+const TAG_PATH = /^\/tag\/([^/]+)\/?$/;
+
 export type StaticInternalRoute = (typeof STATIC_ROUTES)[number];
 
 export type InternalRoute =
   | { to: StaticInternalRoute; params?: undefined }
   | { to: "/a/$did/$rkey"; params: { did: string; rkey: string } }
   | { to: "/p/$did/$rkey"; params: { did: string; rkey: string } }
-  | { to: "/u/$did"; params: { did: string } };
+  | { to: "/u/$did"; params: { did: string } }
+  | { to: "/tag/$tag"; params: { tag: string } };
 
 const ARTICLE_PATH = /^\/a\/([^/]+)\/([^/]+)\/?$/;
 const PUBLICATION_PATH = /^\/p\/([^/]+)\/([^/]+)\/?$/;
@@ -84,6 +87,14 @@ function parsePathname(pathname: string): InternalRoute | null {
     return {
       to: "/u/$did",
       params: { did: decodeURIComponent(authorMatch[1] ?? "") },
+    };
+  }
+
+  const tagMatch = TAG_PATH.exec(pathname);
+  if (tagMatch?.[1]) {
+    return {
+      to: "/tag/$tag",
+      params: { tag: decodeURIComponent(tagMatch[1]) },
     };
   }
 
