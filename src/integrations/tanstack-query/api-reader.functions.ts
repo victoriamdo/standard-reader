@@ -15,7 +15,10 @@ import {
   putReadRecord,
   putRecommendRecord,
   putSubscriptionRecord,
+  subjectRkey,
 } from "#/server/atproto/repo-records";
+import { Collections, buildAtUri } from "#/server/atproto/uri";
+import { deleteRecord, upsertSubscription } from "#/server/ingest/handlers";
 import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
 import { selectUnreadDocumentUris } from "#/server/reader/queries";
@@ -244,11 +247,22 @@ const followPublication = createServerFn({ method: "POST" })
       }
       span.set("did", session.did);
 
-      await putSubscriptionRecord(
+      const createdAt = new Date().toISOString();
+      const { uri, cid } = await putSubscriptionRecord(
         session.client,
         session.did,
         data.publicationUri,
-        new Date().toISOString(),
+        createdAt,
+      );
+      await upsertSubscription(
+        uri,
+        session.did,
+        subjectRkey(data.publicationUri),
+        cid,
+        {
+          publication: data.publicationUri,
+          createdAt,
+        },
       );
       await trackReaderRepo(session.did);
       return { ok: true as const };
@@ -288,6 +302,19 @@ const unfollowPublication = createServerFn({ method: "POST" })
         session.did,
         data.publicationUri,
         rows.map((row) => row.rkey),
+      );
+
+      const rkeys = new Set([
+        subjectRkey(data.publicationUri),
+        ...rows.map((row) => row.rkey),
+      ]);
+      await Promise.all(
+        [...rkeys].map((rkey) =>
+          deleteRecord(
+            buildAtUri(session.did, Collections.subscription, rkey),
+            Collections.subscription,
+          ),
+        ),
       );
       return { ok: true as const };
     }),

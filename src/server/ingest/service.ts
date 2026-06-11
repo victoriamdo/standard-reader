@@ -1,19 +1,24 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { Tap } from "@atproto/tap";
-import { sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { createServer } from "node:http";
 
 import type { TapEvent } from "../atproto/types.ts";
 import type { ProcessResult } from "./consumer.ts";
 
 import { db } from "../../db/index.ts";
-import { ingestState } from "../../db/schema.ts";
+import { ingestState, subscriptions, trackedRepos } from "../../db/schema.ts";
 import { logEvent } from "../observability/log.ts";
 import { verifyIngestAuth } from "./auth.ts";
 import { ingestConfig } from "./config.ts";
 import { processTapEvent } from "./consumer.ts";
+import { backfillSubscriptionsFromRepo } from "./handlers.ts";
 import { recomputeDerived } from "./recompute.ts";
+import {
+  reconcilePendingTrackedRepos,
+  startPendingTrackedReconcile,
+} from "./tap-client.ts";
 
 const DEFAULT_PORT = 3099;
 
@@ -78,6 +83,60 @@ async function getStatus(): Promise<Record<string, unknown>> {
   };
 }
 
+async function reconcileTrackedWithBackfill(): Promise<{
+  added: number;
+  addedDids: Array<string>;
+  attempted: number;
+  backfilled: Array<{ did: string; subscriptions: number }>;
+}> {
+  const result = await reconcilePendingTrackedRepos();
+
+  const readerRepos = await db
+    .select({ did: trackedRepos.did })
+    .from(trackedRepos)
+    .where(
+      or(
+        eq(trackedRepos.reason, "reader"),
+        eq(trackedRepos.reason, "subscriber"),
+      ),
+    );
+
+  const backfilled: Array<{ did: string; subscriptions: number }> = [];
+  for (const row of readerRepos) {
+    const [countRow] = await db
+      .select({
+        count: sql<number>`count(*)::int`.mapWith(Number),
+      })
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.subscriberDid, row.did),
+          eq(subscriptions.deleted, false),
+        ),
+      );
+    if ((countRow?.count ?? 0) > 0) {
+      continue;
+    }
+    const synced = await backfillSubscriptionsFromRepo(row.did);
+    if (synced > 0) {
+      backfilled.push({ did: row.did, subscriptions: synced });
+    }
+  }
+
+  if (backfilled.length > 0) {
+    logEvent("ingest.backfillSubscriptions", {
+      backfilled: backfilled.length,
+      ok: true,
+      subscriptions: backfilled.reduce(
+        (sum, row) => sum + row.subscriptions,
+        0,
+      ),
+    });
+  }
+
+  return { ...result, backfilled };
+}
+
 function requireAuth(req: IncomingMessage, res: ServerResponse): boolean {
   if (verifyIngestAuth(authRequest(req))) {
     return true;
@@ -119,6 +178,41 @@ async function handleRequest(
     } catch (error: unknown) {
       const ms = Math.round(performance.now() - startedAt);
       logEvent("ingest.recompute", {
+        error: error instanceof Error ? error.message : String(error),
+        ms,
+        ok: false,
+      });
+      throw error;
+    }
+    return;
+  }
+
+  if (
+    url.pathname === "/api/ingest/reconcile-tracked" &&
+    req.method === "POST"
+  ) {
+    if (!requireAuth(req, res)) {
+      return;
+    }
+    const startedAt = performance.now();
+    try {
+      const result = await reconcileTrackedWithBackfill();
+      const ms = Math.round(performance.now() - startedAt);
+      logEvent("ingest.reconcileTracked", {
+        added: result.added,
+        attempted: result.attempted,
+        backfilledRepos: result.backfilled.length,
+        ms,
+        ok: true,
+        subscriptions: result.backfilled.reduce(
+          (sum, row) => sum + row.subscriptions,
+          0,
+        ),
+      });
+      sendJson(res, 200, { durationMs: ms, ok: true, ...result });
+    } catch (error: unknown) {
+      const ms = Math.round(performance.now() - startedAt);
+      logEvent("ingest.reconcileTracked", {
         error: error instanceof Error ? error.message : String(error),
         ms,
         ok: false,
@@ -404,10 +498,14 @@ server.listen(port(), "::", () => {
 });
 
 const tapChannel = startTapChannel();
+const pendingTrackedReconcile = startPendingTrackedReconcile(
+  reconcileTrackedWithBackfill,
+);
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => {
     server.close(async () => {
+      pendingTrackedReconcile.stop();
       await tapChannel.destroy();
       const { flushHoneycomb } = await import("../observability/honeycomb.ts");
       await flushHoneycomb();

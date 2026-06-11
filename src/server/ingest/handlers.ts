@@ -37,6 +37,7 @@ import {
   authorPds,
   getCachedIdentity,
   primeIdentityHandle,
+  resolveIdentity,
 } from "../atproto/identity.ts";
 import {
   Collections,
@@ -617,4 +618,76 @@ export async function deleteRecord(
       return;
     }
   }
+}
+
+const SUBSCRIPTION_LIST_PAGE = 100;
+const SUBSCRIPTION_FETCH_TIMEOUT_MS = 8000;
+
+/**
+ * Pull a reader repo's subscription records straight from its PDS into Neon.
+ * Used when tap backfill lags behind a follow, or to hydrate repos that were
+ * tracked before tap registration succeeded.
+ */
+export async function backfillSubscriptionsFromRepo(
+  did: string,
+): Promise<number> {
+  const identity = await resolveIdentity(did);
+  if (!identity.pds) {
+    return 0;
+  }
+
+  let count = 0;
+  let cursor: string | undefined;
+
+  try {
+    do {
+      const url = new URL("/xrpc/com.atproto.repo.listRecords", identity.pds);
+      url.searchParams.set("repo", did);
+      url.searchParams.set("collection", Collections.subscription);
+      url.searchParams.set("limit", String(SUBSCRIPTION_LIST_PAGE));
+      if (cursor) {
+        url.searchParams.set("cursor", cursor);
+      }
+
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(SUBSCRIPTION_FETCH_TIMEOUT_MS),
+      });
+      if (!res.ok) {
+        break;
+      }
+
+      const body = (await res.json()) as {
+        cursor?: string;
+        records?: Array<{
+          cid?: string;
+          uri: string;
+          value?: SubscriptionRecord;
+        }>;
+      };
+
+      for (const record of body.records ?? []) {
+        const rkey = record.uri.slice(record.uri.lastIndexOf("/") + 1);
+        if (!record.value) {
+          continue;
+        }
+        await upsertSubscription(
+          record.uri,
+          did,
+          rkey,
+          record.cid,
+          record.value,
+        );
+        count += 1;
+      }
+
+      cursor =
+        (body.records?.length ?? 0) === SUBSCRIPTION_LIST_PAGE
+          ? body.cursor
+          : undefined;
+    } while (cursor);
+  } catch (error: unknown) {
+    console.warn(`[ingest] subscription backfill failed for ${did}`, error);
+  }
+
+  return count;
 }

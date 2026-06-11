@@ -42,6 +42,10 @@ Check items off as they land.
       on cold cache), 5m `staleTime` on sidebar/lists, `_layout` route `staleTime`, combined
       `tag.getPage` loader (one round trip), parallel article status fetches, deferred comments
       (`useQuery` below fold), subscription skeleton in AppShell, client `nav.transition` telemetry.
+- [x] **Load perf regression suite.** Playwright budgets for guest + signed-in views
+      (`pnpm perf:test`, `perf/load-regression.spec.ts`); JSON report in `perf/results/latest.json`;
+      fixture discovery via `pnpm perf:discover-fixtures`; signed-in auth via
+      `PERF_TEST_IDENTIFIER` + `PERF_TEST_APP_PASSWORD` (or legacy session cookie).
 
 ## 1. Data ingestion — tap → Neon
 
@@ -63,6 +67,11 @@ Check items off as they land.
       (node-postgres for local URLs, Neon serverless for Neon; override `DB_DRIVER`). Backfilled
       5k+ pubs / 60k+ docs / 5k+ subs / 8k+ profiles. The ingest worker, not the TanStack app
       server, owns tap event processing, operational status, and recompute endpoints.
+- [x] **Reader-repo subscription sync.** Follows write to the reader's PDS immediately but the UI
+      reads Neon. Fixed: write-through on follow/unfollow, retry tap `/repos/add` when
+      `tracked_repos.added_to_tap_at` is null, ingest reconcile loop + PDS backfill for reader
+      repos with zero mirrored subs (`/api/ingest/reconcile-tracked`). Set `TAP_API_URL` on **both**
+      Railway `web` and `ingest` services (`http://tap.railway.internal:2480`).
 
 ## 2. Read-model schema (Drizzle)
 

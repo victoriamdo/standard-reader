@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Load regression — perf viewer</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f4f2ee;
+        --panel: #fff;
+        --text: #1a1814;
+        --muted: #6b6560;
+        --border: #ddd8d0;
+        --ok: #1f7a4c;
+        --ok-bg: #e8f5ee;
+        --slow: #b42318;
+        --slow-bg: #fdecea;
+        --warn: #9a6700;
+        --bar: #3d6f9b;
+        --budget: #9a6700;
+        --shadow: 0 1px 2px rgb(26 24 20 / 6%), 0 8px 24px rgb(26 24 20 / 6%);
+        font-family:
+          "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #141210;
+          --panel: #1e1b17;
+          --text: #f4f0e8;
+          --muted: #a39e96;
+          --border: #3a3530;
+          --ok: #5ecf97;
+          --ok-bg: #163528;
+          --slow: #ff8a80;
+          --slow-bg: #3a1c1a;
+          --warn: #f0c14b;
+          --bar: #7eb0d8;
+          --budget: #f0c14b;
+          --shadow: 0 1px 2px rgb(0 0 0 / 20%), 0 8px 24px rgb(0 0 0 / 24%);
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.45;
+      }
+
+      .shell {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 3rem;
+      }
+
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem 1.5rem;
+        align-items: end;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 0.25rem 0 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      label,
+      button,
+      select,
+      input[type="file"] {
+        font: inherit;
+      }
+
+      select,
+      button {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+        border-radius: 0.5rem;
+        padding: 0.45rem 0.75rem;
+        box-shadow: var(--shadow);
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:hover,
+      select:hover {
+        border-color: var(--muted);
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 0.9rem 1rem;
+        box-shadow: var(--shadow);
+      }
+
+      .card .label {
+        color: var(--muted);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .card .value {
+        margin-top: 0.2rem;
+        font-size: 1.35rem;
+        font-weight: 600;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+      }
+
+      .panel h2 {
+        margin: 0;
+        padding: 0.9rem 1rem;
+        font-size: 1rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.92rem;
+      }
+
+      th,
+      td {
+        padding: 0.65rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+      }
+
+      th {
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      tr.slow {
+        background: var(--slow-bg);
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 0.15rem 0.45rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .badge.ok {
+        background: var(--ok-bg);
+        color: var(--ok);
+      }
+
+      .badge.slow {
+        background: var(--slow-bg);
+        color: var(--slow);
+      }
+
+      .bar-cell {
+        min-width: 12rem;
+      }
+
+      .bar-wrap {
+        position: relative;
+        height: 1.1rem;
+        background: color-mix(in srgb, var(--border) 55%, transparent);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .bar-fill {
+        height: 100%;
+        background: var(--bar);
+        border-radius: 999px;
+        min-width: 2px;
+      }
+
+      .bar-fill.slow {
+        background: var(--slow);
+      }
+
+      .bar-budget {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--budget);
+        opacity: 0.9;
+      }
+
+      .bar-label {
+        margin-top: 0.2rem;
+        color: var(--muted);
+        font-size: 0.75rem;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .empty,
+      .error {
+        padding: 1.25rem;
+        color: var(--muted);
+      }
+
+      .error {
+        color: var(--slow);
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1rem;
+        color: var(--muted);
+        font-size: 0.85rem;
+        padding: 0 0 1rem;
+      }
+
+      .meta strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      @media (max-width: 720px) {
+        th:nth-child(3),
+        td:nth-child(3) {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <div>
+          <h1>Load regression</h1>
+          <p class="subtitle">Wall-clock time until each view is ready</p>
+        </div>
+        <div class="controls">
+          <label>
+            Run
+            <select id="run-select" hidden>
+              <option value="results/latest.json">latest.json</option>
+            </select>
+          </label>
+          <label>
+            <input
+              id="file-input"
+              type="file"
+              accept="application/json,.json"
+            />
+          </label>
+          <button id="reload" type="button">Reload</button>
+        </div>
+      </header>
+
+      <div id="meta" class="meta"></div>
+      <div id="cards" class="cards"></div>
+      <div id="error" class="error" hidden></div>
+
+      <section class="panel">
+        <h2>Views by load time</h2>
+        <div id="table-wrap"></div>
+      </section>
+    </div>
+
+    <script>
+      /** @typedef {{ id: string, name: string, path: string, auth: string, budgetMs: number, ms: number, url: string, status: number | null, overBudget: boolean }} Measurement */
+      /** @typedef {{ generatedAt: string, mode: string, baseUrl: string, budgetMultiplier: number, measurements: Measurement[], slowest: Measurement[], failures: Measurement[] }} Report */
+
+      const runSelect = document.getElementById("run-select");
+      const fileInput = document.getElementById("file-input");
+      const reloadBtn = document.getElementById("reload");
+      const metaEl = document.getElementById("meta");
+      const cardsEl = document.getElementById("cards");
+      const tableWrap = document.getElementById("table-wrap");
+      const errorEl = document.getElementById("error");
+
+      const served = location.protocol.startsWith("http");
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function formatWhen(iso) {
+        try {
+          return new Date(iso).toLocaleString();
+        } catch {
+          return iso;
+        }
+      }
+
+      function utilization(row) {
+        return Math.round((row.ms / row.budgetMs) * 100);
+      }
+
+      function maxBudgetMs(rows) {
+        return rows.reduce((max, row) => Math.max(max, row.budgetMs), 0);
+      }
+
+      function renderMeta(report) {
+        metaEl.innerHTML = [
+          `<span><strong>Mode</strong> ${escapeHtml(report.mode)}</span>`,
+          `<span><strong>Generated</strong> ${escapeHtml(formatWhen(report.generatedAt))}</span>`,
+          `<span><strong>Base URL</strong> ${escapeHtml(report.baseUrl)}</span>`,
+          `<span><strong>Budget multiplier</strong> ${escapeHtml(String(report.budgetMultiplier))}</span>`,
+        ].join("");
+      }
+
+      function renderCards(report) {
+        const rows = report.measurements ?? [];
+        const failures = report.failures ?? [];
+        const slowest = [...rows].sort((a, b) => b.ms - a.ms)[0];
+        const avg =
+          rows.length === 0
+            ? 0
+            : Math.round(
+                rows.reduce((sum, row) => sum + row.ms, 0) / rows.length,
+              );
+
+        cardsEl.innerHTML = [
+          card("Views tested", String(rows.length)),
+          card(
+            "Failures",
+            String(failures.length),
+            failures.length > 0 ? "slow" : "",
+          ),
+          card("Slowest", slowest ? `${slowest.ms} ms` : "—"),
+          card("Average", rows.length ? `${avg} ms` : "—"),
+        ].join("");
+      }
+
+      function card(label, value, tone = "") {
+        return `<div class="card"><div class="label">${escapeHtml(label)}</div><div class="value" ${tone ? `style="color:var(--${tone})"` : ""}>${escapeHtml(value)}</div></div>`;
+      }
+
+      function renderTable(report) {
+        const rows = [...(report.measurements ?? [])].sort(
+          (a, b) => b.ms - a.ms,
+        );
+        const scale = maxBudgetMs(rows);
+
+        if (rows.length === 0) {
+          tableWrap.innerHTML = `<div class="empty">No measurements in this report.</div>`;
+          return;
+        }
+
+        const body = rows
+          .map((row) => {
+            const pct = utilization(row);
+            const width = Math.max(2, Math.round((row.ms / scale) * 100));
+            const budgetLeft = Math.min(
+              100,
+              Math.round((row.budgetMs / scale) * 100),
+            );
+            const badge = row.overBudget
+              ? `<span class="badge slow">SLOW</span>`
+              : `<span class="badge ok">ok</span>`;
+
+            return `<tr class="${row.overBudget ? "slow" : ""}">
+              <td>${badge}<br /><strong>${escapeHtml(row.name)}</strong><div class="bar-label">${escapeHtml(row.id)}</div></td>
+              <td class="bar-cell">
+                <div class="bar-wrap">
+                  <div class="bar-fill ${row.overBudget ? "slow" : ""}" style="width:${width}%"></div>
+                  <div class="bar-budget" style="left:${budgetLeft}%"></div>
+                </div>
+                <div class="bar-label">${row.ms} ms · budget ${row.budgetMs} ms (${pct}%)</div>
+              </td>
+              <td><code>${escapeHtml(row.path)}</code></td>
+              <td>${row.status ?? "—"}</td>
+            </tr>`;
+          })
+          .join("");
+
+        tableWrap.innerHTML = `<table>
+          <thead>
+            <tr>
+              <th>View</th>
+              <th>Load time</th>
+              <th>Path</th>
+              <th>HTTP</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>`;
+      }
+
+      function render(report) {
+        errorEl.hidden = true;
+        renderMeta(report);
+        renderCards(report);
+        renderTable(report);
+      }
+
+      function showError(message) {
+        errorEl.hidden = false;
+        errorEl.textContent = message;
+        metaEl.innerHTML = "";
+        cardsEl.innerHTML = "";
+        tableWrap.innerHTML = "";
+      }
+
+      async function loadRuns() {
+        if (!served) return;
+        try {
+          const res = await fetch("/api/runs");
+          if (!res.ok) return;
+          const files = await res.json();
+          runSelect.innerHTML = files
+            .map(
+              (file) =>
+                `<option value="results/${escapeHtml(file)}">${escapeHtml(file)}</option>`,
+            )
+            .join("");
+          runSelect.hidden = files.length === 0;
+        } catch {
+          runSelect.hidden = true;
+        }
+      }
+
+      async function loadReport(path) {
+        try {
+          const res = await fetch(path);
+          if (!res.ok) throw new Error(`HTTP ${res.status} loading ${path}`);
+          const report = await res.json();
+          render(report);
+        } catch (err) {
+          showError(
+            served
+              ? `Could not load ${path}: ${err.message}`
+              : "Open this page via `pnpm perf:view` (or pick a JSON file). file:// cannot fetch results.",
+          );
+        }
+      }
+
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          render(JSON.parse(text));
+        } catch (err) {
+          showError(`Invalid JSON file: ${err.message}`);
+        }
+      });
+
+      runSelect.addEventListener("change", () => {
+        loadReport(`/${runSelect.value}`);
+      });
+
+      reloadBtn.addEventListener("click", () => {
+        if (served) {
+          loadReport(`/${runSelect.value || "results/latest.json"}`);
+        } else {
+          fileInput.click();
+        }
+      });
+
+      (async function init() {
+        await loadRuns();
+        if (served) {
+          await loadReport(`/${runSelect.value || "results/latest.json"}`);
+        } else {
+          showError(
+            "Run `pnpm perf:view`, then open http://127.0.0.1:3098 — or load a JSON file.",
+          );
+        }
+      })();
+    </script>
+  </body>
+</html>

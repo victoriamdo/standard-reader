@@ -4,12 +4,14 @@
  * client-safe.
  */
 
-import { Client } from "@atcute/client";
+import type { Client } from "@atcute/client";
+
 import { isDid } from "@atcute/lexicons/syntax";
 import { redirect } from "@tanstack/react-router";
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
+import { restoreAuthenticatedClient } from "#/integrations/auth/restore-client.server";
 import {
   DEFAULT_AUTH_REDIRECT,
   sanitizeAuthRedirectTarget,
@@ -63,10 +65,9 @@ export async function getAtprotoSessionForRequest(
     return;
   }
 
-  const [{ db }, schema, { restoreAtprotoSession }] = await Promise.all([
+  const [{ db }, schema] = await Promise.all([
     import("#/db/index.server"),
     import("#/db/schema"),
-    import("#/integrations/auth/atproto"),
   ]);
 
   const sessionRow = await db.query.session.findFirst({
@@ -84,14 +85,12 @@ export async function getAtprotoSessionForRequest(
     return;
   }
 
-  const atprotoSession = await restoreAtprotoSession(did);
-  if (!atprotoSession) {
+  const client = await restoreAuthenticatedClient(did);
+  if (!client) {
     return;
   }
 
-  const client = new Client({ handler: atprotoSession });
-
-  return { did, atprotoSession, client, session: { user: userRow } };
+  return { did, atprotoSession: client, client, session: { user: userRow } };
 }
 
 async function getSessionContext(request: Request) {
