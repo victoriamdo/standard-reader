@@ -1,9 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { DEFAULT_TRACK_READING_HISTORY } from "#/lib/track-reading-history";
 import { ArrowRight, Flame, Sparkles } from "lucide-react";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import {
   ArticleRow,
@@ -18,6 +19,10 @@ import {
 } from "../components/reader/primitives";
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+} from "../design-system/segmented-control";
 import { Skeleton } from "../design-system/skeleton";
 import { primaryColor, uiColor } from "../design-system/theme/color.stylex";
 import { radius } from "../design-system/theme/radius.stylex";
@@ -34,10 +39,16 @@ import { user } from "../integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "../lib/public-url";
 import { pageSocialMeta } from "../lib/site-metadata";
 
+const homeSearchSchema = z.object({
+  scope: z.enum(["follows", "network"]).default("follows"),
+});
+
 export const Route = createFileRoute("/_layout/")({
-  loader: async ({ context }) => {
+  validateSearch: homeSearchSchema,
+  loaderDeps: ({ search }) => ({ scope: search.scope }),
+  loader: async ({ context, deps }) => {
     await context.queryClient.ensureQueryData(
-      feedApi.getHomeFeedQueryOptions(),
+      feedApi.getHomeFeedQueryOptions({ scope: deps.scope }),
     );
   },
   head: () => ({
@@ -47,6 +58,9 @@ export const Route = createFileRoute("/_layout/")({
 });
 
 const styles = stylex.create({
+  scopeControl: {
+    alignSelf: "flex-start",
+  },
   twoCol: {
     alignItems: "start",
     columnGap: spacing["12"],
@@ -203,15 +217,21 @@ function HomeFeedSkeleton() {
 }
 
 function Home() {
+  const { scope } = Route.useSearch();
+
   return (
-    <Suspense fallback={<HomeFeedSkeleton />}>
+    <Suspense key={scope} fallback={<HomeFeedSkeleton />}>
       <HomeFeed />
     </Suspense>
   );
 }
 
 function HomeFeed() {
-  const { data: feed } = useSuspenseQuery(feedApi.getHomeFeedQueryOptions());
+  const { scope } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const { data: feed } = useSuspenseQuery(
+    feedApi.getHomeFeedQueryOptions({ scope }),
+  );
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const { data: trackReadingPref } = useQuery({
     ...user.getTrackReadingHistoryPreferenceQueryOptions,
@@ -219,9 +239,18 @@ function HomeFeed() {
     refetchOnWindowFocus: false,
   });
   const signedIn = Boolean(session?.user);
-  const trackReading = signedIn
-    ? (trackReadingPref?.enabled ?? DEFAULT_TRACK_READING_HISTORY)
-    : false;
+  const showNetworkFeed = scope === "network" || !feed.personalized;
+  const trackReading =
+    signedIn && !showNetworkFeed
+      ? (trackReadingPref?.enabled ?? DEFAULT_TRACK_READING_HISTORY)
+      : false;
+
+  const onScopeChange = (keys: Set<React.Key> | "all") => {
+    const next = keys === "all" ? "follows" : [...keys][0];
+    if (next === "follows" || next === "network") {
+      void navigate({ search: { scope: next }, resetScroll: false });
+    }
+  };
 
   const now = new Date();
   const labels = homeFeedLabels({
@@ -265,6 +294,23 @@ function HomeFeed() {
         dek={labels.dek}
         metaLabel={labels.metaLabel}
         metaValue={labels.unreadLabel}
+        metaAccessory={
+          signedIn && feed.hasFollows ? (
+            <SegmentedControl
+              selectedKeys={new Set([scope])}
+              onSelectionChange={onScopeChange}
+              size="lg"
+              style={styles.scopeControl}
+            >
+              <SegmentedControlItem id="follows">
+                Subscriptions
+              </SegmentedControlItem>
+              <SegmentedControlItem id="network">
+                Everything
+              </SegmentedControlItem>
+            </SegmentedControl>
+          ) : null
+        }
       />
 
       {feed.featured ? <FeatureArticle article={feed.featured} /> : null}

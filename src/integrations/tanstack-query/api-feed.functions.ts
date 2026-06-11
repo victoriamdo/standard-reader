@@ -42,6 +42,13 @@ const HOME_RAIL_LIMIT = 6;
 export const TRENDING_PAGE_LIMIT = 100;
 const LATEST_PAGE_SIZE = 20;
 
+const homeInput = z.object({
+  /** `follows` — subscriptions (default); `network` — whole-network discover feed. */
+  scope: z.enum(["follows", "network"]).default("follows"),
+});
+
+export type HomeScope = z.infer<typeof homeInput>["scope"];
+
 const latestInput = z.object({
   /**
    * - `unread` — unread documents from the reader's subscriptions
@@ -74,6 +81,8 @@ export interface HomeFeed {
   youMightFollow: Array<PublicationCard>;
   /** True when tailored to the reader's follows (vs cold-start/signed-out). */
   personalized: boolean;
+  /** True when the signed-in reader has at least one follow. */
+  hasFollows: boolean;
   /** Unread count across follows (null when not personalized). */
   unreadCount: number | null;
 }
@@ -164,17 +173,20 @@ const getSidebar = createServerFn({ method: "GET" }).handler(
 
 const getHomeFeed = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
+  .inputValidator(homeInput)
   .handler(
-    observe("feed.getHomeFeed", async ({ context }, span) => {
+    observe("feed.getHomeFeed", async ({ data, context }, span) => {
       const { db, schema } = context;
       const did = await attachReaderSpanContext(span, getRequest());
       const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
-      const personalized = followUris.length > 0;
+      const hasFollows = followUris.length > 0;
+      const personalized = hasFollows && data.scope === "follows";
       const trackReading =
         did == null
           ? false
           : await resolveTrackReadingHistoryEnabled(db, schema);
       span.set("follows", followUris.length);
+      span.set("scope", data.scope);
       span.set("personalized", personalized);
 
       const rowQuery = personalized
@@ -220,7 +232,7 @@ const getHomeFeed = createServerFn({ method: "GET" })
         .filter((row) => row.uri !== featured?.uri)
         .slice(0, HOME_ROW_LIMIT);
 
-      if (!trackReading) {
+      if (!trackReading || !personalized) {
         featured = featured ? { ...featured, isRead: true } : null;
         latestUnread = articleCardsAsAllRead(latestUnread);
       }
@@ -253,7 +265,9 @@ const getHomeFeed = createServerFn({ method: "GET" })
         trending: trending.map((article) => byUri.get(article.uri) ?? article),
         youMightFollow,
         personalized,
-        unreadCount: trackReading ? (counts?.unread ?? null) : 0,
+        hasFollows,
+        unreadCount:
+          personalized && trackReading ? (counts?.unread ?? null) : 0,
       } satisfies HomeFeed;
     }),
   );
@@ -348,10 +362,12 @@ const getLatestFeed = createServerFn({ method: "GET" })
     }),
   );
 
-function getHomeFeedQueryOptions() {
+function getHomeFeedQueryOptions({
+  scope = "follows",
+}: z.input<typeof homeInput> = {}) {
   return queryOptions({
-    queryKey: ["feed", "home"] as const,
-    queryFn: async () => getHomeFeed(),
+    queryKey: ["feed", "home", scope] as const,
+    queryFn: async () => getHomeFeed({ data: { scope } }),
   });
 }
 

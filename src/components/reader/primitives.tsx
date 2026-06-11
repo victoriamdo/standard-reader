@@ -143,6 +143,13 @@ const styles = stylex.create({
     flexShrink: 0,
     textAlign: "right",
   },
+  mastheadMetaWithAccessory: {
+    display: "flex",
+  },
+  mastheadMetaAccessory: {
+    alignSelf: "flex-end",
+    width: "fit-content",
+  },
   metaDate: {
     color: uiColor.text1,
     fontFamily: fontFamily.mono,
@@ -380,6 +387,7 @@ export function Masthead({
   dek,
   metaLabel,
   metaValue,
+  metaAccessory,
 }: {
   kicker?: React.ReactNode;
   kickerIcon?: React.ReactNode;
@@ -387,24 +395,35 @@ export function Masthead({
   dek?: React.ReactNode;
   metaLabel?: React.ReactNode;
   metaValue?: React.ReactNode;
+  metaAccessory?: React.ReactNode;
 }) {
   return (
     <div {...stylex.props(styles.masthead)}>
       <Flex direction="column" gap="3xl">
         <Flex direction="column" gap="4xl">
+          {metaAccessory}
           {kicker != null && <Kicker icon={kickerIcon}>{kicker}</Kicker>}
           <h1 {...stylex.props(styles.mastheadTitle)}>{title}</h1>
         </Flex>
         {dek != null && <p {...stylex.props(styles.mastheadDek)}>{dek}</p>}
       </Flex>
-      {metaValue != null && (
-        <Flex direction="column" gap="lg" style={styles.mastheadMeta}>
-          {metaLabel != null && (
+      {metaValue != null || metaAccessory != null ? (
+        <Flex
+          direction="column"
+          gap="lg"
+          style={[
+            styles.mastheadMeta,
+            metaAccessory != null && styles.mastheadMetaWithAccessory,
+          ]}
+        >
+          {metaLabel != null ? (
             <span {...stylex.props(styles.metaDate)}>{metaLabel}</span>
-          )}
-          <span {...stylex.props(styles.metaBig)}>{metaValue}</span>
+          ) : null}
+          {metaValue != null ? (
+            <span {...stylex.props(styles.metaBig)}>{metaValue}</span>
+          ) : null}
         </Flex>
-      )}
+      ) : null}
     </div>
   );
 }
