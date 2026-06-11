@@ -72,3 +72,67 @@ export function invalidateFollowQueries(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: ["feed"] });
   void queryClient.invalidateQueries({ queryKey: ["discover"] });
 }
+
+export interface BulkFollowOptimisticContext {
+  entries: Array<{
+    publicationUri: string;
+    prevFollow: FollowStatus | undefined;
+  }>;
+  prevSidebar: SidebarData | undefined;
+}
+
+/** Optimistically mark many publications as followed (e.g. tag "follow all"). */
+export function applyBulkFollowOptimisticUpdate(
+  queryClient: QueryClient,
+  publications: Array<PublicationCard>,
+): BulkFollowOptimisticContext {
+  const sidebarKey = ["feed", "sidebar"] as const;
+  const prevSidebar = queryClient.getQueryData<SidebarData>(sidebarKey);
+  const entries: BulkFollowOptimisticContext["entries"] = [];
+
+  for (const pub of publications) {
+    const followKey = ["reader", "followStatus", pub.uri] as const;
+    entries.push({
+      publicationUri: pub.uri,
+      prevFollow: queryClient.getQueryData<FollowStatus>(followKey),
+    });
+    queryClient.setQueryData<FollowStatus>(followKey, { isFollowing: true });
+  }
+
+  if (prevSidebar && publications.length > 0) {
+    const current = prevSidebar.following ?? [];
+    const byUri = new Map(current.map((item) => [item.uri, item]));
+    for (const pub of publications) {
+      byUri.set(pub.uri, {
+        ...pub,
+        unreadCount: byUri.get(pub.uri)?.unreadCount ?? 0,
+      });
+    }
+    queryClient.setQueryData<SidebarData>(sidebarKey, {
+      ...prevSidebar,
+      following: sortFollowingPublications([...byUri.values()]),
+    });
+  }
+
+  return { entries, prevSidebar };
+}
+
+export function rollbackBulkFollowOptimisticUpdate(
+  queryClient: QueryClient,
+  context: BulkFollowOptimisticContext,
+) {
+  const sidebarKey = ["feed", "sidebar"] as const;
+
+  for (const { publicationUri, prevFollow } of context.entries) {
+    const followKey = ["reader", "followStatus", publicationUri] as const;
+    if (prevFollow) {
+      queryClient.setQueryData(followKey, prevFollow);
+    } else {
+      queryClient.removeQueries({ queryKey: followKey });
+    }
+  }
+
+  if (context.prevSidebar) {
+    queryClient.setQueryData(sidebarKey, context.prevSidebar);
+  }
+}

@@ -5,10 +5,12 @@ import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
 import * as stylex from "@stylexjs/stylex";
 import {
   keepPreviousData,
+  useMutation,
   useQuery,
+  useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArticleRow,
   PubCard,
@@ -46,11 +48,22 @@ import { formatCount } from "#/lib/format-count";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { SITE_NAME, siteSocialMeta } from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
-import { LayoutGrid, List, Tag } from "lucide-react";
+import { useLoginSearch } from "#/utils/use-login-search";
+import { Check, LayoutGrid, List, Plus, Tag } from "lucide-react";
+import {
+  applyBulkFollowOptimisticUpdate,
+  invalidateFollowQueries,
+  rollbackBulkFollowOptimisticUpdate,
+} from "#/components/reader/follow-optimistic";
+import { Button } from "#/design-system/button";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
-import type { TagPublicationCard } from "#/integrations/tanstack-query/api-tag.functions";
+import type {
+  TagFollowSummary,
+  TagPublicationCard,
+  TagPublicationDirectoryPage,
+} from "#/integrations/tanstack-query/api-tag.functions";
 
 const PAGE_SIZE = 24;
 const SKELETON_COUNT = 8;
@@ -153,6 +166,15 @@ const styles = stylex.create({
     flexShrink: 1,
     minWidth: "240px",
     paddingTop: spacing["0.5"],
+  },
+  heroActs: {
+    alignItems: "center",
+    columnGap: spacing["1.5"],
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    rowGap: spacing["2.5"],
+    paddingTop: spacing["1"],
   },
   heroName: {
     color: uiColor.text2,
@@ -711,6 +733,120 @@ function TagPublicationsPanel({
   );
 }
 
+function cachedTagPublications(
+  queryClient: ReturnType<typeof useQueryClient>,
+  tag: string,
+): Array<TagPublicationCard> {
+  const byUri = new Map<string, TagPublicationCard>();
+  const pages = queryClient.getQueriesData<TagPublicationDirectoryPage>({
+    queryKey: ["tag", "publications", tag],
+  });
+  for (const [, page] of pages) {
+    for (const pub of page?.items ?? []) {
+      byUri.set(pub.uri, pub);
+    }
+  }
+  return [...byUri.values()];
+}
+
+function TagFollowAllButton({
+  tag,
+  publicationCount,
+}: {
+  tag: string;
+  publicationCount: number;
+}) {
+  const queryClient = useQueryClient();
+  const loginSearch = useLoginSearch();
+  const followSummaryKey = tagApi.getTagFollowSummaryQueryOptions({
+    tag,
+  }).queryKey;
+  const { data: session } = useQuery(user.getSessionQueryOptions);
+  const signedIn = Boolean(session?.user);
+
+  const { data: followSummary } = useQuery({
+    ...tagApi.getTagFollowSummaryQueryOptions({ tag }),
+    enabled: signedIn && publicationCount > 0,
+  });
+
+  const followAllMutation = useMutation({
+    ...tagApi.followTagPublicationsMutationOptions(),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: followSummaryKey });
+      const prevSummary =
+        queryClient.getQueryData<TagFollowSummary>(followSummaryKey);
+      if (prevSummary) {
+        queryClient.setQueryData(followSummaryKey, {
+          ...prevSummary,
+          unfollowedCount: 0,
+        });
+      }
+
+      const cachedPubs = cachedTagPublications(queryClient, tag);
+      const bulkContext =
+        cachedPubs.length > 0
+          ? applyBulkFollowOptimisticUpdate(queryClient, cachedPubs)
+          : undefined;
+
+      return { prevSummary, bulkContext };
+    },
+    onError: (_error, _tag, context) => {
+      if (context?.prevSummary) {
+        queryClient.setQueryData(followSummaryKey, context.prevSummary);
+      }
+      if (context?.bulkContext) {
+        rollbackBulkFollowOptimisticUpdate(queryClient, context.bulkContext);
+      }
+    },
+    onSuccess: (result) => {
+      if (result.publications.length > 0) {
+        applyBulkFollowOptimisticUpdate(queryClient, result.publications);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: followSummaryKey });
+      invalidateFollowQueries(queryClient);
+    },
+  });
+
+  if (publicationCount === 0) {
+    return null;
+  }
+
+  if (!signedIn) {
+    return (
+      <Link to="/login" search={loginSearch}>
+        <Button variant="primary" size="md">
+          <Plus size={15} aria-hidden /> Follow all
+        </Button>
+      </Link>
+    );
+  }
+
+  const unfollowedCount = followSummary?.unfollowedCount ?? publicationCount;
+  const followingAll = unfollowedCount === 0;
+
+  return (
+    <Button
+      variant={followingAll ? "secondary" : "primary"}
+      size="md"
+      isDisabled={followingAll}
+      isPending={followAllMutation.isPending}
+      onPress={() => followAllMutation.mutate(tag)}
+    >
+      {followingAll ? (
+        <>
+          <Check size={15} aria-hidden /> Following all
+        </>
+      ) : (
+        <>
+          <Plus size={15} aria-hidden /> Follow all
+        </>
+      )}
+    </Button>
+  );
+}
+
 function TagPage() {
   const { tag: rawTag } = Route.useParams();
   const tag = decodeURIComponent(rawTag);
@@ -727,16 +863,6 @@ function TagPage() {
   const displayTag = tagDisplayTitle(tag);
   const isFeed = view === "feed";
 
-  const activeCount = isFeed ? articleCount : publicationCount;
-  const countNoun =
-    activeCount === 1
-      ? isFeed
-        ? "article"
-        : "publication"
-      : isFeed
-        ? "articles"
-        : "publications";
-
   const onViewChange = (key: React.Key) => {
     const next = key as TagView;
     void navigate({ search: (prev: TagSearch) => ({ ...prev, view: next }) });
@@ -749,19 +875,29 @@ function TagPage() {
           <Kicker icon={<Tag size={13} aria-hidden />}>Tag</Kicker>
           <h1 {...stylex.props(styles.heroName)}>{displayTag}</h1>
           <p {...stylex.props(styles.heroDesc)}>
-            {isFeed
-              ? `Every article tagged ${displayTag} across the Atmosphere.`
-              : `Every publication publishing work tagged ${displayTag}. Follow the ones worth your mornings.`}
+            Articles and publications tagged {displayTag} across the Atmosphere.
           </p>
           <div {...stylex.props(styles.stats)}>
             <span>
               <span {...stylex.props(styles.statValue)}>
-                {formatCount(activeCount)}
+                {formatCount(articleCount)}
               </span>
-              {countNoun}
+              {articleCount === 1 ? "article" : "articles"}
+            </span>
+            <span>
+              <span {...stylex.props(styles.statValue)}>
+                {formatCount(publicationCount)}
+              </span>
+              {publicationCount === 1 ? "publication" : "publications"}
             </span>
           </div>
         </div>
+
+        {!isFeed ? (
+          <div {...stylex.props(styles.heroActs)}>
+            <TagFollowAllButton tag={tag} publicationCount={publicationCount} />
+          </div>
+        ) : null}
       </div>
 
       <Tabs

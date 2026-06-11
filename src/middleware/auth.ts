@@ -11,7 +11,6 @@ import { redirect } from "@tanstack/react-router";
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
-import { restoreAuthenticatedClient } from "#/integrations/auth/restore-client.server";
 import {
   DEFAULT_AUTH_REDIRECT,
   sanitizeAuthRedirectTarget,
@@ -85,6 +84,8 @@ export async function getAtprotoSessionForRequest(
     return;
   }
 
+  const { restoreAuthenticatedClient } =
+    await import("#/integrations/auth/restore-client.server");
   const client = await restoreAuthenticatedClient(did);
   if (!client) {
     return;

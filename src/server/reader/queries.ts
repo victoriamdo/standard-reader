@@ -1007,6 +1007,29 @@ export async function countTagPublications(
   return row[0]?.count ?? 0;
 }
 
+/** Every discover-eligible publication URI with indexed posts carrying `tag`. */
+export async function selectTagPublicationUris(
+  db: Db,
+  schema: Schema,
+  tag: string,
+): Promise<Array<string>> {
+  const p = schema.publications;
+  const d = schema.documents;
+
+  const rows = await db
+    .select({ uri: p.uri })
+    .from(p)
+    .where(
+      and(
+        discoverEligiblePublicationWhere(p),
+        publicationHasTaggedDocumentSql(p, d, tag),
+      ),
+    )
+    .orderBy(asc(p.uri));
+
+  return rows.map((row) => row.uri);
+}
+
 export interface PublicationRailOpts {
   /** Publication URIs to omit (e.g. the current trending set). */
   excludeUris?: Array<string>;

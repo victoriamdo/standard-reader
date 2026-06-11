@@ -6,7 +6,6 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, getRequest, setCookie } from "@tanstack/react-start/server";
 import { revokeAtprotoSession } from "#/integrations/auth/atproto";
-import { restoreAuthenticatedClient } from "#/integrations/auth/restore-client.server";
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import {
@@ -110,6 +109,8 @@ async function loadSessionFromToken(sessionToken: string) {
     return null;
   }
 
+  const { restoreAuthenticatedClient } =
+    await import("#/integrations/auth/restore-client.server");
   const [client, profileRow, publicProfile, identity] = await Promise.all([
     restoreAuthenticatedClient(userRow.did),
     db.query.profiles.findFirst({

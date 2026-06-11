@@ -1,22 +1,32 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { TagPublicationCard } from "#/server/reader/queries";
 
-import { queryOptions } from "@tanstack/react-query";
+import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { getAtprotoSessionForRequest } from "#/middleware/auth";
+import {
+  putSubscriptionRecord,
+  subjectRkey,
+} from "#/server/atproto/repo-records";
+import { upsertSubscription } from "#/server/ingest/handlers";
+import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
 import {
   countTagArticles,
   countTagPublications,
+  followedPublications,
   selectArticleCards,
+  selectFollowUris,
+  selectTagPublicationUris,
   tagDirectoryPublications,
 } from "#/server/reader/queries";
 import { resolveTrackReadingHistoryEnabled } from "#/server/reader/track-reading-history";
 import { z } from "zod";
 
-import type { ArticleCard } from "./api-shapes";
+import type { ArticleCard, PublicationCard } from "./api-shapes";
 
 import { dbMiddleware } from "./db-middleware";
 
@@ -158,6 +168,17 @@ export interface TagPageData {
   publications?: TagPublicationDirectoryPage;
 }
 
+export interface TagFollowSummary {
+  publicationCount: number;
+  /** Publications the reader is not subscribed to yet. */
+  unfollowedCount: number;
+}
+
+export interface TagFollowAllResult {
+  followedCount: number;
+  publications: Array<PublicationCard>;
+}
+
 /** One round trip for tag directory counts + the active tab's first page. */
 const getTagPage = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
@@ -227,6 +248,130 @@ const getTagPage = createServerFn({ method: "GET" })
       } satisfies TagPageData;
     }),
   );
+
+const getTagFollowSummary = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(tagInput)
+  .handler(
+    observe("tag.getFollowSummary", async ({ data, context }, span) => {
+      const { db, schema } = context;
+      const did = await attachReaderSpanContext(span, getRequest());
+      span.set("tag", data.tag);
+
+      const publicationUris = await selectTagPublicationUris(
+        db,
+        schema,
+        data.tag,
+      );
+      span.set("publicationCount", publicationUris.length);
+
+      if (!did || publicationUris.length === 0) {
+        return {
+          publicationCount: publicationUris.length,
+          unfollowedCount: publicationUris.length,
+        } satisfies TagFollowSummary;
+      }
+
+      const followUris = await selectFollowUris(db, schema, did);
+      const followedSet = new Set(followUris);
+      const unfollowedCount = publicationUris.filter(
+        (uri) => !followedSet.has(uri),
+      ).length;
+      span.set("unfollowedCount", unfollowedCount);
+
+      return {
+        publicationCount: publicationUris.length,
+        unfollowedCount,
+      } satisfies TagFollowSummary;
+    }),
+  );
+
+const followTagPublications = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
+  .inputValidator(tagInput)
+  .handler(
+    observe("tag.followPublications", async ({ data, context }, span) => {
+      const { db, schema } = context;
+      span.set("tag", data.tag);
+
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) {
+        throw new Error("Sign in to follow publications.");
+      }
+      span.set("did", session.did);
+
+      const publicationUris = await selectTagPublicationUris(
+        db,
+        schema,
+        data.tag,
+      );
+      const followUris = await selectFollowUris(db, schema, session.did);
+      const followedSet = new Set(followUris);
+      const unfollowedUris = publicationUris.filter(
+        (uri) => !followedSet.has(uri),
+      );
+      span.set("unfollowedCount", unfollowedUris.length);
+
+      if (unfollowedUris.length === 0) {
+        return {
+          followedCount: 0,
+          publications: [],
+        } satisfies TagFollowAllResult;
+      }
+
+      const createdAt = new Date().toISOString();
+      for (const publicationUri of unfollowedUris) {
+        const { uri, cid } = await putSubscriptionRecord(
+          session.client,
+          session.did,
+          publicationUri,
+          createdAt,
+        );
+        await upsertSubscription(
+          uri,
+          session.did,
+          subjectRkey(publicationUri),
+          cid,
+          {
+            publication: publicationUri,
+            createdAt,
+          },
+        );
+      }
+
+      try {
+        await ensureTracked(session.did, "reader");
+      } catch (error) {
+        console.warn("[tag] failed to track reader repo", session.did, error);
+      }
+
+      const publications = await followedPublications(
+        db,
+        schema,
+        unfollowedUris,
+      );
+
+      span.set("followedCount", unfollowedUris.length);
+      return {
+        followedCount: unfollowedUris.length,
+        publications,
+      } satisfies TagFollowAllResult;
+    }),
+  );
+
+function getTagFollowSummaryQueryOptions({ tag }: z.input<typeof tagInput>) {
+  return queryOptions({
+    queryKey: ["tag", "followSummary", tag] as const,
+    queryFn: async () => getTagFollowSummary({ data: { tag } }),
+  });
+}
+
+function followTagPublicationsMutationOptions() {
+  return mutationOptions({
+    mutationKey: ["tag", "followPublications"] as const,
+    mutationFn: async (tag: string) => followTagPublications({ data: { tag } }),
+  });
+}
 
 function getArticleCountQueryOptions({ tag }: z.input<typeof tagInput>) {
   return queryOptions({
@@ -310,6 +455,10 @@ export const tagApi = {
   getPublicationCountQueryOptions,
   getPublications,
   getPublicationsQueryOptions,
+  getTagFollowSummary,
+  getTagFollowSummaryQueryOptions,
+  followTagPublications,
+  followTagPublicationsMutationOptions,
   getTagPage,
   seedTagPageCaches,
 };
