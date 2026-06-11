@@ -179,7 +179,8 @@ Sections, top to bottom:
 - Right rail: About + DID + "Readers also follow".
 - Social proof line ("Followed by …") when applicable — Bluesky accounts you
   follow who also subscribe to or like the publication.
-- Owner `@handle` links to the **author profile** (`/u/$did`).
+- Owner `@handle` links to the **author profile** (`/u/$did`). **Resume** chip
+  (links to sifa.id, loaded after paint) when the owner has a Sifa profile.
 
 ### Author profile
 

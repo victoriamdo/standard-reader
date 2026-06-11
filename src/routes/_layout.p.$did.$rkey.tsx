@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
+import { authorApi } from "#/integrations/tanstack-query/api-author.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
@@ -43,6 +44,7 @@ import {
   Topic,
 } from "../components/reader/primitives";
 import { PublicationSocialProofLine } from "../components/reader/publication-social-proof";
+import { AuthorSifaResumeChip } from "../components/reader/sifa-resume-chip";
 import {
   applyMarkReadManyOptimisticUpdate,
   invalidateReadQueries,
@@ -98,6 +100,14 @@ export const Route = createFileRoute("/_layout/p/$did/$rkey")({
         publicationApi.getPublicationEmbedMetaQueryOptions(uri),
       ),
     ]);
+    if (profile) {
+      void context.queryClient.prefetchQuery(
+        authorApi.getAuthorSifaProfileQueryOptions(
+          profile.owner.did,
+          profile.owner.handle,
+        ),
+      );
+    }
     return {
       publicationName: profile?.publication.name ?? null,
       publicationDescription: profile?.publication.description ?? null,
@@ -617,6 +627,7 @@ function PublicationProfile() {
                 )}
                 label=""
               />
+              <AuthorSifaResumeChip did={owner.did} handle={owner.handle} />
             </div>
             {signedIn && socialProof && socialProof.total > 0 ? (
               <PublicationSocialProofLine {...socialProof} />
