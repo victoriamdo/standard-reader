@@ -1,5 +1,7 @@
 import { EXTENSION_CLOSE_LOGIN_EVENT } from "#/lib/extension-connected";
 
+import { authCallbackMatches } from "../lib/manifest-hosts";
+
 const CONNECTED_PATH = "/extension/connected";
 
 function isExtensionConnectedPage(): boolean {
@@ -16,11 +18,7 @@ function notifyLoginComplete(): void {
 }
 
 export default defineContentScript({
-  matches: [
-    "http://127.0.0.1/extension/connected*",
-    "https://standard-reader.app/extension/connected*",
-    "https://staging.standard-reader.app/extension/connected*",
-  ],
+  matches: authCallbackMatches(import.meta.env.DEV),
   runAt: "document_idle",
   main() {
     if (!isExtensionConnectedPage()) return;

@@ -9,6 +9,7 @@ import {
   stylexCssOnlyDevFixPlugin,
   stylexDevServerOriginPlugins,
 } from "./src/lib/stylex-dev-origin-plugin.ts";
+import { hostPermissions } from "./src/lib/manifest-hosts.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const wxtCommand =
@@ -81,15 +82,7 @@ export default defineConfig({
     description:
       "Save articles and follow publications on the standard.site network.",
     permissions: ["tabs", "activeTab", "storage", "cookies", "contextMenus"],
-    host_permissions: [
-      "https://standard-reader.app/*",
-      "https://staging.standard-reader.app/*",
-      "http://127.0.0.1:3000/*",
-      "http://127.0.0.1:3001/*",
-      "https://bsky.app/*",
-      "https://staging.bsky.app/*",
-      "<all_urls>",
-    ],
+    host_permissions: hostPermissions(isWxtDev),
     options_ui: {
       page: "options.html",
       open_in_tab: false,

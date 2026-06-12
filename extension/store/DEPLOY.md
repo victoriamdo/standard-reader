@@ -239,11 +239,9 @@ Expect **1–3 business days**; broad permissions can take longer.
 If Google asks for a **video**, record ~30s: visit publication article → overlay
 → save → popup on article → Bluesky embed save.
 
-**Dev hosts in manifest:** production zips may still list
-`127.0.0.1`, `staging.standard-reader.app`, etc. Reviewers may ask why. Answer:
-internal staging and local development; production users hit
-`standard-reader.app`. Optionally strip dev hosts from prod builds before
-upload to reduce friction.
+**Dev hosts in manifest:** `pnpm extension:dev` adds staging and loopback hosts;
+store builds (`pnpm extension:zip`) ship production hosts only — see
+[`manifest-hosts.ts`](../src/lib/manifest-hosts.ts).
 
 If **rejected**, read the email carefully, fix code or listing copy, bump
 version, rebuild zip, resubmit with a note explaining the fix.

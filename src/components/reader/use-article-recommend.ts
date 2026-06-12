@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { useLoginSearch } from "#/utils/use-login-search";
@@ -24,7 +20,7 @@ export function useArticleRecommend(
   const loginSearch = useLoginSearch();
   const queryClient = useQueryClient();
 
-  const { data: status } = useSuspenseQuery(
+  const { data: status } = useQuery(
     readerApi.getRecommendStatusQueryOptions(documentUri),
   );
 
@@ -35,7 +31,7 @@ export function useArticleRecommend(
     readerApi.unrecommendDocumentMutationOptions(),
   );
 
-  const recommended = status.isRecommended;
+  const recommended = status?.isRecommended ?? false;
   const recommendCount = recommendCountFromCache(
     queryClient,
     documentUri,

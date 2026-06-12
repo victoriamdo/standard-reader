@@ -6,6 +6,10 @@ import { createRoot } from "react-dom/client";
 
 import { PageChip } from "../../components/PageChip";
 import { sendMessage } from "../../lib/messaging";
+import {
+  overlayExcludedHosts,
+  pageOverlayExcludeMatches,
+} from "../../lib/manifest-hosts";
 import "../../load-stylex-styles";
 
 const dismissedOrigins = new Set<string>();
@@ -18,14 +22,7 @@ function dismissOrigin(origin: string): void {
   dismissedOrigins.add(origin);
 }
 
-const EXCLUDED_HOSTS = new Set([
-  "standard-reader.app",
-  "staging.standard-reader.app",
-  "bsky.app",
-  "staging.bsky.app",
-  "localhost",
-  "127.0.0.1",
-]);
+const EXCLUDED_HOSTS = overlayExcludedHosts(import.meta.env.DEV);
 
 function installSpaNavigationListener(callback: () => void): () => void {
   const notify = () => {
@@ -171,14 +168,7 @@ async function initPageOverlay(ctx: ContentScriptContext): Promise<void> {
 const standardReaderContentScript = defineContentScript({
   matches: ["<all_urls>"],
   cssInjectionMode: "ui",
-  excludeMatches: [
-    "*://standard-reader.app/*",
-    "*://*.standard-reader.app/*",
-    "*://bsky.app/*",
-    "*://staging.bsky.app/*",
-    "*://localhost/*",
-    "*://127.0.0.1/*",
-  ],
+  excludeMatches: pageOverlayExcludeMatches(import.meta.env.DEV),
   async main(ctx) {
     browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message?.type === "getDiscoveryHints") {

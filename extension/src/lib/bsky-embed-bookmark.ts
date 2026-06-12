@@ -7,6 +7,7 @@ import type {
   ExtensionResolveResult,
 } from "./types";
 
+import { appHosts, bskyHosts } from "./manifest-hosts";
 import { sendMessage } from "./messaging";
 
 const BUTTON_ATTR = "data-sr-bsky-bookmark";
@@ -18,10 +19,8 @@ const STYLE_ID = "sr-bsky-bookmark-styles";
 
 const positionSyncByButton = new WeakMap<HTMLButtonElement, () => void>();
 
-const SR_HOSTS = new Set([
-  "standard-reader.app",
-  "staging.standard-reader.app",
-]);
+const SR_HOSTS = new Set(appHosts(import.meta.env.DEV));
+const BSKY_HOSTS = new Set(bskyHosts(import.meta.env.DEV));
 
 const SR_ARTICLE_PATH = /^\/a\/[^/]+\/[^/]+(?:\/|$|\?)/;
 
@@ -146,7 +145,7 @@ function isArticleHref(href: string): boolean {
 }
 
 function isBskyHost(hostname: string): boolean {
-  return hostname === "bsky.app" || hostname === "staging.bsky.app";
+  return BSKY_HOSTS.has(hostname);
 }
 
 function normalizeText(text: string): string {

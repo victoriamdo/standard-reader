@@ -17,6 +17,7 @@ import { PCKT_CONTENT } from "#/lib/pckt/types";
 import { EMPTY_CODE_HIGHLIGHTS } from "#/lib/theme";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { authorPds } from "#/server/atproto/identity";
+import { didFromAtUri } from "#/server/atproto/uri";
 import { resolveGreengaleContent } from "#/server/greengale/resolve";
 import { buildCanonicalUrl } from "#/server/ingest/mappers";
 import { resolveLeafletContent } from "#/server/leaflet/resolve";
@@ -338,79 +339,97 @@ const getArticle = createServerFn({ method: "GET" })
         span.set("documentUri", data.documentUri);
         await attachReaderSpanContext(span, getRequest());
 
-        const [docRows, contributorRows, recommendRows, readRows] =
-          await Promise.all([
-            db
-              .select({
-                uri: d.uri,
-                did: d.did,
-                title: d.title,
-                description: d.description,
-                path: d.path,
-                canonicalUrl: d.canonicalUrl,
-                coverImageUrl: d.coverImageUrl,
-                publishedAt: d.publishedAt,
-                recordUpdatedAt: d.recordUpdatedAt,
-                featured: d.featured,
-                tags: d.tags,
-                contentJson: d.contentJson,
-                contentFormat: d.contentFormat,
-                textContent: d.textContent,
-                bskyPostUri: d.bskyPostUri,
-                bskyPostCid: d.bskyPostCid,
-                publicationUri: d.publicationUri,
-                pubUri: p.uri,
-                pubDid: p.did,
-                pubName: p.name,
-                pubUrl: p.url,
-                pubDescription: p.description,
-                pubIconUrl: p.iconUrl,
-                pubOwnerAvatarUrl: pr.avatarUrl,
-                pubOwnerHandle: pr.handle,
-                pubOwnerDisplayName: pr.displayName,
-                pubTopic: p.topic,
-                pubVerified: p.verified,
-                pubSubscriberCount: st.subscriberCount,
-                pubDocumentCount: st.documentCount,
-                pubLastDocumentAt: st.lastDocumentAt,
-              })
-              .from(d)
-              .leftJoin(p, eq(p.uri, d.publicationUri))
-              .leftJoin(st, eq(st.publicationUri, p.uri))
-              .leftJoin(pr, eq(pr.did, p.did))
-              .where(eq(d.uri, data.documentUri))
-              .limit(1),
-            db
-              .select({
-                did: dc.did,
-                role: dc.role,
-                displayName: dc.displayName,
-                profileDisplayName: pr.displayName,
-                handle: pr.handle,
-                avatarUrl: pr.avatarUrl,
-              })
-              .from(dc)
-              .leftJoin(pr, eq(pr.did, dc.did))
-              .where(eq(dc.documentUri, data.documentUri)),
-            db
-              .select({ count: sql<number>`count(*)`.mapWith(Number) })
-              .from(rec)
-              .where(
-                and(
-                  eq(rec.documentUri, data.documentUri),
-                  eq(rec.deleted, false),
-                ),
+        // The URI authority is the author's repo DID, so the profile lookup
+        // can join the first batch instead of waiting on the document row.
+        const authorDid = didFromAtUri(data.documentUri);
+
+        const [
+          docRows,
+          contributorRows,
+          recommendRows,
+          readRows,
+          authorProfileRows,
+          session,
+        ] = await Promise.all([
+          db
+            .select({
+              uri: d.uri,
+              did: d.did,
+              title: d.title,
+              description: d.description,
+              path: d.path,
+              canonicalUrl: d.canonicalUrl,
+              coverImageUrl: d.coverImageUrl,
+              publishedAt: d.publishedAt,
+              recordUpdatedAt: d.recordUpdatedAt,
+              featured: d.featured,
+              tags: d.tags,
+              contentJson: d.contentJson,
+              contentFormat: d.contentFormat,
+              textContent: d.textContent,
+              bskyPostUri: d.bskyPostUri,
+              bskyPostCid: d.bskyPostCid,
+              publicationUri: d.publicationUri,
+              pubUri: p.uri,
+              pubDid: p.did,
+              pubName: p.name,
+              pubUrl: p.url,
+              pubDescription: p.description,
+              pubIconUrl: p.iconUrl,
+              pubOwnerAvatarUrl: pr.avatarUrl,
+              pubOwnerHandle: pr.handle,
+              pubOwnerDisplayName: pr.displayName,
+              pubTopic: p.topic,
+              pubVerified: p.verified,
+              pubSubscriberCount: st.subscriberCount,
+              pubDocumentCount: st.documentCount,
+              pubLastDocumentAt: st.lastDocumentAt,
+            })
+            .from(d)
+            .leftJoin(p, eq(p.uri, d.publicationUri))
+            .leftJoin(st, eq(st.publicationUri, p.uri))
+            .leftJoin(pr, eq(pr.did, p.did))
+            .where(eq(d.uri, data.documentUri))
+            .limit(1),
+          db
+            .select({
+              did: dc.did,
+              role: dc.role,
+              displayName: dc.displayName,
+              profileDisplayName: pr.displayName,
+              handle: pr.handle,
+              avatarUrl: pr.avatarUrl,
+            })
+            .from(dc)
+            .leftJoin(pr, eq(pr.did, dc.did))
+            .where(eq(dc.documentUri, data.documentUri)),
+          db
+            .select({ count: sql<number>`count(*)`.mapWith(Number) })
+            .from(rec)
+            .where(
+              and(
+                eq(rec.documentUri, data.documentUri),
+                eq(rec.deleted, false),
               ),
-            db
-              .select({ count: sql<number>`count(*)`.mapWith(Number) })
-              .from(reads)
-              .where(
-                and(
-                  eq(reads.documentUri, data.documentUri),
-                  eq(reads.deleted, false),
-                ),
+            ),
+          db
+            .select({ count: sql<number>`count(*)`.mapWith(Number) })
+            .from(reads)
+            .where(
+              and(
+                eq(reads.documentUri, data.documentUri),
+                eq(reads.deleted, false),
               ),
-          ]);
+            ),
+          authorDid
+            ? db
+                .select({ pds: pr.pds })
+                .from(pr)
+                .where(eq(pr.did, authorDid))
+                .limit(1)
+            : Promise.resolve([]),
+          getAtprotoSessionForRequest(getRequest()),
+        ]);
 
         const row = docRows[0];
         if (!row) {
@@ -424,12 +443,7 @@ const getArticle = createServerFn({ method: "GET" })
           schema,
           data.documentUri,
         );
-
-        const [authorProfile] = await db
-          .select({ pds: pr.pds })
-          .from(pr)
-          .where(eq(pr.did, row.did))
-          .limit(1);
+        const authorProfile = authorProfileRows[0];
 
         const publication: PublicationCard | null = row.pubUri
           ? toPublicationCard({
@@ -459,12 +473,10 @@ const getArticle = createServerFn({ method: "GET" })
           }),
         );
 
-        const session = await getAtprotoSessionForRequest(getRequest());
-
-        const authorPdsEndpoint = await authorPds(
-          row.did,
-          authorProfile?.pds ?? null,
-        );
+        const [authorPdsEndpoint, themeMode] = await Promise.all([
+          authorPds(row.did, authorProfile?.pds ?? null),
+          themeModeForRequest(db, schema, session?.session.user.id),
+        ]);
 
         const rawContentJson = row.contentJson ?? null;
         let resolvedContentJson = rawContentJson as JsonValue | null;
@@ -498,12 +510,6 @@ const getArticle = createServerFn({ method: "GET" })
             }
           }
         }
-
-        const themeMode = await themeModeForRequest(
-          db,
-          schema,
-          session?.session.user.id,
-        );
 
         const codeBlocks: Array<
           Pick<LeafletCodeBlock, "language" | "plaintext">

@@ -482,25 +482,6 @@ function authorDid(article: ArticleDetail): string | null {
   );
 }
 
-function ArticleFollowButtonMd({
-  publicationUri,
-  signedIn,
-}: {
-  publicationUri: string;
-  signedIn: boolean;
-}) {
-  const { data: follow } = useSuspenseQuery(
-    readerApi.getFollowStatusQueryOptions(publicationUri),
-  );
-  return (
-    <FollowButton
-      publicationUri={publicationUri}
-      signedIn={signedIn}
-      initialFollowing={follow.isFollowing}
-    />
-  );
-}
-
 function BookmarkButton({
   bookmarked,
   onToggle,
@@ -944,7 +925,7 @@ function ArticleViewBody({
                 ) : null}
               </Flex>
               {article.publicationUri ? (
-                <ArticleFollowButtonMd
+                <FollowButton
                   publicationUri={article.publicationUri}
                   signedIn={signedIn}
                 />

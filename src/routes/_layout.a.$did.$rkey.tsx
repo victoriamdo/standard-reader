@@ -55,13 +55,22 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
   loaderDeps: ({ search }) => ({ q: search.q }),
   loader: async ({ context, params, deps }) => {
     const uri = documentUriFromParams(params.did, params.rkey);
-    const [article, openLinks] = await Promise.all([
-      context.queryClient.ensureQueryData(
-        publicationApi.getArticleQueryOptions(uri),
-      ),
-      context.queryClient.ensureQueryData(
-        user.getOpenLinksPreferenceQueryOptions,
-      ),
+    const { queryClient } = context;
+
+    // Button states (recommend/bookmark/follow) don't gate the redirect or
+    // head meta — fetch them in parallel with the article and let the
+    // components pick them up from the cache without blocking navigation.
+    void queryClient.prefetchQuery(
+      readerApi.getRecommendStatusQueryOptions(uri),
+    );
+    void queryClient.prefetchQuery(
+      readerApi.getBookmarkStatusQueryOptions(uri),
+    );
+
+    const [article, openLinks, sharedQuote] = await Promise.all([
+      queryClient.ensureQueryData(publicationApi.getArticleQueryOptions(uri)),
+      queryClient.ensureQueryData(user.getOpenLinksPreferenceQueryOptions),
+      deps.q ? resolveSharedQuote(uri, deps.q) : Promise.resolve(null),
     ]);
     // Bounce to the publication site when the body isn't renderable in-app, or
     // when the reader prefers links to open on the original site.
@@ -74,30 +83,10 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
         throw redirect({ href: externalUrl });
       }
     }
-    let sharedQuote: string | null = null;
-
-    if (article) {
-      const results = await Promise.all([
-        context.queryClient.ensureQueryData(user.getSessionQueryOptions),
-        context.queryClient.ensureQueryData(
-          readerApi.getRecommendStatusQueryOptions(uri),
-        ),
-        context.queryClient.ensureQueryData(
-          readerApi.getBookmarkStatusQueryOptions(uri),
-        ),
-        article.publicationUri
-          ? context.queryClient.ensureQueryData(
-              readerApi.getFollowStatusQueryOptions(article.publicationUri),
-            )
-          : Promise.resolve(),
-        deps.q
-          ? resolveSharedQuote(article.uri, deps.q)
-          : Promise.resolve(null),
-      ]);
-      const quote = results[4];
-      sharedQuote = typeof quote === "string" ? quote : null;
-    } else {
-      await context.queryClient.ensureQueryData(user.getSessionQueryOptions);
+    if (article?.publicationUri) {
+      void queryClient.prefetchQuery(
+        readerApi.getFollowStatusQueryOptions(article.publicationUri),
+      );
     }
 
     return { article, sharedQuote };
