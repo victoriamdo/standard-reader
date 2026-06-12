@@ -1,9 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 
-import { subscribeCardBorderRadius } from "./subscribe-card.constants";
-
-/** Subscribe card / embed iframe layout tokens. */
+/** Subscribe card / embed iframe layout tokens. Keep in sync with subscribe-card.constants.ts */
 export const subscribeCardLayout = stylex.defineVars({
-  borderRadius: subscribeCardBorderRadius,
+  borderRadius: "1.55rem",
   maxWidth: "25rem",
 });
