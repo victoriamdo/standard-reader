@@ -206,12 +206,13 @@ Icons are already in the manifest (`icons/icon-{16,32,48,128}.png`).
      cookie on `standard-reader.app` for auth; settings in `chrome.storage.sync`
    - No separate extension analytics pipeline (see policy)
 
-6. **Privacy practices** questionnaire — align answers with
-   [`privacy-policy.md`](./privacy-policy.md).
+6. **Privacy practices** — paste fields from
+   [`PRIVACY-PRACTICES.md`](./PRIVACY-PRACTICES.md) (single purpose, every
+   permission justification, remote code, data-use notes). Verify publisher
+   contact email under **Settings** and certify data usage on the Privacy tab.
 
-7. **Permissions** — paste justifications from [`README.md`](./README.md)
-   (Permissions justification section). Be specific; `<all_urls>` and `cookies`
-   trigger manual review.
+7. **Permissions** — same source as step 6; see quick table in
+   [`README.md`](./README.md).
 
 8. **Distribution**:
 

@@ -1,6 +1,7 @@
 # Standard Reader Extension — Chrome Web Store
 
-**Deploy:** step-by-step runbook → [`DEPLOY.md`](./DEPLOY.md)
+**Deploy:** step-by-step runbook → [`DEPLOY.md`](./DEPLOY.md)  
+**Privacy practices tab (paste-ready):** [`PRIVACY-PRACTICES.md`](./PRIVACY-PRACTICES.md)
 
 ---
 
@@ -42,18 +43,36 @@ Standard Reader is the browser companion for [standard.site](https://standard.si
 
 ## Permissions justification
 
-Paste these into the Chrome Web Store dashboard (see [`DEPLOY.md`](./DEPLOY.md) for context):
+Full paste-ready text for every Privacy practices field:
+[`PRIVACY-PRACTICES.md`](./PRIVACY-PRACTICES.md)
 
-- **`<all_urls>`** — Detect indexed standard.site articles on publication websites and offer save/read actions via the page overlay and context menu.
-- **`cookies`** — Reuse your existing Standard Reader sign-in session (no separate extension login).
-- **`tabs` / `activeTab`** — Resolve the current tab URL and open articles in Standard Reader.
-- **`contextMenus`** — Save links and pages from the right-click menu.
-- **`storage`** — Extension settings (overlay toggle, Bluesky embed save button).
+Quick reference:
+
+- **Single purpose** — Companion for standard-reader.app: save, follow, open reader
+- **activeTab / tabs** — Resolve active tab URL; badge, popup, login tab cleanup
+- **contextMenus** — Save / Open from right-click
+- **cookies** — HttpOnly session on standard-reader.app (same login as web app)
+- **storage** — Overlay and Bluesky embed toggles in chrome.storage.sync
+- **Host permissions** — API + OAuth on standard-reader.app; embed UI on bsky.app; `<all_urls>` for overlay and URL matching on publication sites
+- **Remote code** — None; MV3 bundle only; API returns JSON
 
 ## Privacy
 
 Policy text: [`privacy-policy.md`](./privacy-policy.md). Live at
 **https://standard-reader.app/privacy/extension** (see [`DEPLOY.md`](./DEPLOY.md)).
+
+## Store assets
+
+| Asset | Path |
+| ----- | ---- |
+| Icon 128×128 | `extension/public/icons/icon-128.png` |
+| Icons 16 / 32 / 48 | `extension/public/icons/icon-{16,32,48}.png` |
+
+Regenerate all sizes from the Newsreader glyph:
+
+```bash
+node scripts/generate-social-icon.mjs
+```
 
 ## Release (quick reference)
 

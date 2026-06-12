@@ -9,6 +9,8 @@
  * - public/icon-320.{svg,png} — social / OG square
  * - public/icon-192.png, public/icon-512.png — manifest install icons
  * - public/apple-touch-icon.png — iOS home screen (180×180)
+ * - extension/public/icons/icon-{16,32,48,128}.png — Chrome extension manifest
+ * - extension/public/icon/{16,32,48,96,128}.png — legacy WXT icon paths
  *
  * Run: node scripts/generate-social-icon.mjs
  */
@@ -26,16 +28,28 @@ const FAVICON_FONT_RATIO = 56 / 64;
 const FONT_URL =
   "https://github.com/google/fonts/raw/main/ofl/newsreader/Newsreader%5Bopsz%2Cwght%5D.ttf";
 
-/** @type {Array<{ size: number; png: string; svg?: string }>} */
-const OUTPUTS = [
-  { size: 320, png: "icon-320.png", svg: "icon-320.svg" },
-  { size: 512, png: "icon-512.png" },
-  { size: 192, png: "icon-192.png" },
-  { size: 180, png: "apple-touch-icon.png" },
-];
-
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const publicDir = join(rootDir, "public");
+const extensionIconsDir = join(rootDir, "extension/public/icons");
+const extensionIconDir = join(rootDir, "extension/public/icon");
+
+/** @type {Array<{ size: number; png: string; svg?: string; dir: string }>} */
+const OUTPUTS = [
+  { size: 320, png: "icon-320.png", svg: "icon-320.svg", dir: publicDir },
+  { size: 512, png: "icon-512.png", dir: publicDir },
+  { size: 192, png: "icon-192.png", dir: publicDir },
+  { size: 180, png: "apple-touch-icon.png", dir: publicDir },
+  { size: 128, png: "icon-128.png", dir: extensionIconsDir },
+  { size: 48, png: "icon-48.png", dir: extensionIconsDir },
+  { size: 32, png: "icon-32.png", dir: extensionIconsDir },
+  { size: 16, png: "icon-16.png", dir: extensionIconsDir },
+  { size: 128, png: "128.png", dir: extensionIconDir },
+  { size: 96, png: "96.png", dir: extensionIconDir },
+  { size: 48, png: "48.png", dir: extensionIconDir },
+  { size: 32, png: "32.png", dir: extensionIconDir },
+  { size: 16, png: "16.png", dir: extensionIconDir },
+];
+
 const fontDir = join(tmpdir(), "standard-reader-icon-font");
 const fontPath = join(fontDir, "Newsreader-variable.ttf");
 
@@ -75,14 +89,15 @@ function buildSvg(size) {
 `;
 }
 
-for (const { size, png, svg } of OUTPUTS) {
+for (const { size, png, svg, dir } of OUTPUTS) {
+  await mkdir(dir, { recursive: true });
   const svgContent = buildSvg(size);
-  const pngPath = join(publicDir, png);
+  const pngPath = join(dir, png);
   await writeFile(pngPath, new Resvg(svgContent).render().asPng());
   console.log(`Wrote ${pngPath}`);
 
   if (svg) {
-    const svgPath = join(publicDir, svg);
+    const svgPath = join(dir, svg);
     await writeFile(svgPath, svgContent);
     console.log(`Wrote ${svgPath}`);
   }
