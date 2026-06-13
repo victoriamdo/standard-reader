@@ -139,7 +139,7 @@ export function PopupArticle({
           {showMeta ? (
             <Flex direction="row" gap="md" align="center" wrap>
               {authorHandle ? (
-                <Text variant="secondary" font="mono" size="xs">
+                <Text variant="secondary" font="mono" size="xs" leading="none">
                   {`@${authorHandle}`}
                 </Text>
               ) : null}

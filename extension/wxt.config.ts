@@ -1,6 +1,7 @@
 import stylexPlugin from "@stylexjs/unplugin/vite";
 import browserslist from "browserslist";
 import { browserslistToTargets } from "lightningcss";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { defineConfig } from "wxt";
 
@@ -12,6 +13,14 @@ import {
 } from "./src/lib/stylex-dev-origin-plugin.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
+
+const require = createRequire(import.meta.url);
+/** onnxruntime-web runtime files shipped inside @huggingface/transformers. */
+const ortDistDir = path.dirname(require.resolve("@huggingface/transformers"));
+const ORT_RUNTIME_FILES = [
+  "ort-wasm-simd-threaded.jsep.mjs",
+  "ort-wasm-simd-threaded.jsep.wasm",
+];
 const wxtCommand =
   process.argv.find((arg) =>
     ["prepare", "build", "zip", "dev"].includes(arg),
@@ -42,6 +51,17 @@ export default defineConfig({
   srcDir: "src",
   modules: ["@wxt-dev/module-react"],
   hooks: {
+    // Bundle onnxruntime's WASM loader + binary. ort fetches them from a CDN
+    // by default, which the extension CSP (script-src 'self') blocks; the
+    // offscreen reader points `wasmPaths` at /ort/ instead.
+    "build:publicAssets": (_wxt, files) => {
+      for (const file of ORT_RUNTIME_FILES) {
+        files.push({
+          absoluteSrc: path.join(ortDistDir, file),
+          relativeDest: path.join("ort", file),
+        });
+      }
+    },
     "build:done": async (wxt) => {
       // Dev pre-render writes HTML after Vite closeBundle — patch StyleX URLs here.
       if (wxt.config.command === "serve" && wxt.server?.origin) {
@@ -63,6 +83,12 @@ export default defineConfig({
   },
   vite: () => ({
     build: { cssCodeSplit: false },
+    // kokoro-js / @huggingface/transformers pull in onnxruntime-web + WASM and
+    // load lazily in the offscreen reader; keep them out of the optimizer so
+    // Vite doesn't try to pre-bundle the heavy graph (mirrors the app config).
+    optimizeDeps: {
+      exclude: ["kokoro-js", "@huggingface/transformers"],
+    },
     server: {
       host: "127.0.0.1",
       // Keep :3000 free for the TanStack app (extension API origin).
@@ -77,12 +103,31 @@ export default defineConfig({
     },
     plugins: stylexPlugins,
   }),
-  manifest: {
+  manifest: ({ browser }) => ({
     name: "Standard Reader",
     description:
       "Save articles and follow publications on the standard.site network.",
-    permissions: ["tabs", "activeTab", "storage", "cookies", "contextMenus"],
+    permissions: [
+      "tabs",
+      "activeTab",
+      "storage",
+      "cookies",
+      "contextMenus",
+      // Read-aloud runs in an offscreen document (Chromium only) so audio
+      // survives the popup closing. Firefox has no offscreen API; the popup
+      // hides the Listen button there.
+      ...(browser === "firefox" ? [] : ["offscreen"]),
+    ],
     host_permissions: hostPermissions(isWxtDev),
+    // onnxruntime-web (Kokoro TTS) compiles fetched WASM in extension pages.
+    ...(browser === "firefox"
+      ? {}
+      : {
+          content_security_policy: {
+            extension_pages:
+              "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+          },
+        }),
     options_ui: {
       page: "options.html",
       open_in_tab: false,
@@ -96,5 +141,5 @@ export default defineConfig({
       48: "icons/icon-48.png",
       128: "icons/icon-128.png",
     },
-  },
+  }),
 });

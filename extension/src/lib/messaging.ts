@@ -1,5 +1,10 @@
 import type { PopupStateResponse } from "./popup-state";
 import type {
+  ReaderSentencesResult,
+  ReaderStateResult,
+  ReaderTransportCommand,
+} from "./reader-messaging";
+import type {
   ExtensionResolveResult,
   ExtensionSessionResponse,
   ExtensionSettings,
@@ -31,7 +36,11 @@ export type BgRequest =
   | { type: "loginComplete" }
   | { type: "openReader"; url: string }
   | { type: "getSettings" }
-  | { type: "saveSettings"; settings: Partial<ExtensionSettings> };
+  | { type: "saveSettings"; settings: Partial<ExtensionSettings> }
+  | { type: "readerPlay"; documentUri: string; title: string }
+  | { type: "readerCommand"; command: ReaderTransportCommand }
+  | { type: "readerGetState" }
+  | { type: "readerGetSentences" };
 
 export type BgResponse =
   | { ok: true; data: ExtensionResolveResult }
@@ -43,6 +52,8 @@ export type BgResponse =
       data: { tabUrl: string | null; result: ExtensionResolveResult };
     }
   | { ok: true; data: PopupStateResponse }
+  | { ok: true; data: ReaderStateResult }
+  | { ok: true; data: ReaderSentencesResult }
   | { ok: true; data: { ok: boolean } }
   | { ok: false; error: string };
 
@@ -60,14 +71,20 @@ type BgResponseData<T extends BgRequest["type"]> = T extends "getSettings"
             ? { tabUrl: string | null; result: ExtensionResolveResult }
             : T extends "getPopupState"
               ? PopupStateResponse
-              : T extends
-                    | "bookmark"
-                    | "follow"
-                    | "openLogin"
-                    | "loginComplete"
-                    | "openReader"
-                ? { ok: boolean }
-                : never;
+              : T extends "readerGetState"
+                ? ReaderStateResult
+                : T extends "readerGetSentences"
+                  ? ReaderSentencesResult
+                  : T extends
+                        | "bookmark"
+                        | "follow"
+                        | "openLogin"
+                        | "loginComplete"
+                        | "openReader"
+                        | "readerPlay"
+                        | "readerCommand"
+                    ? { ok: boolean }
+                    : never;
 
 export function sendMessage<T extends BgRequest>(
   request: T,

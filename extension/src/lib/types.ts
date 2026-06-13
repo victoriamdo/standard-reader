@@ -59,6 +59,20 @@ export type ExtensionResolveResult =
   | ExtensionResolveReaderLink
   | ExtensionResolveUnknown;
 
+export type ExtensionNarrationResponse = {
+  documentUri: string;
+  title: string;
+  /** Narration author — drives the reader's automatic voice pick. */
+  author: string | null;
+  /** Full speech text (title, dek, byline, body) — same as the app reader. */
+  text: string;
+  /**
+   * False when the indexed record had no structured body (the text may be a
+   * truncated excerpt) — the background then prefers reading the live page.
+   */
+  complete: boolean;
+};
+
 export type ExtensionSessionResponse = {
   signedIn: boolean;
   handle: string | null;

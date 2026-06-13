@@ -10,6 +10,8 @@ import {
   pageOverlayExcludeMatches,
 } from "../../lib/manifest-hosts";
 import { sendMessage } from "../../lib/messaging";
+import { extractPageText } from "../../lib/page-text";
+import { initReaderHighlight } from "../../lib/reader-highlight";
 import "../../load-stylex-styles";
 
 const dismissedOrigins = new Set<string>();
@@ -175,6 +177,10 @@ const standardReaderContentScript = defineContentScript({
         sendResponse(readDiscoveryHintsFromDocument(document));
         return true;
       }
+      if (message?.type === "extractPageText") {
+        sendResponse({ text: extractPageText() });
+        return true;
+      }
       return;
     });
 
@@ -182,6 +188,9 @@ const standardReaderContentScript = defineContentScript({
     if (EXCLUDED_HOSTS.has(host)) {
       return;
     }
+    // Read-along: highlight the playing article's current sentence on its
+    // publication page (independent of the save/open overlay setting).
+    initReaderHighlight();
     await initPageOverlay(ctx);
   },
 });

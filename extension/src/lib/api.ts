@@ -1,4 +1,8 @@
-import type { ExtensionResolveResult, ExtensionSessionResponse } from "./types";
+import type {
+  ExtensionNarrationResponse,
+  ExtensionResolveResult,
+  ExtensionSessionResponse,
+} from "./types";
 
 import { AUTH_SESSION_COOKIE, getEffectiveApiOrigin } from "./config";
 import { readSessionCookieValue } from "./session-cookie";
@@ -73,6 +77,21 @@ export async function fetchResolveBatch(
     results: Record<string, ExtensionResolveResult>;
   };
   return body.results;
+}
+
+export async function fetchNarration(
+  documentUri: string,
+): Promise<ExtensionNarrationResponse> {
+  const response = await apiFetch(
+    `/api/extension/narration?documentUri=${encodeURIComponent(documentUri)}`,
+  );
+  if (response.status === 404) {
+    throw new Error("This article has nothing to read aloud.");
+  }
+  if (!response.ok) {
+    throw new Error("Couldn’t load the article narration.");
+  }
+  return (await response.json()) as ExtensionNarrationResponse;
 }
 
 export async function fetchBookmark(

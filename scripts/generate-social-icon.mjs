@@ -89,6 +89,30 @@ function buildSvg(size) {
 `;
 }
 
+/** Full play glyph for the extension tray while read-aloud is active. */
+function buildPlayingSvg(size) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const playHeight = size * 0.46;
+  const halfHeight = playHeight / 2;
+  const playWidth = playHeight * 0.82;
+  const left = cx - playWidth * 0.42;
+  const right = cx + playWidth * 0.58;
+  const top = cy - halfHeight;
+  const bottom = cy + halfHeight;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <rect width="${size}" height="${size}" fill="${BACKGROUND}" />
+  <polygon points="${left.toFixed(2)},${top.toFixed(2)} ${left.toFixed(2)},${bottom.toFixed(2)} ${right.toFixed(2)},${cy.toFixed(2)}" fill="${GLYPH_COLOR}" />
+</svg>
+`;
+}
+
+const extensionIconRoots = [extensionIconsDir, extensionIconDir];
+function isExtensionIconOutput(dir) {
+  return extensionIconRoots.some((root) => dir.startsWith(root));
+}
+
 for (const { size, png, svg, dir } of OUTPUTS) {
   await mkdir(dir, { recursive: true });
   const svgContent = buildSvg(size);
@@ -101,4 +125,14 @@ for (const { size, png, svg, dir } of OUTPUTS) {
     await writeFile(svgPath, svgContent);
     console.log(`Wrote ${svgPath}`);
   }
+
+  if (!isExtensionIconOutput(dir)) continue;
+
+  const playingPng = png.replace(/\.png$/, "-playing.png");
+  const playingPath = join(dir, playingPng);
+  await writeFile(
+    playingPath,
+    new Resvg(buildPlayingSvg(size)).render().asPng(),
+  );
+  console.log(`Wrote ${playingPath}`);
 }

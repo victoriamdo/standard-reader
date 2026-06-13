@@ -108,6 +108,20 @@ export function getTabSnapshot(
   return snapshot.result;
 }
 
+/** Tabs whose last resolve matched this article (read-along relay targets). */
+export function findTabIdsByDocumentUri(documentUri: string): Array<number> {
+  const ids: Array<number> = [];
+  for (const [tabId, snapshot] of tabSnapshots) {
+    if (
+      snapshot.result.kind === "article" &&
+      snapshot.result.documentUri === documentUri
+    ) {
+      ids.push(tabId);
+    }
+  }
+  return ids;
+}
+
 export async function getSessionCached(
   fetchSession: () => Promise<ExtensionSessionResponse>,
   refresh = false,

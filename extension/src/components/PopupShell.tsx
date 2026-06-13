@@ -17,9 +17,9 @@ import type { ExtensionResolveResult } from "../lib/types";
 
 import { sendMessage } from "../lib/messaging";
 import { ExtensionTheme } from "./ExtensionTheme";
-import { ExtensionThemeToggle } from "./ExtensionThemeToggle";
 import { PopupArticle } from "./PopupArticle";
 import { PopupPublication } from "./PopupPublication";
+import { PopupReaderBar } from "./PopupReaderBar";
 import { PopupSignedInFooter } from "./PopupSignedInFooter";
 import { PopupSignIn } from "./PopupSignIn";
 import { PopupUnknown } from "./PopupUnknown";
@@ -27,6 +27,15 @@ import { PopupUnknown } from "./PopupUnknown";
 const styles = stylex.create({
   shell: {
     boxSizing: "border-box",
+    minHeight: "100%",
+    width: "100%",
+  },
+  main: {
+    boxSizing: "border-box",
+    flexBasis: "0%",
+    flexGrow: "1",
+    flexShrink: "1",
+    minHeight: 0,
     width: "100%",
   },
   headerBlock: {
@@ -171,6 +180,10 @@ export function PopupShell({
   const showBody = initialState != null && !loadError;
   const signedOut = showBody && !session?.signedIn;
   const signedIn = showBody && session?.signedIn;
+  const readerArticle =
+    result?.kind === "article"
+      ? { documentUri: result.documentUri, title: result.title }
+      : null;
 
   return (
     <ExtensionTheme variant="popup">
@@ -191,7 +204,6 @@ export function PopupShell({
             </button>
             <div {...stylex.props(styles.headerSpacer)} />
             <Flex direction="row" gap="sm" align="center">
-              {session?.signedIn ? null : <ExtensionThemeToggle />}
               <IconButton
                 aria-label="Extension settings"
                 variant="tertiary"
@@ -220,47 +232,53 @@ export function PopupShell({
           </Text>
         ) : null}
 
-        {signedOut ? <PopupSignIn result={result} onSignIn={signIn} /> : null}
+        <Flex direction="column" style={styles.main}>
+          {signedOut ? <PopupSignIn result={result} onSignIn={signIn} /> : null}
 
-        {signedIn && result?.kind === "article" ? (
-          <PopupArticle
-            result={result}
-            busy={busy}
-            onSave={toggleBookmark}
-            onFollow={toggleFollow}
-            onOpenReader={openReader}
-          />
-        ) : null}
+          {signedIn && result?.kind === "article" ? (
+            <PopupArticle
+              result={result}
+              busy={busy}
+              onSave={toggleBookmark}
+              onFollow={toggleFollow}
+              onOpenReader={openReader}
+            />
+          ) : null}
 
-        {signedIn && result?.kind === "publication" ? (
-          <PopupPublication
-            result={result}
-            busy={busy}
-            onFollow={toggleFollow}
-            onOpenReader={openReader}
-          />
-        ) : null}
+          {signedIn && result?.kind === "publication" ? (
+            <PopupPublication
+              result={result}
+              busy={busy}
+              onFollow={toggleFollow}
+              onOpenReader={openReader}
+            />
+          ) : null}
 
-        {signedIn &&
-        result &&
-        result.kind !== "article" &&
-        result.kind !== "publication" ? (
-          <Flex direction="column" gap="md" style={styles.inset}>
-            {result.kind === "reader-link" ? (
-              <Flex direction="column" gap="sm">
-                <Text color="muted">
-                  You&apos;re already in Standard Reader.
-                </Text>
-                <Button variant="secondary" onPress={openReader}>
-                  Open page
-                </Button>
-              </Flex>
-            ) : null}
+          {signedIn &&
+          result &&
+          result.kind !== "article" &&
+          result.kind !== "publication" ? (
+            <Flex direction="column" gap="md" style={styles.inset}>
+              {result.kind === "reader-link" ? (
+                <Flex direction="column" gap="sm">
+                  <Text color="muted">
+                    You&apos;re already in Standard Reader.
+                  </Text>
+                  <Button variant="secondary" onPress={openReader}>
+                    Open page
+                  </Button>
+                </Flex>
+              ) : null}
 
-            {result.kind === "unknown" ? (
-              <PopupUnknown tabUrl={tabUrl} onBrowseDiscover={openDiscover} />
-            ) : null}
-          </Flex>
+              {result.kind === "unknown" ? (
+                <PopupUnknown tabUrl={tabUrl} onBrowseDiscover={openDiscover} />
+              ) : null}
+            </Flex>
+          ) : null}
+        </Flex>
+
+        {signedIn && session ? (
+          <PopupReaderBar article={readerArticle} />
         ) : null}
 
         {signedIn && session ? (

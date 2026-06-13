@@ -2,17 +2,25 @@ import * as stylex from "@stylexjs/stylex";
 import { Button } from "#/design-system/button";
 import { Checkbox } from "#/design-system/checkbox";
 import { Flex } from "#/design-system/flex";
+import { Select, SelectItem } from "#/design-system/select";
 import { spacing } from "#/design-system/theme/spacing.stylex";
 import { Heading4 } from "#/design-system/typography";
 import { Text } from "#/design-system/typography/text";
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
+import type { ExtensionThemeMode } from "../../lib/extension-theme";
 import type { ExtensionSettings } from "../../lib/types";
 
 import { ExtensionTheme } from "../../components/ExtensionTheme";
 import { DEFAULT_SETTINGS } from "../../lib/config";
+import { useExtensionTheme } from "../../lib/extension-theme-context";
 import { sendMessage } from "../../lib/messaging";
+
+const COLOR_SCHEME_OPTIONS = [
+  { id: "light" as const, label: "Light" },
+  { id: "dark" as const, label: "Dark" },
+] satisfies ReadonlyArray<{ id: ExtensionThemeMode; label: string }>;
 
 if (!import.meta.env.DEV) {
   void import("../../load-stylex-styles");
@@ -23,6 +31,25 @@ const styles = stylex.create({
     padding: spacing["6"],
   },
 });
+
+function ColorSchemeSelect() {
+  const { mode, setMode } = useExtensionTheme();
+
+  return (
+    <Select
+      label="Color scheme"
+      items={COLOR_SCHEME_OPTIONS}
+      value={mode}
+      onChange={(key) => {
+        if (key === "light" || key === "dark") {
+          setMode(key);
+        }
+      }}
+    >
+      {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
+    </Select>
+  );
+}
 
 export function OptionsApp() {
   const [settings, setSettings] = useState<ExtensionSettings>({
@@ -52,6 +79,7 @@ export function OptionsApp() {
       <Flex direction="column" gap="5xl" style={styles.container}>
         <Heading4>Standard Reader extension</Heading4>
         <Flex direction="column" gap="2xl">
+          <ColorSchemeSelect />
           <Checkbox
             isSelected={settings.overlayEnabled}
             onChange={(value) => {

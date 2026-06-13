@@ -1,11 +1,22 @@
 import type { BgRequest, BgResponse } from "../lib/messaging";
 import type { PopupStateResponse } from "../lib/popup-state";
 import type {
+  ReaderMessageBody,
+  ReaderSentencesResult,
+  ReaderSnapshot,
+} from "../lib/reader-messaging";
+import type {
   ExtensionResolveResult,
   ExtensionSessionResponse,
 } from "../lib/types";
 
-import { fetchBookmark, fetchFollow, fetchSession } from "../lib/api";
+import {
+  fetchBookmark,
+  fetchFollow,
+  fetchNarration,
+  fetchSession,
+} from "../lib/api";
+import { isActionIconPlaying, setActionIconPlaying } from "../lib/action-icon";
 import {
   consumePendingAction,
   openLoginTab,
@@ -13,6 +24,7 @@ import {
 } from "../lib/auth";
 import { getEffectiveApiOrigin, loadSettings } from "../lib/config";
 import {
+  findTabIdsByDocumentUri,
   getSessionCached,
   getTabSnapshot,
   invalidateSessionCache,
@@ -21,6 +33,11 @@ import {
   rememberTabSnapshot,
   seedSessionCache,
 } from "../lib/popup-state";
+import {
+  READER_TAB_STATE,
+  READER_TARGET,
+  isReaderStateBroadcast,
+} from "../lib/reader-messaging";
 import {
   clearResolveCache,
   getCachedResolve,
@@ -31,6 +48,124 @@ import {
 
 const MENU_SAVE = "sr-save";
 const MENU_OPEN = "sr-open";
+
+// ——— Read-aloud (offscreen reader) ———————————————————————————————————————
+// The TTS engine runs in an offscreen document (Chromium only) so audio keeps
+// playing after the popup closes. The background fetches the narration text
+// (it has cookie/storage access; the offscreen page doesn't) and forwards
+// transport commands.
+
+function offscreenApi(): typeof browser.offscreen | undefined {
+  return (browser as { offscreen?: typeof browser.offscreen }).offscreen;
+}
+
+let offscreenCreating: Promise<void> | null = null;
+
+async function ensureOffscreenDocument(): Promise<void> {
+  const offscreen = offscreenApi();
+  if (!offscreen)
+    throw new Error("Read aloud isn’t available in this browser.");
+  if (await offscreen.hasDocument()) return;
+  offscreenCreating ??= offscreen
+    .createDocument({
+      url: "/offscreen.html",
+      reasons: ["AUDIO_PLAYBACK"],
+      justification:
+        "Reads the current article aloud with on-device text-to-speech.",
+    })
+    .finally(() => {
+      offscreenCreating = null;
+    });
+  await offscreenCreating;
+}
+
+function sendReaderMessage<T>(message: ReaderMessageBody): Promise<T> {
+  return browser.runtime.sendMessage({
+    target: READER_TARGET,
+    ...message,
+  }) as Promise<T>;
+}
+
+// Read-along relay: content scripts can't hear runtime broadcasts, so the
+// background forwards reader state to the tab(s) showing the playing article.
+// Deduped on (article, status, sentence) — the engine ticks 5×/s while playing
+// but the page highlight only changes per sentence.
+let lastRelayKey = "";
+const relayedTabIds = new Set<number>();
+
+function relayReaderState(snapshot: ReaderSnapshot): void {
+  const documentUri = snapshot.nowPlaying?.documentUri ?? null;
+  const key = `${documentUri ?? ""}|${snapshot.state.status}|${snapshot.progress?.index ?? -1}`;
+  if (key === lastRelayKey) return;
+  lastRelayKey = key;
+
+  void syncReaderChromeUi(snapshot);
+
+  const targets = documentUri
+    ? new Set([...findTabIdsByDocumentUri(documentUri), ...relayedTabIds])
+    : new Set(relayedTabIds);
+  for (const tabId of targets) {
+    void browser.tabs
+      .sendMessage(tabId, { type: READER_TAB_STATE, snapshot })
+      .catch(() => {
+        relayedTabIds.delete(tabId);
+      });
+  }
+  if (documentUri) {
+    for (const tabId of findTabIdsByDocumentUri(documentUri)) {
+      relayedTabIds.add(tabId);
+    }
+  } else {
+    relayedTabIds.clear();
+  }
+}
+
+/**
+ * Article text extracted from the active tab's live page — the narration
+ * source when the indexed record has no full body. Skipped if the active tab
+ * resolved to a different article than the one being played. The text stays
+ * on-device (content script → background → offscreen TTS).
+ */
+async function extractActiveTabText(
+  documentUri: string,
+): Promise<string | null> {
+  const tab = await getActiveTab();
+  if (!tab?.id || !tab.url) return null;
+  const snapshot = getTabSnapshot(tab.id, tab.url);
+  if (
+    snapshot &&
+    snapshot.kind === "article" &&
+    snapshot.documentUri !== documentUri
+  ) {
+    return null;
+  }
+  try {
+    const response = (await browser.tabs.sendMessage(tab.id, {
+      type: "extractPageText",
+    })) as { text: string | null } | undefined;
+    return response?.text ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Tell read-along tabs the session ended (no broadcast follows a teardown). */
+function relayReaderCleared(): void {
+  lastRelayKey = "";
+  relayReaderState({
+    state: {
+      status: "idle",
+      currentTime: 0,
+      duration: 0,
+      modelProgress: 0,
+      generationProgress: 0,
+      rate: 1,
+      error: null,
+    },
+    nowPlaying: null,
+    progress: null,
+  });
+}
 
 let loginTabId: number | undefined;
 
@@ -83,10 +218,42 @@ async function getTabDiscoveryHints(tabId: number): Promise<{
   }
 }
 
+async function clearToolbarBadges(): Promise<void> {
+  const tabs = await browser.tabs.query({});
+  await Promise.all(
+    tabs.map((tab) =>
+      tab.id == null
+        ? Promise.resolve()
+        : browser.action.setBadgeText({ tabId: tab.id, text: "" }),
+    ),
+  );
+}
+
+async function syncReaderChromeUi(
+  snapshot: ReaderSnapshot | null,
+): Promise<void> {
+  const playing = snapshot !== null && snapshot.state.status !== "idle";
+  const wasPlaying = isActionIconPlaying();
+  await setActionIconPlaying(playing);
+  if (playing) {
+    await clearToolbarBadges();
+    return;
+  }
+  if (wasPlaying) {
+    const tab = await getActiveTab();
+    if (tab?.id) await refreshTabBadge(tab.id, tab.url);
+  }
+}
+
 async function updateToolbarBadge(
   tabId: number,
   result: Awaited<ReturnType<typeof resolveWithCache>>,
 ): Promise<void> {
+  if (isActionIconPlaying()) {
+    await browser.action.setBadgeText({ tabId, text: "" });
+    return;
+  }
+
   if (result.kind === "article" || result.kind === "publication") {
     const label = result.kind === "article" ? result.title : result.name;
     await browser.action.setBadgeText({ tabId, text: "•" });
@@ -234,6 +401,22 @@ async function warmActiveTabPopupState(): Promise<void> {
   const tab = await getActiveTab();
   if (!tab?.id || !tab.url) return;
   await refreshTabBadge(tab.id, tab.url);
+}
+
+async function syncReaderActionIconOnStartup(): Promise<void> {
+  const offscreen = offscreenApi();
+  if (!offscreen || !(await offscreen.hasDocument())) {
+    await syncReaderChromeUi(null);
+    return;
+  }
+  try {
+    const snapshot = await sendReaderMessage<ReaderSnapshot>({
+      type: "getState",
+    });
+    await syncReaderChromeUi(snapshot);
+  } catch {
+    await syncReaderChromeUi(null);
+  }
 }
 
 function setupContextMenus(): void {
@@ -417,6 +600,74 @@ async function handleMessage(request: BgRequest): Promise<BgResponse> {
         await browser.tabs.create({ url: href });
         return { ok: true, data: { ok: true } };
       }
+      case "readerPlay": {
+        await ensureOffscreenDocument();
+        const narration = await fetchNarration(request.documentUri).catch(
+          () => null,
+        );
+
+        // When the index has no full body (or no narration at all), read the
+        // live page instead — whichever source has more text wins. Page text
+        // also aligns 1:1 with the DOM, so the read-along highlight tracks it.
+        let text = narration?.text ?? null;
+        if (!narration?.complete) {
+          const pageText = await extractActiveTabText(request.documentUri);
+          if (pageText && pageText.length > (text?.length ?? 0)) {
+            text = pageText;
+          }
+        }
+        if (!text) {
+          return {
+            ok: false,
+            error: "This article has nothing to read aloud.",
+          };
+        }
+
+        await sendReaderMessage({
+          type: "play",
+          documentUri: request.documentUri,
+          title: narration?.title ?? request.title,
+          author: narration?.author ?? null,
+          text,
+        });
+        return { ok: true, data: { ok: true } };
+      }
+      case "readerCommand": {
+        const offscreen = offscreenApi();
+        if (!offscreen || !(await offscreen.hasDocument())) {
+          return { ok: true, data: { ok: false } };
+        }
+        await sendReaderMessage(request.command);
+        if (request.command.type === "stop") {
+          // Tear the document down so the loaded model's memory is released.
+          await offscreen.closeDocument();
+          relayReaderCleared();
+        }
+        return { ok: true, data: { ok: true } };
+      }
+      case "readerGetState": {
+        const offscreen = offscreenApi();
+        if (!offscreen) {
+          return { ok: true, data: { supported: false, snapshot: null } };
+        }
+        if (!(await offscreen.hasDocument())) {
+          return { ok: true, data: { supported: true, snapshot: null } };
+        }
+        const snapshot = await sendReaderMessage<ReaderSnapshot>({
+          type: "getState",
+        });
+        return { ok: true, data: { supported: true, snapshot } };
+      }
+      case "readerGetSentences": {
+        const offscreen = offscreenApi();
+        if (!offscreen || !(await offscreen.hasDocument())) {
+          return { ok: true, data: { documentUri: null, sentences: [] } };
+        }
+        const data = await sendReaderMessage<ReaderSentencesResult>({
+          type: "getSentences",
+        });
+        return { ok: true, data };
+      }
       case "getSettings": {
         const data = await loadSettings();
         return { ok: true, data };
@@ -448,6 +699,7 @@ export default defineBackground(() => {
 
   void getSessionCached(fetchSession);
   void warmActiveTabPopupState();
+  void syncReaderActionIconOnStartup();
 
   browser.runtime.onInstalled.addListener(() => {
     setupContextMenus();
@@ -459,8 +711,19 @@ export default defineBackground(() => {
     void warmActiveTabPopupState();
   });
 
-  browser.runtime.onMessage.addListener((request: BgRequest) => {
-    return handleMessage(request);
+  browser.runtime.onMessage.addListener((request: unknown) => {
+    // Relay reader state to read-along tabs; don't claim the response channel.
+    if (isReaderStateBroadcast(request)) {
+      relayReaderState(request.snapshot);
+      return;
+    }
+    // Offscreen-reader commands aren't ours — leave the response channel for
+    // the offscreen document.
+    const message = request as { type?: string; target?: string };
+    if (message.target === READER_TARGET) {
+      return;
+    }
+    return handleMessage(request as BgRequest);
   });
 
   browser.tabs.onActivated.addListener(async ({ tabId }) => {
