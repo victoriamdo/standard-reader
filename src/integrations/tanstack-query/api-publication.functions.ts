@@ -68,6 +68,10 @@ export type { MarginConnectionItem } from "#/server/reader/article-constellation
  * from the UI — this GET stays side-effect-free.
  */
 
+const headerInput = z.object({
+  publicationUri: z.string().min(1),
+});
+
 const profileInput = z.object({
   publicationUri: z.string().min(1),
   recentLimit: z.number().int().min(1).max(30).default(10),
@@ -116,6 +120,12 @@ async function codeHighlightsForThemeMode(
   return themeMode === "dark"
     ? { light: {}, dark: single }
     : { light: single, dark: {} };
+}
+
+/** Publication identity + stats for the profile hero (no document list). */
+export interface PublicationHeader {
+  publication: PublicationCard;
+  owner: ProfileSummary;
 }
 
 export interface PublicationProfile {
@@ -215,6 +225,64 @@ export interface ArticleExtras {
   marginConnections: Array<MarginConnectionItem>;
 }
 
+async function selectPublicationHeader(
+  db: Parameters<typeof selectPublicationArticleCards>[0],
+  schema: Parameters<typeof selectPublicationArticleCards>[1],
+  publicationUri: string,
+): Promise<PublicationHeader | null> {
+  const p = schema.publications;
+  const st = schema.publicationStats;
+  const pr = schema.profiles;
+
+  const [row] = await db
+    .select({
+      ...publicationCardColumns(schema),
+      ownerHandle: pr.handle,
+      ownerDisplayName: pr.displayName,
+      ownerDescription: pr.description,
+      ownerBannerUrl: pr.bannerUrl,
+    })
+    .from(p)
+    .leftJoin(st, eq(st.publicationUri, p.uri))
+    .leftJoin(pr, eq(pr.did, p.did))
+    .where(eq(p.uri, publicationUri))
+    .limit(1);
+
+  if (!row) return null;
+
+  return {
+    publication: toPublicationCard(row),
+    owner: {
+      did: row.did,
+      handle: row.ownerHandle,
+      displayName: row.ownerDisplayName,
+      description: row.ownerDescription,
+      avatarUrl: row.ownerAvatarUrl,
+      bannerUrl: row.ownerBannerUrl,
+    },
+  };
+}
+
+const getPublicationHeader = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(headerInput)
+  .handler(
+    observe(
+      "publication.getHeader",
+      async ({ data, context }, span): Promise<PublicationHeader | null> => {
+        const { db, schema } = context;
+        span.set("publicationUri", data.publicationUri);
+        const header = await selectPublicationHeader(
+          db,
+          schema,
+          data.publicationUri,
+        );
+        span.set("found", header != null);
+        return header;
+      },
+    ),
+  );
+
 const getPublicationProfile = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
   .inputValidator(profileInput)
@@ -223,28 +291,13 @@ const getPublicationProfile = createServerFn({ method: "GET" })
       "publication.getProfile",
       async ({ data, context }, span): Promise<PublicationProfile | null> => {
         const { db, schema, trackReadingEnabled } = context;
-        const p = schema.publications;
-        const st = schema.publicationStats;
-        const pr = schema.profiles;
         span.set("publicationUri", data.publicationUri);
         const did = await attachReaderSpanContext(span, getRequest());
         const trackReading = did == null ? false : trackReadingEnabled;
         const readForDid = trackReading && did ? did : undefined;
 
-        const [headerRow, recentDocuments] = await Promise.all([
-          db
-            .select({
-              ...publicationCardColumns(schema),
-              ownerHandle: pr.handle,
-              ownerDisplayName: pr.displayName,
-              ownerDescription: pr.description,
-              ownerBannerUrl: pr.bannerUrl,
-            })
-            .from(p)
-            .leftJoin(st, eq(st.publicationUri, p.uri))
-            .leftJoin(pr, eq(pr.did, p.did))
-            .where(eq(p.uri, data.publicationUri))
-            .limit(1),
+        const [header, recentDocuments] = await Promise.all([
+          selectPublicationHeader(db, schema, data.publicationUri),
           selectPublicationArticleCards(db, schema, {
             publicationUri: data.publicationUri,
             limit: data.recentLimit,
@@ -252,23 +305,11 @@ const getPublicationProfile = createServerFn({ method: "GET" })
           }),
         ]);
 
-        const row = headerRow[0];
-        if (!row) {
+        if (!header) {
           span.set("found", false);
           return null;
         }
         span.set("found", true);
-
-        const owner: ProfileSummary = {
-          did: row.did,
-          handle: row.ownerHandle,
-          displayName: row.ownerDisplayName,
-          description: row.ownerDescription,
-          avatarUrl: row.ownerAvatarUrl,
-          bannerUrl: row.ownerBannerUrl,
-        };
-
-        const publication = toPublicationCard(row);
 
         const recentWithComments = await attachCommentCountsToArticles(
           db,
@@ -277,8 +318,7 @@ const getPublicationProfile = createServerFn({ method: "GET" })
         );
 
         return {
-          publication,
-          owner,
+          ...header,
           recentDocuments: recentWithComments,
         };
       },
@@ -789,6 +829,13 @@ const getArticleExtras = createServerFn({ method: "GET" })
     ),
   );
 
+function getPublicationHeaderQueryOptions(publicationUri: string) {
+  return queryOptions({
+    queryKey: ["publication", "header", publicationUri] as const,
+    queryFn: async () => getPublicationHeader({ data: { publicationUri } }),
+  });
+}
+
 function getPublicationProfileQueryOptions(
   publicationUri: string,
   {
@@ -869,6 +916,8 @@ function getPublicationEmbedMetaQueryOptions(publicationUri: string) {
 }
 
 export const publicationApi = {
+  getPublicationHeader,
+  getPublicationHeaderQueryOptions,
   getPublicationProfile,
   getPublicationProfileQueryOptions,
   getPublicationDocuments,

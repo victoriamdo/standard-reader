@@ -202,7 +202,6 @@ export async function selectPublicationArticleCards(
     featured: d.featured,
     publicationUri: d.publicationUri,
     tags: d.tags,
-    textContent: d.textContent,
     hasRenderableBody: d.hasRenderableBody,
     // Qualify the outer `documents.uri` — unqualified `${d.uri}` in a
     // subquery compiles to `"uri"` and breaks correlation without a join.
@@ -238,6 +237,9 @@ export async function selectPublicationArticleCards(
   return rows.map((row) =>
     toArticleCard({
       ...row,
+      // The publication page never renders card bodies — skipping textContent
+      // keeps full essays out of the profile payload and SSR dehydration.
+      textContent: null,
       publicationName: null,
       publicationIconUrl: null,
       publicationOwnerAvatarUrl: null,

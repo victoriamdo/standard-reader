@@ -75,42 +75,59 @@ const PUBLICATION_RECENT_LIMIT = 12;
 /** Page size for each subsequent infinite-scroll fetch. */
 const PUBLICATION_PAGE_SIZE = 20;
 const PUBLICATION_SKELETON_ROWS = 5;
+/** Grace period before post skeletons appear (avoids flash on fast loads). */
+const POSTS_SKELETON_DELAY_MS = 150;
 
 export const Route = createFileRoute("/_layout/p/$did/$rkey")({
-  loader: async ({ context, params }) => {
+  loader: async ({ context, params, preload }) => {
     const uri = publicationUriFromParams(params.did, params.rkey);
     const session = await context.queryClient.ensureQueryData(
       user.getSessionQueryOptions,
     );
     const readerScope = user.readerQueryScope(session);
-    void context.queryClient.ensureQueryData(
-      publicationApi.getPublicationSocialProofQueryOptions(uri),
-    );
-    const [profile] = await Promise.all([
-      context.queryClient.ensureQueryData(
-        publicationApi.getPublicationProfileQueryOptions(uri, {
-          recentLimit: PUBLICATION_RECENT_LIMIT,
-          readerScope,
-        }),
-      ),
-      context.queryClient.ensureQueryData(
+    const headerOptions = publicationApi.getPublicationHeaderQueryOptions(uri);
+    const recentDocumentsOptions =
+      publicationApi.getPublicationDocumentsQueryOptions(uri, {
+        limit: PUBLICATION_RECENT_LIMIT,
+        offset: 0,
+        readerScope,
+      });
+    // Warm below-the-fold/secondary data without gating navigation on it:
+    // FollowButton and ShareMenu read these from React Query themselves.
+    if (session?.user) {
+      void context.queryClient.prefetchQuery(
+        publicationApi.getPublicationSocialProofQueryOptions(uri),
+      );
+      void context.queryClient.prefetchQuery(
         readerApi.getFollowStatusQueryOptions(uri),
-      ),
-      context.queryClient.ensureQueryData(
-        publicationApi.getPublicationEmbedMetaQueryOptions(uri),
-      ),
-    ]);
-    if (profile) {
+      );
+    }
+    void context.queryClient.prefetchQuery(
+      publicationApi.getPublicationEmbedMetaQueryOptions(uri),
+    );
+
+    if (preload) {
+      void context.queryClient.prefetchQuery(headerOptions);
+      void context.queryClient.prefetchQuery(recentDocumentsOptions);
+      return {
+        publicationName: null,
+        publicationDescription: null,
+      };
+    }
+
+    const header = await context.queryClient.ensureQueryData(headerOptions);
+    void context.queryClient.prefetchQuery(recentDocumentsOptions);
+    if (header) {
       void context.queryClient.prefetchQuery(
         authorApi.getAuthorSifaProfileQueryOptions(
-          profile.owner.did,
-          profile.owner.handle,
+          header.owner.did,
+          header.owner.handle,
         ),
       );
     }
     return {
-      publicationName: profile?.publication.name ?? null,
-      publicationDescription: profile?.publication.description ?? null,
+      publicationName: header?.publication.name ?? null,
+      publicationDescription: header?.publication.description ?? null,
     };
   },
   head: ({ loaderData, match }) => {
@@ -301,9 +318,6 @@ const styles = stylex.create({
   articleSkeletonLast: {
     borderBottomWidth: 0,
   },
-  heroSkeletonLine: {
-    marginTop: spacing["2"],
-  },
 });
 
 function lastActive(iso: string | null): string {
@@ -373,97 +387,78 @@ function PublicationArticleRowSkeleton({
   );
 }
 
-function PublicationProfileSkeleton() {
-  return (
-    <div aria-busy="true" aria-label="Loading publication">
-      <div {...stylex.props(styles.hero)}>
-        <div {...stylex.props(styles.heroInner)}>
-          <Skeleton variant="circle" size="lg" style={styles.avRing} />
-          <div {...stylex.props(styles.heroInfo)}>
-            <Skeleton variant="rectangle" height={spacing["3.5"]} width="18%" />
-            <Skeleton
-              variant="rectangle"
-              height={spacing["10"]}
-              width="52%"
-              style={styles.heroSkeletonLine}
-            />
-            <Skeleton
-              variant="rectangle"
-              height={spacing["5"]}
-              width="72%"
-              style={styles.heroSkeletonLine}
-            />
-            <Flex gap="6xl" wrap style={styles.stats}>
-              <Skeleton variant="rectangle" height={spacing["4"]} width="22%" />
-              <Skeleton variant="rectangle" height={spacing["4"]} width="18%" />
-              <Skeleton variant="rectangle" height={spacing["4"]} width="16%" />
-            </Flex>
-          </div>
-          <Flex gap="sm" wrap style={styles.heroActs}>
-            <Skeleton
-              variant="rectangle"
-              height={boxSize["xl"]}
-              width={boxSize["xl"]}
-            />
-            <Skeleton
-              variant="rectangle"
-              height={boxSize["xl"]}
-              width={boxSize["xl"]}
-            />
-            <Skeleton
-              variant="rectangle"
-              height={spacing["9"]}
-              width={spacing["24"]}
-            />
-          </Flex>
-        </div>
-      </div>
+function useDelayedLoading(active: boolean, delayMs: number): boolean {
+  const [show, setShow] = useState(false);
 
-      <ReaderContent>
-        <Flex direction="column" gap="6xl" style={styles.writing}>
-          <SectionHead kicker="Latest" title="Recent writing" />
-          <div>
-            <PublicationFeatureSkeleton />
-            {Array.from(
-              { length: PUBLICATION_SKELETON_ROWS - 1 },
-              (_, index) => (
-                <PublicationArticleRowSkeleton
-                  key={index}
-                  isLast={index === PUBLICATION_SKELETON_ROWS - 2}
-                />
-              ),
-            )}
-          </div>
-        </Flex>
-      </ReaderContent>
-    </div>
+  useEffect(() => {
+    if (!active) {
+      setShow(false);
+      return;
+    }
+
+    const timer = globalThis.setTimeout(() => {
+      setShow(true);
+    }, delayMs);
+
+    return () => {
+      globalThis.clearTimeout(timer);
+    };
+  }, [active, delayMs]);
+
+  return show;
+}
+
+function PublicationPostsSkeleton() {
+  return (
+    <Flex
+      direction="column"
+      gap="6xl"
+      style={styles.writing}
+      aria-busy="true"
+      aria-label="Loading recent writing"
+    >
+      <SectionHead kicker="Latest" title="Recent writing" />
+      <div>
+        <PublicationFeatureSkeleton />
+        {Array.from({ length: PUBLICATION_SKELETON_ROWS - 1 }, (_, index) => (
+          <PublicationArticleRowSkeleton
+            key={index}
+            isLast={index === PUBLICATION_SKELETON_ROWS - 2}
+          />
+        ))}
+      </div>
+    </Flex>
+  );
+}
+
+function PublicationPostsFallback() {
+  const showSkeleton = useDelayedLoading(true, POSTS_SKELETON_DELAY_MS);
+
+  if (showSkeleton) {
+    return <PublicationPostsSkeleton />;
+  }
+
+  return (
+    <Flex direction="column" gap="6xl" style={styles.writing}>
+      <SectionHead kicker="Latest" title="Recent writing" />
+      <div aria-busy="true" aria-label="Loading recent writing" />
+    </Flex>
   );
 }
 
 function PublicationProfilePage() {
-  return (
-    <Suspense fallback={<PublicationProfileSkeleton />}>
-      <PublicationProfile />
-    </Suspense>
-  );
+  return <PublicationProfile />;
 }
 
 function PublicationProfile() {
   const { did, rkey } = Route.useParams();
   const uri = publicationUriFromParams(did, rkey);
-  const queryClient = useQueryClient();
   const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
-  const readerScope = user.readerQueryScope(session);
-  const { data: profile } = useSuspenseQuery(
-    publicationApi.getPublicationProfileQueryOptions(uri, {
-      recentLimit: PUBLICATION_RECENT_LIMIT,
-      readerScope,
-    }),
+  const { data: header } = useSuspenseQuery(
+    publicationApi.getPublicationHeaderQueryOptions(uri),
   );
-  const { data: follow } = useSuspenseQuery(
-    readerApi.getFollowStatusQueryOptions(uri),
-  );
-  const { data: embedMeta } = useSuspenseQuery(
+  // Non-blocking: prefetched by the loader, but never gates first paint.
+  const { data: embedMeta } = useQuery(
     publicationApi.getPublicationEmbedMetaQueryOptions(uri),
   );
   const signedIn = Boolean(session?.user);
@@ -473,28 +468,133 @@ function PublicationProfile() {
     enabled: signedIn,
   });
 
-  const [documents, setDocuments] = useState<Array<ArticleCard>>(
-    () => profile?.recentDocuments ?? [],
+  if (!header) {
+    return (
+      <ReaderContent>
+        <div {...stylex.props(styles.emptyNote)}>
+          We couldn’t find that publication.
+        </div>
+      </ReaderContent>
+    );
+  }
+
+  const { publication: pub, owner } = header;
+
+  return (
+    <div>
+      <div {...stylex.props(styles.hero)}>
+        <div {...stylex.props(styles.heroInner)}>
+          <div {...stylex.props(styles.avRing)}>
+            <PublicationAvatar pub={pub} size="xl" style={styles.avatar} />
+          </div>
+
+          <div {...stylex.props(styles.heroInfo)}>
+            {pub.topic ? (
+              <Kicker>
+                <Topic name={pub.topic} />
+              </Kicker>
+            ) : null}
+            <h1 {...stylex.props(styles.heroName)}>{pub.name}</h1>
+            {pub.description ? (
+              <p {...stylex.props(styles.heroDesc)}>{pub.description}</p>
+            ) : null}
+            <div {...stylex.props(styles.stats)}>
+              {owner.handle ? (
+                <Link
+                  to="/u/$did"
+                  params={{ did: owner.did }}
+                  {...stylex.props(styles.handleLink)}
+                >
+                  <Handle>@{owner.handle}</Handle>
+                </Link>
+              ) : null}
+              <Stat
+                value={formatReaders(pub.subscriberCount)}
+                label="readers"
+              />
+              <Stat value={String(pub.documentCount)} label="posts" />
+              <Stat value={lastActive(pub.lastDocumentAt ?? null)} label="" />
+              <AuthorSifaResumeChip did={owner.did} handle={owner.handle} />
+            </div>
+            {signedIn && socialProof && socialProof.total > 0 ? (
+              <PublicationSocialProofLine {...socialProof} />
+            ) : null}
+          </div>
+
+          <div {...stylex.props(styles.heroActs)}>
+            <ShareMenu
+              variant="icon"
+              pageUrl={`${getPublicUrlClient()}/p/${did}/${rkey}`}
+              embed={embedMeta ?? undefined}
+            />
+            {pub.url ? (
+              <IconButton
+                variant="secondary"
+                size="md"
+                label="Open publication"
+                onPress={() => {
+                  window.open(pub.url, "_blank", "noopener,noreferrer");
+                }}
+              >
+                <ExternalLink size={15} />
+              </IconButton>
+            ) : null}
+            <AddToListButton
+              publicationUri={pub.uri}
+              signedIn={signedIn}
+              size="md"
+            />
+            <FollowButton
+              publicationUri={pub.uri}
+              signedIn={signedIn}
+              size="md"
+              pub={pub}
+            />
+          </div>
+        </div>
+      </div>
+
+      <ReaderContent>
+        <Suspense fallback={<PublicationPostsFallback />}>
+          <PublicationRecentWriting uri={uri} signedIn={signedIn} />
+        </Suspense>
+      </ReaderContent>
+    </div>
   );
-  const [nextOffset, setNextOffset] = useState<number | null>(() =>
-    (profile?.recentDocuments.length ?? 0) === PUBLICATION_RECENT_LIMIT
-      ? PUBLICATION_RECENT_LIMIT
-      : null,
+}
+
+function PublicationRecentWriting({
+  uri,
+  signedIn,
+}: {
+  uri: string;
+  signedIn: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
+  const readerScope = user.readerQueryScope(session);
+  const { data: initialPage } = useSuspenseQuery(
+    publicationApi.getPublicationDocumentsQueryOptions(uri, {
+      limit: PUBLICATION_RECENT_LIMIT,
+      offset: 0,
+      readerScope,
+    }),
+  );
+
+  const [documents, setDocuments] = useState<Array<ArticleCard>>(
+    () => initialPage.items,
+  );
+  const [nextOffset, setNextOffset] = useState<number | null>(
+    () => initialPage.nextOffset,
   );
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
 
-  // Reset accumulated documents when navigating to a different publication.
   useEffect(() => {
-    const recent = profile?.recentDocuments ?? [];
-    setDocuments(recent);
-    setNextOffset(
-      recent.length === PUBLICATION_RECENT_LIMIT
-        ? PUBLICATION_RECENT_LIMIT
-        : null,
-    );
-  }, [profile]);
+    setDocuments(initialPage.items);
+    setNextOffset(initialPage.nextOffset);
+  }, [initialPage]);
 
   const { enabled: trackReading } = useTrackReadingHistory();
   const isUnread = (article: ArticleCard) =>
@@ -574,160 +674,67 @@ function PublicationProfile() {
     return () => observer.disconnect();
   }, [nextOffset, loadMore]);
 
-  if (!profile) {
-    return (
-      <ReaderContent>
-        <div {...stylex.props(styles.emptyNote)}>
-          We couldn’t find that publication.
-        </div>
-      </ReaderContent>
-    );
-  }
-
-  const { publication: pub, owner } = profile;
   const lead = documents[0];
   const rest = documents.slice(1);
 
   return (
-    <div>
-      <div {...stylex.props(styles.hero)}>
-        <div {...stylex.props(styles.heroInner)}>
-          <div {...stylex.props(styles.avRing)}>
-            <PublicationAvatar pub={pub} size="xl" style={styles.avatar} />
-          </div>
-
-          <div {...stylex.props(styles.heroInfo)}>
-            {pub.topic ? (
-              <Kicker>
-                <Topic name={pub.topic} />
-              </Kicker>
-            ) : null}
-            <h1 {...stylex.props(styles.heroName)}>{pub.name}</h1>
-            {pub.description ? (
-              <p {...stylex.props(styles.heroDesc)}>{pub.description}</p>
-            ) : null}
-            <div {...stylex.props(styles.stats)}>
-              {owner.handle ? (
-                <Link
-                  to="/u/$did"
-                  params={{ did: owner.did }}
-                  {...stylex.props(styles.handleLink)}
-                >
-                  <Handle>@{owner.handle}</Handle>
-                </Link>
-              ) : null}
-              <Stat
-                value={formatReaders(pub.subscriberCount)}
-                label="readers"
-              />
-              <Stat value={String(pub.documentCount)} label="posts" />
-              <Stat
-                value={lastActive(
-                  pub.lastDocumentAt ?? lead?.publishedAt ?? null,
-                )}
-                label=""
-              />
-              <AuthorSifaResumeChip did={owner.did} handle={owner.handle} />
-            </div>
-            {signedIn && socialProof && socialProof.total > 0 ? (
-              <PublicationSocialProofLine {...socialProof} />
-            ) : null}
-          </div>
-
-          <div {...stylex.props(styles.heroActs)}>
-            <ShareMenu
-              variant="icon"
-              pageUrl={`${getPublicUrlClient()}/p/${did}/${rkey}`}
-              embed={embedMeta ?? undefined}
-            />
-            {pub.url ? (
-              <IconButton
-                variant="secondary"
-                size="md"
-                label="Open publication"
-                onPress={() => {
-                  window.open(pub.url, "_blank", "noopener,noreferrer");
-                }}
-              >
-                <ExternalLink size={15} />
-              </IconButton>
-            ) : null}
-            <AddToListButton
-              publicationUri={pub.uri}
-              signedIn={signedIn}
-              size="md"
-            />
-            <FollowButton
-              publicationUri={pub.uri}
-              signedIn={signedIn}
-              size="md"
-              pub={pub}
-              initialFollowing={follow.isFollowing}
-            />
-          </div>
+    <Flex direction="column" gap="6xl" style={styles.writing}>
+      <SectionHead
+        kicker="Latest"
+        title="Recent writing"
+        action={
+          signedIn && unreadDocumentUris.length > 0 ? (
+            <Button
+              variant="tertiary"
+              size="sm"
+              isPending={markingAllRead}
+              onPress={() => markAllRead(uri)}
+            >
+              Mark all as read
+            </Button>
+          ) : undefined
+        }
+      />
+      {documents.length === 0 ? (
+        <div {...stylex.props(styles.emptyNote)}>
+          No posts indexed from this publication yet.
         </div>
-      </div>
-
-      <ReaderContent>
-        <Flex direction="column" gap="6xl" style={styles.writing}>
-          <SectionHead
-            kicker="Latest"
-            title="Recent writing"
-            action={
-              signedIn && unreadDocumentUris.length > 0 ? (
-                <Button
-                  variant="tertiary"
-                  size="sm"
-                  isPending={markingAllRead}
-                  onPress={() => markAllRead(uri)}
-                >
-                  Mark all as read
-                </Button>
-              ) : undefined
-            }
+      ) : (
+        <div>
+          {lead ? (
+            <FeatureArticle
+              article={lead}
+              showByline={false}
+              unread={isUnread(lead)}
+            />
+          ) : null}
+          {rest.map((article) => (
+            <ArticleRow
+              key={article.uri}
+              article={article}
+              showByline={false}
+              showSaveButton={false}
+              unread={isUnread(article)}
+            />
+          ))}
+        </div>
+      )}
+      {documents.length > 0 ? (
+        <div>
+          <div
+            ref={loadMoreSentinelRef}
+            aria-hidden
+            {...stylex.props(styles.loadSentinel)}
           />
-          {documents.length === 0 ? (
-            <div {...stylex.props(styles.emptyNote)}>
-              No posts indexed from this publication yet.
-            </div>
-          ) : (
-            <div>
-              {lead ? (
-                <FeatureArticle
-                  article={lead}
-                  showByline={false}
-                  unread={isUnread(lead)}
-                />
-              ) : null}
-              {rest.map((article) => (
-                <ArticleRow
-                  key={article.uri}
-                  article={article}
-                  showByline={false}
-                  showSaveButton={false}
-                  unread={isUnread(article)}
-                />
-              ))}
-            </div>
-          )}
-          {documents.length > 0 ? (
-            <div>
-              <div
-                ref={loadMoreSentinelRef}
-                aria-hidden
-                {...stylex.props(styles.loadSentinel)}
-              />
-              {loadingMore ? (
-                <div {...stylex.props(styles.endNote)}>Loading more…</div>
-              ) : nextOffset == null ? (
-                <div {...stylex.props(styles.endNote)}>
-                  You&apos;ve reached the end.
-                </div>
-              ) : null}
+          {loadingMore ? (
+            <div {...stylex.props(styles.endNote)}>Loading more…</div>
+          ) : nextOffset == null ? (
+            <div {...stylex.props(styles.endNote)}>
+              You&apos;ve reached the end.
             </div>
           ) : null}
-        </Flex>
-      </ReaderContent>
-    </div>
+        </div>
+      ) : null}
+    </Flex>
   );
 }
