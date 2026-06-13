@@ -95,7 +95,8 @@ export function PopupShell({
   const [result, setResult] = useState<ExtensionResolveResult | null>(
     initialState?.result ?? null,
   );
-  const [busy, setBusy] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(initialError);
 
   const signIn = async () => {
@@ -106,7 +107,7 @@ export function PopupShell({
     if (result?.kind !== "article") return;
     const nextSaved = !result.isBookmarked;
     setResult({ ...result, isBookmarked: nextSaved });
-    setBusy(true);
+    setSaveBusy(true);
     try {
       await sendMessage({
         type: "bookmark",
@@ -117,7 +118,7 @@ export function PopupShell({
       setResult({ ...result, isBookmarked: !nextSaved });
       setLoadError(error instanceof Error ? error.message : "Save failed");
     } finally {
-      setBusy(false);
+      setSaveBusy(false);
     }
   };
 
@@ -134,7 +135,7 @@ export function PopupShell({
     const nextFollowing = !(result.isFollowing ?? false);
     const previous = result;
     setResult({ ...result, isFollowing: nextFollowing });
-    setBusy(true);
+    setFollowBusy(true);
     try {
       await sendMessage({
         type: "follow",
@@ -145,7 +146,7 @@ export function PopupShell({
       setResult(previous);
       setLoadError(error instanceof Error ? error.message : "Subscribe failed");
     } finally {
-      setBusy(false);
+      setFollowBusy(false);
     }
   };
 
@@ -238,7 +239,8 @@ export function PopupShell({
           {signedIn && result?.kind === "article" ? (
             <PopupArticle
               result={result}
-              busy={busy}
+              saveBusy={saveBusy}
+              followBusy={followBusy}
               onSave={toggleBookmark}
               onFollow={toggleFollow}
               onOpenReader={openReader}
@@ -248,7 +250,7 @@ export function PopupShell({
           {signedIn && result?.kind === "publication" ? (
             <PopupPublication
               result={result}
-              busy={busy}
+              followBusy={followBusy}
               onFollow={toggleFollow}
               onOpenReader={openReader}
             />

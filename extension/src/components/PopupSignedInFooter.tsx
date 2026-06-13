@@ -12,6 +12,7 @@ import { SmallBody } from "#/design-system/typography";
 import { ArrowRight } from "lucide-react";
 
 import type { ExtensionSessionResponse } from "../lib/types";
+import { Text } from "#/design-system/typography/text";
 
 const styles = stylex.create({
   bar: {
@@ -29,8 +30,6 @@ const styles = stylex.create({
   },
   handle: {
     overflow: "hidden",
-    fontFamily: fontFamily.mono,
-    fontSize: fontSize.xs,
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     minWidth: 0,
@@ -77,9 +76,15 @@ export function PopupSignedInFooter({
             style={styles.handleRow}
           >
             <SmallBody variant="secondary">@</SmallBody>
-            <SmallBody variant="secondary" style={styles.handle}>
+            <Text
+              variant="secondary"
+              font="mono"
+              size="xs"
+              leading="none"
+              style={styles.handle}
+            >
               {session.handle}
-            </SmallBody>
+            </Text>
           </Flex>
         ) : (
           <SmallBody variant="secondary" style={styles.handle}>

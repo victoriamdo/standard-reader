@@ -247,6 +247,12 @@ const styles = stylex.create({
       ":hover": 0.9,
     },
   },
+  actionIconOnly: {
+    justifyContent: "center",
+    minHeight: size["3xl"],
+    minWidth: size["3xl"],
+    paddingInline: spacing["2"],
+  },
   actionOpen: {
     backgroundColor: {
       default: "transparent",
@@ -379,6 +385,28 @@ export function PageChip({
     : (formatDisplayHandle(result.handle) ?? "");
 
   const saved = isArticle ? result.isBookmarked : result.isFollowing;
+  const subscribedIconOnly = !isArticle && saved;
+
+  const saveActionContent = isArticle ? (
+    saved ? (
+      <>
+        <Bookmark size={12} fill="currentColor" />
+        Saved
+      </>
+    ) : (
+      <>
+        <Bookmark size={12} />
+        Save
+      </>
+    )
+  ) : saved ? (
+    <Check size={12} strokeWidth={2.4} aria-hidden />
+  ) : (
+    <>
+      <Plus size={12} strokeWidth={2.4} />
+      Subscribe
+    </>
+  );
 
   const toggleSave = async () => {
     if (result.kind !== "article" && result.kind !== "publication") return;
@@ -496,35 +524,15 @@ export function PageChip({
               {...stylex.props(
                 styles.action,
                 saved ? styles.actionSaveActive : styles.actionSave,
+                subscribedIconOnly && styles.actionIconOnly,
               )}
+              aria-label={subscribedIconOnly ? "Subscribed" : undefined}
               disabled={busy}
               onClick={() => {
                 void toggleSave();
               }}
             >
-              {isArticle ? (
-                saved ? (
-                  <>
-                    <Bookmark size={12} fill="currentColor" />
-                    Saved
-                  </>
-                ) : (
-                  <>
-                    <Bookmark size={12} />
-                    Save
-                  </>
-                )
-              ) : saved ? (
-                <>
-                  <Check size={12} strokeWidth={2.4} />
-                  Subscribed
-                </>
-              ) : (
-                <>
-                  <Plus size={12} strokeWidth={2.4} />
-                  Subscribe
-                </>
-              )}
+              {saveActionContent}
             </button>
             <button
               type="button"
@@ -563,31 +571,11 @@ export function PageChip({
               {...stylex.props(
                 styles.action,
                 saved ? styles.actionSaveActive : styles.actionSave,
+                subscribedIconOnly && styles.actionIconOnly,
               )}
+              aria-label={subscribedIconOnly ? "Subscribed" : undefined}
             >
-              {isArticle ? (
-                saved ? (
-                  <>
-                    <Bookmark size={12} fill="currentColor" />
-                    Saved
-                  </>
-                ) : (
-                  <>
-                    <Bookmark size={12} />
-                    Save
-                  </>
-                )
-              ) : saved ? (
-                <>
-                  <Check size={12} strokeWidth={2.4} />
-                  Subscribed
-                </>
-              ) : (
-                <>
-                  <Plus size={12} strokeWidth={2.4} />
-                  Subscribe
-                </>
-              )}
+              {saveActionContent}
             </button>
             <button
               type="button"

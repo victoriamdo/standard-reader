@@ -3,6 +3,7 @@ import { initials } from "#/components/reader/format";
 import { ArticleEngagement } from "#/components/reader/primitives";
 import { Avatar } from "#/design-system/avatar";
 import { Button } from "#/design-system/button";
+import { IconButton } from "#/design-system/icon-button";
 import { Flex } from "#/design-system/flex";
 import { Separator } from "#/design-system/separator";
 import { uiColor } from "#/design-system/theme/color.stylex";
@@ -18,7 +19,7 @@ import {
   tracking,
 } from "#/design-system/theme/typography.stylex";
 import { Text } from "#/design-system/typography/text";
-import { ArrowRight, Bookmark, UserPlus } from "lucide-react";
+import { ArrowRight, Bookmark, Check, UserPlus } from "lucide-react";
 
 import type { ExtensionResolveArticle } from "../lib/types";
 
@@ -106,7 +107,8 @@ function formatSubscriberCount(count: number | null): string | null {
 
 type PopupArticleProps = {
   result: ExtensionResolveArticle;
-  busy: boolean;
+  saveBusy: boolean;
+  followBusy: boolean;
   onSave: () => void;
   onFollow: () => void;
   onOpenReader: () => void;
@@ -114,7 +116,8 @@ type PopupArticleProps = {
 
 export function PopupArticle({
   result,
-  busy,
+  saveBusy,
+  followBusy,
   onSave,
   onFollow,
   onOpenReader,
@@ -172,7 +175,7 @@ export function PopupArticle({
             variant={result.isBookmarked ? "secondary" : "primary"}
             size="lg"
             onPress={onSave}
-            isDisabled={busy}
+            isDisabled={saveBusy}
             style={styles.actionButton}
           >
             <Bookmark
@@ -216,15 +219,27 @@ export function PopupArticle({
                 </Text>
               ) : null}
             </Flex>
-            <Button
-              variant="secondary"
-              size="sm"
-              onPress={onFollow}
-              isDisabled={busy}
-            >
-              <UserPlus size={16} />
-              {result.isFollowing ? "Subscribed" : "Subscribe"}
-            </Button>
+            {result.isFollowing ? (
+              <IconButton
+                variant="secondary"
+                size="sm"
+                label="Subscribed"
+                onPress={onFollow}
+                isDisabled={followBusy}
+              >
+                <Check size={16} aria-hidden />
+              </IconButton>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                onPress={onFollow}
+                isDisabled={followBusy}
+              >
+                <UserPlus size={16} />
+                Subscribe
+              </Button>
+            )}
           </Flex>
         </Flex>
       ) : null}

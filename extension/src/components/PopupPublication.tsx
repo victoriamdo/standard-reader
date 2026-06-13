@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { initials } from "#/components/reader/format";
 import { Avatar } from "#/design-system/avatar";
 import { Button } from "#/design-system/button";
+import { IconButton } from "#/design-system/icon-button";
 import { Flex } from "#/design-system/flex";
 import { uiColor } from "#/design-system/theme/color.stylex";
 import {
@@ -16,7 +17,7 @@ import {
   lineHeight,
   tracking,
 } from "#/design-system/theme/typography.stylex";
-import { ArrowRight, UserPlus } from "lucide-react";
+import { ArrowRight, Check, UserPlus } from "lucide-react";
 
 import type { ExtensionResolvePublication } from "../lib/types";
 
@@ -90,14 +91,14 @@ function formatSubscriberCount(count: number | null): string | null {
 
 type PopupPublicationProps = {
   result: ExtensionResolvePublication;
-  busy: boolean;
+  followBusy: boolean;
   onFollow: () => void;
   onOpenReader: () => void;
 };
 
 export function PopupPublication({
   result,
-  busy,
+  followBusy,
   onFollow,
   onOpenReader,
 }: PopupPublicationProps) {
@@ -131,16 +132,28 @@ export function PopupPublication({
       </Flex>
 
       <Flex direction="row" gap="sm" style={styles.actions}>
-        <Button
-          variant={result.isFollowing ? "secondary" : "primary"}
-          size="lg"
-          onPress={onFollow}
-          isDisabled={busy}
-          style={styles.actionButton}
-        >
-          <UserPlus size={16} />
-          {result.isFollowing ? "Subscribed" : "Subscribe"}
-        </Button>
+        {result.isFollowing ? (
+          <IconButton
+            variant="secondary"
+            size="lg"
+            label="Subscribed"
+            onPress={onFollow}
+            isDisabled={followBusy}
+          >
+            <Check size={16} aria-hidden />
+          </IconButton>
+        ) : (
+          <Button
+            variant="primary"
+            size="lg"
+            onPress={onFollow}
+            isDisabled={followBusy}
+            style={styles.actionButton}
+          >
+            <UserPlus size={16} />
+            Subscribe
+          </Button>
+        )}
         <Button
           variant="secondary"
           size="lg"
