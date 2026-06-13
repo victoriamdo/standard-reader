@@ -145,7 +145,6 @@
     "resolveViewArticle": {
       "type": "object",
       "required": [
-        "$type",
         "kind",
         "documentUri",
         "title",
@@ -154,10 +153,6 @@
         "commentCount"
       ],
       "properties": {
-        "$type": {
-          "type": "string",
-          "const": "app.standard-reader.defs#resolveViewArticle"
-        },
         "kind": { "type": "string", "const": "article" },
         "documentUri": { "type": "string", "format": "at-uri" },
         "title": { "type": "string" },
@@ -208,12 +203,8 @@
     },
     "resolveViewPublication": {
       "type": "object",
-      "required": ["$type", "kind", "publicationUri", "name", "readerUrl"],
+      "required": ["kind", "publicationUri", "name", "readerUrl"],
       "properties": {
-        "$type": {
-          "type": "string",
-          "const": "app.standard-reader.defs#resolveViewPublication"
-        },
         "kind": { "type": "string", "const": "publication" },
         "publicationUri": { "type": "string", "format": "at-uri" },
         "name": { "type": "string" },
@@ -233,24 +224,16 @@
     },
     "resolveViewReaderLink": {
       "type": "object",
-      "required": ["$type", "kind", "readerUrl"],
+      "required": ["kind", "readerUrl"],
       "properties": {
-        "$type": {
-          "type": "string",
-          "const": "app.standard-reader.defs#resolveViewReaderLink"
-        },
         "kind": { "type": "string", "const": "reader-link" },
         "readerUrl": { "type": "string" }
       }
     },
     "resolveViewUnknown": {
       "type": "object",
-      "required": ["$type", "kind"],
+      "required": ["kind"],
       "properties": {
-        "$type": {
-          "type": "string",
-          "const": "app.standard-reader.defs#resolveViewUnknown"
-        },
         "kind": { "type": "string", "const": "unknown" }
       }
     }
