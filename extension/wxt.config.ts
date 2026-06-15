@@ -121,7 +121,22 @@ export default defineConfig({
     host_permissions: hostPermissions(isWxtDev),
     // onnxruntime-web (Kokoro TTS) compiles fetched WASM in extension pages.
     ...(browser === "firefox"
-      ? {}
+      ? {
+          browser_specific_settings: {
+            gecko: {
+              id: "standard-reader@standard-reader.app",
+              // AMO requires data_collection_permissions on new submissions (Nov 2025+).
+              // https://extensionworkshop.com/documentation/develop/firefox-builtin-data-consent/
+              data_collection_permissions: {
+                required: [
+                  "browsingActivity", // tab URLs sent to /api/extension/resolve
+                  "authenticationInfo", // HttpOnly session cookie on standard-reader.app
+                  "websiteActivity", // save, follow, like actions the user initiates
+                ],
+              },
+            },
+          },
+        }
       : {
           content_security_policy: {
             extension_pages:

@@ -1,6 +1,7 @@
 # Standard Reader Extension — Chrome Web Store
 
 **Deploy:** step-by-step runbook → [`DEPLOY.md`](./DEPLOY.md)  
+**Firefox (AMO):** first publish → [`FIREFOX-INIT.md`](./FIREFOX-INIT.md) · updates → [`FIREFOX-DEPLOY.md`](./FIREFOX-DEPLOY.md)  
 **Privacy practices tab (paste-ready):** [`PRIVACY-PRACTICES.md`](./PRIVACY-PRACTICES.md)
 
 ---
@@ -13,7 +14,7 @@
 
 ### Short description (132 chars max)
 
-Save articles, follow publications, and listen to articles from any tab — with overlay chips on publication sites.
+Save articles, follow publications, open the reader, and listen from any tab — with overlay chips on publication sites.
 
 ### Full description
 
@@ -25,6 +26,12 @@ Standard Reader is the browser companion for [standard.site](https://standard.si
 - Floating overlay chip on publication websites (Save / Open)
 - Right-click context menu: Save to Standard Reader / Open in Standard Reader
 - Toolbar badge when the active tab is a known article or publication (hidden while read-aloud is playing)
+
+**Read and discuss**
+
+- Open the article in Standard Reader from the popup
+- Browse discussion, related reading, and cited-in links without leaving the popup
+- Like articles and see engagement counts
 
 **Read aloud**
 

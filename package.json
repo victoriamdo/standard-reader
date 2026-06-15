@@ -47,7 +47,9 @@
     "atproto:publish-lexicons": "node scripts/goat-lex.mjs lex publish",
     "extension:dev": "pnpm --filter standard-reader-extension dev",
     "extension:build": "pnpm --filter standard-reader-extension build",
-    "extension:zip": "pnpm --filter standard-reader-extension zip"
+    "extension:zip": "pnpm --filter standard-reader-extension zip",
+    "extension:build:firefox": "pnpm --filter standard-reader-extension build:firefox",
+    "extension:zip:firefox": "pnpm --filter standard-reader-extension zip:firefox"
   },
   "dependencies": {
     "@atcute/atproto": "^3.1.12",

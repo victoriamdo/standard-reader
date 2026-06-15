@@ -5,12 +5,14 @@ WXT + React MV3 browser extension. Shares hip-ui + StyleX from `../src/design-sy
 ## Scripts
 
 ```bash
-pnpm extension:dev      # from repo root — hot reload
-pnpm extension:build    # production build → extension/.output/chrome-mv3/
-pnpm extension:zip      # zip for store upload
+pnpm extension:dev           # from repo root — hot reload (Chrome)
+pnpm extension:build         # production build → extension/.output/chrome-mv3/
+pnpm extension:zip           # zip for Chrome Web Store upload
+pnpm extension:build:firefox # production build → extension/.output/firefox-mv2/
+pnpm extension:zip:firefox     # zip for AMO upload
 ```
 
-From this directory: `pnpm dev`, `pnpm build`, `pnpm compile`.
+From this directory: `pnpm dev`, `pnpm dev:firefox`, `pnpm build`, `pnpm compile`.
 
 ## Auth
 
@@ -45,8 +47,21 @@ Content scripts always import `load-stylex-styles.ts` so shadow DOM gets extensi
 
 ## Store publish
 
+**Chrome**
+
 - **Runbook:** [`store/DEPLOY.md`](store/DEPLOY.md) — prod build, QA, dashboard, review, updates
 - **Listing copy:** [`store/README.md`](store/README.md)
+
+**Firefox (AMO)**
+
+- **First publish:** [`store/FIREFOX-INIT.md`](store/FIREFOX-INIT.md)
+- **Updates:** [`store/FIREFOX-DEPLOY.md`](store/FIREFOX-DEPLOY.md)
+- **Listing copy:** [`store/README-FIREFOX.md`](store/README-FIREFOX.md)
+
+```bash
+pnpm extension:zip          # Chrome → extension/.output/*-chrome.zip
+pnpm extension:zip:firefox  # Firefox → extension/.output/*-firefox.zip
+```
 
 ## Design reference mock
 

@@ -48,6 +48,8 @@ The extension talks to the main app over HTTPS. Before any store build:
 | `/api/extension/resolve`                      | Known article URL resolves                          |
 | `/api/extension/bookmark`                     | Save works when authenticated                       |
 | `/api/extension/follow`                       | Follow works when authenticated                     |
+| `/api/extension/recommend`                    | Like works when authenticated                       |
+| `/api/extension/discussion`                   | Discussion panel loads for indexed article          |
 | `/extension/connected`                        | OAuth redirect closes login tab                     |
 | OAuth `client_id` / redirect URIs             | Login from extension popup completes                |
 
@@ -160,6 +162,10 @@ Load the **production** build unpacked:
 | 11  | Read aloud      | Popup on indexed article → Listen       | Playback starts; popup can close         |
 | 12  | Playing icon    | While read-aloud active                 | Toolbar play icon; no red badge dot      |
 | 13  | Read-along      | Publication page for playing article    | Current sentence highlighted on page     |
+| 14  | View in Reader  | Popup on indexed article → View in Reader | Opens article in standard-reader.app tab |
+| 15  | Discussion      | Popup → Discussion icon               | Tabs load; linked articles open in reader |
+| 16  | Like            | Popup → heart icon                      | Like toggles; count updates              |
+| 17  | Voice setting   | Options → change voice → Listen         | Selected voice used for playback         |
 
 Capture failures before upload — reviewers exercise the same flows.
 
@@ -300,7 +306,10 @@ for quick rollback uploads.
 
 ## Related docs
 
-- [`README.md`](./README.md) — listing copy, permission blurbs
+- [`README.md`](./README.md) — Chrome listing copy, permission blurbs
+- [`README-FIREFOX.md`](./README-FIREFOX.md) — Firefox listing copy
+- [`FIREFOX-INIT.md`](./FIREFOX-INIT.md) — Firefox first publish
+- [`FIREFOX-DEPLOY.md`](./FIREFOX-DEPLOY.md) — Firefox updates
 - [`privacy-policy.md`](./privacy-policy.md) — policy text to host
 - [`../README.md`](../README.md) — extension dev setup, architecture
 - [`../../TODO.md`](../../TODO.md) — roadmap item for first publish
