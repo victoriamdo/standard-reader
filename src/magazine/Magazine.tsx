@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MagIssue } from "./types";
 
-import { CoverFlow, EndCardFlow, FeatureFlow } from "./flow";
+import { CoverFlow, EditorialFlow, EndCardFlow, FeatureFlow } from "./flow";
+import { googleFontsHref, magazineThemeStyle } from "./theme-vars";
 
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
@@ -417,9 +418,12 @@ export function Magazine({
     transform: `translateX(${-activeSlide * geom.perView * geom.pageW}px)`,
   };
 
+  const fontsHref = googleFontsHref(issue.theme);
+
   return (
     <div
-      className={`mag ${dark ? "is-dark" : ""}`}
+      className={`mag ${dark ? "is-dark" : ""} ${issue.theme ? "is-themed" : ""}`}
+      style={magazineThemeStyle(issue.theme)}
       onTouchStart={(e) => {
         touchX.current = e.touches[0].clientX;
       }}
@@ -430,6 +434,7 @@ export function Magazine({
         touchX.current = null;
       }}
     >
+      {fontsHref ? <link rel="stylesheet" href={fontsHref} /> : null}
       <div className="progress" style={{ width: `${progress}%` }} />
 
       <div className="mag-stage" style={stageStyle}>
@@ -457,6 +462,7 @@ export function Magazine({
           {mounted ? (
             <>
               <CoverFlow issue={issue} onJump={jumpToFeature} />
+              <EditorialFlow issue={issue} />
               {issue.features.map((feature, i) => (
                 <FeatureFlow
                   key={feature.meta.id}

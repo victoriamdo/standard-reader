@@ -1,4 +1,6 @@
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
+import type { CollectionEditorial } from "#/lib/collections/manifest";
+import type { CollectionTheme } from "#/lib/collections/theme";
 
 import { parseArticleBlocks } from "#/lib/document/blocks";
 
@@ -74,5 +76,34 @@ export function composeIssue(
     sub: "app.standard-reader.list",
     ownerHandle,
     features: articles.map((detail) => ({ meta: articleMeta(detail), detail })),
+  };
+}
+
+/**
+ * Compose a magazine issue from a curated collection: editorial intro, the
+ * curator's per-piece notes, the collection cover, and the owning publication's
+ * theme/fonts. Items keep the manifest's order.
+ */
+export function composeCollectionIssue(input: {
+  name: string;
+  ownerHandle: string | null;
+  editorial: CollectionEditorial | null;
+  coverImageUrl: string | null;
+  theme: CollectionTheme | null;
+  features: Array<{ detail: ArticleDetail; note?: string | null }>;
+}): MagIssue {
+  return {
+    name: input.name,
+    no: "No. 1",
+    sub: "app.standard-reader.collection",
+    ownerHandle: input.ownerHandle,
+    editorial: input.editorial,
+    coverImageUrl: input.coverImageUrl,
+    theme: input.theme,
+    features: input.features.map((f) => ({
+      meta: articleMeta(f.detail),
+      detail: f.detail,
+      note: f.note ?? null,
+    })),
   };
 }

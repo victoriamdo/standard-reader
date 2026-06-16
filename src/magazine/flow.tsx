@@ -3,6 +3,29 @@ import { forwardRef } from "react";
 
 import type { MagFeature, MagIssue, MagMeta } from "./types";
 
+import { MagMarkdown } from "./MagMarkdown";
+
+/** Collection editorial intro — a full spread after the cover. */
+export function EditorialFlow({ issue }: { issue: MagIssue }) {
+  const { editorial } = issue;
+  if (!editorial?.title && !editorial?.body) return null;
+  return (
+    <section className="flow-col editorial">
+      <div className="kick">
+        <span>{issue.name}</span>
+        <span className="sep" />
+        <span>Editorial</span>
+      </div>
+      {editorial.title ? (
+        <h1 className="headline lg editorial-title">{editorial.title}</h1>
+      ) : null}
+      {editorial.body ? (
+        <MagMarkdown className="editorial-body">{editorial.body}</MagMarkdown>
+      ) : null}
+    </section>
+  );
+}
+
 function Kick({ meta, muted }: { meta: MagMeta; muted?: boolean }) {
   return (
     <div className={`kick ${muted ? "muted" : ""}`}>
@@ -32,8 +55,14 @@ export function CoverFlow({
 }) {
   return (
     <>
-      <section className="flow-col cover-left">
-        <div aria-hidden />
+      <section
+        className={`flow-col cover-left ${issue.coverImageUrl ? "has-cover" : ""}`}
+      >
+        {issue.coverImageUrl ? (
+          <img className="cover-hero" src={issue.coverImageUrl} alt="" />
+        ) : (
+          <div aria-hidden />
+        )}
         <h1 className="cover-masthead">{issue.name}</h1>
         <div className="cover-sub">
           {issue.sub}
@@ -42,7 +71,9 @@ export function CoverFlow({
         </div>
       </section>
       <section className="flow-col cover-right">
-        <div className="cover-toc-title">In this issue</div>
+        <div className="cover-toc-title" style={{ paddingTop: "1.4em" }}>
+          In this issue
+        </div>
         <div className="cover-toc-list">
           {issue.features.map((f, i) => (
             <button
@@ -105,6 +136,14 @@ export const FeatureFlow = forwardRef<
           <Byline meta={meta} />
           <hr className="opener-rule" />
         </header>
+        {feature.note ? (
+          <aside className="feature-note">
+            <div className="feature-note-label">Editor’s note</div>
+            <MagMarkdown className="feature-note-body">
+              {feature.note}
+            </MagMarkdown>
+          </aside>
+        ) : null}
         <ArticleContent article={detail} hasHero />
       </div>
     </>

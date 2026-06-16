@@ -37,6 +37,9 @@ export interface BasicTheme {
   foreground?: ThemeRgb;
   accent?: ThemeRgb;
   accentForeground?: ThemeRgb;
+  /** Standard Reader extension: Google Font names for collection title/body,
+   * kept inside the theme object so they round-trip through `themeJson`. */
+  fonts?: { title?: string; body?: string };
 }
 
 /** `site.standard.publication`. */
@@ -72,6 +75,9 @@ export interface DocumentRecord {
   updatedAt?: string;
   bskyPostRef?: StrongRef;
   contributors?: Array<DocumentContributorRecord>;
+  /** Standard Reader extension: the curated "Collection" manifest, when this
+   * document is a collection. Validated via `parseCollectionManifest`. */
+  readerCollection?: unknown;
 }
 
 /** `site.standard.graph.subscription`. */

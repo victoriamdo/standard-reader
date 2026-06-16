@@ -8,7 +8,8 @@ import { publicationApi } from "#/integrations/tanstack-query/api-publication.fu
 import { getPublicUrlClient } from "#/lib/public-url";
 import { siteSocialMeta } from "#/lib/site-metadata";
 
-import { composeIssue } from "../magazine/compose";
+import { documentUriFromParams } from "../components/reader/format";
+import { composeCollectionIssue, composeIssue } from "../magazine/compose";
 import { parseIssueIds, pinnedArticleUri } from "../magazine/issue-link";
 import { Magazine } from "../magazine/Magazine";
 
@@ -30,9 +31,38 @@ export const Route = createFileRoute("/magazine/$did/$rkey")({
     const { queryClient } = context;
     const { did, rkey } = params;
 
-    const pinned = deps.ids ? parseIssueIds(deps.ids) : [];
+    const fetchDetail = (uri: string) =>
+      queryClient
+        .ensureQueryData(publicationApi.getArticleQueryOptions(uri))
+        .catch(() => null);
 
-    // The masthead name/owner always come from the list, regardless of mode.
+    // Collection mode: did/rkey is a `site.standard.document` carrying a manifest.
+    const collectionDoc = await fetchDetail(documentUriFromParams(did, rkey));
+    if (collectionDoc?.collection) {
+      const manifest = collectionDoc.collection;
+      const items = manifest.items.slice(0, MAX_FEATURES);
+      const itemDetails = await Promise.all(
+        items.map((item) => fetchDetail(item.document)),
+      );
+      const features = items
+        .map((item, i) => ({ detail: itemDetails[i], note: item.note ?? null }))
+        .filter(
+          (f): f is { detail: ArticleDetail; note: string | null } =>
+            f.detail != null,
+        );
+      return {
+        mode: "collection" as const,
+        name: collectionDoc.title || collectionDoc.publication?.name || "Collection",
+        ownerHandle: collectionDoc.publicationOwnerHandle,
+        editorial: manifest.editorial ?? null,
+        coverImageUrl: collectionDoc.coverImageUrl,
+        theme: collectionDoc.collectionTheme,
+        features,
+      };
+    }
+
+    // List mode (legacy): did/rkey is a publication list; compose its articles.
+    const pinned = deps.ids ? parseIssueIds(deps.ids) : [];
     const listPagePromise = queryClient.ensureQueryData(
       listApi.getListQueryOptions(did, rkey),
     );
@@ -57,27 +87,18 @@ export const Route = createFileRoute("/magazine/$did/$rkey")({
 
     const [listPage, details] = await Promise.all([
       listPagePromise,
-      Promise.all(
-        articleUris.map((uri) =>
-          queryClient
-            .ensureQueryData(publicationApi.getArticleQueryOptions(uri))
-            .catch(() => null),
-        ),
-      ),
+      Promise.all(articleUris.map(fetchDetail)),
     ]);
 
-    const articles = details.filter(
-      (a): a is ArticleDetail => a != null,
-    );
-
     return {
-      listName: listPage.list?.name ?? "The Standard Issue",
+      mode: "list" as const,
+      name: listPage.list?.name ?? "The Standard Issue",
       ownerHandle: listPage.owner?.handle ?? null,
-      articles,
+      articles: details.filter((a): a is ArticleDetail => a != null),
     };
   },
   head: ({ loaderData, match }) => {
-    const name = loaderData?.listName ?? "Standard Reader";
+    const name = loaderData?.name ?? "Standard Reader";
     const baseUrl = getPublicUrlClient();
     return {
       meta: siteSocialMeta({
@@ -92,13 +113,27 @@ export const Route = createFileRoute("/magazine/$did/$rkey")({
 
 function MagazineRoute() {
   const { did, rkey } = Route.useParams();
-  const { listName, ownerHandle, articles } = Route.useLoaderData();
+  const data = Route.useLoaderData();
   const navigate = useNavigate();
 
-  const issue = useMemo(
-    () => composeIssue(listName, ownerHandle, articles),
-    [listName, ownerHandle, articles],
-  );
+  const issue = useMemo(() => {
+    if (data.mode === "collection") {
+      return composeCollectionIssue({
+        name: data.name,
+        ownerHandle: data.ownerHandle,
+        editorial: data.editorial,
+        coverImageUrl: data.coverImageUrl,
+        theme: data.theme,
+        features: data.features,
+      });
+    }
+    return composeIssue(data.name, data.ownerHandle, data.articles);
+  }, [data]);
+
+  const exit = () =>
+    data.mode === "collection"
+      ? navigate({ to: "/a/$did/$rkey", params: { did, rkey } })
+      : navigate({ to: "/l/$did/$rkey", params: { did, rkey } });
 
   if (issue.features.length === 0) {
     return (
@@ -109,9 +144,9 @@ function MagazineRoute() {
             <button
               className="toc-btn show"
               style={{ position: "static" }}
-              onClick={() => navigate({ to: "/l/$did/$rkey", params: { did, rkey } })}
+              onClick={exit}
             >
-              Back to the list
+              {data.mode === "collection" ? "Back to the collection" : "Back to the list"}
             </button>
           </div>
         </div>
@@ -119,10 +154,5 @@ function MagazineRoute() {
     );
   }
 
-  return (
-    <Magazine
-      issue={issue}
-      onExit={() => navigate({ to: "/l/$did/$rkey", params: { did, rkey } })}
-    />
-  );
+  return <Magazine issue={issue} onExit={exit} />;
 }

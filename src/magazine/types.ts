@@ -1,4 +1,6 @@
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
+import type { CollectionEditorial } from "#/lib/collections/manifest";
+import type { CollectionTheme } from "#/lib/collections/theme";
 
 /** Opener metadata derived from an article, for the magazine art direction. */
 export interface MagMeta {
@@ -20,6 +22,8 @@ export interface MagMeta {
 export interface MagFeature {
   meta: MagMeta;
   detail: ArticleDetail;
+  /** Curator's note for this piece in a collection (markdown), shown at the opener. */
+  note?: string | null;
 }
 
 export interface MagIssue {
@@ -28,4 +32,10 @@ export interface MagIssue {
   sub: string;
   ownerHandle: string | null;
   features: Array<MagFeature>;
+  /** Collection-only: optional editorial intro spread (title and/or body). */
+  editorial?: CollectionEditorial | null;
+  /** Collection-only: the issue cover image. */
+  coverImageUrl?: string | null;
+  /** Collection-only: publication theme colors + Google fonts. */
+  theme?: CollectionTheme | null;
 }

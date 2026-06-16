@@ -17,6 +17,7 @@ import {
   Compass,
   FolderPlus,
   Home,
+  Layers,
   Newspaper,
   Plus,
   Search,
@@ -544,11 +545,20 @@ const SAVED_NAV: NavLink = {
   icon: <Bookmark size={18} />,
 };
 
-/** Primary nav links; inserts Saved after Latest when the reader is signed in. */
+const COLLECTIONS_NAV: NavLink = {
+  to: "/collections",
+  label: "Collections",
+  icon: <Layers size={18} />,
+};
+
+/**
+ * Primary nav links; inserts Saved + Collections after Latest when the reader is
+ * signed in (both are personal, repo-backed surfaces).
+ */
 function navWithSaved(signedIn: boolean): Array<NavLink> {
   return NAV.flatMap((item) => {
     if (item.to !== "/latest" || !signedIn) return [item];
-    return [item, SAVED_NAV];
+    return [item, SAVED_NAV, COLLECTIONS_NAV];
   });
 }
 

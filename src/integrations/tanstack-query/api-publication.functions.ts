@@ -6,6 +6,14 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { publicationLinkParams } from "#/components/reader/format";
+import {
+  type CollectionManifest,
+  parseCollectionManifest,
+} from "#/lib/collections/manifest";
+import {
+  type CollectionTheme,
+  themeFontsFromJson,
+} from "#/lib/collections/theme";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
 import { GREENGALE_CONTENT_REF } from "#/lib/greengale/types";
 import { leafletBlocks } from "#/lib/leaflet/blocks";
@@ -197,6 +205,11 @@ export interface ArticleDetail {
   bskyPostCid: string | null;
   publicationUri: string | null;
   publication: PublicationCard | null;
+  /** Standard Reader "Collection" manifest when this document is a collection
+   * (editorial + ordered items); null for ordinary articles. */
+  collection: CollectionManifest | null;
+  /** The owning publication's theme + Google fonts, for collection rendering. */
+  collectionTheme: CollectionTheme | null;
   /** Owning profile handle for the sticky byline (`@handle`). */
   publicationOwnerHandle: string | null;
   /** Owning profile display name — the byline author when no contributor. */
@@ -369,6 +382,7 @@ const getArticle = createServerFn({ method: "GET" })
               tags: d.tags,
               contentJson: d.contentJson,
               contentFormat: d.contentFormat,
+              collectionJson: d.collectionJson,
               textContent: d.textContent,
               bskyPostUri: d.bskyPostUri,
               bskyPostCid: d.bskyPostCid,
@@ -379,6 +393,11 @@ const getArticle = createServerFn({ method: "GET" })
               pubUrl: p.url,
               pubDescription: p.description,
               pubIconUrl: p.iconUrl,
+              pubThemeBackground: p.themeBackground,
+              pubThemeForeground: p.themeForeground,
+              pubThemeAccent: p.themeAccent,
+              pubThemeAccentForeground: p.themeAccentForeground,
+              pubThemeJson: p.themeJson,
               pubOwnerAvatarUrl: pr.avatarUrl,
               pubOwnerHandle: pr.handle,
               pubOwnerDisplayName: pr.displayName,
@@ -566,6 +585,17 @@ const getArticle = createServerFn({ method: "GET" })
           bskyPostCid: row.bskyPostCid,
           publicationUri: row.publicationUri,
           publication,
+          collection: parseCollectionManifest(row.collectionJson),
+          collectionTheme: row.pubUri
+            ? {
+                background: row.pubThemeBackground,
+                foreground: row.pubThemeForeground,
+                accent: row.pubThemeAccent,
+                accentForeground: row.pubThemeAccentForeground,
+                fontTitle: themeFontsFromJson(row.pubThemeJson).title,
+                fontBody: themeFontsFromJson(row.pubThemeJson).body,
+              }
+            : null,
           publicationOwnerHandle: row.pubOwnerHandle ?? null,
           publicationOwnerDisplayName: row.pubOwnerDisplayName ?? null,
           contributors,

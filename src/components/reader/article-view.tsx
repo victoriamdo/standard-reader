@@ -20,6 +20,7 @@ import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import {
   ArrowLeft,
   Bookmark,
+  BookOpen,
   ExternalLink,
   Headphones,
   Heart,
@@ -276,6 +277,12 @@ const styles = stylex.create({
     marginRight: "auto",
     marginTop: spacing["0"],
     maxWidth: "30ch",
+  },
+  collectionCta: {
+    display: "flex",
+    justifyContent: "center",
+    marginBottom: spacing["6"],
+    marginTop: spacing["1"],
   },
   byline: {
     alignItems: "center",
@@ -875,6 +882,22 @@ function ArticleViewBody({
             </Flex>
           </div>
         </div>
+
+        {article.collection && linkParams ? (
+          <div {...stylex.props(styles.collectionCta)}>
+            <Button
+              variant="primary"
+              onPress={() =>
+                router.navigate({
+                  to: "/magazine/$did/$rkey",
+                  params: linkParams,
+                })
+              }
+            >
+              <BookOpen size={16} /> Launch magazine
+            </Button>
+          </div>
+        ) : null}
 
         {article.coverImageUrl ? (
           <div {...stylex.props(styles.hero)}>
