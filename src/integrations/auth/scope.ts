@@ -16,6 +16,9 @@ export const scope = [
     collection: [
       "site.standard.graph.subscription",
       "site.standard.graph.recommend",
+      // Collections: we write the user's own publication + collection documents.
+      "site.standard.publication",
+      "site.standard.document",
       "app.standard-reader.read",
       "app.standard-reader.bookmark",
       "app.standard-reader.list",

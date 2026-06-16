@@ -14,18 +14,22 @@ import { AuthorProfileLink } from "#/components/reader/author-profile-link";
 import { PublicationNameLink } from "#/components/reader/publication-name-link";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
+import { prefetchCollectionMagazineArticles } from "#/magazine/load-magazine-data";
 import {
   ArrowLeft,
   Bookmark,
+  BookOpen,
   ExternalLink,
   Headphones,
   Heart,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import { Alert } from "../../design-system/alert";
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
 import { Flex } from "../../design-system/flex";
@@ -276,6 +280,9 @@ const styles = stylex.create({
     marginRight: "auto",
     marginTop: spacing["0"],
     maxWidth: "30ch",
+  },
+  magazineIntro: {
+    marginBottom: spacing["12"],
   },
   byline: {
     alignItems: "center",
@@ -613,6 +620,21 @@ function ReaderProgress({ progress }: { progress: number }) {
   );
 }
 
+const COLLECTION_MAGAZINE_INTRO_KEY = "collection-magazine-intro:v1";
+
+function hasSeenCollectionMagazineIntro(): boolean {
+  if (globalThis.localStorage === undefined) {
+    return true;
+  }
+  try {
+    return (
+      globalThis.localStorage.getItem(COLLECTION_MAGAZINE_INTRO_KEY) === "1"
+    );
+  } catch {
+    return true;
+  }
+}
+
 function ArticleViewBody({
   article,
   sharedQuote,
@@ -622,10 +644,14 @@ function ArticleViewBody({
 }) {
   const router = useRouter();
   const { active: readerActive } = usePageReader();
+  const { rememberOpenInMagazine } = useOpenCollectionsInMagazine();
   const { preference: readingTypography } = useReadingTypography();
   const rootRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLElement>(null);
   const [progress, setProgress] = useState(0);
+  const [showMagazineIntro, setShowMagazineIntro] = useState(
+    () => Boolean(article.collection) && !hasSeenCollectionMagazineIntro(),
+  );
   const pub = article.publication;
   const pubParams = pub ? publicationLinkParams(pub.uri) : null;
   const authorName = primaryAuthor(article);
@@ -637,6 +663,14 @@ function ArticleViewBody({
   const date = formatDate(article.publishedAt);
   const publicationArticleUrl = articlePublicationUrl(article);
   const linkParams = documentLinkParams(article.uri);
+  const dismissMagazineIntro = () => {
+    try {
+      globalThis.localStorage?.setItem(COLLECTION_MAGAZINE_INTRO_KEY, "1");
+    } catch {
+      // Private browsing or disabled storage — still hide for this session.
+    }
+    setShowMagazineIntro(false);
+  };
 
   const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -680,6 +714,27 @@ function ArticleViewBody({
     markRead,
     queryClient,
   ]);
+
+  useEffect(() => {
+    if (!article.collection || !linkParams) return;
+
+    prefetchCollectionMagazineArticles(queryClient, article.collection.items);
+
+    const preloadMagazine = () => {
+      void router.preloadRoute({
+        to: "/magazine/$did/$rkey",
+        params: linkParams,
+      });
+    };
+
+    if (typeof globalThis.requestIdleCallback === "function") {
+      const id = globalThis.requestIdleCallback(preloadMagazine);
+      return () => globalThis.cancelIdleCallback(id);
+    }
+
+    const timeout = globalThis.setTimeout(preloadMagazine, 1);
+    return () => globalThis.clearTimeout(timeout);
+  }, [article.collection, article.uri, linkParams, queryClient, router]);
 
   useLayoutEffect(() => {
     const anchor = rootRef.current;
@@ -761,6 +816,23 @@ function ArticleViewBody({
 
           <div {...stylex.props(styles.topActs)}>
             <TopListenButton article={article} />
+            {article.collection && linkParams ? (
+              <IconButton
+                variant="secondary"
+                size="md"
+                label="Open magazine edition"
+                onPress={() => {
+                  rememberOpenInMagazine();
+                  void router.navigate({
+                    to: "/magazine/$did/$rkey",
+                    params: linkParams,
+                    replace: true,
+                  });
+                }}
+              >
+                <BookOpen size={18} />
+              </IconButton>
+            ) : null}
             {publicationArticleUrl ? (
               <IconButton
                 variant="secondary"
@@ -797,6 +869,22 @@ function ArticleViewBody({
           articleMeasureStyle(readingTypography),
         )}
       >
+        {showMagazineIntro ? (
+          <div {...stylex.props(styles.magazineIntro)}>
+            <Alert
+              title="There’s a magazine edition of this collection."
+              action={
+                <Button variant="primary" onPress={dismissMagazineIntro}>
+                  OK
+                </Button>
+              }
+            >
+              Nine pieces, laid out as spreads — made to be read slowly. Click
+              the book icon in the header.
+            </Alert>
+          </div>
+        ) : null}
+
         {topic ? (
           <div {...stylex.props(styles.kicker)}>
             <Kicker>
@@ -807,17 +895,8 @@ function ArticleViewBody({
 
         <h1 {...stylex.props(styles.title)}>{article.title}</h1>
 
-        {article.description ? (
-          // Pckt deks are body excerpts: keep them out of narration alignment
-          // so the first body sentence highlights in the body, not the dek.
-          <p
-            {...stylex.props(styles.dek)}
-            data-reader-skip={
-              articleDescriptionIsBodyExcerpt(article) ? true : undefined
-            }
-          >
-            {article.description}
-          </p>
+        {article.description && !articleDescriptionIsBodyExcerpt(article) ? (
+          <p {...stylex.props(styles.dek)}>{article.description}</p>
         ) : null}
 
         <div {...stylex.props(styles.byline)}>

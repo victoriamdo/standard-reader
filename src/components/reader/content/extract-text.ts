@@ -33,9 +33,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function resolveContentType(
-  article: Pick<ArticleDetail, "contentFormat" | "contentJson">,
-): string | null {
+function resolveContentType(article: {
+  contentFormat?: ArticleDetail["contentFormat"];
+  contentJson: ArticleDetail["contentJson"];
+}): string | null {
   if (article.contentFormat) return article.contentFormat;
   if (
     isRecord(article.contentJson) &&
@@ -53,13 +54,28 @@ function withMarkdownImageAlts(text: string | null): string | null {
 
 /**
  * Whether `article.description` is just an auto-generated excerpt of the body
- * (pckt fills it with the first N characters of the post). Such descriptions
- * shouldn't be narrated — they duplicate the article's opening.
+ * (pckt fills it with the first N characters of the post; collections store the
+ * first 280 characters of the editorial). Such descriptions shouldn't render or
+ * be narrated — they duplicate the article's opening.
  */
-export function articleDescriptionIsBodyExcerpt(
-  article: Pick<ArticleDetail, "contentFormat" | "contentJson">,
-): boolean {
-  return resolveContentType(article) === PCKT_CONTENT;
+export function articleDescriptionIsBodyExcerpt(article: {
+  contentFormat?: ArticleDetail["contentFormat"];
+  contentJson: ArticleDetail["contentJson"];
+  description?: ArticleDetail["description"];
+  collection?: ArticleDetail["collection"] | null;
+}): boolean {
+  if (resolveContentType(article) === PCKT_CONTENT) return true;
+
+  const description = article.description?.trim();
+  if (!description || !article.collection) return false;
+
+  const editorialBody = article.collection.editorial?.body?.trim();
+  if (!editorialBody) return false;
+
+  const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+  const excerpt = normalize(description);
+  const body = normalize(editorialBody);
+  return body.startsWith(excerpt) || body.includes(excerpt);
 }
 
 /**
@@ -71,6 +87,7 @@ export type SpeechArticle = Pick<
   ArticleDetail,
   "title" | "description" | "contentFormat" | "contentJson" | "textContent"
 > & {
+  collection?: ArticleDetail["collection"];
   contributors: Array<{ displayName: string | null; handle: string | null }>;
   publicationOwnerDisplayName: string | null;
   publicationOwnerHandle: string | null;

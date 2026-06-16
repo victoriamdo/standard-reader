@@ -116,6 +116,41 @@ export function articlePublicationUrl(article: {
   return `${trimmed}${withSlash}`;
 }
 
+/** On-site article path (`/a/$did/$rkey`) when the URI is a document record. */
+export function articleReaderPath(documentUri: string): string | null {
+  const params = documentLinkParams(documentUri);
+  if (!params) return null;
+  return `/a/${encodeURIComponent(params.did)}/${encodeURIComponent(params.rkey)}`;
+}
+
+/** Absolute Standard Reader article URL for portable/off-platform links. */
+export function articleReaderUrl(
+  documentUri: string,
+  baseUrl: string,
+): string | null {
+  const path = articleReaderPath(documentUri);
+  if (!path) return null;
+  return `${baseUrl.replace(/\/$/, "")}${path}`;
+}
+
+/**
+ * Destination for a collection newsletter's "Read the piece →" link: the
+ * in-app reader when the body is renderable, otherwise the publication site.
+ */
+export function collectionPieceReadUrl(
+  article: {
+    uri: string;
+    hasRenderableBody: boolean;
+    canonicalUrl: string | null;
+  },
+  baseUrl: string,
+): string | null {
+  if (article.hasRenderableBody) {
+    return articleReaderUrl(article.uri, baseUrl);
+  }
+  return article.canonicalUrl;
+}
+
 /** Estimated minutes from body text; `null` when there is nothing to measure. */
 export function readingMinutes(text: string | null | undefined): number | null {
   if (!text?.trim()) return null;
@@ -162,6 +197,19 @@ const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   year: "numeric",
 });
+
+const MONTH_YEAR_FMT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  year: "numeric",
+});
+
+/** Month + year only (e.g. "Jun 2026") for collection issue rows. */
+export function formatMonthYear(iso: string | null): string {
+  if (!iso) return "";
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "";
+  return MONTH_YEAR_FMT.format(new Date(t));
+}
 
 export function formatDate(iso: string | null): string {
   if (!iso) return "";

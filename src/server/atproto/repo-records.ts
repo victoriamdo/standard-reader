@@ -384,6 +384,127 @@ export async function deleteListSaveRecord(
   });
 }
 
+// ── Collections (reuse site.standard.publication / .document) ───────────────
+
+/** New TID rkey for a collection's publication or document (creation-sortable). */
+export function newCollectionRkey(): string {
+  return tidNow();
+}
+
+/** Upload image bytes to the repo's PDS; returns the `blob` ref to embed. */
+export async function uploadBlob(
+  client: Client,
+  bytes: Uint8Array,
+  mimeType: string,
+): Promise<Record<string, unknown>> {
+  const res = await ok(
+    client.post("com.atproto.repo.uploadBlob", {
+      input: new Blob([bytes as BlobPart], { type: mimeType }),
+    }),
+  );
+  return res.blob as unknown as Record<string, unknown>;
+}
+
+/**
+ * Create or replace the user's `site.standard.publication` that holds their
+ * collections. Fonts ride inside `basicTheme.fonts`; theme is colors + fonts.
+ */
+export async function putPublicationRecord(
+  client: Client,
+  repo: string,
+  rkey: string,
+  pub: {
+    name: string;
+    url: string;
+    description?: string;
+    icon?: Record<string, unknown>;
+    basicTheme?: Record<string, unknown>;
+    /** Marks this as the user's collections home so we can find it again. */
+    readerCollections?: boolean;
+  },
+): Promise<{ uri: string; cid: string }> {
+  return repoPutRecord(client, {
+    repo,
+    collection: COLLECTION.publication,
+    rkey,
+    record: {
+      $type: COLLECTION.publication,
+      name: pub.name,
+      url: pub.url,
+      ...(pub.description ? { description: pub.description } : {}),
+      ...(pub.icon ? { icon: pub.icon } : {}),
+      ...(pub.basicTheme ? { basicTheme: pub.basicTheme } : {}),
+      ...(pub.readerCollections ? { readerCollections: true } : {}),
+    },
+  });
+}
+
+/**
+ * Create or replace a collection as a `site.standard.document`: portable
+ * `content` (markpub newsletter) plus the `readerCollection` manifest extension
+ * our renderer reads. `coverImage` is the optional blob ref (from uploadBlob).
+ */
+export async function putDocumentRecord(
+  client: Client,
+  repo: string,
+  rkey: string,
+  doc: {
+    site: string;
+    title: string;
+    content: Record<string, unknown>;
+    readerCollection: Record<string, unknown>;
+    description?: string;
+    coverImage?: Record<string, unknown>;
+    publishedAt: string;
+    updatedAt?: string;
+  },
+): Promise<{ uri: string; cid: string }> {
+  return repoPutRecord(client, {
+    repo,
+    collection: COLLECTION.document,
+    rkey,
+    record: {
+      $type: COLLECTION.document,
+      site: doc.site,
+      title: doc.title,
+      publishedAt: doc.publishedAt,
+      ...(doc.updatedAt ? { updatedAt: doc.updatedAt } : {}),
+      ...(doc.description ? { description: doc.description } : {}),
+      content: doc.content,
+      readerCollection: doc.readerCollection,
+      ...(doc.coverImage ? { coverImage: doc.coverImage } : {}),
+    },
+  });
+}
+
+export async function deleteDocumentRecord(
+  client: Client,
+  repo: string,
+  rkey: string,
+): Promise<void> {
+  return repoDeleteRecord(client, {
+    repo,
+    collection: COLLECTION.document,
+    rkey,
+  });
+}
+
+/** Read one `site.standard.document` record's value straight from the repo. */
+export async function getDocumentRecord(
+  client: Client,
+  repo: string,
+  rkey: string,
+): Promise<unknown | null> {
+  const res = await client.get("com.atproto.repo.getRecord", {
+    params: lexGetRecordParams({
+      repo,
+      collection: COLLECTION.document,
+      rkey,
+    }),
+  });
+  return res.ok ? (res.data?.value ?? null) : null;
+}
+
 /** Whether the reader has saved `listUri` (an `app.standard-reader.listSave`). */
 export async function hasListSaveRecord(
   client: Client,

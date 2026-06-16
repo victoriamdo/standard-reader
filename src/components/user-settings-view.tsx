@@ -22,6 +22,7 @@ import {
 } from "#/lib/reading-typography";
 import { isThemeMode } from "#/lib/theme";
 import { useOpenLinks } from "#/lib/use-open-links";
+import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { useReaderVoice } from "#/lib/use-reader-voice";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 import { useTheme } from "#/lib/use-theme";
@@ -352,6 +353,7 @@ export function UserSettingsView() {
     [setTypography],
   );
   const { openExternally, setOpenExternally } = useOpenLinks();
+  const { openInMagazine, setOpenInMagazine } = useOpenCollectionsInMagazine();
   const { enabled: trackReading, setEnabled: setTrackReading } =
     useTrackReadingHistory();
 
@@ -452,6 +454,17 @@ export function UserSettingsView() {
           </SettingRow>
           <Separator />
           <SettingRow
+            label="Open collections in magazine"
+            description="When on, collection posts open in the magazine edition instead of the reader view."
+          >
+            <Switch
+              isSelected={openInMagazine}
+              onChange={setOpenInMagazine}
+              aria-label="Open collections in magazine"
+            />
+          </SettingRow>
+          <Separator />
+          <SettingRow
             label="Track reading history"
             description="When on, articles you open are recorded as public read records in your AT Protocol repository."
           >
@@ -518,6 +531,7 @@ export function UserSettingsView() {
             description="The voice used when you listen to an article with read aloud."
           >
             <Select
+              size="lg"
               aria-label="Reader voice"
               selectedKey={voice}
               style={styles.voiceSelect}

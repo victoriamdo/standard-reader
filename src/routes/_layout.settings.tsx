@@ -31,6 +31,9 @@ export const Route = createFileRoute("/_layout/settings")({
         user.getOpenLinksPreferenceQueryOptions,
       ),
       context.queryClient.ensureQueryData(
+        user.getOpenCollectionsInMagazinePreferenceQueryOptions,
+      ),
+      context.queryClient.ensureQueryData(
         user.getTrackReadingHistoryPreferenceQueryOptions,
       ),
       context.queryClient.prefetchQuery(

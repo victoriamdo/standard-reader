@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { Heart, MessageCircle } from "lucide-react";
 
 import type { PublicationCard } from "../../integrations/tanstack-query/api-shapes";
+import type { StyleXComponentProps } from "../../design-system/theme/types";
 
 import { Avatar } from "../../design-system/avatar";
 import { Flex } from "../../design-system/flex";
@@ -385,6 +386,7 @@ export function Masthead({
   metaLabel,
   metaValue,
   metaAccessory,
+  style,
 }: {
   kicker?: React.ReactNode;
   kickerIcon?: React.ReactNode;
@@ -393,9 +395,10 @@ export function Masthead({
   metaLabel?: React.ReactNode;
   metaValue?: React.ReactNode;
   metaAccessory?: React.ReactNode;
+  style?: StyleXComponentProps<React.ComponentProps<"div">>["style"];
 }) {
   return (
-    <div {...stylex.props(styles.masthead)}>
+    <div {...stylex.props(styles.masthead, style)}>
       <Flex direction="column" gap="3xl">
         <Flex direction="column" gap="4xl">
           {metaAccessory}

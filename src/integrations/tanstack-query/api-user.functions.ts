@@ -7,7 +7,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { getCookie, getRequest, setCookie } from "@tanstack/react-start/server";
 import { revokeAtprotoSession } from "#/integrations/auth/atproto";
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
-import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import {
   HOME_SCOPE_COOKIE,
   HOME_SCOPE_COOKIE_MAX_AGE_SECONDS,
@@ -16,6 +15,14 @@ import {
   homeScopeToDbValue,
   parseHomeScope,
 } from "#/lib/home-scope";
+import {
+  OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE,
+  OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE_MAX_AGE_SECONDS,
+  dbValueToOpenCollectionsInMagazine,
+  openCollectionsInMagazineToCookieValue,
+  openCollectionsInMagazineToDbValue,
+  parseOpenCollectionsInMagazineCookie,
+} from "#/lib/open-collections-in-magazine";
 import {
   OPEN_LINKS_COOKIE,
   OPEN_LINKS_COOKIE_MAX_AGE_SECONDS,
@@ -114,21 +121,23 @@ async function loadSessionFromToken(sessionToken: string) {
 
   const { restoreAuthenticatedClient } =
     await import("#/integrations/auth/restore-client.server");
-  const [client, profileRow, publicProfile, identity] = await Promise.all([
+  const [client, profileRow, identity] = await Promise.all([
     restoreAuthenticatedClient(userRow.did),
     db.query.profiles.findFirst({
       where: eq(schema.profiles.did, userRow.did),
       columns: { handle: true },
     }),
-    fetchBlueskyPublicProfileFields(userRow.did),
     resolveIdentity(userRow.did),
   ]);
   if (!client) {
     return null;
   }
 
-  const handle =
-    profileRow?.handle ?? publicProfile?.handle ?? identity.handle ?? null;
+  // Handle comes from our indexed profile, falling back to the (cached) PLC
+  // identity. The Bluesky AppView profile call that used to seed this was
+  // redundant here — its display name/avatar are only needed at login — and an
+  // uncached round-trip to public.api.bsky.app on every session restore.
+  const handle = profileRow?.handle ?? identity.handle ?? null;
 
   return {
     user: {
@@ -395,6 +404,65 @@ const setOpenLinksPreference = createServerFn({ method: "POST" })
     return { openExternally: data.openExternally };
   });
 
+const getOpenCollectionsInMagazinePreference = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .handler(async ({ context }): Promise<{ openInMagazine: boolean }> => {
+    const session = context?.session;
+    if (session?.user) {
+      const row = await context.db.query.user.findFirst({
+        where: eq(context.schema.user.id, session.user.id),
+        columns: { openCollectionsInMagazine: true },
+      });
+      return {
+        openInMagazine: dbValueToOpenCollectionsInMagazine(
+          row?.openCollectionsInMagazine ?? null,
+        ),
+      };
+    }
+
+    return {
+      openInMagazine: parseOpenCollectionsInMagazineCookie(
+        getCookie(OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE),
+      ),
+    };
+  });
+
+const getOpenCollectionsInMagazinePreferenceQueryOptions = queryOptions({
+  queryKey: ["openCollectionsInMagazinePreference"] as const,
+  queryFn: () => getOpenCollectionsInMagazinePreference(),
+  staleTime: Number.POSITIVE_INFINITY,
+});
+
+const setOpenCollectionsInMagazinePreference = createServerFn({
+  method: "POST",
+})
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .inputValidator(z.object({ openInMagazine: z.boolean() }))
+  .handler(async ({ data, context }): Promise<{ openInMagazine: boolean }> => {
+    setCookie(
+      OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE,
+      openCollectionsInMagazineToCookieValue(data.openInMagazine),
+      {
+        path: "/",
+        sameSite: "lax",
+        maxAge: OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE_MAX_AGE_SECONDS,
+      },
+    );
+
+    if (context?.session?.user) {
+      await context.db
+        .update(context.schema.user)
+        .set({
+          openCollectionsInMagazine: openCollectionsInMagazineToDbValue(
+            data.openInMagazine,
+          ),
+        })
+        .where(eq(context.schema.user.id, context.session.user.id));
+    }
+
+    return { openInMagazine: data.openInMagazine };
+  });
+
 const readingTypographyInput = z.object({
   preference: z.object({
     fontSize: z.enum(["small", "default", "large"]),
@@ -610,6 +678,9 @@ export const user = {
   getOpenLinksPreference,
   getOpenLinksPreferenceQueryOptions,
   setOpenLinksPreference,
+  getOpenCollectionsInMagazinePreference,
+  getOpenCollectionsInMagazinePreferenceQueryOptions,
+  setOpenCollectionsInMagazinePreference,
   getReadingTypographyPreference,
   getReadingTypographyPreferenceQueryOptions,
   setReadingTypographyPreference,

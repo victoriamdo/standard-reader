@@ -15,9 +15,10 @@ import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { tsHeadlineHasMatch } from "#/lib/search-headline";
 import { useOpenLinks } from "#/lib/use-open-links";
+import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
-import { ArrowRight, Bookmark, Check, Plus } from "lucide-react";
+import { ArrowRight, Bookmark, BookOpen, Check, Plus } from "lucide-react";
 import { Fragment, useCallback } from "react";
 
 import type {
@@ -374,6 +375,20 @@ const styles = stylex.create({
   },
   metaDot: {
     color: uiColor.text1,
+  },
+  collectionMagMeta: {
+    alignItems: "center",
+    color: primaryColor.text2,
+    columnGap: gap.xs,
+    display: "inline-flex",
+    flexShrink: 0,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: tracking.wide,
+    rowGap: gap.xs,
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
   },
   unreadDotFeature: {
     marginTop: spacing["1.5"],
@@ -987,13 +1002,30 @@ function ArticleTitleRow({
   );
 }
 
+/** Magazine-edition badge for collection documents in feed rows. */
+function CollectionMagazineMeta() {
+  return (
+    <span {...stylex.props(styles.collectionMagMeta)}>
+      <BookOpen size={13} aria-hidden strokeWidth={2} />
+      Collection
+    </span>
+  );
+}
+
 function ArticleMetaLine({ article }: { article: ArticleCard }) {
   const hasEngagement = article.recommendCount > 0 || article.commentCount > 0;
   const topics = articleTopics(article);
-  if (!hasEngagement && topics.length === 0) return null;
+  const showCollection = article.isCollection;
+  if (!showCollection && !hasEngagement && topics.length === 0) return null;
 
   return (
     <MetaLine>
+      {showCollection ? <CollectionMagazineMeta /> : null}
+      {showCollection && (hasEngagement || topics.length > 0) ? (
+        <span aria-hidden {...stylex.props(styles.metaDot)}>
+          ·
+        </span>
+      ) : null}
       {hasEngagement ? (
         <ArticleEngagement
           recommendCount={article.recommendCount}
@@ -1044,6 +1076,7 @@ function ArticleLink({
 }) {
   const markReadExternal = useMarkReadExternal();
   const { openExternally } = useOpenLinks();
+  const { openInMagazine } = useOpenCollectionsInMagazine();
   const params = documentLinkParams(article.uri);
   const merged = stylex.props(styles.cardLink, ...extraStyles);
   // "Open on original site" preference: bypass the in-app reader whenever the
@@ -1064,8 +1097,13 @@ function ArticleLink({
   // Only route through the in-app reader when there's a body to render;
   // "external" posts (no renderable body) link straight out in a new tab.
   if (params && article.hasRenderableBody) {
+    const collectionMagazine = article.isCollection && openInMagazine;
     return (
-      <Link to="/a/$did/$rkey" params={params} {...merged}>
+      <Link
+        to={collectionMagazine ? "/magazine/$did/$rkey" : "/a/$did/$rkey"}
+        params={params}
+        {...merged}
+      >
         {children}
       </Link>
     );
@@ -1448,6 +1486,7 @@ export function CompactRow({
   rank: number;
 }) {
   const hasEngagement = article.recommendCount > 0 || article.commentCount > 0;
+  const showCollection = article.isCollection;
   return (
     <ArticleLink article={article} extraStyles={[styles.compactRow]}>
       <span {...stylex.props(styles.rank)}>
@@ -1456,6 +1495,12 @@ export function CompactRow({
       <Flex direction="column" gap="sm" style={styles.grow}>
         <span {...stylex.props(styles.compactTitle)}>{article.title}</span>
         <MetaLine>
+          {showCollection ? <CollectionMagazineMeta /> : null}
+          {showCollection ? (
+            <span aria-hidden {...stylex.props(styles.metaDot)}>
+              ·
+            </span>
+          ) : null}
           <PublicationNameLink publicationUri={article.publicationUri} nested>
             <span>{article.publicationName ?? "Unknown"}</span>
           </PublicationNameLink>

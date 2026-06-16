@@ -31,10 +31,12 @@ type GoogleFontItem = {
 export function ReadingCustomFontPicker({
   value,
   onChange,
+  label,
   isDisabled = false,
 }: {
   value: string;
   onChange: (family: string) => void;
+  label?: string;
   isDisabled?: boolean;
 }) {
   const [search, setSearch] = useState(value);
@@ -72,7 +74,8 @@ export function ReadingCustomFontPicker({
 
   return (
     <ComboBox
-      aria-label="Google Font"
+      label={label}
+      aria-label={label == null ? "Google Font" : undefined}
       size="lg"
       placeholder="Search Google Fonts"
       items={items}

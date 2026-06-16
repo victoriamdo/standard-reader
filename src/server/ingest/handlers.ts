@@ -1,3 +1,4 @@
+import { parseCollectionManifest } from "#/lib/collections/manifest";
 import { hasRenderableArticleBody } from "#/lib/document/renderable";
 import { documentSearchText } from "#/lib/document/search-text";
 import { isExcludedPublicationUrl } from "#/lib/publication/exclusions";
@@ -338,11 +339,16 @@ export async function upsertDocument(
     contentJson,
     contentFormat,
   });
-  const renderableBody = hasRenderableArticleBody({
-    textContent: cleanOptional(record.textContent),
-    contentJson,
-    contentFormat,
-  });
+  // A collection rides on the `readerCollection` extension; its presence marks
+  // the document as a collection and guarantees an in-app renderable body.
+  const collectionManifest = parseCollectionManifest(record.readerCollection);
+  const renderableBody =
+    collectionManifest != null ||
+    hasRenderableArticleBody({
+      textContent: cleanOptional(record.textContent),
+      contentJson,
+      contentFormat,
+    });
 
   const values = {
     uri,
@@ -358,6 +364,7 @@ export async function upsertDocument(
     textContent,
     contentJson,
     contentFormat,
+    collectionJson: collectionManifest,
     hasRenderableBody: renderableBody,
     coverImageCid: coverCid,
     coverImageMime: record.coverImage?.mimeType ?? null,

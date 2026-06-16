@@ -49,6 +49,9 @@ export const publications = pgTable(
     themeBackground: text("theme_background"),
     themeForeground: text("theme_foreground"),
     themeAccentForeground: text("theme_accent_foreground"),
+    /** Flattened colors above; the full `basicTheme` object (including the
+     * Standard Reader `fonts` extension: Google Font names for collection
+     * title/body) round-trips here. */
     themeJson: jsonb("theme_json"),
 
     /** `preferences.showInDiscover` — whether to surface in discovery feeds. */

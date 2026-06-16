@@ -9,6 +9,7 @@ import {
   savedListsQueryOptions,
   sidebarQueryOptions,
 } from "#/integrations/tanstack-query/shell-queries";
+import { formatSidebarUnreadCount } from "#/lib/format-count";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { PageReaderProvider } from "#/lib/page-reader/page-reader-provider";
 import {
@@ -17,6 +18,7 @@ import {
   Compass,
   FolderPlus,
   Home,
+  Layers,
   Newspaper,
   Plus,
   Search,
@@ -546,11 +548,20 @@ const SAVED_NAV: NavLink = {
   icon: <Bookmark size={18} />,
 };
 
-/** Primary nav links; inserts Saved after Latest when the reader is signed in. */
+const COLLECTIONS_NAV: NavLink = {
+  to: "/collections",
+  label: "Collections",
+  icon: <Layers size={18} />,
+};
+
+/**
+ * Primary nav links; inserts Saved + Collections after Latest when the reader is
+ * signed in (both are personal, repo-backed surfaces).
+ */
 function navWithSaved(signedIn: boolean): Array<NavLink> {
   return NAV.flatMap((item) => {
     if (item.to !== "/latest" || !signedIn) return [item];
-    return [item, SAVED_NAV];
+    return [item, SAVED_NAV, COLLECTIONS_NAV];
   });
 }
 
@@ -559,7 +570,8 @@ function SidebarNavItem({
   label,
   icon,
   count,
-}: NavLink & { count?: number | null }) {
+  compactCount = false,
+}: NavLink & { count?: number | null; compactCount?: boolean }) {
   return (
     <Link
       to={to}
@@ -570,7 +582,9 @@ function SidebarNavItem({
       {icon}
       <span {...stylex.props(styles.navLabel)}>{label}</span>
       {count != null && count > 0 ? (
-        <span {...stylex.props(styles.count)}>{count}</span>
+        <span {...stylex.props(styles.count)}>
+          {compactCount ? formatSidebarUnreadCount(count) : count}
+        </span>
       ) : null}
     </Link>
   );
@@ -608,7 +622,7 @@ function FollowRow({ pub }: { pub: FollowingPublication }) {
         {...stylex.props(styles.followUnread)}
         aria-label={`${pub.unreadCount} unread`}
       >
-        {pub.unreadCount}
+        {formatSidebarUnreadCount(pub.unreadCount)}
       </span>
     ) : null;
   const content = (
@@ -703,7 +717,9 @@ function SidebarList({
           <span {...stylex.props(styles.listName)}>{name}</span>
         )}
         <div {...stylex.props(styles.sideLabelActions)}>
-          {unreadTotal > 0 ? <span>{unreadTotal}</span> : null}
+          {unreadTotal > 0 ? (
+            <span>{formatSidebarUnreadCount(unreadTotal)}</span>
+          ) : null}
           <DisclosureTitle
             style={styles.listToggle}
             chevronStyle={styles.headerIcon}
@@ -1000,6 +1016,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       ? savedCount
                       : null
                 }
+                compactCount={item.to === "/latest"}
               />
             ))}
           </nav>
