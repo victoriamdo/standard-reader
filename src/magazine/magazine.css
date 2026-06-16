@@ -669,15 +669,11 @@
 }
 
 .mag .exit-btn,
-.mag .theme-btn {
+.mag .theme-btn,
+.mag .reader-btn {
   position: fixed;
   top: 18px;
   z-index: 1050;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
   border: 1px solid var(--hud-border);
   cursor: pointer;
   background: var(--hud-glass);
@@ -689,6 +685,28 @@
     opacity 0.28s ease,
     background 0.14s;
 }
+.mag .exit-btn,
+.mag .theme-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+}
+.mag .reader-btn {
+  right: 114px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
 .mag .exit-btn {
   right: 18px;
 }
@@ -696,12 +714,14 @@
   right: 66px;
 }
 .mag .exit-btn.show,
-.mag .theme-btn.show {
+.mag .theme-btn.show,
+.mag .reader-btn.show {
   opacity: 1;
   pointer-events: auto;
 }
 .mag .exit-btn:hover,
-.mag .theme-btn:hover {
+.mag .theme-btn:hover,
+.mag .reader-btn:hover {
   background: color-mix(in oklab, var(--ink) 78%, transparent);
   color: var(--accent);
 }

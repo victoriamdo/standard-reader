@@ -6,6 +6,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { publicationLinkParams } from "#/components/reader/format";
+import { composeCollectionNewsletterContent } from "#/lib/collections/compose-newsletter";
 import {
   type CollectionManifest,
   parseCollectionManifest,
@@ -23,6 +24,7 @@ import { OFFPRINT_CONTENT } from "#/lib/offprint/types";
 import { pcktBlocks, pcktCodeLanguage } from "#/lib/pckt/blocks";
 import { PCKT_CONTENT } from "#/lib/pckt/types";
 import { EMPTY_CODE_HIGHLIGHTS } from "#/lib/theme";
+import { getPublicUrl } from "#/lib/public-url";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { authorPds } from "#/server/atproto/identity";
 import { didFromAtUri } from "#/server/atproto/uri";
@@ -46,6 +48,7 @@ import {
   publicationFollowedByCoReaders,
   relatedArticles,
   selectArticleCards,
+  selectArticleCardsByUris,
   selectPublicationArticleCards,
 } from "#/server/reader/queries";
 import { highlightLeafletCodeBlocks } from "#/server/shiki/highlighter";
@@ -533,6 +536,21 @@ const getArticle = createServerFn({ method: "GET" })
           }
         }
 
+        const collection = parseCollectionManifest(row.collectionJson);
+        if (collection && collection.items.length > 0) {
+          const cards = await selectArticleCardsByUris(
+            db,
+            schema,
+            collection.items.map((item) => item.document),
+          );
+          resolvedContentJson = composeCollectionNewsletterContent({
+            editorial: collection.editorial,
+            manifestItems: collection.items,
+            cardsByUri: new Map(cards.map((card) => [card.uri, card])),
+            baseUrl: getPublicUrl(),
+          }) as JsonValue;
+        }
+
         const codeBlocks: Array<
           Pick<LeafletCodeBlock, "language" | "plaintext">
         > =
@@ -585,7 +603,7 @@ const getArticle = createServerFn({ method: "GET" })
           bskyPostCid: row.bskyPostCid,
           publicationUri: row.publicationUri,
           publication,
-          collection: parseCollectionManifest(row.collectionJson),
+          collection,
           collectionTheme: row.pubUri
             ? {
                 background: row.pubThemeBackground,

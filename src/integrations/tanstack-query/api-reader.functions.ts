@@ -90,6 +90,7 @@ type JoinedArticleRow = {
   tags: Array<string> | null;
   textContent?: string | null;
   hasRenderableBody: boolean | null;
+  isCollection?: boolean | null;
   recommendCount: number | null;
 };
 
@@ -126,6 +127,7 @@ function hydrateArticleFromRow(
     tags: row.tags,
     textContent: row.textContent ?? null,
     hasRenderableBody: row.hasRenderableBody,
+    isCollection: row.isCollection,
     recommendCount: row.recommendCount,
     ...extra,
   });

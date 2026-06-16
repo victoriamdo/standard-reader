@@ -161,9 +161,11 @@ function isEdgeTap(clientX: number) {
 export function Magazine({
   issue,
   onExit,
+  onOpenReader,
 }: {
   issue: MagIssue;
   onExit: () => void;
+  onOpenReader: () => void;
 }) {
   const storageKey = `mag-slide:${issue.name}`;
   const themePalette = useMemo(
@@ -594,7 +596,7 @@ export function Magazine({
         </div>
 
         {measure === null ? (
-          <div className="building">
+          <div className="building" aria-busy="true" aria-label="Setting the issue">
             <div>
               <div className="spin" />
               Setting the issue…
@@ -645,6 +647,14 @@ export function Magazine({
         >
           <span className="mk">S</span>
           Contents
+        </button>
+
+        <button
+          className={`reader-btn ${chromeOn ? "show" : ""}`}
+          onClick={onOpenReader}
+          aria-label="Switch to reader view"
+        >
+          Reader
         </button>
 
         <button

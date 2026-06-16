@@ -29,12 +29,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { GridList, GridListItem, useDragAndDrop } from "react-aria-components";
 
 import { Button } from "../../design-system/button";
-import {
-  Dialog,
-  DialogBody,
-  DialogFooter,
-  DialogHeader,
-} from "../../design-system/dialog";
+import { Dialog, DialogBody, DialogHeader } from "../../design-system/dialog";
 import {
   FileDropDefaultTrigger,
   FileDropZone,
@@ -64,6 +59,7 @@ import {
   tracking,
 } from "../../design-system/theme/typography.stylex";
 import { ArticleResultRow } from "./article-result-row";
+import { CollectionPublicationCreateDialog } from "./collection-publication-editor";
 import { MarkdownField } from "./markdown-field";
 import { Kicker, SectionHead } from "./primitives";
 
@@ -561,16 +557,12 @@ export function CollectionBuilder({
     initial?.publicationUri ?? publicationUri,
   );
   const [createPubOpen, setCreatePubOpen] = useState(false);
-  const [newPubName, setNewPubName] = useState("");
 
   const saveMutation = useMutation(
     collectionsApi.putCollectionMutationOptions(),
   );
   const coverMutation = useMutation(
     collectionsApi.uploadCollectionCoverMutationOptions(),
-  );
-  const createPubMutation = useMutation(
-    collectionsApi.createCollectionsPublicationMutationOptions(),
   );
   const busy = saveMutation.isPending;
 
@@ -588,6 +580,7 @@ export function CollectionBuilder({
             rkey: "",
             name: "Series",
             description: null,
+            iconUrl: null,
             theme: {
               background: null,
               foreground: null,
@@ -596,28 +589,11 @@ export function CollectionBuilder({
               fontTitle: null,
               fontBody: null,
             },
+            subscriberCount: 0,
           },
         ]),
     ...publications,
   ];
-
-  const createPublication = () => {
-    const name = newPubName.trim();
-    if (name.length === 0 || createPubMutation.isPending) return;
-    createPubMutation.mutate(
-      { name },
-      {
-        onSuccess: (pub) => {
-          setSelectedPubUri(pub.uri);
-          setNewPubName("");
-          setCreatePubOpen(false);
-          void queryClient.invalidateQueries({
-            queryKey: ["reader", "collectionsPublications"],
-          });
-        },
-      },
-    );
-  };
 
   const onCoverFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -1071,54 +1047,11 @@ export function CollectionBuilder({
         </div>
       </div>
 
-      <Dialog
-        size="sm"
+      <CollectionPublicationCreateDialog
         isOpen={createPubOpen}
-        onOpenChange={(open) => {
-          setCreatePubOpen(open);
-          if (!open) setNewPubName("");
-        }}
-        trigger={<span hidden aria-hidden />}
-      >
-        <DialogHeader>New series</DialogHeader>
-        <DialogBody>
-          <Flex direction="column" gap="md">
-            <TextField
-              label="Series name"
-              placeholder="e.g. Dispatches from the Atmosphere"
-              value={newPubName}
-              onChange={setNewPubName}
-              isRequired
-              size="lg"
-              // New, focused dialog whose sole field should take focus.
-              // eslint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus
-            />
-            <span {...stylex.props(styles.empty)}>
-              A series is a followable special collection others can subscribe
-              to. You can theme it later.
-            </span>
-          </Flex>
-        </DialogBody>
-        <DialogFooter>
-          <Button
-            variant="secondary"
-            onPress={() => setCreatePubOpen(false)}
-            isDisabled={createPubMutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            isDisabled={
-              newPubName.trim().length === 0 || createPubMutation.isPending
-            }
-            onPress={createPublication}
-          >
-            Create series
-          </Button>
-        </DialogFooter>
-      </Dialog>
+        onOpenChange={setCreatePubOpen}
+        onCreated={(publication) => setSelectedPubUri(publication.uri)}
+      />
     </div>
   );
 }

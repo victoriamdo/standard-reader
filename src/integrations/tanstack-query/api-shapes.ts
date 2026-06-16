@@ -93,6 +93,11 @@ export interface ArticleCard {
    * query was scoped to a reader (`readForDid`); otherwise defaults to `false`.
    */
   isRead: boolean;
+  /**
+   * Whether this document is a curated collection with a magazine edition
+   * (`collection_json` manifest with at least one item).
+   */
+  isCollection: boolean;
   /** `ts_headline` HTML for the title in search results. */
   searchTitleHtml?: string | null;
   /** `ts_headline` HTML excerpt for search results. */
@@ -169,6 +174,7 @@ export function articleCardColumns(schema: Schema) {
     tags: d.tags,
     textContent: d.textContent,
     hasRenderableBody: d.hasRenderableBody,
+    isCollection: documentIsCollectionColumn(d.collectionJson),
     recommendCount: sql<number>`coalesce((
       select count(*)::int
       from ${rec}
@@ -186,6 +192,17 @@ export function articleCardColumns(schema: Schema) {
 export function articleQueueCardColumns(schema: Schema) {
   const { textContent: _textContent, ...columns } = articleCardColumns(schema);
   return columns;
+}
+
+/** True when `collection_json` carries a non-empty items manifest. */
+export function documentIsCollectionColumn(
+  collectionJson: Schema["documents"]["collectionJson"],
+): SQL<boolean> {
+  return sql<boolean>`(
+    ${collectionJson} is not null
+    and jsonb_typeof(${collectionJson}->'items') = 'array'
+    and jsonb_array_length(${collectionJson}->'items') > 0
+  )`.mapWith(Boolean);
 }
 
 // ── Row → DTO mappers ───────────────────────────────────────────────────────
@@ -307,6 +324,7 @@ type ArticleCardRow = {
   tags: Array<string> | null;
   textContent?: string | null;
   hasRenderableBody?: boolean | null;
+  isCollection?: boolean | null;
   recommendCount: number | null;
   isRead?: boolean | null;
   searchTitleHtml?: string | null;
@@ -334,6 +352,7 @@ export function toArticleCard(row: ArticleCardRow): ArticleCard {
     tags: row.tags,
     textContent: row.textContent ?? null,
     hasRenderableBody: row.hasRenderableBody ?? true,
+    isCollection: row.isCollection ?? false,
     recommendCount: row.recommendCount ?? 0,
     commentCount: 0,
     isRead: row.isRead ?? false,

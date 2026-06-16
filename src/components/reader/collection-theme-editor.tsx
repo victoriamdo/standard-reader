@@ -31,7 +31,7 @@ import {
   SegmentedControl,
   SegmentedControlItem,
 } from "../../design-system/segmented-control";
-import { LabelText, SmallBody } from "../../design-system/typography";
+import { SmallBody } from "../../design-system/typography";
 import { ReadingCustomFontPicker } from "../reading-custom-font-picker";
 import { radius } from "../../design-system/theme/radius.stylex";
 import { uiColor } from "../../design-system/theme/color.stylex";
@@ -102,10 +102,10 @@ const styles = stylex.create({
     borderRadius: "2px",
     backgroundColor: "var(--accent)",
     height: "3px",
-    marginBottom: '0.75rem',
-    marginLeft: '0',
-    marginRight: '0',
-    marginTop: '0.6rem',
+    marginBottom: "0.75rem",
+    marginLeft: "0",
+    marginRight: "0",
+    marginTop: "0.6rem",
     width: "3.5rem",
   },
   previewTitle: {
@@ -117,20 +117,20 @@ const styles = stylex.create({
     lineHeight: 1.05,
   },
   previewBody: {
-    marginBottom: '0',
+    marginBottom: "0",
     color: "var(--ink-soft)",
-    marginRight: '0',
-    marginTop: '0.75rem',
+    marginRight: "0",
+    marginTop: "0.75rem",
     fontFamily: "var(--prev-body, serif)",
     fontSize: "0.8rem",
     lineHeight: 1.5,
-    marginLeft: '0',
+    marginLeft: "0",
   },
   previewTocRow: {
     alignItems: "baseline",
-    columnGap: '0.6rem',
+    columnGap: "0.6rem",
     display: "flex",
-    rowGap: '0.6rem',
+    rowGap: "0.6rem",
     borderTopColor: "var(--line)",
     borderTopStyle: "solid",
     borderTopWidth: 1,
@@ -364,8 +364,8 @@ function ThemeForm({
     <>
       <DialogBody>
         <Flex gap="4xl" style={styles.columns}>
-          <Flex direction="column" gap="4xl" style={styles.controls}>
-            <Flex direction="column" gap="lg">
+          <Flex direction="column" gap="6xl" style={styles.controls}>
+            <Flex direction="column" gap="2xl">
               <span {...stylex.props(styles.sectionHead)}>Colors</span>
               <ColorRow
                 label="Background"
@@ -384,22 +384,18 @@ function ThemeForm({
                 onChange={setAccentForeground}
               />
             </Flex>
-            <Flex direction="column" gap="lg">
+            <Flex direction="column" gap="2xl">
               <span {...stylex.props(styles.sectionHead)}>Fonts</span>
-              <Flex direction="column" gap="xs">
-                <LabelText>Title font</LabelText>
-                <ReadingCustomFontPicker
-                  value={fontTitle}
-                  onChange={setFontTitle}
-                />
-              </Flex>
-              <Flex direction="column" gap="xs">
-                <LabelText>Body font</LabelText>
-                <ReadingCustomFontPicker
-                  value={fontBody}
-                  onChange={setFontBody}
-                />
-              </Flex>
+              <ReadingCustomFontPicker
+                label="Title font"
+                value={fontTitle}
+                onChange={setFontTitle}
+              />
+              <ReadingCustomFontPicker
+                label="Body font"
+                value={fontBody}
+                onChange={setFontBody}
+              />
             </Flex>
           </Flex>
 

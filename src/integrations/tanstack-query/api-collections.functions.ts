@@ -2,10 +2,7 @@ import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { hexToRgb, rgbToHex } from "#/lib/collections/color";
-import {
-  collectionMarkpubContent,
-  composeCollectionNewsletter,
-} from "#/lib/collections/compose-newsletter";
+import { composeCollectionNewsletterContent } from "#/lib/collections/compose-newsletter";
 import { parseCollectionManifest } from "#/lib/collections/manifest";
 import { STANDARD_NSID } from "#/lib/atproto/nsids";
 import { getPublicUrl } from "#/lib/public-url";
@@ -24,6 +21,7 @@ import {
 import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
+import { inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import type { ArticleCard } from "./api-shapes";
@@ -80,6 +78,7 @@ export interface CollectionsPublication {
   rkey: string;
   name: string;
   description: string | null;
+  iconUrl: string | null;
   theme: CollectionsTheme;
 }
 
@@ -108,7 +107,9 @@ export interface CollectionsPublicationSummary {
   rkey: string;
   name: string;
   description: string | null;
+  iconUrl: string | null;
   theme: CollectionsTheme;
+  subscriberCount: number;
 }
 
 export interface CollectionForEdit {
@@ -123,9 +124,19 @@ export interface CollectionForEdit {
   coverImageUrl: string | null;
 }
 
+const putPublicationInput = z.object({
+  publicationRkey: z.string().min(1),
+  name: z.string().trim().min(1).max(64),
+  description: z.string().trim().max(300).optional(),
+  /** Blob ref from `uploadPublicationIcon`, or `null` to remove the icon. */
+  icon: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+
 const ensurePublicationInput = z.object({
   name: z.string().trim().min(1).max(64),
   description: z.string().trim().max(300).optional(),
+  /** Blob ref from `uploadPublicationIcon`. */
+  icon: z.record(z.string(), z.unknown()).optional(),
 });
 
 const collectionItemInput = z.object({
@@ -228,18 +239,40 @@ async function findCollectionsPublication(
   );
 }
 
-function publicationFromRecord(
+function iconFromRecord(
+  value: Record<string, unknown>,
+): JsonObject | undefined {
+  return isRecord(value.icon) ? asJsonObject(value.icon) : undefined;
+}
+
+function publicationBaseFromRecord(value: Record<string, unknown>) {
+  return {
+    name: typeof value.name === "string" ? value.name : "Series",
+    url: typeof value.url === "string" ? value.url : getPublicUrl(),
+    description:
+      typeof value.description === "string" ? value.description : undefined,
+    icon: iconFromRecord(value),
+    basicTheme: isRecord(value.basicTheme)
+      ? (value.basicTheme as Record<string, unknown>)
+      : undefined,
+  };
+}
+
+async function publicationFromRecord(
+  did: string,
   uri: string,
   rkey: string,
   value: Record<string, unknown>,
-): CollectionsPublicationSummary {
+): Promise<CollectionsPublicationSummary> {
   return {
     uri,
     rkey,
     name: typeof value.name === "string" ? value.name : "Series",
     description:
       typeof value.description === "string" ? value.description : null,
+    iconUrl: await resolveBlobUrl(did, value.icon),
     theme: themeFromRecord(value),
+    subscriberCount: 0,
   };
 }
 
@@ -277,6 +310,7 @@ const getCollectionsPublication = createServerFn({ method: "GET" }).handler(
       name: typeof value.name === "string" ? value.name : "Series",
       description:
         typeof value.description === "string" ? value.description : null,
+      iconUrl: await resolveBlobUrl(session.did, value.icon),
       theme: themeFromRecord(value),
     } satisfies CollectionsPublication;
   }),
@@ -316,27 +350,54 @@ const ensureCollectionsPublication = createServerFn({ method: "POST" })
   );
 
 /** Every publication the reader can publish a collection under. */
-const listCollectionsPublications = createServerFn({ method: "GET" }).handler(
-  observe("collections.listPublications", async (_, span) => {
-    const session = await getAtprotoSessionForRequest(getRequest());
-    if (!session) return [] satisfies Array<CollectionsPublicationSummary>;
-    span.set("did", session.did);
+const listCollectionsPublications = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .handler(
+    observe("collections.listPublications", async ({ context }, span) => {
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) return [] satisfies Array<CollectionsPublicationSummary>;
+      span.set("did", session.did);
 
-    const records = await listCollectionRecords(
-      session.client,
-      session.did,
-      STANDARD_NSID.publication,
-    );
-    const publications = records
-      .filter(
-        (r): r is typeof r & { value: Record<string, unknown> } =>
-          isRecord(r.value) && r.value.readerCollections === true,
-      )
-      .map((r) => publicationFromRecord(r.uri, r.rkey, r.value));
-    span.set("count", publications.length);
-    return publications satisfies Array<CollectionsPublicationSummary>;
-  }),
-);
+      const records = await listCollectionRecords(
+        session.client,
+        session.did,
+        STANDARD_NSID.publication,
+      );
+      const publications = await Promise.all(
+        records
+          .filter(
+            (r): r is typeof r & { value: Record<string, unknown> } =>
+              isRecord(r.value) && r.value.readerCollections === true,
+          )
+          .map((r) =>
+            publicationFromRecord(session.did, r.uri, r.rkey, r.value),
+          ),
+      );
+
+      const uris = publications.map((publication) => publication.uri);
+      const subscriberByUri = new Map<string, number>();
+      if (uris.length > 0) {
+        const { db, schema } = context;
+        const st = schema.publicationStats;
+        const rows = await db
+          .select({
+            publicationUri: st.publicationUri,
+            subscriberCount: st.subscriberCount,
+          })
+          .from(st)
+          .where(inArray(st.publicationUri, uris));
+        for (const row of rows) {
+          subscriberByUri.set(row.publicationUri, row.subscriberCount ?? 0);
+        }
+      }
+
+      span.set("count", publications.length);
+      return publications.map((publication) => ({
+        ...publication,
+        subscriberCount: subscriberByUri.get(publication.uri) ?? 0,
+      })) satisfies Array<CollectionsPublicationSummary>;
+    }),
+  );
 
 /** Create a new, separate publication to publish collections under. */
 const createCollectionsPublication = createServerFn({ method: "POST" })
@@ -348,6 +409,7 @@ const createCollectionsPublication = createServerFn({ method: "POST" })
       span.set("did", session.did);
 
       const rkey = newCollectionRkey();
+      const icon = data.icon ? asJsonObject(data.icon) : undefined;
       const { uri } = await putPublicationRecord(
         session.client,
         session.did,
@@ -356,15 +418,18 @@ const createCollectionsPublication = createServerFn({ method: "POST" })
           name: data.name,
           url: getPublicUrl(),
           description: data.description || undefined,
+          ...(icon ? { icon } : {}),
           readerCollections: true,
         },
       );
       await ensureTracked(session.did, "reader");
+      const iconUrl = icon ? await resolveBlobUrl(session.did, icon) : null;
       return {
         uri,
         rkey,
         name: data.name,
         description: data.description ?? null,
+        iconUrl,
         theme: {
           background: null,
           foreground: null,
@@ -373,6 +438,7 @@ const createCollectionsPublication = createServerFn({ method: "POST" })
           fontTitle: null,
           fontBody: null,
         },
+        subscriberCount: 0,
       } satisfies CollectionsPublicationSummary;
     }),
   );
@@ -422,12 +488,12 @@ const getMyCollections = createServerFn({ method: "GET" }).handler(
   }),
 );
 
-/** Resolve a record's `coverImage` blob ref to a getBlob URL on the owner's PDS. */
-async function resolveCoverUrl(
+/** Resolve a record blob ref to a getBlob URL on the owner's PDS. */
+async function resolveBlobUrl(
   did: string,
-  coverImage: unknown,
+  blob: unknown,
 ): Promise<string | null> {
-  const cid = blobCid(coverImage as Parameters<typeof blobCid>[0]);
+  const cid = blobCid(blob as Parameters<typeof blobCid>[0]);
   if (!cid) return null;
   const identity = await resolveIdentity(did).catch(() => null);
   return identity?.pds ? getBlobUrl(identity.pds, did, cid) : null;
@@ -446,7 +512,25 @@ const uploadCollectionCover = createServerFn({ method: "POST" })
         throw new Error("Cover image must be under 4 MB.");
       }
       const blob = await uploadBlob(session.client, bytes, data.mimeType);
-      const url = await resolveCoverUrl(session.did, blob);
+      const url = await resolveBlobUrl(session.did, blob);
+      return { blob: asJsonObject(blob), url };
+    }),
+  );
+
+const uploadPublicationIcon = createServerFn({ method: "POST" })
+  .inputValidator(uploadCoverInput)
+  .handler(
+    observe("collections.uploadPublicationIcon", async ({ data }, span) => {
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) throw new Error("Sign in to upload an icon.");
+      span.set("did", session.did);
+
+      const bytes = new Uint8Array(Buffer.from(data.dataBase64, "base64"));
+      if (bytes.byteLength === 0 || bytes.byteLength > MAX_COVER_BYTES) {
+        throw new Error("Icon must be under 4 MB.");
+      }
+      const blob = await uploadBlob(session.client, bytes, data.mimeType);
+      const url = await resolveBlobUrl(session.did, blob);
       return { blob: asJsonObject(blob), url };
     }),
   );
@@ -502,7 +586,7 @@ const getCollectionForEdit = createServerFn({ method: "GET" })
           };
         }),
         coverImage,
-        coverImageUrl: await resolveCoverUrl(session.did, coverImage),
+        coverImageUrl: await resolveBlobUrl(session.did, coverImage),
       } satisfies CollectionForEdit;
     }),
   );
@@ -525,17 +609,11 @@ const putCollection = createServerFn({ method: "POST" })
       );
       const cardByUri = new Map(cards.map((card) => [card.uri, card]));
 
-      const newsletter = composeCollectionNewsletter({
+      const content = composeCollectionNewsletterContent({
         editorial: data.editorial,
-        items: data.items.map((item) => {
-          const card = cardByUri.get(item.document);
-          return {
-            title: card?.title ?? "Untitled",
-            byline: card?.publicationName ?? null,
-            url: card?.canonicalUrl ?? null,
-            note: item.note,
-          };
-        }),
+        manifestItems: data.items,
+        cardsByUri: cardByUri,
+        baseUrl: getPublicUrl(),
       });
 
       const editorial =
@@ -551,7 +629,7 @@ const putCollection = createServerFn({ method: "POST" })
         title: data.title,
         description: editorial?.body?.slice(0, 280) || undefined,
         coverImage: data.coverImage ?? undefined,
-        content: collectionMarkpubContent(newsletter),
+        content,
         readerCollection: {
           ...(editorial ? { editorial } : {}),
           items: data.items.map((item) => ({
@@ -617,16 +695,57 @@ const putCollectionsTheme = createServerFn({ method: "POST" })
         throw new Error("Publication not found.");
       }
       const value = existing.value;
+      const base = publicationBaseFromRecord(value);
       await putPublicationRecord(session.client, session.did, existing.rkey, {
-        name: typeof value.name === "string" ? value.name : "Series",
-        url: typeof value.url === "string" ? value.url : getPublicUrl(),
-        description:
-          typeof value.description === "string" ? value.description : undefined,
+        ...base,
         basicTheme: buildBasicTheme(data.colors, data.fonts),
         readerCollections: true,
       });
       await ensureTracked(session.did, "reader");
       return { ok: true as const };
+    }),
+  );
+
+const putCollectionsPublication = createServerFn({ method: "POST" })
+  .inputValidator(putPublicationInput)
+  .handler(
+    observe("collections.putPublication", async ({ data }, span) => {
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) throw new Error("Sign in to edit series.");
+      span.set("did", session.did);
+
+      const existing = await findCollectionsPublicationByRkey(
+        session.client,
+        session.did,
+        data.publicationRkey,
+      );
+      if (!existing || !isRecord(existing.value)) {
+        throw new Error("Publication not found.");
+      }
+      const value = existing.value;
+      const base = publicationBaseFromRecord(value);
+      const icon =
+        data.icon === null
+          ? undefined
+          : data.icon
+            ? asJsonObject(data.icon)
+            : base.icon;
+      await putPublicationRecord(session.client, session.did, existing.rkey, {
+        name: data.name,
+        url: base.url,
+        description: data.description || undefined,
+        ...(icon ? { icon } : {}),
+        ...(base.basicTheme ? { basicTheme: base.basicTheme } : {}),
+        readerCollections: true,
+      });
+      await ensureTracked(session.did, "reader");
+      const iconUrl = icon ? await resolveBlobUrl(session.did, icon) : null;
+      return {
+        ok: true as const,
+        name: data.name,
+        description: data.description ?? null,
+        iconUrl,
+      };
     }),
   );
 
@@ -702,6 +821,22 @@ function deleteCollectionMutationOptions() {
   });
 }
 
+function putCollectionsPublicationMutationOptions() {
+  return mutationOptions({
+    mutationKey: ["reader", "putCollectionsPublication"] as const,
+    mutationFn: async (input: z.input<typeof putPublicationInput>) =>
+      putCollectionsPublication({ data: input }),
+  });
+}
+
+function uploadPublicationIconMutationOptions() {
+  return mutationOptions({
+    mutationKey: ["reader", "uploadPublicationIcon"] as const,
+    mutationFn: async (input: z.input<typeof uploadCoverInput>) =>
+      uploadPublicationIcon({ data: input }),
+  });
+}
+
 function putCollectionsThemeMutationOptions() {
   return mutationOptions({
     mutationKey: ["reader", "putCollectionsTheme"] as const,
@@ -720,7 +855,9 @@ export const collectionsApi = {
   putCollection,
   deleteCollection,
   putCollectionsTheme,
+  putCollectionsPublication,
   uploadCollectionCover,
+  uploadPublicationIcon,
   getCollectionsPublicationQueryOptions,
   listCollectionsPublicationsQueryOptions,
   createCollectionsPublicationMutationOptions,
@@ -730,7 +867,9 @@ export const collectionsApi = {
   putCollectionMutationOptions,
   deleteCollectionMutationOptions,
   putCollectionsThemeMutationOptions,
+  putCollectionsPublicationMutationOptions,
   uploadCollectionCoverMutationOptions,
+  uploadPublicationIconMutationOptions,
 };
 
 export { didFromUri, rkeyFromUri };

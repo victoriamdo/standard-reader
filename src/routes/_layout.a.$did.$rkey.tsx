@@ -22,6 +22,7 @@ import {
   articlePublicationUrl,
   documentUriFromParams,
 } from "../components/reader/format";
+import { prefetchCollectionMagazineArticles } from "../magazine/load-magazine-data";
 
 const articleSearchSchema = z.object({
   q: z.string().optional(),
@@ -67,11 +68,26 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
       readerApi.getBookmarkStatusQueryOptions(uri),
     );
 
-    const [article, openLinks, sharedQuote] = await Promise.all([
-      queryClient.ensureQueryData(publicationApi.getArticleQueryOptions(uri)),
-      queryClient.ensureQueryData(user.getOpenLinksPreferenceQueryOptions),
-      deps.q ? resolveSharedQuote(uri, deps.q) : Promise.resolve(null),
-    ]);
+    const [article, openLinks, sharedQuote, openInMagazinePref] =
+      await Promise.all([
+        queryClient.ensureQueryData(publicationApi.getArticleQueryOptions(uri)),
+        queryClient.ensureQueryData(user.getOpenLinksPreferenceQueryOptions),
+        deps.q ? resolveSharedQuote(uri, deps.q) : Promise.resolve(null),
+        queryClient.ensureQueryData(
+          user.getOpenCollectionsInMagazinePreferenceQueryOptions,
+        ),
+      ]);
+    if (
+      article?.collection &&
+      openInMagazinePref.openInMagazine &&
+      !openLinks.openExternally &&
+      !deps.q
+    ) {
+      throw redirect({
+        to: "/magazine/$did/$rkey",
+        params: { did: params.did, rkey: params.rkey },
+      });
+    }
     // Bounce to the publication site when the body isn't renderable in-app, or
     // when the reader prefers links to open on the original site.
     if (
@@ -87,6 +103,9 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
       void queryClient.prefetchQuery(
         readerApi.getFollowStatusQueryOptions(article.publicationUri),
       );
+    }
+    if (article?.collection) {
+      prefetchCollectionMagazineArticles(queryClient, article.collection.items);
     }
 
     return { article, sharedQuote };

@@ -417,6 +417,7 @@ export async function putPublicationRecord(
     name: string;
     url: string;
     description?: string;
+    icon?: Record<string, unknown>;
     basicTheme?: Record<string, unknown>;
     /** Marks this as the user's collections home so we can find it again. */
     readerCollections?: boolean;
@@ -431,6 +432,7 @@ export async function putPublicationRecord(
       name: pub.name,
       url: pub.url,
       ...(pub.description ? { description: pub.description } : {}),
+      ...(pub.icon ? { icon: pub.icon } : {}),
       ...(pub.basicTheme ? { basicTheme: pub.basicTheme } : {}),
       ...(pub.readerCollections ? { readerCollections: true } : {}),
     },

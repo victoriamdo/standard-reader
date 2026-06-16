@@ -22,6 +22,7 @@ import type { SQL } from "drizzle-orm";
 
 import {
   articleCardColumns,
+  documentIsCollectionColumn,
   publicationCardColumns,
   publicationSortNameSql,
   toArticleCard,
@@ -203,6 +204,7 @@ export async function selectPublicationArticleCards(
     publicationUri: d.publicationUri,
     tags: d.tags,
     hasRenderableBody: d.hasRenderableBody,
+    isCollection: documentIsCollectionColumn(d.collectionJson),
     // Qualify the outer `documents.uri` — unqualified `${d.uri}` in a
     // subquery compiles to `"uri"` and breaks correlation without a join.
     recommendCount: sql<number>`coalesce((

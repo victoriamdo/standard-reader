@@ -1,5 +1,6 @@
 import type { CollectionEditorial } from "./manifest.ts";
 
+import { collectionPieceReadUrl } from "#/components/reader/format";
 import { MARKPUB_MARKDOWN, MARKPUB_TEXT } from "#/lib/markpub/types.ts";
 
 /**
@@ -17,6 +18,46 @@ export interface NewsletterItem {
   url?: string | null;
   /** The curator's optional markdown note for this piece. */
   note?: string | null;
+}
+
+/** Card fields needed to resolve a collection piece's "Read the piece →" URL. */
+export interface CollectionNewsletterCard {
+  uri: string;
+  title: string;
+  publicationName: string | null;
+  hasRenderableBody: boolean;
+  canonicalUrl: string | null;
+}
+
+export function newsletterItemsFromManifest(input: {
+  manifestItems: Array<{ document: string; note?: string | null }>;
+  cardsByUri: Map<string, CollectionNewsletterCard>;
+  baseUrl: string;
+}): Array<NewsletterItem> {
+  return input.manifestItems.map((item) => {
+    const card = input.cardsByUri.get(item.document);
+    return {
+      title: card?.title ?? "Untitled",
+      byline: card?.publicationName ?? null,
+      url: card ? collectionPieceReadUrl(card, input.baseUrl) : null,
+      note: item.note,
+    };
+  });
+}
+
+/** Build markpub content for a collection from its manifest + indexed cards. */
+export function composeCollectionNewsletterContent(input: {
+  editorial?: CollectionEditorial;
+  manifestItems: Array<{ document: string; note?: string | null }>;
+  cardsByUri: Map<string, CollectionNewsletterCard>;
+  baseUrl: string;
+}): Record<string, unknown> {
+  return collectionMarkpubContent(
+    composeCollectionNewsletter({
+      editorial: input.editorial,
+      items: newsletterItemsFromManifest(input),
+    }),
+  );
 }
 
 /** Prefix every line so multi-line markdown notes render as one blockquote. */

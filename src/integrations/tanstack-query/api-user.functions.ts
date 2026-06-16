@@ -17,6 +17,14 @@ import {
   parseHomeScope,
 } from "#/lib/home-scope";
 import {
+  OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE,
+  OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE_MAX_AGE_SECONDS,
+  dbValueToOpenCollectionsInMagazine,
+  openCollectionsInMagazineToCookieValue,
+  openCollectionsInMagazineToDbValue,
+  parseOpenCollectionsInMagazineCookie,
+} from "#/lib/open-collections-in-magazine";
+import {
   OPEN_LINKS_COOKIE,
   OPEN_LINKS_COOKIE_MAX_AGE_SECONDS,
   dbValueToOpenLinksExternally,
@@ -395,6 +403,65 @@ const setOpenLinksPreference = createServerFn({ method: "POST" })
     return { openExternally: data.openExternally };
   });
 
+const getOpenCollectionsInMagazinePreference = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .handler(async ({ context }): Promise<{ openInMagazine: boolean }> => {
+    const session = context?.session;
+    if (session?.user) {
+      const row = await context.db.query.user.findFirst({
+        where: eq(context.schema.user.id, session.user.id),
+        columns: { openCollectionsInMagazine: true },
+      });
+      return {
+        openInMagazine: dbValueToOpenCollectionsInMagazine(
+          row?.openCollectionsInMagazine ?? null,
+        ),
+      };
+    }
+
+    return {
+      openInMagazine: parseOpenCollectionsInMagazineCookie(
+        getCookie(OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE),
+      ),
+    };
+  });
+
+const getOpenCollectionsInMagazinePreferenceQueryOptions = queryOptions({
+  queryKey: ["openCollectionsInMagazinePreference"] as const,
+  queryFn: () => getOpenCollectionsInMagazinePreference(),
+  staleTime: Number.POSITIVE_INFINITY,
+});
+
+const setOpenCollectionsInMagazinePreference = createServerFn({
+  method: "POST",
+})
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .inputValidator(z.object({ openInMagazine: z.boolean() }))
+  .handler(async ({ data, context }): Promise<{ openInMagazine: boolean }> => {
+    setCookie(
+      OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE,
+      openCollectionsInMagazineToCookieValue(data.openInMagazine),
+      {
+        path: "/",
+        sameSite: "lax",
+        maxAge: OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE_MAX_AGE_SECONDS,
+      },
+    );
+
+    if (context?.session?.user) {
+      await context.db
+        .update(context.schema.user)
+        .set({
+          openCollectionsInMagazine: openCollectionsInMagazineToDbValue(
+            data.openInMagazine,
+          ),
+        })
+        .where(eq(context.schema.user.id, context.session.user.id));
+    }
+
+    return { openInMagazine: data.openInMagazine };
+  });
+
 const readingTypographyInput = z.object({
   preference: z.object({
     fontSize: z.enum(["small", "default", "large"]),
@@ -610,6 +677,9 @@ export const user = {
   getOpenLinksPreference,
   getOpenLinksPreferenceQueryOptions,
   setOpenLinksPreference,
+  getOpenCollectionsInMagazinePreference,
+  getOpenCollectionsInMagazinePreferenceQueryOptions,
+  setOpenCollectionsInMagazinePreference,
   getReadingTypographyPreference,
   getReadingTypographyPreferenceQueryOptions,
   setReadingTypographyPreference,
