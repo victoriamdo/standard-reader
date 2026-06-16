@@ -20,16 +20,15 @@ import { getPublicUrlClient } from "#/lib/public-url";
 import { listOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import {
+  BookOpen,
   BookmarkCheck,
   BookmarkPlus,
-  BookOpen,
   Pencil,
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
-import { encodeIssueIds } from "../magazine/issue-link";
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
 import { ListEditModal } from "../components/reader/list-edit-modal";
 import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
@@ -53,6 +52,7 @@ import {
   lineHeight,
   tracking,
 } from "../design-system/theme/typography.stylex";
+import { encodeIssueIds } from "../magazine/issue-link";
 
 const PAGE_SIZE = 20;
 

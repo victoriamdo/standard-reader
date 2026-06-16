@@ -107,7 +107,7 @@ export function CoverFlow({
 export const FeatureFlow = forwardRef<
   HTMLElement,
   { feature: MagFeature; coverImageUrl: string | null }
->(function FeatureFlow({ feature, coverImageUrl }, ref) {
+>(function FeatureFlowComponent({ feature, coverImageUrl }, ref) {
   const { meta, detail } = feature;
   const hasImage = Boolean(coverImageUrl);
 

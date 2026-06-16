@@ -144,7 +144,7 @@ package. Mention this if reviewers diff shared monorepo source.
 | Bad build live | Upload previous zip with a **new higher** version, or disable version in AMO while fixing |
 | API outage     | Extension degrades; fix server first — no AMO resubmit needed                             |
 | Auth broken    | Check OAuth redirects and cookie domain on `standard-reader.app`                          |
-| Review stuck   | AMO → add-on → **Review History**; check developer account email                            |
+| Review stuck   | AMO → add-on → **Review History**; check developer account email                          |
 
 Keep the last known-good `*-firefox.zip` and matching source archive (tagged
 release or CI artifact).

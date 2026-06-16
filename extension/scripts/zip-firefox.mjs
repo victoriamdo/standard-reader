@@ -26,7 +26,7 @@ const result = spawnSync("zip", ["-r", zipPath, "."], {
 });
 
 if (result.status !== 0) {
-  process.exit(result.status ?? 1);
+  throw new Error(`zip failed with exit code ${result.status ?? 1}`);
 }
 
 console.log(`Wrote ${zipPath}`);

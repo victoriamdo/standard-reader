@@ -251,8 +251,8 @@ const styles = stylex.create({
     },
   },
   actionIconOnly: {
-    justifyContent: "center",
     paddingInline: spacing["2"],
+    justifyContent: "center",
     minHeight: size["3xl"],
     minWidth: size["3xl"],
   },

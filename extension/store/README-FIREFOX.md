@@ -54,15 +54,15 @@ Standard Reader is the browser companion for [standard.site](https://standard.si
 
 Paste or adapt when reviewers ask about broad permissions:
 
-| Permission / host | Why |
-| ----------------- | --- |
-| `tabs` / `activeTab` | Resolve active tab URL; badge, popup, login tab cleanup |
-| `contextMenus` | Save / Open from right-click |
-| `cookies` | HttpOnly session on `standard-reader.app` (same login as web app) |
-| `storage` | Overlay, Bluesky embed, and color-scheme toggles in `browser.storage.sync` |
-| `https://standard-reader.app/*` | Extension API + OAuth sign-in |
-| `https://bsky.app/*` | Bluesky embed save buttons |
-| `<all_urls>` | Match page URLs to indexed articles; overlay + context menu on publication sites only |
+| Permission / host               | Why                                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------- |
+| `tabs` / `activeTab`            | Resolve active tab URL; badge, popup, login tab cleanup                               |
+| `contextMenus`                  | Save / Open from right-click                                                          |
+| `cookies`                       | HttpOnly session on `standard-reader.app` (same login as web app)                     |
+| `storage`                       | Overlay, Bluesky embed, and color-scheme toggles in `browser.storage.sync`            |
+| `https://standard-reader.app/*` | Extension API + OAuth sign-in                                                         |
+| `https://bsky.app/*`            | Bluesky embed save buttons                                                            |
+| `<all_urls>`                    | Match page URLs to indexed articles; overlay + context menu on publication sites only |
 
 **Remote code:** None. The packaged bundle is built with WXT + Vite; API responses are JSON only.
 

@@ -14,11 +14,11 @@ import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { tsHeadlineHasMatch } from "#/lib/search-headline";
-import { useOpenLinks } from "#/lib/use-open-links";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
+import { useOpenLinks } from "#/lib/use-open-links";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
-import { ArrowRight, Bookmark, BookOpen, Check, Plus } from "lucide-react";
+import { ArrowRight, BookOpen, Bookmark, Check, Plus } from "lucide-react";
 import { Fragment, useCallback } from "react";
 
 import type {
@@ -1355,7 +1355,7 @@ export function SaveButton({
   const { bookmarked, toggle, isPending } = useArticleBookmark(
     documentUri,
     signedIn,
-    assumeBookmarked !== undefined ? { assumeBookmarked } : undefined,
+    assumeBookmarked === undefined ? undefined : { assumeBookmarked },
   );
   const iconSize = size === "md" ? 18 : 16;
   const label = bookmarked ? "Saved for later" : "Save for later";

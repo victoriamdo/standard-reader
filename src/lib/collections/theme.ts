@@ -38,11 +38,11 @@ export function themeFontsFromJson(themeJson: unknown): {
 export function hasTheme(theme: CollectionTheme | null): boolean {
   return Boolean(
     theme &&
-      (theme.background ||
-        theme.foreground ||
-        theme.accent ||
-        theme.accentForeground ||
-        theme.fontTitle ||
-        theme.fontBody),
+    (theme.background ||
+      theme.foreground ||
+      theme.accent ||
+      theme.accentForeground ||
+      theme.fontTitle ||
+      theme.fontBody),
   );
 }

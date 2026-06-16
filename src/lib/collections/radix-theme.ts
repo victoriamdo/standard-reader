@@ -1,6 +1,6 @@
-import type { CollectionTheme } from "./theme";
-
 import Color from "colorjs.io";
+
+import type { CollectionTheme } from "./theme";
 
 import { generateRadixColors } from "./generate-radix-colors";
 
@@ -66,8 +66,10 @@ export function buildMagazinePalette(
   // The theme carries one background; route it to whichever mode its luminance
   // matches and use a sensible default for the other.
   const bgIsLight = theme.background ? isLightColor(theme.background) : true;
-  const lightBg = theme.background && bgIsLight ? theme.background : LIGHT_DEFAULT_BG;
-  const darkBg = theme.background && !bgIsLight ? theme.background : DARK_DEFAULT_BG;
+  const lightBg =
+    theme.background && bgIsLight ? theme.background : LIGHT_DEFAULT_BG;
+  const darkBg =
+    theme.background && !bgIsLight ? theme.background : DARK_DEFAULT_BG;
   try {
     const light = generateRadixColors({
       appearance: "light",

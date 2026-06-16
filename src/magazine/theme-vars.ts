@@ -27,8 +27,8 @@ export function googleFontsHref(
 ): string | null {
   if (!theme) return null;
   const families = [theme.fontTitle, theme.fontBody].filter(
-    (f): f is string => Boolean(f),
-  );
+    Boolean,
+  ) as Array<string>;
   if (families.length === 0) return null;
   // Request families WITHOUT a `wght` axis: Google Fonts CSS2 errors the whole
   // request if any family lacks a requested weight (e.g. single-weight display
@@ -36,7 +36,7 @@ export function googleFontsHref(
   // therefore the magazine's page-length measurement. Bold weights fall back to
   // synthetic bold, which is fine.
   const params = [...new Set(families)]
-    .map((f) => `family=${encodeURIComponent(f).replace(/%20/g, "+")}`)
+    .map((f) => `family=${encodeURIComponent(f).replaceAll("%20", "+")}`)
     .join("&");
   return `https://fonts.googleapis.com/css2?${params}&display=swap`;
 }

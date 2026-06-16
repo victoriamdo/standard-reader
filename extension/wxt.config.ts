@@ -27,7 +27,6 @@ const wxtCommand =
   ) ?? "dev";
 const isWxtDev = wxtCommand === "dev";
 const isWxtPrepare = wxtCommand === "prepare";
-const isOneShotBuild = wxtCommand === "build" || wxtCommand === "zip";
 
 const stylexPlugins = [
   stylexCssOnlyDevFixPlugin(),

@@ -1,9 +1,10 @@
+import type { LexiconDocsPageData } from "#/lib/lexicon-docs/types";
+
 import {
   parseLexiconDocument,
   sortLexiconDocsEntries,
 } from "#/lib/lexicon-docs/parse";
-import { isLexiconDocsListedEntry } from '#/lib/lexicon-docs/types';
-import type { LexiconDocsPageData } from '#/lib/lexicon-docs/types';
+import { isLexiconDocsListedEntry } from "#/lib/lexicon-docs/types";
 import fs from "node:fs";
 import path from "node:path";
 

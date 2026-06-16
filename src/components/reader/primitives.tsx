@@ -1,8 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { Heart, MessageCircle } from "lucide-react";
 
-import type { PublicationCard } from "../../integrations/tanstack-query/api-shapes";
 import type { StyleXComponentProps } from "../../design-system/theme/types";
+import type { PublicationCard } from "../../integrations/tanstack-query/api-shapes";
 
 import { Avatar } from "../../design-system/avatar";
 import { Flex } from "../../design-system/flex";

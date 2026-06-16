@@ -2,10 +2,10 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import type { CollectionEditorial } from "#/lib/collections/manifest";
 
+import { documentUriFromParams } from "#/components/reader/format";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 
-import { documentUriFromParams } from "#/components/reader/format";
 import { parseIssueIds, pinnedArticleUri } from "./issue-link";
 
 /** Cap an edition to a sensible number of features for a single reading. */
@@ -81,9 +81,7 @@ export async function loadMagazineData(
     return {
       mode: "collection",
       name:
-        collectionDoc.title ||
-        collectionDoc.publication?.name ||
-        "Collection",
+        collectionDoc.title || collectionDoc.publication?.name || "Collection",
       publicationName: collectionDoc.publication?.name ?? null,
       ownerHandle: collectionDoc.publicationOwnerHandle,
       editorial: manifest.editorial ?? null,
@@ -101,7 +99,9 @@ export async function loadMagazineData(
 
   let articleUris: Array<string>;
   if (pinned.length > 0) {
-    articleUris = pinned.slice(0, MAX_MAGAZINE_FEATURES).map(pinnedArticleUri);
+    articleUris = pinned
+      .slice(0, MAX_MAGAZINE_FEATURES)
+      .map((item) => pinnedArticleUri(item));
   } else {
     const feed = await queryClient.ensureQueryData(
       listApi.getListFeedQueryOptions(did, rkey, {

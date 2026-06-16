@@ -2,9 +2,9 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { bskyPostApiUrl, parseBskyPostRef } from "#/lib/leaflet/bsky";
-import { MagazineColorContext } from "#/magazine/context";
-import "bsky-react-post/theme.css";
 import { useTheme } from "#/lib/use-theme";
+import "bsky-react-post/theme.css";
+import { MagazineColorContext } from "#/magazine/context";
 import { Post, PostSkeleton } from "bsky-react-post";
 import { use } from "react";
 

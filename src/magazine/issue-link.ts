@@ -17,7 +17,7 @@ const PAIR_SEP = "~";
 
 function rkeyFromUri(uri: string): string {
   const parts = uri.split("/");
-  return parts[parts.length - 1] ?? "";
+  return parts.at(-1) ?? "";
 }
 
 /** Serialize articles into a stable `ids` search param (`did~rkey,did~rkey`). */
@@ -35,7 +35,7 @@ export function parseIssueIds(param: string): Array<PinnedArticle> {
     .split(ENTRY_SEP)
     .map((entry): PinnedArticle | null => {
       const sep = entry.indexOf(PAIR_SEP);
-      if (sep < 0) return null;
+      if (sep === -1) return null;
       const did = entry.slice(0, sep);
       const rkey = entry.slice(sep + 1);
       if (!did || !rkey) return null;

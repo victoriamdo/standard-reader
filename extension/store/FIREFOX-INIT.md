@@ -36,17 +36,17 @@ offscreen API), stable add-on ID `standard-reader@standard-reader.app`.
 Same API surface as Chrome — verify on `https://standard-reader.app` before any
 store build:
 
-| Requirement                                   | Verify                                              |
-| --------------------------------------------- | --------------------------------------------------- |
-| App deployed at `https://standard-reader.app` | Open in browser                                     |
-| `/api/extension/session`                      | Signed-in session returns authenticated             |
-| `/api/extension/resolve`                      | Known article URL resolves                          |
-| `/api/extension/bookmark`                     | Save works when authenticated                       |
-| `/api/extension/follow`                       | Follow works when authenticated                     |
-| `/api/extension/recommend`                    | Like works when authenticated                       |
-| `/api/extension/discussion`                   | Discussion panel loads for indexed article          |
-| `/extension/connected`                        | OAuth redirect closes login tab                     |
-| OAuth `client_id` / redirect URIs             | Login from extension popup completes                |
+| Requirement                                   | Verify                                     |
+| --------------------------------------------- | ------------------------------------------ |
+| App deployed at `https://standard-reader.app` | Open in browser                            |
+| `/api/extension/session`                      | Signed-in session returns authenticated    |
+| `/api/extension/resolve`                      | Known article URL resolves                 |
+| `/api/extension/bookmark`                     | Save works when authenticated              |
+| `/api/extension/follow`                       | Follow works when authenticated            |
+| `/api/extension/recommend`                    | Like works when authenticated              |
+| `/api/extension/discussion`                   | Discussion panel loads for indexed article |
+| `/extension/connected`                        | OAuth redirect closes login tab            |
+| OAuth `client_id` / redirect URIs             | Login from extension popup completes       |
 
 ### 2. Public privacy policy URL
 
@@ -119,22 +119,22 @@ Load the **production** build temporarily:
 3. Select any file inside `extension/.output/firefox-mv2/` (e.g. `manifest.json`)
 4. Run against **production** (`standard-reader.app`), not localhost
 
-| #   | Case            | Steps                                     | Expected                                  |
-| --- | --------------- | ----------------------------------------- | ----------------------------------------- |
-| 1   | Popup — article | Indexed article URL → extension icon      | Title, Save, Follow, View in Reader       |
-| 2   | Sign-in flow    | Sign out → popup on article → Save        | Login tab → auto-close → save completes   |
-| 3   | Overlay         | Publication article (not SR app)          | Bottom-right chip; dismiss until refresh  |
-| 4   | Overlay off     | Options → disable overlay → revisit       | No chip                                   |
-| 5   | SR app excluded | `standard-reader.app` article             | No overlay                                |
-| 6   | Context menu    | Right-click indexed article link → Save   | Bookmark (or login → retry)               |
-| 7   | Toolbar badge   | Tabs: indexed article ↔ other site        | Dot on indexed tabs only                  |
-| 8   | Bluesky embed   | bsky.app post with standard.site embed    | Save in embed footer                      |
-| 9   | Bluesky off       | Options → disable embed save            | Buttons removed                           |
-| 10  | Options persist | Toggle settings → restart browser         | Settings kept (`storage.sync`)            |
-| 11  | View in Reader  | Popup → View in Reader                    | Opens article on standard-reader.app      |
-| 12  | Discussion      | Popup → Discussion icon                   | Tabs load; linked articles open in reader |
-| 13  | Like            | Popup → heart icon                        | Like toggles; count updates               |
-| 14  | No Listen       | Popup on indexed article                  | **No** Listen/headphones button (Firefox) |
+| #   | Case            | Steps                                   | Expected                                  |
+| --- | --------------- | --------------------------------------- | ----------------------------------------- |
+| 1   | Popup — article | Indexed article URL → extension icon    | Title, Save, Follow, View in Reader       |
+| 2   | Sign-in flow    | Sign out → popup on article → Save      | Login tab → auto-close → save completes   |
+| 3   | Overlay         | Publication article (not SR app)        | Bottom-right chip; dismiss until refresh  |
+| 4   | Overlay off     | Options → disable overlay → revisit     | No chip                                   |
+| 5   | SR app excluded | `standard-reader.app` article           | No overlay                                |
+| 6   | Context menu    | Right-click indexed article link → Save | Bookmark (or login → retry)               |
+| 7   | Toolbar badge   | Tabs: indexed article ↔ other site      | Dot on indexed tabs only                  |
+| 8   | Bluesky embed   | bsky.app post with standard.site embed  | Save in embed footer                      |
+| 9   | Bluesky off     | Options → disable embed save            | Buttons removed                           |
+| 10  | Options persist | Toggle settings → restart browser       | Settings kept (`storage.sync`)            |
+| 11  | View in Reader  | Popup → View in Reader                  | Opens article on standard-reader.app      |
+| 12  | Discussion      | Popup → Discussion icon                 | Tabs load; linked articles open in reader |
+| 13  | Like            | Popup → heart icon                      | Like toggles; count updates               |
+| 14  | No Listen       | Popup on indexed article                | **No** Listen/headphones button (Firefox) |
 
 Cases 11–13 match Chrome; case 14 confirms read-aloud is correctly absent.
 
@@ -187,13 +187,13 @@ Keep the source archive versioned with each release (tag or CI artifact).
    `FIREFOX-SOURCE.md` in the upload notes.
 7. **Listing** — fill from [`README-FIREFOX.md`](./README-FIREFOX.md):
 
-   | Field       | Source                                      |
-   | ----------- | ------------------------------------------- |
-   | Name        | Standard Reader                             |
-   | Summary     | Save articles and follow publications…      |
-   | Description | Full description (no read-aloud claims)     |
-   | Category    | Feed & News or Productivity                 |
-   | Language    | English                                     |
+   | Field       | Source                                  |
+   | ----------- | --------------------------------------- |
+   | Name        | Standard Reader                         |
+   | Summary     | Save articles and follow publications…  |
+   | Description | Full description (no read-aloud claims) |
+   | Category    | Feed & News or Productivity             |
+   | Language    | English                                 |
 
 8. Upload screenshots and icons.
 9. **Privacy policy URL:** `https://standard-reader.app/privacy/extension`
@@ -208,13 +208,13 @@ Keep the source archive versioned with each release (tag or CI artifact).
 
 Expect **a few business days**; `<all_urls>` often triggers manual review.
 
-| Permission / host  | Why reviewers care  | Our justification (short)                                                             |
-| ------------------ | ------------------- | ------------------------------------------------------------------------------------- |
-| `<all_urls>`       | Runs on every site  | Match page URLs to indexed articles; overlay + context menu on publication sites only |
-| `cookies`          | Cross-site identity | Read HttpOnly session on `standard-reader.app` only — same login as web app           |
-| `tabs` / `activeTab` | Tab access        | Resolve active tab URL; open articles in Standard Reader                              |
-| `contextMenus`     | Right-click hooks   | Save / Open on links and pages                                                        |
-| `storage`          | Local data          | User toggles (overlay, Bluesky embed, theme)                                          |
+| Permission / host    | Why reviewers care  | Our justification (short)                                                             |
+| -------------------- | ------------------- | ------------------------------------------------------------------------------------- |
+| `<all_urls>`         | Runs on every site  | Match page URLs to indexed articles; overlay + context menu on publication sites only |
+| `cookies`            | Cross-site identity | Read HttpOnly session on `standard-reader.app` only — same login as web app           |
+| `tabs` / `activeTab` | Tab access          | Resolve active tab URL; open articles in Standard Reader                              |
+| `contextMenus`       | Right-click hooks   | Save / Open on links and pages                                                        |
+| `storage`            | Local data          | User toggles (overlay, Bluesky embed, theme)                                          |
 
 If asked for a **video**, record ~30s: publication article → overlay save → popup
 → discussion → View in Reader.

@@ -1,3 +1,5 @@
+import type { CollectionManifest } from "#/lib/collections/manifest";
+import type { CollectionTheme } from "#/lib/collections/theme";
 import type { LeafletCodeBlock } from "#/lib/leaflet/types";
 import type { CodeHighlightsByScheme, ThemeMode } from "#/lib/theme";
 import type { MarginConnectionItem } from "#/server/reader/article-constellation-extras";
@@ -7,14 +9,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { publicationLinkParams } from "#/components/reader/format";
 import { composeCollectionNewsletterContent } from "#/lib/collections/compose-newsletter";
-import {
-  type CollectionManifest,
-  parseCollectionManifest,
-} from "#/lib/collections/manifest";
-import {
-  type CollectionTheme,
-  themeFontsFromJson,
-} from "#/lib/collections/theme";
+import { parseCollectionManifest } from "#/lib/collections/manifest";
+import { themeFontsFromJson } from "#/lib/collections/theme";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
 import { GREENGALE_CONTENT_REF } from "#/lib/greengale/types";
 import { leafletBlocks } from "#/lib/leaflet/blocks";
@@ -23,8 +19,8 @@ import { offprintBlocks } from "#/lib/offprint/blocks";
 import { OFFPRINT_CONTENT } from "#/lib/offprint/types";
 import { pcktBlocks, pcktCodeLanguage } from "#/lib/pckt/blocks";
 import { PCKT_CONTENT } from "#/lib/pckt/types";
-import { EMPTY_CODE_HIGHLIGHTS } from "#/lib/theme";
 import { getPublicUrl } from "#/lib/public-url";
+import { EMPTY_CODE_HIGHLIGHTS } from "#/lib/theme";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { authorPds } from "#/server/atproto/identity";
 import { didFromAtUri } from "#/server/atproto/uri";

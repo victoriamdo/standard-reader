@@ -32,9 +32,9 @@ const styles = stylex.create({
     width: "100%",
   },
   popupRootDiscussion: {
+    overflow: "hidden",
     height: "100%",
     minHeight: "520px",
-    overflow: "hidden",
   },
   pageRoot: {
     backgroundColor: uiColor.bg,

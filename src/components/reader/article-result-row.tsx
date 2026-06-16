@@ -137,8 +137,7 @@ function MetaLine({
   article: ArticleCard;
   parts: Array<string>;
 }) {
-  const hasEngagement =
-    article.recommendCount > 0 || article.commentCount > 0;
+  const hasEngagement = article.recommendCount > 0 || article.commentCount > 0;
   if (parts.length === 0 && !hasEngagement) return null;
 
   return (

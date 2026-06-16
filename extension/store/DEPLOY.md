@@ -147,25 +147,25 @@ Load the **production** build unpacked:
 3. Run the checklist below against **production** (`standard-reader.app`), not
    localhost.
 
-| #   | Case            | Steps                                   | Expected                                 |
-| --- | --------------- | --------------------------------------- | ---------------------------------------- |
-| 1   | Popup — article | Indexed article URL → extension icon    | Title, Save, Follow, Open                |
-| 2   | Sign-in flow    | Sign out → popup on article → Save      | Login tab → auto-close → save completes  |
-| 3   | Overlay         | Publication article (not SR app)        | Bottom-right chip; dismiss until refresh |
-| 4   | Overlay off     | Options → disable overlay → revisit     | No chip                                  |
-| 5   | SR app excluded | `standard-reader.app` article           | No overlay                               |
-| 6   | Context menu    | Right-click indexed article link → Save | Bookmark (or login → retry)              |
-| 7   | Toolbar badge   | Tabs: indexed article ↔ other site      | Dot on indexed tabs only                 |
-| 8   | Bluesky embed   | bsky.app post with standard.site embed  | Save in embed footer                     |
-| 9   | Bluesky off     | Options → disable embed save            | Buttons removed                          |
-| 10  | Options persist | Toggle settings → restart browser       | Settings kept (`storage.sync`)           |
-| 11  | Read aloud      | Popup on indexed article → Listen       | Playback starts; popup can close         |
-| 12  | Playing icon    | While read-aloud active                 | Toolbar play icon; no red badge dot      |
-| 13  | Read-along      | Publication page for playing article    | Current sentence highlighted on page     |
-| 14  | View in Reader  | Popup on indexed article → View in Reader | Opens article in standard-reader.app tab |
-| 15  | Discussion      | Popup → Discussion icon               | Tabs load; linked articles open in reader |
-| 16  | Like            | Popup → heart icon                      | Like toggles; count updates              |
-| 17  | Voice setting   | Options → change voice → Listen         | Selected voice used for playback         |
+| #   | Case            | Steps                                     | Expected                                  |
+| --- | --------------- | ----------------------------------------- | ----------------------------------------- |
+| 1   | Popup — article | Indexed article URL → extension icon      | Title, Save, Follow, Open                 |
+| 2   | Sign-in flow    | Sign out → popup on article → Save        | Login tab → auto-close → save completes   |
+| 3   | Overlay         | Publication article (not SR app)          | Bottom-right chip; dismiss until refresh  |
+| 4   | Overlay off     | Options → disable overlay → revisit       | No chip                                   |
+| 5   | SR app excluded | `standard-reader.app` article             | No overlay                                |
+| 6   | Context menu    | Right-click indexed article link → Save   | Bookmark (or login → retry)               |
+| 7   | Toolbar badge   | Tabs: indexed article ↔ other site        | Dot on indexed tabs only                  |
+| 8   | Bluesky embed   | bsky.app post with standard.site embed    | Save in embed footer                      |
+| 9   | Bluesky off     | Options → disable embed save              | Buttons removed                           |
+| 10  | Options persist | Toggle settings → restart browser         | Settings kept (`storage.sync`)            |
+| 11  | Read aloud      | Popup on indexed article → Listen         | Playback starts; popup can close          |
+| 12  | Playing icon    | While read-aloud active                   | Toolbar play icon; no red badge dot       |
+| 13  | Read-along      | Publication page for playing article      | Current sentence highlighted on page      |
+| 14  | View in Reader  | Popup on indexed article → View in Reader | Opens article in standard-reader.app tab  |
+| 15  | Discussion      | Popup → Discussion icon                   | Tabs load; linked articles open in reader |
+| 16  | Like            | Popup → heart icon                        | Like toggles; count updates               |
+| 17  | Voice setting   | Options → change voice → Listen           | Selected voice used for playback          |
 
 Capture failures before upload — reviewers exercise the same flows.
 

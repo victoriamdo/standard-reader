@@ -1,7 +1,7 @@
-import type { CollectionEditorial } from "./manifest.ts";
-
 import { collectionPieceReadUrl } from "#/components/reader/format";
 import { MARKPUB_MARKDOWN, MARKPUB_TEXT } from "#/lib/markpub/types.ts";
+
+import type { CollectionEditorial } from "./manifest.ts";
 
 /**
  * The portable representation of a collection: a markpub-flavored newsletter
@@ -82,13 +82,16 @@ export function composeCollectionNewsletter(input: {
   if (editorialBody) parts.push(editorialBody);
   if (editorialTitle || editorialBody) parts.push("---");
 
-  input.items.forEach((item, index) => {
+  for (let index = 0; index < input.items.length; index++) {
+    const item = input.items[index];
     const byline = item.byline?.trim();
-    parts.push(`### ${index + 1}. ${item.title}${byline ? ` — ${byline}` : ""}`);
+    parts.push(
+      `### ${index + 1}. ${item.title}${byline ? ` — ${byline}` : ""}`,
+    );
     const note = item.note?.trim();
     if (note) parts.push(blockquote(note));
     if (item.url) parts.push(`[Read the piece →](${item.url})`);
-  });
+  }
 
   return `${parts.join("\n\n")}\n`;
 }

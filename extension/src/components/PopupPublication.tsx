@@ -2,8 +2,8 @@ import * as stylex from "@stylexjs/stylex";
 import { initials } from "#/components/reader/format";
 import { Avatar } from "#/design-system/avatar";
 import { Button } from "#/design-system/button";
-import { IconButton } from "#/design-system/icon-button";
 import { Flex } from "#/design-system/flex";
+import { IconButton } from "#/design-system/icon-button";
 import { uiColor } from "#/design-system/theme/color.stylex";
 import {
   gap as gapToken,

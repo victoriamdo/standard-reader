@@ -84,6 +84,7 @@ const styles = stylex.create({
     height: stylex.firstThatWorks("100dvh", "100vh"),
   },
   sidebar: {
+    overscrollBehavior: "contain",
     backgroundColor: uiColor.bgSubtle,
     boxSizing: "border-box",
     display: { [DESKTOP]: "flex", default: "none" },
@@ -95,7 +96,6 @@ const styles = stylex.create({
     borderRightWidth: 1,
     height: stylex.firstThatWorks("100dvh", "100vh"),
     overflowY: "auto",
-    overscrollBehavior: "contain",
     paddingLeft: horizontalSpace["3xl"],
     paddingRight: horizontalSpace["3xl"],
     paddingTop: verticalSpace["8xl"],
@@ -372,6 +372,7 @@ const styles = stylex.create({
     // height changes (e.g. Discover "Not following" filter).
 
     scrollbarGutter: "stable",
+    overscrollBehavior: "none",
     display: "flex",
     flexBasis: "0%",
     flexDirection: "column",
@@ -381,7 +382,6 @@ const styles = stylex.create({
     minWidth: 0,
     overflowX: "clip",
     overflowY: "auto",
-    overscrollBehavior: "none",
   },
   mobileBar: {
     alignItems: "center",

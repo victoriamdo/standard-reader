@@ -7,12 +7,11 @@ import {
   horizontalSpace,
   verticalSpace,
 } from "#/design-system/theme/semantic-spacing.stylex";
-import { fontFamily, fontSize } from "#/design-system/theme/typography.stylex";
 import { SmallBody } from "#/design-system/typography";
+import { Text } from "#/design-system/typography/text";
 import { ArrowRight } from "lucide-react";
 
 import type { ExtensionSessionResponse } from "../lib/types";
-import { Text } from "#/design-system/typography/text";
 
 const styles = stylex.create({
   bar: {

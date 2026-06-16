@@ -31,14 +31,14 @@ import {
   SegmentedControl,
   SegmentedControlItem,
 } from "../../design-system/segmented-control";
-import { SmallBody } from "../../design-system/typography";
-import { ReadingCustomFontPicker } from "../reading-custom-font-picker";
-import { radius } from "../../design-system/theme/radius.stylex";
 import { uiColor } from "../../design-system/theme/color.stylex";
+import { radius } from "../../design-system/theme/radius.stylex";
 import {
   fontFamily,
   fontSize,
 } from "../../design-system/theme/typography.stylex";
+import { SmallBody } from "../../design-system/typography";
+import { ReadingCustomFontPicker } from "../reading-custom-font-picker";
 
 const DEFAULTS = {
   background: "#fbfaf7",
@@ -80,8 +80,8 @@ const styles = stylex.create({
   // Dark scheme preview: darken the stage so the dark card reads naturally.
   previewStageDark: { backgroundColor: "#1b1b1f" },
   previewInner: {
-    borderColor: "color-mix(in oklab, var(--ink) 18%, transparent)",
     padding: "1.25rem",
+    borderColor: "color-mix(in oklab, var(--ink) 18%, transparent)",
     borderRadius: radius.sm,
     borderStyle: "solid",
     borderWidth: 1,
@@ -117,14 +117,14 @@ const styles = stylex.create({
     lineHeight: 1.05,
   },
   previewBody: {
-    marginBottom: "0",
     color: "var(--ink-soft)",
-    marginRight: "0",
-    marginTop: "0.75rem",
     fontFamily: "var(--prev-body, serif)",
     fontSize: "0.8rem",
     lineHeight: 1.5,
+    marginBottom: "0",
     marginLeft: "0",
+    marginRight: "0",
+    marginTop: "0.75rem",
   },
   previewTocRow: {
     alignItems: "baseline",
@@ -185,8 +185,8 @@ const styles = stylex.create({
   ) => ({
     "--accent": accent,
     "--accent-contrast": accentContrast,
-    "--ink": ink,
     "--accent-ink": accentInk,
+    "--ink": ink,
     "--ink-soft": inkSoft,
     "--line": line,
     "--muted": muted,

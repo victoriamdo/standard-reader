@@ -52,6 +52,10 @@ function withMarkdownImageAlts(text: string | null): string | null {
   return markdownImageAlts(text);
 }
 
+function normalizeWhitespace(text: string) {
+  return text.replaceAll(/\s+/g, " ").trim();
+}
+
 /**
  * Whether `article.description` is just an auto-generated excerpt of the body
  * (pckt fills it with the first N characters of the post; collections store the
@@ -72,9 +76,8 @@ export function articleDescriptionIsBodyExcerpt(article: {
   const editorialBody = article.collection.editorial?.body?.trim();
   if (!editorialBody) return false;
 
-  const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
-  const excerpt = normalize(description);
-  const body = normalize(editorialBody);
+  const excerpt = normalizeWhitespace(description);
+  const body = normalizeWhitespace(editorialBody);
   return body.startsWith(excerpt) || body.includes(excerpt);
 }
 

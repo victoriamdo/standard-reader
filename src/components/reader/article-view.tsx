@@ -14,15 +14,15 @@ import { AuthorProfileLink } from "#/components/reader/author-profile-link";
 import { PublicationNameLink } from "#/components/reader/publication-name-link";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
+import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { prefetchCollectionMagazineArticles } from "#/magazine/load-magazine-data";
 import {
   ArrowLeft,
-  Bookmark,
   BookOpen,
+  Bookmark,
   ExternalLink,
   Headphones,
   Heart,
@@ -295,14 +295,14 @@ const styles = stylex.create({
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
     borderTopColor: uiColor.border1,
-    maxWidth: "100%",
-    minWidth: 0,
     borderTopStyle: "solid",
-    width: "100%",
     borderTopWidth: 1,
     marginBottom: spacing["2"],
+    maxWidth: "100%",
+    minWidth: 0,
     paddingBottom: spacing["5"],
     paddingTop: spacing["5"],
+    width: "100%",
   },
   bylineWho: {
     gap: gap.sm,

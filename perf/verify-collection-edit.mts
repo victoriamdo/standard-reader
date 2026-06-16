@@ -7,7 +7,10 @@ const BASE = process.env.PERF_TEST_BASE_URL ?? "http://127.0.0.1:3000";
 const identifier = process.env.PERF_TEST_IDENTIFIER!;
 const password = process.env.PERF_TEST_APP_PASSWORD!;
 
-const { sessionToken } = await bootstrapAppPasswordSession(identifier, password);
+const { sessionToken } = await bootstrapAppPasswordSession(
+  identifier,
+  password,
+);
 
 const browser = await chromium.launch();
 const context = await browser.newContext({
@@ -48,10 +51,8 @@ if (editHref) {
     .catch(() => console.log("no Edit collection heading"));
   await page.waitForTimeout(800);
   await page.screenshot({ path: "perf/_collection-edit.png", fullPage: true });
-  console.log(
-    "edit body:",
-    (await page.locator("body").innerText()).slice(0, 200),
-  );
+  const bodyText = await page.locator("body").textContent();
+  console.log("edit body:", bodyText?.slice(0, 200));
 }
 
 await page.goto(`${BASE}/collections/new`, { waitUntil: "domcontentloaded" });

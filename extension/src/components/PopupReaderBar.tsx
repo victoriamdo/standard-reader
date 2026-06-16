@@ -36,22 +36,22 @@ function formatRate(rate: number): string {
 
 const styles = stylex.create({
   frame: {
-    backgroundColor: uiColor.bg,
-    borderBottomWidth: 0,
     borderColor: uiColor.border1,
+    borderStyle: "solid",
+    backgroundColor: uiColor.bg,
+    boxSizing: "border-box",
+    borderBottomWidth: 0,
     borderLeftWidth: 0,
     borderRightWidth: 0,
-    borderStyle: "solid",
     borderTopWidth: 1,
-    boxSizing: "border-box",
     width: "100%",
   },
   content: {
+    paddingBlock: verticalSpace.lg,
+    paddingInline: horizontalSpace["4xl"],
     boxSizing: "border-box",
     display: "flex",
     flexDirection: "column",
-    paddingBlock: verticalSpace.lg,
-    paddingInline: horizontalSpace["4xl"],
     rowGap: gap.md,
     width: "100%",
   },

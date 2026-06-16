@@ -60,7 +60,9 @@ function parseItem(value: unknown): CollectionItem | null {
  * `null` when it isn't a well-formed collection (so callers can treat the
  * document as an ordinary article). Requires at least one valid item.
  */
-export function parseCollectionManifest(value: unknown): CollectionManifest | null {
+export function parseCollectionManifest(
+  value: unknown,
+): CollectionManifest | null {
   if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
   if (!Array.isArray(raw.items)) return null;

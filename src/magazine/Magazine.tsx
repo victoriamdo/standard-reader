@@ -7,8 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { MagIssue } from "./types";
 
-import { CoverFlow, EditorialFlow, EndCardFlow, FeatureFlow } from "./flow";
 import { MagazineColorContext } from "./context";
+import { CoverFlow, EditorialFlow, EndCardFlow, FeatureFlow } from "./flow";
 import { googleFontsHref, magazineThemeStyle } from "./theme-vars";
 
 const clamp = (v: number, lo: number, hi: number) =>
@@ -17,7 +17,7 @@ const clamp = (v: number, lo: number, hi: number) =>
 /** Normalize to origin+path so CDN/query variants of one image compare equal. */
 function normalizeImageUrl(url: string): string {
   try {
-    const u = new URL(url, window.location.href);
+    const u = new URL(url, globalThis.location.href);
     return `${u.origin}${u.pathname}`;
   } catch {
     return url;
@@ -122,8 +122,8 @@ interface Geom {
 }
 
 function readGeom(): Geom {
-  const w = typeof window === "undefined" ? 1200 : window.innerWidth;
-  const h = typeof window === "undefined" ? 900 : window.innerHeight;
+  const w = globalThis.window === undefined ? 1200 : globalThis.innerWidth;
+  const h = globalThis.window === undefined ? 900 : globalThis.innerHeight;
   const spread = w >= 760 && w > h;
   const perView = spread ? 2 : 1;
   const pageW = w / perView;
@@ -153,7 +153,7 @@ const CLICK_ZONE_VW = 0.14;
 const POST_TOUCH_MOUSE_MS = 500;
 
 function isEdgeTap(clientX: number) {
-  const width = window.visualViewport?.width ?? window.innerWidth;
+  const width = globalThis.visualViewport?.width ?? globalThis.innerWidth;
   const edge = width * CLICK_ZONE_VW;
   return clientX <= edge || clientX >= width - edge;
 }
@@ -217,7 +217,7 @@ export function Magazine({
       body.style.overflow = prevBody;
       clearTimeout(t);
     };
-  }, []);
+  }, [issue.theme]);
 
   useEffect(() => {
     const onResize = () => {
@@ -230,11 +230,11 @@ export function Magazine({
           : next,
       );
     };
-    window.addEventListener("resize", onResize);
-    window.addEventListener("orientationchange", onResize);
+    globalThis.addEventListener("resize", onResize);
+    globalThis.addEventListener("orientationchange", onResize);
     return () => {
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("orientationchange", onResize);
+      globalThis.removeEventListener("resize", onResize);
+      globalThis.removeEventListener("orientationchange", onResize);
     };
   }, []);
 
@@ -245,9 +245,10 @@ export function Magazine({
 
     const bodies = flow.querySelectorAll<HTMLElement>(".feature-body");
     let coversChanged = false;
-    issue.features.forEach((feature, i) => {
+    for (let i = 0; i < issue.features.length; i++) {
+      const feature = issue.features[i];
       const body = bodies[i];
-      if (!body) return;
+      if (!body) continue;
 
       // Promote a leading body image to the cover when there's no explicit one.
       let cover = feature.meta.coverImageUrl ?? coversRef.current[i] ?? null;
@@ -276,7 +277,7 @@ export function Magazine({
           body.dataset.dedup = "done";
         }
       }
-    });
+    }
     if (coversChanged) setCovers({ ...coversRef.current });
 
     const pitch = geom.colW + geom.gap;
@@ -322,10 +323,14 @@ export function Magazine({
     // `fonts.ready` can resolve before they arrive and pagination ends up
     // measured with the fallback font. Explicitly load each theme font at the
     // weights the magazine uses and re-measure once the real metrics are in.
-    const families = [themeFontTitle, themeFontBody].filter((f): f is string =>
-      Boolean(f),
-    );
-    if (typeof document !== "undefined" && document.fonts && families.length) {
+    const families = [themeFontTitle, themeFontBody].filter(
+      Boolean,
+    ) as Array<string>;
+    if (
+      typeof document !== "undefined" &&
+      document.fonts &&
+      families.length > 0
+    ) {
       void Promise.all(
         families.map((family) =>
           document.fonts.load(`1em "${family}"`).catch(() => []),
@@ -335,11 +340,11 @@ export function Magazine({
     for (const delay of [200, 600, 1500, 3000]) {
       passes.push(setTimeout(runMeasure, delay));
     }
-    window.addEventListener("load", runMeasure);
+    globalThis.addEventListener("load", runMeasure);
     return () => {
       cancelAnimationFrame(raf);
       for (const p of passes) clearTimeout(p);
-      window.removeEventListener("load", runMeasure);
+      globalThis.removeEventListener("load", runMeasure);
     };
   }, [runMeasure, themeFontTitle, themeFontBody]);
 
@@ -429,9 +434,9 @@ export function Magazine({
       if (isEdgeTap(e.clientX)) return;
       wake();
     };
-    window.addEventListener("mousemove", onMove);
+    globalThis.addEventListener("mousemove", onMove);
     return () => {
-      window.removeEventListener("mousemove", onMove);
+      globalThis.removeEventListener("mousemove", onMove);
       if (hideTimer.current) clearTimeout(hideTimer.current);
     };
   }, [wake]);
@@ -460,8 +465,8 @@ export function Magazine({
         else onExit();
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    globalThis.addEventListener("keydown", onKey);
+    return () => globalThis.removeEventListener("keydown", onKey);
   }, [go, maxSlide, toc, onExit, wake]);
 
   // Swipe.
@@ -471,9 +476,10 @@ export function Magazine({
     (col: number) => {
       if (!measure) return -1;
       let found = -1;
-      measure.featureCols.forEach((start, i) => {
+      for (let i = 0; i < measure.featureCols.length; i++) {
+        const start = measure.featureCols[i];
         if (start <= col) found = i;
-      });
+      }
       return found;
     },
     [measure],
@@ -596,7 +602,11 @@ export function Magazine({
         </div>
 
         {measure === null ? (
-          <div className="building" aria-busy="true" aria-label="Setting the issue">
+          <div
+            className="building"
+            aria-busy="true"
+            aria-label="Setting the issue"
+          >
             <div>
               <div className="spin" />
               Setting the issue…
@@ -705,8 +715,10 @@ export function Magazine({
           </button>
         </div>
 
-        <div
+        <button
+          type="button"
           className={`toc-scrim ${toc ? "open" : ""}`}
+          aria-label="Close table of contents"
           onClick={() => setToc(false)}
         />
         <nav className={`toc ${toc ? "open" : ""}`}>

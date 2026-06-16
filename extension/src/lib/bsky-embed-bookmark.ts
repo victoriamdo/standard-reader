@@ -600,7 +600,7 @@ function debounce(fn: () => void, delayMs: number): () => void {
 function embedHrefSignature(embeds: Array<EmbedCandidate>): string {
   return embeds
     .map((embed) => embed.articleHref)
-    .sort()
+    .toSorted()
     .join("|");
 }
 

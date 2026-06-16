@@ -4,16 +4,16 @@ import {
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
-import { useMemo, useEffect } from "react";
-import { z } from "zod";
+import { exitMagazineViewer } from "#/lib/exit-magazine-viewer";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { siteSocialMeta } from "#/lib/site-metadata";
-import { exitMagazineViewer } from "#/lib/exit-magazine-viewer";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
+import { useEffect, useMemo } from "react";
+import { z } from "zod";
+
 import { composeCollectionIssue, composeIssue } from "../magazine/compose";
 import { loadMagazineData } from "../magazine/load-magazine-data";
 import { Magazine } from "../magazine/Magazine";
-
 import "../magazine/magazine.css";
 
 const magazineSearchSchema = z.object({

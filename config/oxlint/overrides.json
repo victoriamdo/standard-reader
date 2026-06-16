@@ -306,6 +306,18 @@
       "jsPlugins": ["@stylistic/eslint-plugin"],
       "env": { "es2020": true, "browser": true },
       "plugins": ["typescript"]
+    },
+    {
+      "files": ["src/lib/collections/generate-radix-colors.ts"],
+      "rules": {
+        "@typescript-eslint/ban-ts-comment": "off",
+        "typescript-eslint(ban-ts-comment)": "off",
+        "eslint-plugin-unicorn/no-array-callback-reference": "off",
+        "eslint-plugin-unicorn/no-array-for-each": "off",
+        "eslint-plugin-unicorn/prefer-number-properties": "off",
+        "import/namespace": "off",
+        "no-shadow": "off"
+      }
     }
   ]
 }

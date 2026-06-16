@@ -599,7 +599,7 @@ export function CollectionBuilder({
   const onCoverFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.addEventListener("load", () => {
       const result = typeof reader.result === "string" ? reader.result : "";
       const base64 = result.slice(result.indexOf(",") + 1);
       if (!base64) return;
@@ -612,7 +612,7 @@ export function CollectionBuilder({
           },
         },
       );
-    };
+    });
     reader.readAsDataURL(file);
   };
 
@@ -726,7 +726,9 @@ export function CollectionBuilder({
       {
         onSuccess: onSaved,
         onSettled: () => {
-          void queryClient.invalidateQueries({ queryKey: COLLECTIONS_QUERY_KEY });
+          void queryClient.invalidateQueries({
+            queryKey: COLLECTIONS_QUERY_KEY,
+          });
           // The editor query now has a non-zero staleTime, so re-entering the
           // builder after a save must drop the cached snapshot for this rkey.
           void queryClient.invalidateQueries({

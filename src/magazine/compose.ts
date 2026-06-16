@@ -10,7 +10,7 @@ const WORDS_PER_MINUTE = 220;
 
 function rkeyFromUri(uri: string): string {
   const parts = uri.split("/");
-  return parts[parts.length - 1] ?? "";
+  return parts.at(-1) ?? "";
 }
 
 function formatDate(iso: string): string {

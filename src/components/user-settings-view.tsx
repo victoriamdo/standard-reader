@@ -21,8 +21,8 @@ import {
   readingMeasureLabel,
 } from "#/lib/reading-typography";
 import { isThemeMode } from "#/lib/theme";
-import { useOpenLinks } from "#/lib/use-open-links";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
+import { useOpenLinks } from "#/lib/use-open-links";
 import { useReaderVoice } from "#/lib/use-reader-voice";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 import { useTheme } from "#/lib/use-theme";

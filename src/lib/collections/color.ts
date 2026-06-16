@@ -15,25 +15,23 @@ export function hexToRgb(hex: string): Rgb | null {
   if (!match) return null;
   let value = match[1];
   if (value.length === 3) {
-    value = value
-      .split("")
-      .map((c) => c + c)
-      .join("");
+    value = [...value].map((c) => c + c).join("");
   }
   const int = Number.parseInt(value, 16);
   return { r: (int >> 16) & 255, g: (int >> 8) & 255, b: int & 255 };
 }
 
+const clampChannel = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
+
 export function rgbToHex({ r, g, b }: Rgb): string {
-  const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
-  return `#${[clamp(r), clamp(g), clamp(b)]
+  return `#${[clampChannel(r), clampChannel(g), clampChannel(b)]
     .map((n) => n.toString(16).padStart(2, "0"))
     .join("")}`;
 }
 
 function channelLuminance(channel: number): number {
   const c = channel / 255;
-  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  return c <= 0.039_28 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
 function relativeLuminance({ r, g, b }: Rgb): number {

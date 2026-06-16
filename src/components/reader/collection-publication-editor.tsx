@@ -54,7 +54,7 @@ const styles = stylex.create({
 });
 
 function usePublicationIcon(initialUrl: string | null) {
-  const [iconBlob, setIconBlob] = useState<JsonObject | undefined>(undefined);
+  const [iconBlob, setIconBlob] = useState<JsonObject | undefined>();
   const [iconUrl, setIconUrl] = useState<string | null>(initialUrl);
 
   const iconMutation = useMutation(
@@ -64,7 +64,7 @@ function usePublicationIcon(initialUrl: string | null) {
   const onIconFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.addEventListener("load", () => {
       const result = typeof reader.result === "string" ? reader.result : "";
       const base64 = result.slice(result.indexOf(",") + 1);
       if (!base64) return;
@@ -77,7 +77,7 @@ function usePublicationIcon(initialUrl: string | null) {
           },
         },
       );
-    };
+    });
     reader.readAsDataURL(file);
   };
 
