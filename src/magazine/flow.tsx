@@ -30,7 +30,6 @@ export function CoverFlow({
   issue: MagIssue;
   onJump: (featureIndex: number) => void;
 }) {
-  const rows = issue.features.slice(0, 9);
   return (
     <>
       <section className="flow-col cover-left">
@@ -44,18 +43,20 @@ export function CoverFlow({
       </section>
       <section className="flow-col cover-right">
         <div className="cover-toc-title">In this issue</div>
-        {rows.map((f, i) => (
-          <button
-            type="button"
-            className="cover-toc-row"
-            key={f.meta.id}
-            onClick={() => onJump(i)}
-          >
-            <span className="n">{String(i + 1).padStart(2, "0")}</span>
-            <span className="t">{f.meta.title}</span>
-            <span className="p">{f.meta.pubName}</span>
-          </button>
-        ))}
+        <div className="cover-toc-list">
+          {issue.features.map((f, i) => (
+            <button
+              type="button"
+              className="cover-toc-row"
+              key={f.meta.id}
+              onClick={() => onJump(i)}
+            >
+              <span className="n">{String(i + 1).padStart(2, "0")}</span>
+              <span className="t">{f.meta.title}</span>
+              <span className="p">{f.meta.pubName}</span>
+            </button>
+          ))}
+        </div>
       </section>
     </>
   );

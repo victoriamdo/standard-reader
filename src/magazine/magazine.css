@@ -133,6 +133,9 @@
 .mag .feature-body :is(h1, h2, h3) { break-after: avoid; }
 /* Safety net: keep in-body headings legible on the light paper. */
 .mag .feature-body :is(h1, h2, h3, h4, h5, h6) { color: var(--ink); }
+/* Highlighted text: the UA yellow default is illegible against dark paper, so
+   reuse the accent pairing (defined for both light and dark) like ::selection. */
+.mag mark { background: var(--accent-soft); color: var(--accent-ink); padding: 0.05em 0.18em; border-radius: 2px; }
 
 /* ---- opener (headline / dek / byline above the body) ---- */
 .mag .opener { break-inside: avoid; margin-bottom: 2em; }
@@ -219,14 +222,16 @@
   background: var(--paper);
   justify-content: center;
 }
-.mag .cover-right .cover-toc-title { font-family: var(--sans); text-transform: uppercase; letter-spacing: 0.2em; font-weight: 700; font-size: clamp(10px, 0.8vw, 12px); color: var(--accent-ink); margin-bottom: 1.4em; }
+.mag .cover-right .cover-toc-title { font-family: var(--sans); text-transform: uppercase; letter-spacing: 0.2em; font-weight: 700; font-size: clamp(10px, 0.8vw, 12px); color: var(--accent-ink); margin-bottom: 1.4em; flex: 0 0 auto; }
+/* Hold every feature; scroll within the cover column when the list overflows. */
+.mag .cover-right .cover-toc-list { width: 100%; min-height: 0; overflow-y: auto; }
 .mag .cover-toc-row {
   display: flex; align-items: baseline; gap: 0.8em; width: 100%;
   padding: 0.85em 0; border: 0; border-top: 1px solid var(--line);
   background: none; cursor: pointer; text-align: left; font-family: var(--serif);
   transition: background 0.13s, padding-left 0.13s;
 }
-.mag .cover-toc-row:first-of-type { border-top: 2px solid var(--ink); }
+.mag .cover-toc-row:first-of-type { border-top: 2px solid var(--line-strong); }
 .mag .cover-toc-row:hover { background: var(--paper-sunk); padding-left: 0.5em; }
 .mag .cover-toc-row .n { font-family: var(--mono); font-size: clamp(10px, 0.7vw, 12px); color: var(--accent-ink); min-width: 2.4em; }
 .mag .cover-toc-row .t { flex: 1; font-size: clamp(14px, 1.1vw, 21px); color: var(--ink); line-height: 1.2; }
@@ -290,11 +295,25 @@
 .mag .toc-btn:hover { background: oklch(0.22 0.012 60 / 0.92); }
 .mag .toc-btn .mk { font-family: var(--serif); font-style: italic; font-weight: 600; width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; background: var(--accent); color: var(--paper); font-size: 14px; }
 
+/* Dark mode: the dark-glass HUD nearly matches the dark paper. Lift its fill and
+   add a hairline border so the chrome stays legible. */
+.mag.is-dark .dock,
+.mag.is-dark .exit-btn,
+.mag.is-dark .theme-btn,
+.mag.is-dark .toc-btn {
+  background: oklch(0.34 0.014 60 / 0.86);
+  border: 1px solid oklch(1 0 0 / 0.16);
+}
+.mag.is-dark .exit-btn:hover,
+.mag.is-dark .theme-btn:hover,
+.mag.is-dark .toc-btn:hover { background: oklch(0.4 0.014 60 / 0.94); }
+.mag.is-dark .dock button:hover { background: oklch(1 0 0 / 0.16); }
+
 .mag .toc-scrim { position: fixed; inset: 0; z-index: 1070; background: oklch(0.12 0.01 60 / 0.55); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 .mag .toc-scrim.open { opacity: 1; pointer-events: auto; }
 .mag .toc { position: fixed; top: 0; left: 0; bottom: 0; z-index: 1071; width: min(440px, 86vw); background: var(--paper); border-right: 1px solid var(--line-strong); transform: translateX(-102%); transition: transform 0.34s cubic-bezier(0.5,0,0.2,1); display: flex; flex-direction: column; box-shadow: 0 0 80px -20px oklch(0 0 0 / 0.5); }
 .mag .toc.open { transform: none; }
-.mag .toc-head { padding: 30px 32px 20px; border-bottom: 2px solid var(--ink); }
+.mag .toc-head { padding: 30px 32px 20px; border-bottom: 2px solid var(--line-strong); }
 .mag .toc-head .iss { font-family: var(--sans); text-transform: uppercase; letter-spacing: 0.2em; font-weight: 700; font-size: 11px; color: var(--accent-ink); }
 .mag .toc-head h2 { font-family: var(--serif); font-style: italic; font-weight: var(--display-weight); font-size: 34px; margin: 8px 0 0; letter-spacing: var(--display-tracking); color: var(--ink); }
 .mag .toc-head .sub { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 8px; }
@@ -303,7 +322,7 @@
 .mag .toc-row:hover { background: var(--paper-sunk); }
 .mag .toc-row.on { background: var(--accent-soft); }
 .mag .toc-row .pg-n { font-family: var(--mono); font-size: 12px; color: var(--accent-ink); font-weight: 600; }
-.mag .toc-row .ti { min-width: 0; }
+.mag .toc-row .ti { min-width: 0; display: flex; flex-direction: column; }
 .mag .toc-row .ti .t { font-family: var(--serif); font-weight: 600; font-size: 18px; line-height: 1.18; color: var(--ink); }
 .mag .toc-row .ti .k { font-family: var(--sans); text-transform: uppercase; letter-spacing: 0.12em; font-size: 9.5px; font-weight: 700; color: var(--muted); margin-bottom: 3px; }
 .mag .toc-row .mins { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }

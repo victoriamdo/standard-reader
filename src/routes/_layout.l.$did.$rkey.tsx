@@ -19,10 +19,17 @@ import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { listOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
-import { Pencil, Trash2 } from "lucide-react";
+import {
+  BookmarkCheck,
+  BookmarkPlus,
+  BookOpen,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
+import { encodeIssueIds } from "../magazine/issue-link";
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
 import { ListEditModal } from "../components/reader/list-edit-modal";
 import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
@@ -35,7 +42,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
 } from "../design-system/alert-dialog";
-import { Button } from "../design-system/button";
 import { IconButton } from "../design-system/icon-button";
 import { Tab, TabList, TabPanel, Tabs } from "../design-system/tabs";
 import { uiColor } from "../design-system/theme/color.stylex";
@@ -49,6 +55,9 @@ import {
 } from "../design-system/theme/typography.stylex";
 
 const PAGE_SIZE = 20;
+
+/** How many of the most recent renderable articles a magazine edition pins. */
+const MAGAZINE_LIMIT = 12;
 
 const listSearchSchema = z.object({
   view: z.enum(["feed", "publications"]).default("feed"),
@@ -409,6 +418,25 @@ function ListPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
+  // Snapshot the current top-of-feed articles so the magazine link is stable:
+  // the chosen articles are baked into the URL and won't drift as the list grows.
+  const { data: feedForMagazine } = useQuery(
+    listApi.getListFeedQueryOptions(did, rkey, {
+      limit: PAGE_SIZE,
+      offset: 0,
+    }),
+  );
+  const magazineArticles = (feedForMagazine?.items ?? [])
+    .filter((item) => item.hasRenderableBody)
+    .slice(0, MAGAZINE_LIMIT);
+  const openMagazine = () => {
+    void navigate({
+      to: "/magazine/$did/$rkey",
+      params: { did, rkey },
+      search: { ids: encodeIssueIds(magazineArticles) },
+    });
+  };
+
   const invalidateListQueries = () => {
     void queryClient.invalidateQueries({ queryKey: ["list", did, rkey] });
     void queryClient.invalidateQueries({ queryKey: ["list"] });
@@ -491,18 +519,37 @@ function ListPage() {
         </div>
 
         <div {...stylex.props(styles.heroActs)}>
-          <ShareMenu pageUrl={pageUrl} />
+          {magazineArticles.length > 0 ? (
+            <IconButton
+              variant="secondary"
+              size="lg"
+              label="Read as magazine"
+              onPress={openMagazine}
+            >
+              <BookOpen size={18} />
+            </IconButton>
+          ) : null}
+          <ShareMenu pageUrl={pageUrl} variant="icon" size="lg" />
           {viewer.isOwner ? (
             <>
-              <Button variant="secondary" onPress={() => setEditOpen(true)}>
-                <Pencil size={14} /> Edit list
-              </Button>
+              <IconButton
+                variant="secondary"
+                size="lg"
+                label="Edit list"
+                onPress={() => setEditOpen(true)}
+              >
+                <Pencil size={18} />
+              </IconButton>
               <AlertDialog
                 isOpen={deleteOpen}
                 onOpenChange={setDeleteOpen}
                 trigger={
-                  <IconButton variant="critical-outline" label="Delete list">
-                    <Trash2 size={14} />
+                  <IconButton
+                    variant="critical-outline"
+                    size="lg"
+                    label="Delete list"
+                  >
+                    <Trash2 size={18} />
                   </IconButton>
                 }
               >
@@ -531,21 +578,25 @@ function ListPage() {
             </>
           ) : signedIn ? (
             viewer.isSaved ? (
-              <Button
+              <IconButton
                 variant="secondary"
+                size="lg"
+                label="Remove list"
                 isPending={toggling}
                 onPress={() => unsaveMutation.mutate(list.uri)}
               >
-                Remove list
-              </Button>
+                <BookmarkCheck size={18} />
+              </IconButton>
             ) : (
-              <Button
+              <IconButton
                 variant="primary"
+                size="lg"
+                label="Follow list"
                 isPending={toggling}
                 onPress={() => saveMutation.mutate(list.uri)}
               >
-                Follow list
-              </Button>
+                <BookmarkPlus size={18} />
+              </IconButton>
             )
           ) : null}
         </div>
