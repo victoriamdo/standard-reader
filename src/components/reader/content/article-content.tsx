@@ -125,7 +125,11 @@ export function ArticleContent({
   skipFirstBlock?: boolean;
 }) {
   const hero = resolveArticleHeroImage(article);
-  const hasHero = hasHeroProp ?? Boolean(hero);
+  // Only an explicit `hasHero` (magazine cover above the body) suppresses the
+  // article body's top margin. Header hero images in ArticleView sit above the
+  // title, not between the byline and body, so auto-detecting them here used to
+  // remove needed separation before the first paragraph.
+  const hasHero = hasHeroProp ?? false;
   const skipFirstBlock = skipFirstBlockProp ?? hero?.fromFirstBlock ?? false;
   const contentType = resolveContentType(article);
   const Renderer = contentType ? CONTENT_RENDERERS[contentType] : undefined;
