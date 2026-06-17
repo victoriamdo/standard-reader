@@ -7,7 +7,7 @@ const ITEM_2 = "at://did:plc:abc/site.standard.document/3kbar";
 
 describe("parseCollectionManifest", () => {
   it("returns null for non-collection values", () => {
-    expect(parseCollectionManifest()).toBeNull();
+    expect(parseCollectionManifest(undefined)).toBeNull();
     expect(parseCollectionManifest(null)).toBeNull();
     expect(parseCollectionManifest("nope")).toBeNull();
     expect(parseCollectionManifest({})).toBeNull();

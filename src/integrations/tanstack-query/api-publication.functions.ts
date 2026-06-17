@@ -1,53 +1,35 @@
 import type { CollectionManifest } from "#/lib/collections/manifest";
 import type { CollectionTheme } from "#/lib/collections/theme";
-import type { LeafletCodeBlock } from "#/lib/leaflet/types";
-import type { CodeHighlightsByScheme, ThemeMode } from "#/lib/theme";
+import type { CodeHighlightsByScheme } from "#/lib/theme";
 import type { MarginConnectionItem } from "#/server/reader/article-constellation-extras";
+import type { ArticleDetailSourceRow } from "#/server/reader/article-detail-build";
+import type { CollectionMagazineData } from "#/server/reader/collection-magazine";
 
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { publicationLinkParams } from "#/components/reader/format";
-import { composeCollectionNewsletterContent } from "#/lib/collections/compose-newsletter";
-import { parseCollectionManifest } from "#/lib/collections/manifest";
-import { themeFontsFromJson } from "#/lib/collections/theme";
-import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
-import { GREENGALE_CONTENT_REF } from "#/lib/greengale/types";
-import { leafletBlocks } from "#/lib/leaflet/blocks";
-import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
-import { offprintBlocks } from "#/lib/offprint/blocks";
-import { OFFPRINT_CONTENT } from "#/lib/offprint/types";
-import { pcktBlocks, pcktCodeLanguage } from "#/lib/pckt/blocks";
-import { PCKT_CONTENT } from "#/lib/pckt/types";
-import { getPublicUrl } from "#/lib/public-url";
-import { EMPTY_CODE_HIGHLIGHTS } from "#/lib/theme";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { authorPds } from "#/server/atproto/identity";
 import { didFromAtUri } from "#/server/atproto/uri";
-import { resolveGreengaleContent } from "#/server/greengale/resolve";
 import { buildCanonicalUrl } from "#/server/ingest/mappers";
-import { resolveLeafletContent } from "#/server/leaflet/resolve";
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
-import { resolvePcktContent } from "#/server/pckt/resolve";
 import {
   fetchCitedInArticles,
   fetchMarginConnections,
 } from "#/server/reader/article-constellation-extras";
-import {
-  attachCommentCountsToArticles,
-  countDocumentComments,
-} from "#/server/reader/document-comments";
+import { buildArticleDetail } from "#/server/reader/article-detail-build";
+import { loadCollectionMagazine } from "#/server/reader/collection-magazine";
+import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
 import { selectPublicationHeader } from "#/server/reader/publication-header";
 import {
   articleRecommendedPublications,
   publicationFollowedByCoReaders,
   relatedArticles,
   selectArticleCards,
-  selectArticleCardsByUris,
   selectPublicationArticleCards,
 } from "#/server/reader/queries";
-import { highlightLeafletCodeBlocks } from "#/server/shiki/highlighter";
 import { themeModeForRequest } from "#/server/theme-preference";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -59,10 +41,9 @@ import type {
   PublicationCard,
 } from "./api-shapes";
 
-import { toPublicationCard } from "./api-shapes";
 import { dbMiddleware } from "./db-middleware";
 
-export type { MarginConnectionItem } from "#/server/reader/article-constellation-extras";
+export type { CollectionMagazineData } from "#/server/reader/collection-magazine";
 
 /**
  * Publication-profile and article reading queries (`APP_VISION.md` §5).
@@ -109,26 +90,6 @@ const socialProofInput = z.object({
 const embedInput = z.object({
   publicationUri: z.string().min(1),
 });
-
-async function codeHighlightsForThemeMode(
-  blocks: Array<Pick<LeafletCodeBlock, "language" | "plaintext">>,
-  themeMode: ThemeMode,
-): Promise<CodeHighlightsByScheme> {
-  if (blocks.length === 0) return EMPTY_CODE_HIGHLIGHTS;
-
-  if (themeMode === "system") {
-    const [light, dark] = await Promise.all([
-      highlightLeafletCodeBlocks(blocks, "light"),
-      highlightLeafletCodeBlocks(blocks, "dark"),
-    ]);
-    return { light, dark };
-  }
-
-  const single = await highlightLeafletCodeBlocks(blocks, themeMode);
-  return themeMode === "dark"
-    ? { light: {}, dark: single }
-    : { light: single, dark: {} };
-}
 
 /** Publication identity + stats for the profile hero (no document list). */
 export interface PublicationHeader {
@@ -459,31 +420,7 @@ const getArticle = createServerFn({ method: "GET" })
         }
         span.set("found", true);
 
-        const commentCountPromise = countDocumentComments(
-          db,
-          schema,
-          data.documentUri,
-        );
         const authorProfile = authorProfileRows[0];
-
-        const publication: PublicationCard | null = row.pubUri
-          ? toPublicationCard({
-              uri: row.pubUri,
-              did: row.pubDid ?? row.did,
-              name: row.pubName ?? "",
-              url: row.pubUrl ?? "",
-              description: row.pubDescription,
-              iconUrl: row.pubIconUrl,
-              ownerAvatarUrl: row.pubOwnerAvatarUrl,
-              ownerHandle: row.pubOwnerHandle,
-              topic: row.pubTopic,
-              verified: row.pubVerified ?? false,
-              subscriberCount: row.pubSubscriberCount,
-              documentCount: row.pubDocumentCount,
-              lastDocumentAt: row.pubLastDocumentAt,
-            })
-          : null;
-
         const contributors: Array<ArticleContributor> = contributorRows.map(
           (c) => ({
             did: c.did,
@@ -499,126 +436,44 @@ const getArticle = createServerFn({ method: "GET" })
           themeModeForRequest(db, schema, session?.session.user.id),
         ]);
 
-        const rawContentJson = row.contentJson ?? null;
-        let resolvedContentJson = rawContentJson as JsonValue | null;
-        let resolvedContentFormat = row.contentFormat;
-        if (rawContentJson) {
-          if (row.contentFormat === LEAFLET_CONTENT) {
-            resolvedContentJson = (await resolveLeafletContent(
-              rawContentJson,
-              row.did,
-              authorPdsEndpoint,
-            )) as JsonValue;
-          } else if (row.contentFormat === PCKT_CONTENT) {
-            resolvedContentJson = (await resolvePcktContent(
-              rawContentJson,
-              row.did,
-              authorPdsEndpoint,
-            )) as JsonValue;
-          } else if (row.contentFormat === GREENGALE_CONTENT_REF) {
-            resolvedContentJson = (await resolveGreengaleContent(
-              rawContentJson,
-              row.did,
-              authorPdsEndpoint,
-            )) as JsonValue;
-            if (
-              resolvedContentJson &&
-              typeof resolvedContentJson === "object" &&
-              !Array.isArray(resolvedContentJson) &&
-              resolvedContentJson.$type === STANDARD_MARKDOWN_CONTENT
-            ) {
-              resolvedContentFormat = STANDARD_MARKDOWN_CONTENT;
-            }
-          }
-        }
-
-        const collection = parseCollectionManifest(row.collectionJson);
-        if (collection && collection.items.length > 0) {
-          const cards = await selectArticleCardsByUris(
-            db,
-            schema,
-            collection.items.map((item) => item.document),
-          );
-          resolvedContentJson = composeCollectionNewsletterContent({
-            editorial: collection.editorial,
-            manifestItems: collection.items,
-            cardsByUri: new Map(cards.map((card) => [card.uri, card])),
-            baseUrl: getPublicUrl(),
-          }) as JsonValue;
-        }
-
-        const codeBlocks: Array<
-          Pick<LeafletCodeBlock, "language" | "plaintext">
-        > =
-          row.contentFormat === LEAFLET_CONTENT && resolvedContentJson
-            ? leafletBlocks(resolvedContentJson)
-                .filter((block) => block.kind === "code")
-                .map((block) => block.block)
-            : row.contentFormat === PCKT_CONTENT && resolvedContentJson
-              ? pcktBlocks(resolvedContentJson)
-                  .filter((block) => block.kind === "code")
-                  .map((block) => ({
-                    plaintext: block.block.plaintext,
-                    language: pcktCodeLanguage(block.block),
-                  }))
-              : row.contentFormat === OFFPRINT_CONTENT && resolvedContentJson
-                ? offprintBlocks(resolvedContentJson)
-                    .filter((block) => block.kind === "code")
-                    .map((block) => ({
-                      plaintext: block.plaintext,
-                      language: block.language,
-                    }))
-                : resolvedContentFormat === STANDARD_MARKDOWN_CONTENT &&
-                    resolvedContentJson
-                  ? []
-                  : [];
-
-        const [codeHighlights, commentCount] = await Promise.all([
-          codeHighlightsForThemeMode(codeBlocks, themeMode),
-          commentCountPromise,
-        ]);
-
-        return {
-          uri: row.uri,
-          did: row.did,
-          authorPds: authorPdsEndpoint,
-          title: row.title,
-          description: row.description,
-          path: row.path,
-          canonicalUrl: row.canonicalUrl,
-          coverImageUrl: row.coverImageUrl,
-          publishedAt: row.publishedAt.toISOString(),
-          updatedAt: row.recordUpdatedAt?.toISOString() ?? null,
-          featured: row.featured,
-          tags: row.tags,
-          contentJson: resolvedContentJson,
-          contentFormat: resolvedContentFormat,
-          codeHighlights,
-          textContent: row.textContent,
-          bskyPostUri: row.bskyPostUri,
-          bskyPostCid: row.bskyPostCid,
-          publicationUri: row.publicationUri,
-          publication,
-          collection,
-          collectionTheme: row.pubUri
-            ? {
-                background: row.pubThemeBackground,
-                foreground: row.pubThemeForeground,
-                accent: row.pubThemeAccent,
-                accentForeground: row.pubThemeAccentForeground,
-                fontTitle: themeFontsFromJson(row.pubThemeJson).title,
-                fontBody: themeFontsFromJson(row.pubThemeJson).body,
-              }
-            : null,
-          publicationOwnerHandle: row.pubOwnerHandle ?? null,
-          publicationOwnerDisplayName: row.pubOwnerDisplayName ?? null,
+        return buildArticleDetail(
+          db,
+          schema,
+          row as ArticleDetailSourceRow,
           contributors,
-          readCount: readRows[0]?.count ?? 0,
-          recommendCount: recommendRows[0]?.count ?? 0,
-          commentCount,
-          moreFrom: [],
-          readersAlsoFollow: [],
-        };
+          authorPdsEndpoint,
+          themeMode,
+          {
+            readCount: readRows[0]?.count ?? 0,
+            recommendCount: recommendRows[0]?.count ?? 0,
+          },
+        );
+      },
+    ),
+  );
+
+const getCollection = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(articleInput)
+  .handler(
+    observe(
+      "publication.getCollection",
+      async (
+        { data, context },
+        span,
+      ): Promise<CollectionMagazineData | null> => {
+        span.set("documentUri", data.documentUri);
+        await attachReaderSpanContext(span, getRequest());
+
+        const result = await loadCollectionMagazine(
+          context.db,
+          context.schema,
+          data.documentUri,
+          getRequest(),
+        );
+        span.set("found", result != null);
+        span.set("featureCount", result?.features.length ?? 0);
+        return result;
       },
     ),
   );
@@ -894,6 +749,14 @@ function getArticleQueryOptions(documentUri: string) {
   });
 }
 
+function getCollectionQueryOptions(documentUri: string) {
+  return queryOptions({
+    queryKey: ["collection", documentUri] as const,
+    queryFn: async () => getCollection({ data: { documentUri } }),
+    staleTime: 60_000,
+  });
+}
+
 function getArticleExtrasQueryOptions(documentUri: string) {
   return queryOptions({
     queryKey: ["article", "extras", documentUri] as const,
@@ -935,6 +798,8 @@ export const publicationApi = {
   getPublicationSocialProofQueryOptions,
   getArticle,
   getArticleQueryOptions,
+  getCollection,
+  getCollectionQueryOptions,
   getArticleExtras,
   getArticleExtrasQueryOptions,
 };

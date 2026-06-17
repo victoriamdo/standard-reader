@@ -2,6 +2,12 @@ import type { ArticleDetail } from "#/integrations/tanstack-query/api-publicatio
 import type { CollectionEditorial } from "#/lib/collections/manifest";
 import type { CollectionTheme } from "#/lib/collections/theme";
 
+/** Shell chrome while a collection or list issue is loading. */
+export type MagazineShellData = {
+  isCollection: boolean;
+  theme: CollectionTheme | null;
+};
+
 /** Opener metadata derived from an article, for the magazine art direction. */
 export interface MagMeta {
   id: string;

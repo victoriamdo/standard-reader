@@ -23,7 +23,7 @@ import {
   articlePublicationUrl,
   documentUriFromParams,
 } from "../components/reader/format";
-import { prefetchCollectionMagazineArticles } from "../magazine/load-magazine-data";
+import { prefetchCollectionMagazine } from "../magazine/load-magazine-data";
 
 const articleSearchSchema = z.object({
   q: z.string().optional(),
@@ -84,10 +84,10 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
         user.getOpenCollectionsInMagazinePreferenceQueryOptions,
       );
       if (openInMagazinePref.openInMagazine) {
-        prefetchCollectionMagazineArticles(
-          queryClient,
-          article.collection.items,
-        );
+        prefetchCollectionMagazine(queryClient, {
+          did: params.did,
+          rkey: params.rkey,
+        });
         throw redirect({
           to: "/collection/$did/$rkey",
           params: { did: params.did, rkey: params.rkey },
@@ -113,7 +113,10 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
       );
     }
     if (article?.collection) {
-      prefetchCollectionMagazineArticles(queryClient, article.collection.items);
+      prefetchCollectionMagazine(queryClient, {
+        did: params.did,
+        rkey: params.rkey,
+      });
     }
 
     return { article, sharedQuote };

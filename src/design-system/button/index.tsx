@@ -3,7 +3,7 @@
 import type { ButtonProps as AriaButtonProps } from "react-aria-components";
 
 import * as stylex from "@stylexjs/stylex";
-import { Button as AriaButton } from "react-aria-components";
+import { Button as AriaButton, Link } from "react-aria-components";
 
 import type { ButtonVariant, Size, StyleXComponentProps } from "../theme/types";
 
@@ -60,6 +60,7 @@ export const Button = ({
   const { trigger } = useHaptics();
   const buttonStyles = useButtonStyles({ variant, size });
   const isHref = "href" in props;
+  const Component = isHref ? Link : AriaButton;
 
   const handlePress = (e: Parameters<NonNullable<typeof onPress>>[0]) => {
     if (variant === "primary" && !isDisabled && !isPending) {
@@ -69,8 +70,9 @@ export const Button = ({
   };
 
   return (
-    <AriaButton
-      {...props}
+    <Component
+      // oxlint-disable-next-line typescript/no-explicit-any
+      {...(props as any)}
       onPress={handlePress}
       {...stylex.props(buttonStyles, isHref && styles.link, style)}
       data-size={size}
@@ -90,6 +92,6 @@ export const Button = ({
       >
         {children}
       </span>
-    </AriaButton>
+    </Component>
   );
 };

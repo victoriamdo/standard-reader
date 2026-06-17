@@ -19,7 +19,7 @@ import { usePageReader } from "#/lib/page-reader/page-reader-context";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
-import { prefetchCollectionMagazineArticles } from "#/magazine/load-magazine-data";
+import { prefetchCollectionMagazine } from "#/magazine/load-magazine-data";
 import {
   ArrowLeft,
   BookOpen,
@@ -719,7 +719,7 @@ function ArticleViewBody({
   useEffect(() => {
     if (!article.collection || !linkParams) return;
 
-    prefetchCollectionMagazineArticles(queryClient, article.collection.items);
+    prefetchCollectionMagazine(queryClient, linkParams);
 
     const preloadMagazine = () => {
       void router.preloadRoute({

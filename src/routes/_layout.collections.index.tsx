@@ -517,8 +517,6 @@ function IssueRow({
         <IconButtonLink
           to="/collection/$did/$rkey"
           params={{ did: issue.did, rkey: issue.rkey }}
-          preload="intent"
-          preloadIntentProximity={100}
           variant="secondary"
           size="md"
           label="View collection"

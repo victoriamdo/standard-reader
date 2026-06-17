@@ -15,16 +15,19 @@ import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-maga
 import { useMemo } from "react";
 import { z } from "zod";
 
+import type { MagazineShellData } from "../magazine/types";
+
 import { documentUriFromParams } from "../components/reader/format";
 import { publicationApi } from "../integrations/tanstack-query/api-publication.functions";
 import { composeCollectionIssue, composeIssue } from "../magazine/compose";
 import { magazineThemeFontHeadLinks } from "../magazine/font-preload";
 import {
-  bootstrapFromCollectionDoc,
-  getMagazineCollectionFeaturesQueryOptions,
+  bootstrapFromCollectionData,
+  getCollectionMagazineQueryOptions,
   getMagazineDataQueryOptions,
+  seedCollectionMagazineCaches,
   shellFromArticle,
-  type MagazineShellData,
+  shellFromCollectionData,
 } from "../magazine/load-magazine-data";
 import { Magazine } from "../magazine/Magazine";
 import { MagazineShell } from "../magazine/magazine-shell";
@@ -72,26 +75,35 @@ export const Route = createFileRoute("/collection/$did/$rkey")({
   loaderDeps: ({ search }) => ({ ids: search.ids }),
   loader: async ({ context, params, preload, deps }) => {
     const uri = documentUriFromParams(params.did, params.rkey);
-    const articleOptions = publicationApi.getArticleQueryOptions(uri);
-    const featuresOptions = getMagazineCollectionFeaturesQueryOptions(params);
+    const collectionOptions = getCollectionMagazineQueryOptions(params);
     const listDataOptions = getMagazineDataQueryOptions(params, deps);
 
     if (preload) {
-      void context.queryClient.prefetchQuery(articleOptions);
-      void context.queryClient.prefetchQuery(featuresOptions);
+      void context.queryClient.prefetchQuery(collectionOptions);
       void context.queryClient.prefetchQuery(listDataOptions);
-      return { shell: null, bootstrap: null };
+      return { shell: null, isListMode: null as boolean | null };
     }
 
-    // Feature articles load client-side; kick them off while the collection doc
-    // (publication) resolves so nav only blocks on that one round trip.
-    void context.queryClient.prefetchQuery(featuresOptions);
+    const collection = await context.queryClient
+      .ensureQueryData(collectionOptions)
+      .catch(() => null);
+
+    if (collection) {
+      seedCollectionMagazineCaches(context.queryClient, collection);
+      return {
+        shell: shellFromCollectionData(collection),
+        isListMode: false,
+      };
+    }
+
     void context.queryClient.prefetchQuery(listDataOptions);
 
-    const article = await context.queryClient.ensureQueryData(articleOptions);
+    const article = await context.queryClient.ensureQueryData(
+      publicationApi.getArticleQueryOptions(uri),
+    );
     return {
       shell: shellFromArticle(article),
-      bootstrap: article ? bootstrapFromCollectionDoc(article) : null,
+      isListMode: !article?.collection,
     };
   },
   pendingComponent: CollectionPending,
@@ -114,18 +126,18 @@ export const Route = createFileRoute("/collection/$did/$rkey")({
 function CollectionRoute() {
   const { did, rkey } = Route.useParams();
   const { ids } = Route.useSearch();
-  const { shell, bootstrap } = Route.useLoaderData();
+  const { shell, isListMode: loaderIsListMode } = Route.useLoaderData();
   const isClient = globalThis.window !== undefined;
-  const isListMode = shell?.isCollection === false;
+  const isListMode = loaderIsListMode === true;
+
+  const { data: collection, isPending: collectionPending } = useQuery({
+    ...getCollectionMagazineQueryOptions({ did, rkey }),
+    enabled: isClient && loaderIsListMode === false,
+  });
 
   const { data: listData, isPending: listPending } = useQuery({
     ...getMagazineDataQueryOptions({ did, rkey }, { ids }),
     enabled: isClient && isListMode,
-  });
-
-  const { data: features, isPending: featuresPending } = useQuery({
-    ...getMagazineCollectionFeaturesQueryOptions({ did, rkey }),
-    enabled: isClient && !isListMode && bootstrap != null,
   });
 
   const router = useRouter();
@@ -142,12 +154,16 @@ function CollectionRoute() {
         listData.articles,
       );
     }
-    if (!bootstrap) return null;
+    if (!collection) return null;
     return composeCollectionIssue({
-      ...bootstrap,
-      features: features ?? [],
+      ...bootstrapFromCollectionData(collection),
+      features: collection.features,
     });
-  }, [bootstrap, features, isListMode, listData]);
+  }, [collection, isListMode, listData]);
+
+  const publicationParams = isListMode
+    ? null
+    : (collection?.publicationParams ?? null);
 
   if (!isClient || !shell) {
     return <CollectionPendingView shell={shell} />;
@@ -157,15 +173,7 @@ function CollectionRoute() {
     if (listPending || !issue) {
       return <CollectionPendingView shell={shell} />;
     }
-  } else if (!bootstrap) {
-    return <CollectionPendingView shell={shell} />;
-  }
-
-  if (!issue) {
-    return <CollectionPendingView shell={shell} />;
-  }
-
-  if (!isListMode && featuresPending) {
+  } else if (collectionPending || !issue) {
     return <CollectionPendingView shell={shell} />;
   }
 
@@ -186,7 +194,7 @@ function CollectionRoute() {
                   mode: isListMode ? "list" : "collection",
                   did,
                   rkey,
-                  publicationParams: bootstrap?.publicationParams ?? null,
+                  publicationParams,
                   onNavigate: (target) => {
                     void navigate(target);
                   },
@@ -202,15 +210,15 @@ function CollectionRoute() {
   }
 
   const openReader = () => {
-    if (!isListMode) {
-      void navigate({
-        to: "/a/$did/$rkey",
-        params: { did, rkey },
-        search: collectionReaderViewSearch,
-      });
-    } else {
+    if (isListMode) {
       void navigate({ to: "/l/$did/$rkey", params: { did, rkey } });
+      return;
     }
+    void navigate({
+      to: "/a/$did/$rkey",
+      params: { did, rkey },
+      search: collectionReaderViewSearch,
+    });
   };
 
   const closeViewer = () => {
@@ -221,7 +229,7 @@ function CollectionRoute() {
       mode: isListMode ? "list" : "collection",
       did,
       rkey,
-      publicationParams: bootstrap?.publicationParams ?? null,
+      publicationParams,
       onNavigate: (target) => {
         void navigate(target);
       },

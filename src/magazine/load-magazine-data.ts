@@ -1,5 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
+import type {
+  ArticleDetail,
+  CollectionMagazineData,
+} from "#/integrations/tanstack-query/api-publication.functions";
 import type { CollectionEditorial } from "#/lib/collections/manifest";
 
 import { queryOptions } from "@tanstack/react-query";
@@ -7,14 +10,17 @@ import {
   documentUriFromParams,
   publicationLinkParams,
 } from "#/components/reader/format";
-import { getQueryClient } from "#/integrations/tanstack-query/query-client";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
+import { getQueryClient } from "#/integrations/tanstack-query/query-client";
 
+import type { MagazineShellData } from "./types";
+
+import { MAX_MAGAZINE_FEATURES } from "./constants";
 import { parseIssueIds, pinnedArticleUri } from "./issue-link";
 
-/** Cap an edition to a sensible number of features for a single reading. */
-export const MAX_MAGAZINE_FEATURES = 16;
+export { MAX_MAGAZINE_FEATURES };
+export type { MagazineShellData };
 
 type MagazineSearchDeps = {
   ids?: string;
@@ -48,22 +54,45 @@ function fetchArticleDetail(
     .catch(() => null);
 }
 
-/** Warm article caches for a collection's magazine edition. */
-export function prefetchCollectionMagazineArticles(
+/** Seed per-article caches from a collection magazine bundle. */
+export function seedCollectionMagazineCaches(
   queryClient: QueryClient,
-  items: ReadonlyArray<{ document: string }>,
+  data: CollectionMagazineData,
 ): void {
-  for (const item of items.slice(0, MAX_MAGAZINE_FEATURES)) {
-    void queryClient.prefetchQuery(
-      publicationApi.getArticleQueryOptions(item.document),
+  queryClient.setQueryData(
+    publicationApi.getArticleQueryOptions(data.collectionDoc.uri).queryKey,
+    data.collectionDoc,
+  );
+  for (const feature of data.features) {
+    queryClient.setQueryData(
+      publicationApi.getArticleQueryOptions(feature.detail.uri).queryKey,
+      feature.detail,
     );
   }
 }
 
-export type MagazineShellData = {
-  isCollection: boolean;
-  theme: ArticleDetail["collectionTheme"];
-};
+/** Warm the collection magazine bundle (one server round trip). */
+export function prefetchCollectionMagazine(
+  queryClient: QueryClient,
+  params: { did: string; rkey: string },
+): void {
+  void queryClient.prefetchQuery(
+    publicationApi.getCollectionQueryOptions(
+      documentUriFromParams(params.did, params.rkey),
+    ),
+  );
+}
+
+/** @deprecated Use {@link prefetchCollectionMagazine}. */
+export function prefetchCollectionMagazineArticles(
+  queryClient: QueryClient,
+  _items: ReadonlyArray<{ document: string }>,
+  params?: { did: string; rkey: string },
+): void {
+  if (params) {
+    prefetchCollectionMagazine(queryClient, params);
+  }
+}
 
 export type MagazineCollectionBootstrap = {
   name: string;
@@ -84,6 +113,30 @@ export function shellFromArticle(
   };
 }
 
+export function shellFromCollectionData(
+  data: CollectionMagazineData,
+): MagazineShellData {
+  return {
+    isCollection: true,
+    theme: data.theme,
+  };
+}
+
+export function bootstrapFromCollectionData(
+  data: CollectionMagazineData,
+): MagazineCollectionBootstrap {
+  return {
+    name: data.name,
+    publicationName: data.publicationName,
+    publicationParams: data.publicationParams,
+    ownerHandle: data.ownerHandle,
+    editorial: data.editorial,
+    coverImageUrl: data.coverImageUrl,
+    theme: data.theme,
+  };
+}
+
+/** @deprecated Use {@link bootstrapFromCollectionData}. */
 export function bootstrapFromCollectionDoc(
   article: ArticleDetail,
 ): MagazineCollectionBootstrap | null {
@@ -101,35 +154,31 @@ export function bootstrapFromCollectionDoc(
   };
 }
 
-export async function loadMagazineCollectionFeatures(
-  queryClient: QueryClient,
-  params: { did: string; rkey: string },
-): Promise<Array<{ detail: ArticleDetail; note: string | null }>> {
-  const collectionDoc = await fetchArticleDetail(
-    queryClient,
-    documentUriFromParams(params.did, params.rkey),
-  );
-  if (!collectionDoc?.collection) return [];
-
-  const items = collectionDoc.collection.items.slice(0, MAX_MAGAZINE_FEATURES);
-  const itemDetails = await Promise.all(
-    items.map((item) => fetchArticleDetail(queryClient, item.document)),
-  );
-  return items
-    .map((item, i) => ({ detail: itemDetails[i], note: item.note ?? null }))
-    .filter(
-      (f): f is { detail: ArticleDetail; note: string | null } =>
-        f.detail != null,
-    );
+function collectionLoaderDataFromBundle(
+  data: CollectionMagazineData,
+): MagazineLoaderData {
+  return {
+    mode: "collection",
+    name: data.name,
+    publicationName: data.publicationName,
+    publicationParams: data.publicationParams,
+    ownerHandle: data.ownerHandle,
+    editorial: data.editorial,
+    coverImageUrl: data.coverImageUrl,
+    theme: data.theme,
+    features: data.features,
+  };
 }
 
-export function getMagazineCollectionFeaturesQueryOptions(params: {
+export function getCollectionMagazineQueryOptions(params: {
   did: string;
   rkey: string;
 }) {
+  const uri = documentUriFromParams(params.did, params.rkey);
   return queryOptions({
-    queryKey: ["magazine", "features", params.did, params.rkey] as const,
-    queryFn: () => loadMagazineCollectionFeatures(getQueryClient(), params),
+    queryKey: ["magazine", "collection", params.did, params.rkey] as const,
+    queryFn: async () =>
+      publicationApi.getCollection({ data: { documentUri: uri } }),
     staleTime: 60_000,
   });
 }
@@ -138,14 +187,16 @@ export async function loadMagazineShell(
   queryClient: QueryClient,
   params: { did: string; rkey: string },
 ): Promise<MagazineShellData> {
-  const article = await fetchArticleDetail(
-    queryClient,
-    documentUriFromParams(params.did, params.rkey),
-  );
-  return {
-    isCollection: Boolean(article?.collection),
-    theme: article?.collectionTheme ?? null,
-  };
+  const uri = documentUriFromParams(params.did, params.rkey);
+  const collection = await queryClient
+    .ensureQueryData(publicationApi.getCollectionQueryOptions(uri))
+    .catch(() => null);
+  if (collection) {
+    return shellFromCollectionData(collection);
+  }
+
+  const article = await fetchArticleDetail(queryClient, uri);
+  return shellFromArticle(article);
 }
 
 export function getMagazineShellQueryOptions(params: {
@@ -176,28 +227,14 @@ export async function loadMagazineData(
   deps: MagazineSearchDeps,
 ): Promise<MagazineLoaderData> {
   const { did, rkey } = params;
+  const collectionUri = documentUriFromParams(did, rkey);
 
-  // Collection mode: did/rkey is a `site.standard.document` carrying a manifest.
-  const collectionDoc = await fetchArticleDetail(
-    queryClient,
-    documentUriFromParams(did, rkey),
-  );
-  if (collectionDoc?.collection) {
-    const features = await loadMagazineCollectionFeatures(queryClient, params);
-    return {
-      mode: "collection",
-      name:
-        collectionDoc.title || collectionDoc.publication?.name || "Collection",
-      publicationName: collectionDoc.publication?.name ?? null,
-      publicationParams: collectionDoc.publicationUri
-        ? publicationLinkParams(collectionDoc.publicationUri)
-        : null,
-      ownerHandle: collectionDoc.publicationOwnerHandle,
-      editorial: collectionDoc.collection.editorial ?? null,
-      coverImageUrl: collectionDoc.coverImageUrl,
-      theme: collectionDoc.collectionTheme,
-      features,
-    };
+  const collection = await queryClient
+    .ensureQueryData(publicationApi.getCollectionQueryOptions(collectionUri))
+    .catch(() => null);
+  if (collection) {
+    seedCollectionMagazineCaches(queryClient, collection);
+    return collectionLoaderDataFromBundle(collection);
   }
 
   // List mode (legacy): did/rkey is a publication list; compose its articles.
