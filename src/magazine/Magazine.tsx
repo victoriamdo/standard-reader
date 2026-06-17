@@ -8,13 +8,17 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { flushSync } from "react-dom";
 
 import type { MagIssue } from "./types";
 
 import { MagazineColorContext } from "./context";
 import { readMagazineDark } from "./dark-mode";
 import { CoverFlow, EditorialFlow, EndCardFlow, FeatureFlow } from "./flow";
+import { applyForcedColumnBreaks } from "./feature-layout";
 import { MagHoverButton } from "./mag-hover-button";
+import type { Geom } from "./magazine-geom";
+import { geomEqual, readGeom } from "./magazine-geom";
 import { MagazineShell } from "./magazine-shell";
 import { useMagazineImageLightbox } from "./use-magazine-image-lightbox";
 
@@ -94,37 +98,6 @@ const Icon = {
     </svg>
   ),
 };
-
-interface Geom {
-  spread: boolean;
-  perView: number;
-  pageW: number;
-  pageH: number;
-  hMargin: number;
-  vMargin: number;
-  colW: number;
-  gap: number;
-}
-
-function readGeom(width: number, height: number): Geom {
-  const w = width;
-  const h = height;
-  const spread = w >= 760 && w > h;
-  const perView = spread ? 2 : 1;
-  const pageW = w / perView;
-  const hMargin = Math.round(clamp(pageW * 0.08, 24, 96));
-  const vMargin = Math.round(clamp(h * 0.07, 28, 110));
-  return {
-    spread,
-    perView,
-    pageW,
-    pageH: h,
-    hMargin,
-    vMargin,
-    colW: pageW - 2 * hMargin,
-    gap: 2 * hMargin,
-  };
-}
 
 interface Measure {
   slideCount: number;
@@ -305,7 +278,8 @@ export function Magazine({
 
   // Page geometry follows the painted stage box (ResizeObserver), not viewport
   // units — iOS Safari can report innerHeight/dvh larger than the visible area.
-  useEffect(() => {
+  // flushSync keeps spread mode in sync with the stage during resize drags.
+  useLayoutEffect(() => {
     const stage = stageRef.current;
     if (!stage || globalThis.ResizeObserver === undefined) return;
 
@@ -313,16 +287,12 @@ export function Magazine({
       const w = stage.clientWidth;
       const h = stage.clientHeight;
       if (w <= 0 || h <= 0) return;
-      const next = readGeom(w, h);
-      setGeom((prev) =>
-        prev.spread === next.spread &&
-        prev.pageW === next.pageW &&
-        prev.pageH === next.pageH &&
-        prev.hMargin === next.hMargin &&
-        prev.vMargin === next.vMargin
-          ? prev
-          : next,
-      );
+      flushSync(() => {
+        setGeom((prev) => {
+          const next = readGeom(w, h, prev.spread);
+          return geomEqual(prev, next) ? prev : next;
+        });
+      });
     };
 
     syncGeom();
@@ -335,6 +305,8 @@ export function Magazine({
   const runMeasure = useCallback(() => {
     const flow = flowRef.current;
     if (!flow) return;
+
+    applyForcedColumnBreaks(flow);
 
     const pitch = geom.colW + geom.gap;
     if (pitch <= 0) return;

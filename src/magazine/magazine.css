@@ -138,6 +138,8 @@
 
 /* ---- full-column blocks (cover, image opener, end) ---- */
 .mag .flow-col {
+  -webkit-column-break-before: always;
+  -webkit-column-break-after: always;
   break-before: column;
   break-after: column;
   break-inside: avoid;
@@ -149,16 +151,45 @@
 
 /* every feature begins on a fresh page */
 .mag .feature-body {
+  -webkit-column-break-before: always;
   break-before: column;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Firefox column-break shim — height set in JS to fill the current column. */
+.mag .mag-col-spacer {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  width: 100%;
 }
 
 /* keep rich blocks from fragmenting awkwardly across pages */
 .mag .feature-body figure,
 .mag .feature-body img,
-.mag .feature-body pre,
-.mag .feature-body table,
 .mag .feature-body blockquote {
   break-inside: avoid;
+}
+.mag .feature-body pre,
+.mag .editorial-body pre,
+.mag .feature-note-body pre {
+  break-inside: avoid;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mag .feature-body table,
+.mag .editorial-body table {
+  break-inside: avoid;
+  max-width: 100%;
+  table-layout: fixed;
+  word-break: break-word;
 }
 /* Lists should pack into leftover column space (e.g. page 4 tail). inline-block
    is the WebKit/Blink multicol workaround; avoid break-inside on ul/li so items
@@ -337,9 +368,21 @@
 .mag .feature-body :is(h1, h2, h3):has(+ :is(ul, ol)) {
   break-after: auto;
 }
-/* Safety net: keep in-body headings legible on the light paper. */
-.mag .feature-body :is(h1, h2, h3, h4, h5, h6) {
-  color: var(--ink);
+/* ArticleContent body — StyleX classes need magazine width constraints in multicol. */
+.mag .feature-body [class*="articleBodyStyles.body"] {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mag .feature-body [class*="articleBodyStyles.paragraph"],
+.mag .feature-body [class*="articleBodyStyles.pullquote"],
+.mag .feature-body [class*="articleBodyStyles.heading"] {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mag .feature-body [class*="articleBodyStyles.dropCapParagraph"] {
+  display: block;
 }
 /* ArticleContent links use the reader's StyleX palette; re-theme for the magazine. */
 .mag .feature-body a:not(#\#):not(#\#):not(#\#) {
@@ -876,6 +919,7 @@
   margin-bottom: 0;
 }
 .mag .endcard {
+  -webkit-column-break-before: always;
   break-before: column;
   justify-content: center;
   min-height: 0;
@@ -1542,7 +1586,11 @@
 /* The editorial flows across pages like a feature body (starts on a fresh
    column; content fragments) rather than being trapped in one fixed page. */
 .mag .editorial-spread {
+  -webkit-column-break-before: always;
   break-before: column;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .mag .editorial-spread .editorial-title {
   margin: 0;
