@@ -1,5 +1,7 @@
 "use client";
 
+import type { CollectionMagazineData } from "#/integrations/tanstack-query/api-publication.functions";
+
 import { useQuery } from "@tanstack/react-query";
 import {
   createFileRoute,
@@ -12,7 +14,15 @@ import { collectionReaderViewSearch } from "#/lib/open-collections-in-magazine";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { siteSocialMeta } from "#/lib/site-metadata";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
-import { useMemo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import { z } from "zod";
 
 import type { MagazineShellData } from "../magazine/types";
@@ -20,6 +30,7 @@ import type { MagazineShellData } from "../magazine/types";
 import { documentUriFromParams } from "../components/reader/format";
 import { publicationApi } from "../integrations/tanstack-query/api-publication.functions";
 import { composeCollectionIssue, composeIssue } from "../magazine/compose";
+import { readMagazineDark } from "../magazine/dark-mode";
 import { magazineThemeFontHeadLinks } from "../magazine/font-preload";
 import {
   bootstrapFromCollectionData,
@@ -30,7 +41,11 @@ import {
   shellFromCollectionData,
 } from "../magazine/load-magazine-data";
 import { Magazine } from "../magazine/Magazine";
-import { MagazineShell } from "../magazine/magazine-shell";
+import {
+  MagazineBuilding,
+  MagazineShell,
+  magazineRouteBackdropStyle,
+} from "../magazine/magazine-shell";
 import "../magazine/magazine.css";
 
 const collectionSearchSchema = z.object({
@@ -45,31 +60,6 @@ function collectionPendingLabel(shell: MagazineShellData | null | undefined) {
     : "Opening the collection…";
 }
 
-function CollectionPendingView({
-  shell,
-}: {
-  shell: MagazineShellData | null | undefined;
-}) {
-  return (
-    <MagazineShell
-      theme={shell?.theme ?? null}
-      aria-busy="true"
-      aria-label="Loading collection"
-    >
-      <div className="building">
-        <div>
-          <div className="spin" />
-          {collectionPendingLabel(shell)}
-        </div>
-      </div>
-    </MagazineShell>
-  );
-}
-
-export function CollectionPending() {
-  return <CollectionPendingView shell={null} />;
-}
-
 export const Route = createFileRoute("/collection/$did/$rkey")({
   validateSearch: collectionSearchSchema,
   loaderDeps: ({ search }) => ({ ids: search.ids }),
@@ -81,7 +71,11 @@ export const Route = createFileRoute("/collection/$did/$rkey")({
     if (preload) {
       void context.queryClient.prefetchQuery(collectionOptions);
       void context.queryClient.prefetchQuery(listDataOptions);
-      return { shell: null, isListMode: null as boolean | null };
+      return {
+        shell: null,
+        isListMode: null as boolean | null,
+        collection: null as CollectionMagazineData | null,
+      };
     }
 
     const collection = await context.queryClient
@@ -93,6 +87,7 @@ export const Route = createFileRoute("/collection/$did/$rkey")({
       return {
         shell: shellFromCollectionData(collection),
         isListMode: false,
+        collection,
       };
     }
 
@@ -104,13 +99,13 @@ export const Route = createFileRoute("/collection/$did/$rkey")({
     return {
       shell: shellFromArticle(article),
       isListMode: !article?.collection,
+      collection: null as CollectionMagazineData | null,
     };
   },
-  pendingComponent: CollectionPending,
-  pendingMs: 0,
   head: ({ loaderData, match }) => {
     const baseUrl = getPublicUrlClient();
     const theme = loaderData?.shell?.theme;
+    const backdrop = magazineRouteBackdropStyle(theme);
     return {
       meta: siteSocialMeta({
         title: "The Standard Issue · Standard Reader",
@@ -118,6 +113,7 @@ export const Route = createFileRoute("/collection/$did/$rkey")({
         url: `${baseUrl}${match.pathname}`,
       }),
       links: magazineThemeFontHeadLinks(theme),
+      styles: backdrop ? [backdrop] : [],
     };
   },
   component: CollectionRoute,
@@ -126,24 +122,47 @@ export const Route = createFileRoute("/collection/$did/$rkey")({
 function CollectionRoute() {
   const { did, rkey } = Route.useParams();
   const { ids } = Route.useSearch();
-  const { shell, isListMode: loaderIsListMode } = Route.useLoaderData();
-  const isClient = globalThis.window !== undefined;
+  const {
+    shell,
+    isListMode: loaderIsListMode,
+    collection: loaderCollection,
+  } = Route.useLoaderData();
   const isListMode = loaderIsListMode === true;
 
-  const { data: collection, isPending: collectionPending } = useQuery({
+  const { data: collection = loaderCollection ?? undefined } = useQuery({
     ...getCollectionMagazineQueryOptions({ did, rkey }),
-    enabled: isClient && loaderIsListMode === false,
+    enabled: !isListMode,
+    initialData: loaderCollection ?? undefined,
   });
 
   const { data: listData, isPending: listPending } = useQuery({
     ...getMagazineDataQueryOptions({ did, rkey }, { ids }),
-    enabled: isClient && isListMode,
+    enabled: isListMode,
   });
 
   const router = useRouter();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
   const { openInMagazine } = useOpenCollectionsInMagazine();
+
+  const theme = shell?.theme ?? collection?.theme ?? null;
+  const themeDark = readMagazineDark(theme);
+  const [darkOverride, setDarkOverride] = useState<boolean | null>(null);
+  const dark = darkOverride ?? themeDark;
+
+  const setDark = useCallback<Dispatch<SetStateAction<boolean>>>(
+    (next) => {
+      setDarkOverride((prev) => {
+        const current = prev ?? themeDark;
+        return typeof next === "function" ? next(current) : next;
+      });
+    },
+    [themeDark],
+  );
+
+  useEffect(() => {
+    setDarkOverride(null);
+  }, [did, rkey]);
 
   const issue = useMemo(() => {
     if (isListMode) {
@@ -165,49 +184,8 @@ function CollectionRoute() {
     ? null
     : (collection?.publicationParams ?? null);
 
-  if (!isClient || !shell) {
-    return <CollectionPendingView shell={shell} />;
-  }
-
-  if (isListMode) {
-    if (listPending || !issue) {
-      return <CollectionPendingView shell={shell} />;
-    }
-  } else if (collectionPending || !issue) {
-    return <CollectionPendingView shell={shell} />;
-  }
-
-  if (issue.features.length === 0) {
-    return (
-      <MagazineShell theme={issue.theme ?? null}>
-        <div className="building">
-          <div>
-            <div style={{ marginBottom: 12 }}>Nothing to read here yet.</div>
-            <button
-              className="toc-btn show"
-              style={{ position: "static" }}
-              onClick={() => {
-                exitMagazineViewer({
-                  history: router.history,
-                  canGoBack,
-                  openInMagazine,
-                  mode: isListMode ? "list" : "collection",
-                  did,
-                  rkey,
-                  publicationParams,
-                  onNavigate: (target) => {
-                    void navigate(target);
-                  },
-                });
-              }}
-            >
-              Go back
-            </button>
-          </div>
-        </div>
-      </MagazineShell>
-    );
-  }
+  const waitingForList = isListMode && (listPending || !issue);
+  const waitingForCollection = !isListMode && !collection && !loaderCollection;
 
   const openReader = () => {
     if (isListMode) {
@@ -236,7 +214,40 @@ function CollectionRoute() {
     });
   };
 
+  let shellContent: ReactNode;
+  if (!shell || waitingForList || waitingForCollection) {
+    shellContent = <MagazineBuilding label={collectionPendingLabel(shell)} />;
+  } else if (!issue || issue.features.length === 0) {
+    shellContent = (
+      <div className="building">
+        <div>
+          <div style={{ marginBottom: 12 }}>Nothing to read here yet.</div>
+          <button
+            className="toc-btn show"
+            style={{ position: "static" }}
+            onClick={closeViewer}
+          >
+            Go back
+          </button>
+        </div>
+      </div>
+    );
+  } else {
+    shellContent = (
+      <Magazine
+        embedded
+        issue={issue}
+        dark={dark}
+        onDarkChange={setDark}
+        onExit={closeViewer}
+        onOpenReader={openReader}
+      />
+    );
+  }
+
   return (
-    <Magazine issue={issue} onExit={closeViewer} onOpenReader={openReader} />
+    <MagazineShell theme={theme} dark={dark}>
+      {shellContent}
+    </MagazineShell>
   );
 }

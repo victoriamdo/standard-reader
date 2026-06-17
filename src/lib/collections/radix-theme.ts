@@ -106,3 +106,13 @@ export function magazinePaletteCss(palette: MagazinePalette): string {
     `.mag.is-themed.is-dark{${declarations(palette.dark)}}`
   );
 }
+
+/** Inline palette vars for the active mode — paints correctly on the first frame. */
+export function magazinePaletteInlineStyle(
+  theme: CollectionTheme | null | undefined,
+  dark: boolean,
+): Record<string, string> {
+  const palette = buildMagazinePalette(theme);
+  if (!palette) return {};
+  return dark ? palette.dark : palette.light;
+}

@@ -1,16 +1,20 @@
-import {
-  buildMagazinePalette,
-  magazinePaletteCss,
-  themePrefersDark,
-} from "#/lib/collections/radix-theme";
 import { Lightbox } from "#/design-system/lightbox";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 
 import type { MagIssue } from "./types";
 
 import { MagazineColorContext } from "./context";
+import { readMagazineDark } from "./dark-mode";
 import { CoverFlow, EditorialFlow, EndCardFlow, FeatureFlow } from "./flow";
-import { googleFontsHref, magazineThemeStyle } from "./theme-vars";
+import { MagazineShell } from "./magazine-shell";
 import { useMagazineImageLightbox } from "./use-magazine-image-lightbox";
 
 const clamp = (v: number, lo: number, hi: number) =>
@@ -140,16 +144,19 @@ export function Magazine({
   issue,
   onExit,
   onOpenReader,
+  embedded = false,
+  dark: darkProp,
+  onDarkChange,
 }: {
   issue: MagIssue;
   onExit: () => void;
   onOpenReader: () => void;
+  /** When true, render inside a parent {@link MagazineShell}. */
+  embedded?: boolean;
+  dark?: boolean;
+  onDarkChange?: Dispatch<SetStateAction<boolean>>;
 }) {
   const storageKey = `mag-slide:${issue.name}`;
-  const themePalette = useMemo(
-    () => buildMagazinePalette(issue.theme),
-    [issue.theme],
-  );
 
   const [mounted, setMounted] = useState(false);
   const [geom, setGeom] = useState<Geom>(() => readGeom());
@@ -159,36 +166,42 @@ export function Magazine({
   const [chrome, setChrome] = useState(false);
   const [toc, setToc] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const [dark, setDark] = useState(false);
+  const [darkInternal, setDarkInternal] = useState(() =>
+    readMagazineDark(issue.theme),
+  );
+  const dark = darkProp ?? darkInternal;
+  const setDark = onDarkChange ?? setDarkInternal;
 
   const flowRef = useRef<HTMLDivElement | null>(null);
   const featureRefs = useRef<Array<HTMLElement | null>>([]);
   const restoredRef = useRef(false);
   const photoLightbox = useMagazineImageLightbox(flowRef);
 
-  // Own the viewport while mounted.
+  // Own the viewport while mounted (shell handles overflow when embedded).
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
-    const prevHtml = html.style.overflow;
-    const prevBody = body.style.overflow;
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
+    const prevHtml = embedded ? null : html.style.overflow;
+    const prevBody = embedded ? null : body.style.overflow;
+    if (!embedded) {
+      html.style.overflow = "hidden";
+      body.style.overflow = "hidden";
+    }
     setMounted(true);
     setGeom(readGeom());
     setShowHint(!localStorage.getItem("mag-seen"));
-    // Default to the theme's own mode until the reader explicitly toggles.
-    const storedDark = localStorage.getItem("mag-dark");
-    setDark(
-      storedDark === null ? themePrefersDark(issue.theme) : storedDark === "1",
-    );
+    if (!onDarkChange) {
+      setDarkInternal(readMagazineDark(issue.theme));
+    }
     const t = setTimeout(() => setAnimate(true), 80);
     return () => {
-      html.style.overflow = prevHtml;
-      body.style.overflow = prevBody;
+      if (!embedded && prevHtml !== null && prevBody !== null) {
+        html.style.overflow = prevHtml;
+        body.style.overflow = prevBody;
+      }
       clearTimeout(t);
     };
-  }, [issue.theme]);
+  }, [embedded, issue.theme, onDarkChange]);
 
   useEffect(() => {
     const onResize = () => {
@@ -339,7 +352,7 @@ export function Magazine({
       localStorage.setItem("mag-dark", next ? "1" : "0");
       return next;
     });
-  }, []);
+  }, [setDark]);
 
   // Auto-hiding HUD — pointer/tap or Tab, never on keyboard or swipe page turns.
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -451,245 +464,275 @@ export function Magazine({
     transform: `translateX(${-activeSlide * geom.perView * geom.pageW}px)`,
   };
 
-  const fontsHref = googleFontsHref(issue.theme);
-  const paletteCss = themePalette ? magazinePaletteCss(themePalette) : null;
+  const showBuilding = measure === null || !mounted;
+  const [stagePainted, setStagePainted] = useState(false);
+
+  useLayoutEffect(() => {
+    if (showBuilding) {
+      setStagePainted(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => setStagePainted(true));
+    return () => cancelAnimationFrame(id);
+  }, [showBuilding]);
+
+  const revealStage = !showBuilding && (!embedded || stagePainted);
+  const showBuildingOverlay = showBuilding || (embedded && !stagePainted);
+
+  const shellStyle = {
+    "--mag-click-zone-w": `${geom.hMargin}px`,
+  } as React.CSSProperties;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    lastTouchEnd.current = Date.now();
+    if (photoLightbox.isOpen) return;
+    if (touchX.current == null) return;
+    const startX = touchX.current;
+    const dx = e.changedTouches[0].clientX - startX;
+    touchX.current = null;
+    if (Math.abs(dx) > 44) {
+      suppressWake();
+      go(dx < 0 ? 1 : -1);
+      return;
+    }
+    if (isEdgeTap(startX, geom.hMargin)) {
+      suppressWake();
+      return;
+    }
+    wake();
+  };
+
+  const viewer = (
+    <>
+      <div className="progress" style={{ width: `${progress}%` }} />
+
+      <div
+        className="mag-stage"
+        style={{
+          ...stageStyle,
+          visibility: revealStage ? "visible" : "hidden",
+        }}
+      >
+        {geom.spread && measure && measure.columns >= 2 ? (
+          <div
+            className={`creases ${animate ? "animate" : ""}`}
+            aria-hidden
+            style={{
+              left: 0,
+              top: 0,
+              bottom: 0,
+              // Only span full two-page spreads, so a trailing lone page (odd
+              // column count) doesn't get a crease through its blank facing page.
+              width: Math.floor(measure.columns / 2) * 2 * geom.pageW,
+              backgroundSize: `${2 * geom.pageW}px 100%`,
+              transform: `translateX(${-activeSlide * geom.perView * geom.pageW}px)`,
+            }}
+          />
+        ) : null}
+        <div
+          className={`mag-flow ${animate ? "animate" : ""} ${
+            geom.spread ? "spread" : "single"
+          }`}
+          ref={flowRef}
+          style={flowStyle}
+        >
+          {mounted ? (
+            <>
+              <CoverFlow issue={issue} onJump={jumpToFeature} />
+              <EditorialFlow issue={issue} />
+              {issue.features.map((feature, i) => (
+                <FeatureFlow
+                  key={feature.meta.id}
+                  feature={feature}
+                  coverImageUrl={feature.meta.coverImageUrl}
+                  ref={(el) => {
+                    featureRefs.current[i] = el;
+                  }}
+                />
+              ))}
+              <EndCardFlow issue={issue} />
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      {showBuildingOverlay ? (
+        <div
+          className="building"
+          aria-busy="true"
+          aria-label="Setting the issue"
+        >
+          <div>
+            <div className="spin" />
+            Setting the issue…
+          </div>
+        </div>
+      ) : null}
+
+      {/* folios */}
+      {leftFolio ? (
+        <div className="folio left">
+          <span className="num">{String(leftFolio.num).padStart(2, "0")}</span>
+          <span className="tick" />
+          <span>{leftFolio.label}</span>
+        </div>
+      ) : null}
+      {rightFolio ? (
+        <div className="folio right">
+          <span>{rightFolio.label}</span>
+          <span className="tick" />
+          <span className="num">{String(rightFolio.num).padStart(2, "0")}</span>
+        </div>
+      ) : null}
+
+      <button
+        className="click-zone prev"
+        onPointerDown={() => suppressWake()}
+        onClick={() => go(-1)}
+        disabled={activeSlide <= 0 || photoLightbox.isOpen}
+        aria-label="Previous page"
+        tabIndex={-1}
+      />
+      <button
+        className="click-zone next"
+        onPointerDown={() => suppressWake()}
+        onClick={() => go(1)}
+        disabled={activeSlide >= maxSlide || photoLightbox.isOpen}
+        aria-label="Next page"
+        tabIndex={-1}
+      />
+
+      <button
+        className={`toc-btn ${chromeOn ? "show" : ""}`}
+        onClick={() => setToc(true)}
+      >
+        <span className="mk">S</span>
+        Contents
+      </button>
+
+      <button
+        className={`reader-btn ${chromeOn ? "show" : ""}`}
+        onClick={onOpenReader}
+        aria-label="Switch to reader view"
+      >
+        Reader
+      </button>
+
+      <button
+        className={`theme-btn ${chromeOn ? "show" : ""}`}
+        onClick={toggleDark}
+        aria-label={dark ? "Switch to light paper" : "Switch to dark paper"}
+      >
+        {dark ? Icon.sun : Icon.moon}
+      </button>
+
+      <button
+        className={`exit-btn ${chromeOn ? "show" : ""}`}
+        onClick={onExit}
+        aria-label="Close magazine"
+      >
+        {Icon.close}
+      </button>
+
+      {showHint ? (
+        <div className="hint">
+          <span>
+            <kbd>←</kbd> <kbd>→</kbd>
+          </span>
+          <span>turn the page</span>
+        </div>
+      ) : null}
+
+      <div className={`dock ${chromeOn ? "show" : ""}`}>
+        <button
+          onClick={() => go(-1)}
+          disabled={activeSlide <= 0 || photoLightbox.isOpen}
+          aria-label="Previous"
+        >
+          {Icon.prev}
+        </button>
+        <div className="pos">
+          <span className="ttl">{currentTitle}</span>
+          <span>
+            {activeSlide + 1} / {slideCount}
+          </span>
+        </div>
+        <button
+          onClick={() => go(1)}
+          disabled={activeSlide >= maxSlide || photoLightbox.isOpen}
+          aria-label="Next"
+        >
+          {Icon.next}
+        </button>
+      </div>
+
+      <button
+        type="button"
+        className={`toc-scrim ${toc ? "open" : ""}`}
+        aria-label="Close table of contents"
+        onClick={() => setToc(false)}
+      />
+      <nav className={`toc ${toc ? "open" : ""}`}>
+        <div className="toc-head">
+          <div className="iss">
+            {issue.name} &nbsp;·&nbsp; {issue.no}
+          </div>
+          <h2>Contents</h2>
+          <div className="sub">
+            {issue.sub} &nbsp;·&nbsp; {issue.features.length} features
+          </div>
+        </div>
+        <div className="toc-list">
+          {issue.features.map((feature, i) => {
+            const col = measure?.featureCols[i] ?? 0;
+            const num = Math.max(1, col - firstFeatureCol + 1);
+            const active = featureForColumn(leftCol) === i;
+            return (
+              <button
+                key={feature.meta.id}
+                className={`toc-row ${active ? "on" : ""}`}
+                onClick={() => jumpToColumn(col)}
+              >
+                <span className="pg-n">{String(num).padStart(2, "0")}</span>
+                <span className="ti">
+                  <span className="k">
+                    {feature.meta.pubName} · {feature.meta.topic}
+                  </span>
+                  <span className="t">{feature.meta.title}</span>
+                </span>
+                <span className="mins">{feature.meta.minutes}m</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </>
+  );
 
   return (
     <MagazineColorContext value={{ dark }}>
-      <div
-        className={`mag ${dark ? "is-dark" : ""} ${issue.theme ? "is-themed" : ""}`}
-        style={{
-          ...magazineThemeStyle(issue.theme),
-          "--mag-click-zone-w": `${geom.hMargin}px`,
-        }}
-        onTouchStart={(e) => {
-          touchX.current = e.touches[0].clientX;
-        }}
-        onTouchEnd={(e) => {
-          lastTouchEnd.current = Date.now();
-          if (photoLightbox.isOpen) return;
-          if (touchX.current == null) return;
-          const startX = touchX.current;
-          const dx = e.changedTouches[0].clientX - startX;
-          touchX.current = null;
-          if (Math.abs(dx) > 44) {
-            suppressWake();
-            go(dx < 0 ? 1 : -1);
-            return;
-          }
-          if (isEdgeTap(startX, geom.hMargin)) {
-            suppressWake();
-            return;
-          }
-          wake();
-        }}
-      >
-        {fontsHref ? <link rel="stylesheet" href={fontsHref} /> : null}
-        {paletteCss ? (
-          // eslint-disable-next-line react/no-danger
-          <style dangerouslySetInnerHTML={{ __html: paletteCss }} />
-        ) : null}
-        <div className="progress" style={{ width: `${progress}%` }} />
-
-        <div className="mag-stage" style={stageStyle}>
-          {geom.spread && measure && measure.columns >= 2 ? (
-            <div
-              className={`creases ${animate ? "animate" : ""}`}
-              aria-hidden
-              style={{
-                left: 0,
-                top: 0,
-                bottom: 0,
-                // Only span full two-page spreads, so a trailing lone page (odd
-                // column count) doesn't get a crease through its blank facing page.
-                width: Math.floor(measure.columns / 2) * 2 * geom.pageW,
-                backgroundSize: `${2 * geom.pageW}px 100%`,
-                transform: `translateX(${-activeSlide * geom.perView * geom.pageW}px)`,
-              }}
-            />
-          ) : null}
-          <div
-            className={`mag-flow ${animate ? "animate" : ""} ${
-              geom.spread ? "spread" : "single"
-            }`}
-            ref={flowRef}
-            style={flowStyle}
-          >
-            {mounted ? (
-              <>
-                <CoverFlow issue={issue} onJump={jumpToFeature} />
-                <EditorialFlow issue={issue} />
-                {issue.features.map((feature, i) => (
-                  <FeatureFlow
-                    key={feature.meta.id}
-                    feature={feature}
-                    coverImageUrl={feature.meta.coverImageUrl}
-                    ref={(el) => {
-                      featureRefs.current[i] = el;
-                    }}
-                  />
-                ))}
-                <EndCardFlow issue={issue} />
-              </>
-            ) : null}
-          </div>
+      {embedded ? (
+        <div
+          style={{ ...shellStyle, position: "absolute", inset: 0 }}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
+          {viewer}
         </div>
-
-        {measure === null ? (
-          <div
-            className="building"
-            aria-busy="true"
-            aria-label="Setting the issue"
-          >
-            <div>
-              <div className="spin" />
-              Setting the issue…
-            </div>
-          </div>
-        ) : null}
-
-        {/* folios */}
-        {leftFolio ? (
-          <div className="folio left">
-            <span className="num">
-              {String(leftFolio.num).padStart(2, "0")}
-            </span>
-            <span className="tick" />
-            <span>{leftFolio.label}</span>
-          </div>
-        ) : null}
-        {rightFolio ? (
-          <div className="folio right">
-            <span>{rightFolio.label}</span>
-            <span className="tick" />
-            <span className="num">
-              {String(rightFolio.num).padStart(2, "0")}
-            </span>
-          </div>
-        ) : null}
-
-        <button
-          className="click-zone prev"
-          onPointerDown={() => suppressWake()}
-          onClick={() => go(-1)}
-          disabled={activeSlide <= 0 || photoLightbox.isOpen}
-          aria-label="Previous page"
-          tabIndex={-1}
-        />
-        <button
-          className="click-zone next"
-          onPointerDown={() => suppressWake()}
-          onClick={() => go(1)}
-          disabled={activeSlide >= maxSlide || photoLightbox.isOpen}
-          aria-label="Next page"
-          tabIndex={-1}
-        />
-
-        <button
-          className={`toc-btn ${chromeOn ? "show" : ""}`}
-          onClick={() => setToc(true)}
+      ) : (
+        <MagazineShell
+          theme={issue.theme}
+          dark={dark}
+          style={shellStyle}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
         >
-          <span className="mk">S</span>
-          Contents
-        </button>
-
-        <button
-          className={`reader-btn ${chromeOn ? "show" : ""}`}
-          onClick={onOpenReader}
-          aria-label="Switch to reader view"
-        >
-          Reader
-        </button>
-
-        <button
-          className={`theme-btn ${chromeOn ? "show" : ""}`}
-          onClick={toggleDark}
-          aria-label={dark ? "Switch to light paper" : "Switch to dark paper"}
-        >
-          {dark ? Icon.sun : Icon.moon}
-        </button>
-
-        <button
-          className={`exit-btn ${chromeOn ? "show" : ""}`}
-          onClick={onExit}
-          aria-label="Close magazine"
-        >
-          {Icon.close}
-        </button>
-
-        {showHint ? (
-          <div className="hint">
-            <span>
-              <kbd>←</kbd> <kbd>→</kbd>
-            </span>
-            <span>turn the page</span>
-          </div>
-        ) : null}
-
-        <div className={`dock ${chromeOn ? "show" : ""}`}>
-          <button
-            onClick={() => go(-1)}
-            disabled={activeSlide <= 0 || photoLightbox.isOpen}
-            aria-label="Previous"
-          >
-            {Icon.prev}
-          </button>
-          <div className="pos">
-            <span className="ttl">{currentTitle}</span>
-            <span>
-              {activeSlide + 1} / {slideCount}
-            </span>
-          </div>
-          <button
-            onClick={() => go(1)}
-            disabled={activeSlide >= maxSlide || photoLightbox.isOpen}
-            aria-label="Next"
-          >
-            {Icon.next}
-          </button>
-        </div>
-
-        <button
-          type="button"
-          className={`toc-scrim ${toc ? "open" : ""}`}
-          aria-label="Close table of contents"
-          onClick={() => setToc(false)}
-        />
-        <nav className={`toc ${toc ? "open" : ""}`}>
-          <div className="toc-head">
-            <div className="iss">
-              {issue.name} &nbsp;·&nbsp; {issue.no}
-            </div>
-            <h2>Contents</h2>
-            <div className="sub">
-              {issue.sub} &nbsp;·&nbsp; {issue.features.length} features
-            </div>
-          </div>
-          <div className="toc-list">
-            {issue.features.map((feature, i) => {
-              const col = measure?.featureCols[i] ?? 0;
-              const num = Math.max(1, col - firstFeatureCol + 1);
-              const active = featureForColumn(leftCol) === i;
-              return (
-                <button
-                  key={feature.meta.id}
-                  className={`toc-row ${active ? "on" : ""}`}
-                  onClick={() => jumpToColumn(col)}
-                >
-                  <span className="pg-n">{String(num).padStart(2, "0")}</span>
-                  <span className="ti">
-                    <span className="k">
-                      {feature.meta.pubName} · {feature.meta.topic}
-                    </span>
-                    <span className="t">{feature.meta.title}</span>
-                  </span>
-                  <span className="mins">{feature.meta.minutes}m</span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-      </div>
+          {viewer}
+        </MagazineShell>
+      )}
       <Lightbox
         isOpen={photoLightbox.isOpen}
         onOpenChange={photoLightbox.setIsOpen}
