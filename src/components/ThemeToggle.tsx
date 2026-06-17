@@ -45,13 +45,11 @@ const LABEL: Record<ThemeMode, string> = {
 };
 
 export default function ThemeToggle() {
-  const [mode, setMode] = useState<ThemeMode>("auto");
-
-  useEffect(() => {
+  const [mode, setMode] = useState<ThemeMode>(() => {
     const initialMode = getInitialMode();
-    setMode(initialMode);
     applyThemeMode(initialMode);
-  }, []);
+    return initialMode;
+  });
 
   useEffect(() => {
     if (mode !== "auto") {

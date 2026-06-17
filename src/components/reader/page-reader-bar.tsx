@@ -266,21 +266,21 @@ export function PageReaderBar() {
   } = usePageReader();
   const cardRef = useRef<HTMLElement>(null);
   const exiting = useExitAnimation(cardRef, active);
-  const snapshotRef = useRef<BarSnapshot | null>(null);
+  const [exitSnapshot, setExitSnapshot] = useState<BarSnapshot | null>(null);
   // While dragging the scrubber we preview the thumb position locally and only
   // commit the seek on release.
   const [scrubValue, setScrubValue] = useState<number | null>(null);
 
   useEffect(() => {
-    if (active) {
-      snapshotRef.current = { nowPlaying, scrollLocked, state };
-    }
+    if (!active) return;
+    const snapshot = { nowPlaying, scrollLocked, state };
+    queueMicrotask(() => setExitSnapshot(snapshot));
   }, [active, nowPlaying, scrollLocked, state]);
 
   // Hooks must run before any early return; bail out once they have.
   if (!active && !exiting) return null;
 
-  const snapshot = snapshotRef.current;
+  const snapshot = exitSnapshot;
   const displayNowPlaying = active
     ? nowPlaying
     : (snapshot?.nowPlaying ?? null);

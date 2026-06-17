@@ -310,7 +310,7 @@ function DeferredMount({
 
     const scroller = node.closest("[data-app-scroller]");
     if (!scroller) {
-      setMounted(true);
+      queueMicrotask(() => setMounted(true));
       return;
     }
 
@@ -325,7 +325,7 @@ function DeferredMount({
     };
 
     if (isNearView()) {
-      setMounted(true);
+      queueMicrotask(() => setMounted(true));
       return;
     }
 

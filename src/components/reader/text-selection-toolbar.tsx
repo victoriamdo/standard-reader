@@ -116,6 +116,7 @@ export function TextSelectionToolbar({
 
   const hideToolbar = useCallback(() => {
     pinnedRef.current = false;
+    setShareMenuOpen(false);
     setToolbar(null);
   }, []);
 
@@ -161,11 +162,7 @@ export function TextSelectionToolbar({
   }, [syncToolbarToSelection]);
 
   useEffect(() => {
-    if (!toolbar) {
-      setShareUrl(null);
-      setShareMenuOpen(false);
-      return;
-    }
+    if (!toolbar) return;
 
     let cancelled = false;
     void quoteShareApi

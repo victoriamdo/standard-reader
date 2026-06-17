@@ -29,8 +29,10 @@
   --display-tracking: -0.015em;
   --mag-click-zone-z: 1030;
   --bsky-embed-media-max: min(28vh, 220px);
+  --bsky-embed-media-max: min(28dvh, 220px);
   --bsky-embed-media-gap: 4px;
   --mag-block-photo-max: 40vh;
+  --mag-block-photo-max: 40dvh;
 }
 
 /* ---------- dark paper ---------- */
@@ -58,7 +60,13 @@
 
 .mag {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* Fallbacks for SSR / before JS pins to visualViewport. */
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: 100dvh;
   z-index: 100;
   /* The magazine is always printed on light paper. Pin the scheme so the
      app's `light-dark()` theme tokens resolve to their light values even when
@@ -764,22 +772,97 @@
 
 /* ---- end card ---- */
 .mag .endcard {
+  break-before: column;
   justify-content: center;
+}
+.mag .endcard::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 4px;
+  background: var(--accent);
+}
+.mag .endcard-subscribe {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1.6em;
 }
 .mag .endcard .colophon {
   font-family: var(--mono);
   font-size: clamp(11px, 0.8vw, 13px);
   line-height: 1.7;
   color: var(--muted);
-  margin-top: 1.4em;
+  margin-top: 2em;
+}
+.mag .endcard-cta-title {
+  margin: 0;
+  max-width: 18ch;
+  text-wrap: balance;
+}
+.mag .endcard-cta-dek {
+  margin: 0.65em 0 0;
+  font-family: var(--serif);
+  font-size: clamp(15px, 1.15vw, 19px);
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 32ch;
+}
+.mag .endcard-subscribe-btn {
+  margin-top: 1.2em;
+  align-self: flex-start;
+  appearance: none;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--paper);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sans);
+  font-size: clamp(12px, 0.85vw, 14px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  min-height: 2.75em;
+  padding: 0.65em 1.4em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    background 0.14s,
+    border-color 0.14s,
+    color 0.14s,
+    opacity 0.14s;
+}
+.mag .endcard-subscribe-btn:hover {
+  background: var(--accent-ink);
+  border-color: var(--accent-ink);
+  color: var(--paper);
+}
+.mag .endcard-subscribe-btn:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+.mag .endcard-subscribe-btn.is-following {
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+.mag .endcard-subscribe-btn.is-following:hover {
+  background: var(--paper-sunk);
+  border-color: var(--line-strong);
+  color: var(--ink);
 }
 
 /* ============================================================
    Folios — live overlays at the bottom corners
    ============================================================ */
 .mag .folio {
-  position: fixed;
+  position: absolute;
   bottom: max(env(safe-area-inset-bottom, 0px), 2.4vh);
+  bottom: max(env(safe-area-inset-bottom, 0px), 2.4dvh);
   z-index: 8;
   font-family: var(--mono);
   font-size: 11px;
@@ -813,7 +896,7 @@
    Controls — auto-hiding HUD
    ============================================================ */
 .mag .click-zone {
-  position: fixed;
+  position: absolute;
   top: 0;
   bottom: 0;
   width: var(--mag-click-zone-w, 14vw);
@@ -844,7 +927,7 @@
   --hud-border: color-mix(in oklab, var(--paper) 14%, transparent);
 }
 .mag .dock {
-  position: fixed;
+  position: absolute;
   left: 50%;
   bottom: 22px;
   z-index: 1050;
@@ -920,7 +1003,7 @@
 }
 
 .mag .progress {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   height: 2px;
@@ -932,7 +1015,7 @@
 .mag .exit-btn,
 .mag .theme-btn,
 .mag .reader-btn {
-  position: fixed;
+  position: absolute;
   top: 18px;
   z-index: 1050;
   border: 1px solid var(--hud-border);
@@ -988,7 +1071,7 @@
 }
 
 .mag .toc-btn {
-  position: fixed;
+  position: absolute;
   top: 18px;
   left: 18px;
   z-index: 1050;
@@ -1038,7 +1121,7 @@
   cursor: default;
   margin: 0;
   padding: 0;
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 1070;
   background: color-mix(in oklab, var(--ink) 55%, transparent);
@@ -1052,7 +1135,7 @@
   pointer-events: auto;
 }
 .mag .toc {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   bottom: 0;
@@ -1156,7 +1239,7 @@
 }
 
 .mag .hint {
-  position: fixed;
+  position: absolute;
   left: 50%;
   bottom: 78px;
   transform: translateX(-50%);
@@ -1194,7 +1277,7 @@
 }
 
 .mag .building {
-  position: fixed;
+  position: absolute;
   inset: 0;
   display: grid;
   place-items: center;

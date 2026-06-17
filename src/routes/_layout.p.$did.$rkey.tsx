@@ -13,6 +13,7 @@ import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { publicationOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
+import { useDelayedLoading } from "#/lib/use-delayed-loading";
 import { ExternalLink } from "lucide-react";
 import {
   Suspense,
@@ -385,27 +386,6 @@ function PublicationArticleRowSkeleton({
       />
     </div>
   );
-}
-
-function useDelayedLoading(active: boolean, delayMs: number): boolean {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (!active) {
-      setShow(false);
-      return;
-    }
-
-    const timer = globalThis.setTimeout(() => {
-      setShow(true);
-    }, delayMs);
-
-    return () => {
-      globalThis.clearTimeout(timer);
-    };
-  }, [active, delayMs]);
-
-  return show;
 }
 
 function PublicationPostsSkeleton() {

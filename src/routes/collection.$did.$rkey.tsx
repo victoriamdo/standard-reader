@@ -16,7 +16,6 @@ import { siteSocialMeta } from "#/lib/site-metadata";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
   type Dispatch,
@@ -127,6 +126,35 @@ function CollectionRoute() {
     isListMode: loaderIsListMode,
     collection: loaderCollection,
   } = Route.useLoaderData();
+
+  return (
+    <CollectionRouteView
+      key={`${did}/${rkey}`}
+      did={did}
+      rkey={rkey}
+      ids={ids}
+      shell={shell}
+      loaderIsListMode={loaderIsListMode}
+      loaderCollection={loaderCollection}
+    />
+  );
+}
+
+function CollectionRouteView({
+  did,
+  rkey,
+  ids,
+  shell,
+  loaderIsListMode,
+  loaderCollection,
+}: {
+  did: string;
+  rkey: string;
+  ids?: string;
+  shell: ReturnType<typeof Route.useLoaderData>["shell"];
+  loaderIsListMode: boolean | null;
+  loaderCollection: CollectionMagazineData | null;
+}) {
   const isListMode = loaderIsListMode === true;
 
   const { data: collection = loaderCollection ?? undefined } = useQuery({
@@ -160,10 +188,6 @@ function CollectionRoute() {
     [themeDark],
   );
 
-  useEffect(() => {
-    setDarkOverride(null);
-  }, [did, rkey]);
-
   const issue = useMemo(() => {
     if (isListMode) {
       if (!listData || listData.mode !== "list") return null;
@@ -171,6 +195,7 @@ function CollectionRoute() {
         listData.name,
         listData.ownerHandle,
         listData.articles,
+        { did, rkey, listUri: listData.listUri },
       );
     }
     if (!collection) return null;

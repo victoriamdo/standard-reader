@@ -42,6 +42,7 @@ export type MagazineLoaderData =
       mode: "list";
       name: string;
       ownerHandle: string | null;
+      listUri: string | null;
       articles: Array<ArticleDetail>;
     };
 
@@ -97,6 +98,7 @@ export function prefetchCollectionMagazineArticles(
 export type MagazineCollectionBootstrap = {
   name: string;
   publicationName: string | null;
+  publicationUri: string | null;
   publicationParams: { did: string; rkey: string } | null;
   ownerHandle: string | null;
   editorial: CollectionEditorial | null;
@@ -128,6 +130,7 @@ export function bootstrapFromCollectionData(
   return {
     name: data.name,
     publicationName: data.publicationName,
+    publicationUri: data.publicationUri,
     publicationParams: data.publicationParams,
     ownerHandle: data.ownerHandle,
     editorial: data.editorial,
@@ -144,6 +147,7 @@ export function bootstrapFromCollectionDoc(
   return {
     name: article.title || article.publication?.name || "Collection",
     publicationName: article.publication?.name ?? null,
+    publicationUri: article.publicationUri,
     publicationParams: article.publicationUri
       ? publicationLinkParams(article.publicationUri)
       : null,
@@ -270,6 +274,7 @@ export async function loadMagazineData(
     mode: "list",
     name: listPage.list?.name ?? "The Standard Issue",
     ownerHandle: listPage.owner?.handle ?? null,
+    listUri: listPage.list?.uri ?? null,
     articles: details.filter((a): a is ArticleDetail => a != null),
   };
 }

@@ -128,7 +128,9 @@ export function PageReaderProvider({
   const narrationCacheRef = useRef(new Map<string, Promise<string | null>>());
   const { preference: voicePreference } = useReaderVoice();
   const voicePreferenceRef = useRef(voicePreference);
-  voicePreferenceRef.current = voicePreference;
+  useEffect(() => {
+    voicePreferenceRef.current = voicePreference;
+  }, [voicePreference]);
   const [state, setState] = useState<ReaderState>(INITIAL_STATE);
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
   const [scrollLocked, setScrollLocked] = useState(true);

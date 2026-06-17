@@ -4,6 +4,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import browserslist from "browserslist";
 import { browserslistToTargets } from "lightningcss";
+import { reactCompilerOxc } from "oxc-plugin-react-compiler";
 import { nitro } from "nitro/vite";
 import path from "node:path";
 import { defineConfig } from "vite";
@@ -42,6 +43,12 @@ const config = defineConfig({
     devtools(),
     nitro(),
     tanstackStart(),
+    reactCompilerOxc({
+      // Opt-in per module/function via "use memo" while rolling out the Rust compiler.
+      compilationMode: "annotation",
+      target: "19",
+      sources: ["src/"],
+    }),
     viteReact(),
   ],
   server: {

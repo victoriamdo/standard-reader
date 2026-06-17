@@ -8,6 +8,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { formatReaders, initials } from "#/components/reader/format";
+import type { AuthorProfile } from "#/integrations/tanstack-query/api-author.functions";
 import {
   AUTHOR_ACTIVITY_PAGE_SIZE,
   authorApi,
@@ -305,6 +306,20 @@ function AuthorProfilePage() {
     }),
   );
 
+  if (initialPage == null) {
+    return null;
+  }
+
+  return <AuthorProfileContent key={did} did={did} initialPage={initialPage} />;
+}
+
+function AuthorProfileContent({
+  did,
+  initialPage,
+}: {
+  did: string;
+  initialPage: AuthorProfile;
+}) {
   const [publications, setPublications] = useState<Array<PublicationCard>>(
     () => initialPage?.publications ?? [],
   );
@@ -325,17 +340,6 @@ function AuthorProfilePage() {
   const [recommendationsNextOffset, setRecommendationsNextOffset] = useState<
     number | null
   >(() => initialPage?.recommendationsNextOffset ?? null);
-
-  useEffect(() => {
-    setPublications(initialPage?.publications ?? []);
-    setPublicationsNextOffset(initialPage?.publicationsNextOffset ?? null);
-    setSubscriptions(initialPage?.subscriptions ?? []);
-    setSubscriptionsNextOffset(initialPage?.subscriptionsNextOffset ?? null);
-    setRecommendations(initialPage?.recommendations ?? []);
-    setRecommendationsNextOffset(
-      initialPage?.recommendationsNextOffset ?? null,
-    );
-  }, [initialPage]);
 
   const loadMorePublications = useCallback(async () => {
     if (publicationsNextOffset == null) return;

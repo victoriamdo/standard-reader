@@ -34,10 +34,26 @@ export interface MagFeature {
   note?: string | null;
 }
 
+/** Subscribe / follow target shown on the magazine end spread. */
+export type MagSubscribeTarget =
+  | {
+      kind: "publication";
+      uri: string;
+      name: string;
+      did: string;
+      rkey: string;
+    }
+  | {
+      kind: "list";
+      uri: string;
+      name: string;
+      did: string;
+      rkey: string;
+    };
+
 export interface MagIssue {
   name: string;
   no: string;
-  sub: string;
   ownerHandle: string | null;
   features: Array<MagFeature>;
   /** Collection-only: the owning publication's name, shown above the title. */
@@ -48,4 +64,6 @@ export interface MagIssue {
   coverImageUrl?: string | null;
   /** Collection-only: publication theme colors + Google fonts. */
   theme?: CollectionTheme | null;
+  /** Publication or list to promote on the end spread. */
+  subscribe?: MagSubscribeTarget | null;
 }

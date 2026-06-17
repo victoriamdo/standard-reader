@@ -20,7 +20,10 @@ export function LeafletContentRenderer({
   const blocks = leafletBlocks(content as LeafletContent);
   if (blocks.length === 0) return null;
 
-  let textSeen = false;
+  const firstTextIndex = blocks.findIndex((block, index) => {
+    if (skipFirstBlock && index === 0 && block.kind === "image") return false;
+    return block.kind === "text";
+  });
 
   return (
     <ArticleBody hasHero={hasHero}>
@@ -28,8 +31,7 @@ export function LeafletContentRenderer({
         if (skipFirstBlock && index === 0 && block.kind === "image") {
           return null;
         }
-        const dropCap = block.kind === "text" && !textSeen;
-        if (block.kind === "text") textSeen = true;
+        const dropCap = block.kind === "text" && index === firstTextIndex;
         return (
           <LeafletBlockView
             key={index}

@@ -125,6 +125,10 @@ export function AddPublicationModal({
   const setOpen = (next: boolean) => {
     if (isOpenProp === undefined) setInternalOpen(next);
     onOpenChange?.(next);
+    if (!next) {
+      setInput("");
+      setDebouncedQ("");
+    }
   };
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -139,9 +143,6 @@ export function AddPublicationModal({
   useEffect(() => {
     if (open) {
       inputRef.current?.focus();
-    } else {
-      setInput("");
-      setDebouncedQ("");
     }
   }, [open]);
 

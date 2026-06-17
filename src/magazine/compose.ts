@@ -72,13 +72,25 @@ export function composeIssue(
   name: string,
   ownerHandle: string | null,
   articles: Array<ArticleDetail>,
+  list?: { did: string; rkey: string; listUri: string | null },
 ): MagIssue {
+  const subscribe =
+    list?.listUri != null
+      ? ({
+          kind: "list",
+          uri: list.listUri,
+          name,
+          did: list.did,
+          rkey: list.rkey,
+        } satisfies MagIssue["subscribe"])
+      : null;
+
   return {
     name,
     no: "No. 1",
-    sub: "app.standard-reader.list",
     ownerHandle,
     features: articles.map((detail) => ({ meta: articleMeta(detail), detail })),
+    subscribe,
   };
 }
 
@@ -90,21 +102,34 @@ export function composeIssue(
 export function composeCollectionIssue(input: {
   name: string;
   publicationName: string | null;
+  publicationUri: string | null;
+  publicationParams: { did: string; rkey: string } | null;
   ownerHandle: string | null;
   editorial: CollectionEditorial | null;
   coverImageUrl: string | null;
   theme: CollectionTheme | null;
   features: Array<{ detail: ArticleDetail; note?: string | null }>;
 }): MagIssue {
+  const subscribe =
+    input.publicationUri && input.publicationParams
+      ? ({
+          kind: "publication",
+          uri: input.publicationUri,
+          name: input.publicationName ?? input.name,
+          did: input.publicationParams.did,
+          rkey: input.publicationParams.rkey,
+        } satisfies MagIssue["subscribe"])
+      : null;
+
   return {
     name: input.name,
     no: "No. 1",
-    sub: "app.standard-reader.collection",
     ownerHandle: input.ownerHandle,
     publicationName: input.publicationName,
     editorial: input.editorial,
     coverImageUrl: input.coverImageUrl,
     theme: input.theme,
+    subscribe,
     features: input.features.map((f) => ({
       meta: articleMeta(f.detail),
       detail: f.detail,

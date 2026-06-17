@@ -4,6 +4,7 @@ import { forwardRef } from "react";
 import type { MagFeature, MagIssue, MagMeta } from "./types";
 
 import { MagMarkdown } from "./MagMarkdown";
+import { MagazineEndSubscribe } from "./magazine-end-subscribe";
 
 /**
  * Collection editorial intro — a full spread after the cover, rendered only when
@@ -75,9 +76,8 @@ export function CoverFlow({
           <h1 className="cover-masthead">{issue.name}</h1>
         </div>
         <div className="cover-sub">
-          {issue.sub}
-          {issue.ownerHandle ? ` · @${issue.ownerHandle}` : ""}
-          {` · ${issue.features.length} features`}
+          {issue.ownerHandle ? `@${issue.ownerHandle} · ` : ""}
+          {issue.features.length} features
         </div>
       </section>
       <section className="flow-col cover-right">
@@ -164,23 +164,32 @@ export const FeatureFlow = forwardRef<
   );
 });
 
-export function EndCardFlow({ issue }: { issue: MagIssue }) {
-  return (
-    <section className="flow-col endcard">
-      <div className="kick">
-        <span>{issue.name}</span>
-        <span className="sep" />
-        <span>Colophon</span>
-      </div>
-      <h1 className="headline md">The End.</h1>
-      <div className="colophon">
-        {issue.name} · {issue.no}
-        <br />
-        {issue.features.length} features
-        {issue.ownerHandle ? ` · edited by @${issue.ownerHandle}` : ""}
-        <br />
-        {issue.sub}
-      </div>
-    </section>
-  );
-}
+export const EndCardFlow = forwardRef<HTMLElement, { issue: MagIssue }>(
+  function EndCardFlowComponent({ issue }, ref) {
+    const subscribe = issue.subscribe;
+    const ctaName = subscribe?.name ?? issue.publicationName ?? issue.name;
+
+    return (
+      <section className="flow-col endcard" ref={ref}>
+        <h1 className="headline md">The End.</h1>
+        {subscribe ? (
+          <div className="endcard-subscribe">
+            <h2 className="headline lg endcard-cta-title">{ctaName}</h2>
+            <p className="endcard-cta-dek">
+              {subscribe.kind === "publication"
+                ? "Subscribe to get new writing in your feed."
+                : "Follow this list to read new articles from its publications."}
+            </p>
+            <MagazineEndSubscribe target={subscribe} />
+          </div>
+        ) : null}
+        <div className="colophon">
+          {issue.name} · {issue.no}
+          <br />
+          {issue.features.length} features
+          {issue.ownerHandle ? ` · edited by @${issue.ownerHandle}` : ""}
+        </div>
+      </section>
+    );
+  },
+);

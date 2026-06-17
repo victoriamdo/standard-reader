@@ -20,7 +20,10 @@ export function PcktContentRenderer({
   const blocks = pcktBlocks(content as PcktContent);
   if (blocks.length === 0) return null;
 
-  let textSeen = false;
+  const firstTextIndex = blocks.findIndex((block, index) => {
+    if (skipFirstBlock && index === 0 && block.kind === "image") return false;
+    return block.kind === "text" && block.block.plaintext.trim().length > 0;
+  });
 
   return (
     <ArticleBody hasHero={hasHero}>
@@ -28,10 +31,7 @@ export function PcktContentRenderer({
         if (skipFirstBlock && index === 0 && block.kind === "image") {
           return null;
         }
-        const dropCap = block.kind === "text" && !textSeen;
-        if (block.kind === "text" && block.block.plaintext.trim()) {
-          textSeen = true;
-        }
+        const dropCap = block.kind === "text" && index === firstTextIndex;
         return (
           <PcktBlockView
             key={index}

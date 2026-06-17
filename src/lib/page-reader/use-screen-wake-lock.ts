@@ -10,7 +10,9 @@ import { useEffect, useRef } from "react";
 export function useScreenWakeLock(enabled: boolean): void {
   const sentinelRef = useRef<WakeLockSentinel | null>(null);
   const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
 
   useEffect(() => {
     if (!("wakeLock" in navigator)) return;

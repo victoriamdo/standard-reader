@@ -22,7 +22,10 @@ export function StructuredFormatContentRenderer({
   const blocks = structuredFormatBlocks(content) ?? [];
   if (blocks.length === 0) return null;
 
-  let textSeen = false;
+  const firstTextIndex = blocks.findIndex((block, index) => {
+    if (skipFirstBlock && index === 0 && block.kind === "image") return false;
+    return block.kind === "text" && block.text.plaintext.trim().length > 0;
+  });
 
   return (
     <ArticleBody hasHero={hasHero}>
@@ -30,10 +33,7 @@ export function StructuredFormatContentRenderer({
         if (skipFirstBlock && index === 0 && block.kind === "image") {
           return null;
         }
-        const dropCap = block.kind === "text" && !textSeen;
-        if (block.kind === "text" && block.text.plaintext.trim()) {
-          textSeen = true;
-        }
+        const dropCap = block.kind === "text" && index === firstTextIndex;
         return (
           <StructuredBlockView
             key={index}

@@ -105,9 +105,9 @@ interface Geom {
   gap: number;
 }
 
-function readGeom(): Geom {
-  const w = globalThis.window === undefined ? 1200 : globalThis.innerWidth;
-  const h = globalThis.window === undefined ? 900 : globalThis.innerHeight;
+function readGeom(width: number, height: number): Geom {
+  const w = width;
+  const h = height;
   const spread = w >= 760 && w > h;
   const perView = spread ? 2 : 1;
   const pageW = w / perView;
@@ -159,7 +159,7 @@ export function Magazine({
   const storageKey = `mag-slide:${issue.name}`;
 
   const [mounted, setMounted] = useState(false);
-  const [geom, setGeom] = useState<Geom>(() => readGeom());
+  const [geom, setGeom] = useState<Geom>(() => readGeom(390, 844));
   const [measure, setMeasure] = useState<Measure | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
   const [animate, setAnimate] = useState(false);
@@ -173,7 +173,9 @@ export function Magazine({
   const setDark = onDarkChange ?? setDarkInternal;
 
   const flowRef = useRef<HTMLDivElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
   const featureRefs = useRef<Array<HTMLElement | null>>([]);
+  const endRef = useRef<HTMLElement | null>(null);
   const restoredRef = useRef(false);
   const photoLightbox = useMagazineImageLightbox(flowRef);
 
@@ -188,7 +190,6 @@ export function Magazine({
       body.style.overflow = "hidden";
     }
     setMounted(true);
-    setGeom(readGeom());
     setShowHint(!localStorage.getItem("mag-seen"));
     if (!onDarkChange) {
       setDarkInternal(readMagazineDark(issue.theme));
@@ -203,24 +204,33 @@ export function Magazine({
     };
   }, [embedded, issue.theme, onDarkChange]);
 
+  // Page geometry follows the painted stage box (ResizeObserver), not viewport
+  // units — iOS Safari can report innerHeight/dvh larger than the visible area.
   useEffect(() => {
-    const onResize = () => {
-      const next = readGeom();
+    const stage = stageRef.current;
+    if (!stage || globalThis.ResizeObserver === undefined) return;
+
+    const syncGeom = () => {
+      const w = stage.clientWidth;
+      const h = stage.clientHeight;
+      if (w <= 0 || h <= 0) return;
+      const next = readGeom(w, h);
       setGeom((prev) =>
         prev.spread === next.spread &&
         prev.pageW === next.pageW &&
-        prev.pageH === next.pageH
+        prev.pageH === next.pageH &&
+        prev.hMargin === next.hMargin &&
+        prev.vMargin === next.vMargin
           ? prev
           : next,
       );
     };
-    globalThis.addEventListener("resize", onResize);
-    globalThis.addEventListener("orientationchange", onResize);
-    return () => {
-      globalThis.removeEventListener("resize", onResize);
-      globalThis.removeEventListener("orientationchange", onResize);
-    };
-  }, []);
+
+    syncGeom();
+    const observer = new ResizeObserver(syncGeom);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [mounted]);
 
   // Measure the fragmented flow → column + slide counts and feature anchors.
   const runMeasure = useCallback(() => {
@@ -229,17 +239,24 @@ export function Magazine({
 
     const pitch = geom.colW + geom.gap;
     if (pitch <= 0) return;
-    const columns = Math.max(
-      1,
-      Math.round((flow.scrollWidth + geom.gap) / pitch),
-    );
-    const slideCount = Math.max(1, Math.ceil(columns / geom.perView));
     const flowLeft = flow.getBoundingClientRect().left;
-    const featureCols = featureRefs.current.map((el) => {
-      if (!el) return 0;
+    const columnAt = (el: HTMLElement | null) => {
+      if (!el) return null;
       const x = el.getBoundingClientRect().left - flowLeft;
       return Math.max(0, Math.round(x / pitch));
-    });
+    };
+    // Ceil avoids under-counting the last column when scrollWidth is a few px
+    // short; the end-card anchor below guarantees the closing page is reachable.
+    let columns = Math.max(
+      1,
+      Math.ceil((flow.scrollWidth + geom.gap - 1) / pitch),
+    );
+    const endCol = columnAt(endRef.current);
+    if (endCol != null) {
+      columns = Math.max(columns, endCol + 1);
+    }
+    const slideCount = Math.max(1, Math.ceil(columns / geom.perView));
+    const featureCols = featureRefs.current.map((el) => columnAt(el) ?? 0);
     setMeasure((prev) =>
       prev &&
       prev.columns === columns &&
@@ -293,7 +310,19 @@ export function Magazine({
       for (const p of passes) clearTimeout(p);
       globalThis.removeEventListener("load", runMeasure);
     };
-  }, [runMeasure, themeFontTitle, themeFontBody]);
+  }, [runMeasure, themeFontTitle, themeFontBody, mounted]);
+
+  // Re-measure when flowed content reflows (late images, fonts, end card mount).
+  useEffect(() => {
+    const flow = flowRef.current;
+    if (!flow || !mounted) return;
+    if (globalThis.ResizeObserver === undefined) return;
+    const observer = new ResizeObserver(() => {
+      runMeasure();
+    });
+    observer.observe(flow);
+    return () => observer.disconnect();
+  }, [mounted, runMeasure]);
 
   const slideCount = measure?.slideCount ?? 1;
   const maxSlide = Math.max(0, slideCount - 1);
@@ -511,6 +540,7 @@ export function Magazine({
 
       <div
         className="mag-stage"
+        ref={stageRef}
         style={{
           ...stageStyle,
           visibility: revealStage ? "visible" : "hidden",
@@ -553,7 +583,12 @@ export function Magazine({
                   }}
                 />
               ))}
-              <EndCardFlow issue={issue} />
+              <EndCardFlow
+                issue={issue}
+                ref={(el) => {
+                  endRef.current = el;
+                }}
+              />
             </>
           ) : null}
         </div>
@@ -681,9 +716,7 @@ export function Magazine({
             {issue.name} &nbsp;·&nbsp; {issue.no}
           </div>
           <h2>Contents</h2>
-          <div className="sub">
-            {issue.sub} &nbsp;·&nbsp; {issue.features.length} features
-          </div>
+          <div className="sub">{issue.features.length} features</div>
         </div>
         <div className="toc-list">
           {issue.features.map((feature, i) => {
@@ -716,7 +749,12 @@ export function Magazine({
     <MagazineColorContext value={{ dark }}>
       {embedded ? (
         <div
-          style={{ ...shellStyle, position: "absolute", inset: 0 }}
+          style={{
+            ...shellStyle,
+            position: "absolute",
+            inset: 0,
+            overflow: "hidden",
+          }}
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >

@@ -72,6 +72,7 @@ import { formatCount } from "#/lib/format-count";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { SITE_NAME, siteSocialMeta } from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
+import { useDelayedLoading } from "#/lib/use-delayed-loading";
 import { useLoginSearch } from "#/utils/use-login-search";
 import { Check, LayoutGrid, List, Plus, Tag } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -85,27 +86,6 @@ const LOAD_MORE_SKELETON_COUNT = 3;
 const ARTICLE_SKELETON_ROWS = 8;
 /** Grace period before tab skeletons appear (avoids flash on fast loads). */
 const TAB_SKELETON_DELAY_MS = 150;
-
-function useDelayedLoading(active: boolean, delayMs: number): boolean {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (!active) {
-      setShow(false);
-      return;
-    }
-
-    const timer = globalThis.setTimeout(() => {
-      setShow(true);
-    }, delayMs);
-
-    return () => {
-      globalThis.clearTimeout(timer);
-    };
-  }, [active, delayMs]);
-
-  return show;
-}
 
 /** Legacy URLs used `view=grid|list` for publication layout before tabs shipped. */
 function normalizeTagSearch(search: unknown) {
@@ -943,7 +923,9 @@ function TagPage() {
   const { view, sort, layout } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const routePending = useRouterState({ select: (state) => state.isLoading });
-  const [pendingView, setPendingView] = useState<TagView | null>(null);
+  const [pendingViews, setPendingViews] = useState<
+    Partial<Record<string, TagView>>
+  >({});
 
   const { data: articleCount = 0 } = useSuspenseQuery(
     tagApi.getArticleCountQueryOptions({ tag }),
@@ -951,15 +933,6 @@ function TagPage() {
   const { data: publicationCount = 0 } = useSuspenseQuery(
     tagApi.getPublicationCountQueryOptions({ tag }),
   );
-
-  useEffect(() => {
-    setPendingView(null);
-  }, [tag]);
-
-  useEffect(() => {
-    if (routePending) return;
-    setPendingView(null);
-  }, [routePending]);
 
   const queryClient = useQueryClient();
 
@@ -1004,14 +977,15 @@ function TagPage() {
     return () => cancelIdle(idleId);
   }, [queryClient, routePending, sort, tag, view]);
 
-  const activeView = pendingView ?? view;
+  const pendingView = pendingViews[tag] ?? null;
+  const activeView = routePending ? (pendingView ?? view) : view;
   const displayTag = tagDisplayTitle(tag);
   const isFeed = activeView === "feed";
 
   const onViewChange = (key: React.Key) => {
     const next = key as TagView;
     if (next !== view) {
-      setPendingView(next);
+      setPendingViews((prev) => ({ ...prev, [tag]: next }));
     }
     void navigate({ search: (prev: TagSearch) => ({ ...prev, view: next }) });
   };

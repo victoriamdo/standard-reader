@@ -34,6 +34,7 @@
     "honeycomb:seed": "node --env-file=.env scripts/honeycomb-seed.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "pnpm exec oxlint .",
+    "lint:react-compiler": "eslint -c eslint.react-compiler.mjs --quiet src",
     "format": "pnpm exec oxfmt",
     "format:check": "pnpm exec oxfmt --check",
     "check": "pnpm exec oxfmt && pnpm exec oxlint . --fix",
@@ -95,10 +96,10 @@
     "media-chrome": "^4.19.1",
     "nitro": "3.0.260603-beta",
     "pg": "^8.21.0",
-    "react": "^19.2.0",
+    "react": "19.3.0-canary-43bcbf80-20260603",
     "react-aria": "^3.49.0",
     "react-aria-components": "^1.18.0",
-    "react-dom": "^19.2.0",
+    "react-dom": "19.3.0-canary-43bcbf80-20260603",
     "react-markdown": "^10.1.0",
     "react-stately": "^3.47.0",
     "rehype-katex": "^7.0.1",
@@ -137,6 +138,7 @@
     "hip-ui": "^0.3.0",
     "jsdom": "^28.1.0",
     "lightningcss": "^1.32.0",
+    "oxc-plugin-react-compiler": "^0.2.0",
     "oxfmt": "latest",
     "oxlint": "1.48.0",
     "typescript": "^6.0.2",
@@ -145,8 +147,17 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@oxc-plugin-react-compiler/binding-darwin-arm64",
+      "@oxc-plugin-react-compiler/binding-darwin-x64",
+      "@oxc-plugin-react-compiler/binding-linux-arm64-gnu",
+      "@oxc-plugin-react-compiler/binding-linux-x64-gnu",
+      "@oxc-plugin-react-compiler/binding-win32-x64-msvc",
       "esbuild",
       "lightningcss"
-    ]
+    ],
+    "overrides": {
+      "react": "19.3.0-canary-43bcbf80-20260603",
+      "react-dom": "19.3.0-canary-43bcbf80-20260603"
+    }
   }
 }

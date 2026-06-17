@@ -67,35 +67,29 @@ function SubscribePage() {
     readerApi.followPublicationMutationOptions(),
   );
   const subscribeStarted = useRef(false);
-  const [phase, setPhase] = useState<SubscribeCardPhase>("subscribing");
+  const [outcome, setOutcome] = useState<"idle" | "success">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const phase: SubscribeCardPhase = !followStatusReady
+    ? "subscribing"
+    : followStatus?.isFollowing
+      ? "already"
+      : outcome === "success"
+        ? "success"
+        : "subscribing";
+
   useEffect(() => {
-    if (!followStatusReady) {
-      setPhase("subscribing");
-      return;
-    }
-
-    if (followStatus?.isFollowing) {
-      setPhase("already");
-      return;
-    }
-
-    if (subscribeStarted.current) {
-      setPhase("subscribing");
-      return;
-    }
+    if (!followStatusReady) return;
+    if (followStatus?.isFollowing) return;
+    if (subscribeStarted.current) return;
 
     subscribeStarted.current = true;
-    setErrorMessage(null);
-    setPhase("subscribing");
     followPublication(publicationUri, {
       onSuccess: () => {
-        setPhase("success");
+        setOutcome("success");
       },
       onError: () => {
         subscribeStarted.current = false;
-        setPhase("subscribing");
         setErrorMessage("Couldn't subscribe. Try again from the publication.");
       },
     });

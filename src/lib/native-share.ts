@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 export function canNativeShare(): boolean {
   return (
@@ -10,13 +10,11 @@ export function canNativeShare(): boolean {
 }
 
 export function useNativeShareAvailable(): boolean {
-  const [available, setAvailable] = useState(false);
-
-  useEffect(() => {
-    setAvailable(canNativeShare());
-  }, []);
-
-  return available;
+  return useSyncExternalStore(
+    () => () => {},
+    canNativeShare,
+    () => false,
+  );
 }
 
 /** Opens the OS share sheet for a URL. Returns true if a share completed. */
