@@ -13,9 +13,6 @@ import { truncateAtWord } from "#/server/og/text";
 import { resolveQuoteOgColors } from "#/server/og/theme-colors";
 import satori from "satori";
 
-const OG_WIDTH = 1200;
-const OG_HEIGHT = 630;
-
 /** Width of the cover-image panel when the article has one. */
 const COVER_WIDTH = 420;
 
