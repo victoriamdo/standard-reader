@@ -91,4 +91,24 @@ describe("parseCollectionManifest", () => {
       }),
     ).toEqual({ items: [{ document: ITEM }] });
   });
+
+  it("parses markpub editorial, colophon, and item notes", () => {
+    const markpub = (markdown: string) => ({
+      $type: "at.markpub.markdown",
+      flavor: "gfm",
+      text: { $type: "at.markpub.text", markdown },
+    });
+
+    expect(
+      parseCollectionManifest({
+        editorial: { title: "Issue", body: markpub("Intro copy.") },
+        colophon: { body: markpub("Credits.") },
+        items: [{ document: ITEM, note: markpub("Curator note.") }],
+      }),
+    ).toEqual({
+      editorial: { title: "Issue", body: "Intro copy." },
+      colophon: { body: "Credits." },
+      items: [{ document: ITEM, note: "Curator note." }],
+    });
+  });
 });

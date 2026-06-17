@@ -54,8 +54,9 @@
           "maxLength": 160
         },
         "body": {
-          "type": "string",
-          "maxLength": 8000
+          "type": "union",
+          "refs": ["at.markpub.markdown"],
+          "description": "Editorial body as Markpub markdown (legacy plain string accepted on read during migration)."
         }
       }
     },
@@ -64,8 +65,9 @@
       "description": "Optional closing credits on the magazine end spread.",
       "properties": {
         "body": {
-          "type": "string",
-          "maxLength": 8000
+          "type": "union",
+          "refs": ["at.markpub.markdown"],
+          "description": "Colophon body as Markpub markdown (legacy plain string accepted on read during migration)."
         }
       }
     },
@@ -79,9 +81,9 @@
           "description": "AT URI of an included site.standard.document."
         },
         "note": {
-          "type": "string",
-          "maxLength": 2000,
-          "description": "Optional markdown note shown ahead of the piece."
+          "type": "union",
+          "refs": ["at.markpub.markdown"],
+          "description": "Optional Markpub markdown note shown ahead of the piece (legacy plain string accepted on read during migration)."
         }
       }
     }

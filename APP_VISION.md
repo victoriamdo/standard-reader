@@ -297,6 +297,7 @@ source of truth; Neon holds a derived view for speed and cross-network querying.
     `createdAt`; deterministic rkey so save/unsave/status address one record).
   - `app.standard-reader.collection` — curated magazine manifest for a
     `site.standard.document` (same rkey sidecar: editorial, colophon, ordered items).
+    Editorial body, colophon, and per-item notes are stored as `at.markpub.markdown`.
   - `app.standard-reader.collectionsPublication` — marks a
     `site.standard.publication` as a collections series (same rkey sidecar).
   - `app.standard-reader.publicationTheme` — Google Font names for a collections

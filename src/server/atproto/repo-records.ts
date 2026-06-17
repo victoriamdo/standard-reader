@@ -16,6 +16,7 @@ import {
   collectionDocumentUri,
   collectionsPublicationUri,
 } from "#/lib/atproto/collection-uris.ts";
+import { serializeCollectionManifestForRepo } from "#/lib/markpub/collection-fields.ts";
 import { createHash } from "node:crypto";
 import { buildAtUri } from "./uri.ts";
 
@@ -568,6 +569,7 @@ export async function putCollectionRecord(
   },
 ): Promise<{ uri: string; cid: string }> {
   const { manifest } = collection;
+  const serialized = serializeCollectionManifestForRepo(manifest);
   return repoPutRecord(client, {
     repo,
     collection: COLLECTION.collection,
@@ -575,12 +577,9 @@ export async function putCollectionRecord(
     record: {
       $type: COLLECTION.collection,
       document: collection.documentUri,
-      ...(manifest.editorial ? { editorial: manifest.editorial } : {}),
-      ...(manifest.colophon ? { colophon: manifest.colophon } : {}),
-      items: manifest.items.map((item) => ({
-        document: item.document,
-        ...(item.note ? { note: item.note } : {}),
-      })),
+      ...(serialized.editorial ? { editorial: serialized.editorial } : {}),
+      ...(serialized.colophon ? { colophon: serialized.colophon } : {}),
+      items: serialized.items,
       createdAt: collection.createdAt,
       ...(collection.updatedAt ? { updatedAt: collection.updatedAt } : {}),
     },

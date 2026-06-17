@@ -1,5 +1,5 @@
 import { collectionPieceReadUrl } from "#/components/reader/format";
-import { MARKPUB_MARKDOWN, MARKPUB_TEXT } from "#/lib/markpub/types.ts";
+import { collectionMarkpubContent } from "#/lib/markpub/collection-fields.ts";
 
 import type { CollectionColophon, CollectionEditorial } from "./manifest.ts";
 
@@ -111,13 +111,4 @@ export function composeCollectionNewsletter(input: {
   return `${parts.join("\n\n")}\n`;
 }
 
-/** Wrap newsletter markdown as an `at.markpub.markdown` content union. */
-export function collectionMarkpubContent(
-  markdown: string,
-): Record<string, unknown> {
-  return {
-    $type: MARKPUB_MARKDOWN,
-    flavor: "gfm",
-    text: { $type: MARKPUB_TEXT, markdown },
-  };
-}
+export { collectionMarkpubContent } from "#/lib/markpub/collection-fields.ts";

@@ -1,12 +1,16 @@
 /**
  * The Standard Reader "Collection" manifest — the structured representation our
  * renderer reads. Stored in the user's repo as an `app.standard-reader.collection`
- * sidecar record (same rkey as the `site.standard.document` shell). Theme/fonts
+ * sidecar record (same rkey as the `site.standard.document` shell). Editorial,
+ * colophon, and item notes are stored as `at.markpub.markdown` in the repo;
+ * this module normalizes them to plain markdown strings on read. Theme/fonts
  * live on the owning publication via `app.standard-reader.publicationTheme`.
  *
  * Client-safe (no server-only imports): used by the ingest mapper, the write
  * composer, the read-model shapes, and the magazine/collection renderers.
  */
+
+import { markdownFromCollectionField } from "#/lib/markpub/collection-fields";
 
 /** Legacy extension field on `site.standard.document` (pre-sidecar). */
 export const LEGACY_READER_COLLECTION_FIELD = "readerCollection";
@@ -14,11 +18,13 @@ export const LEGACY_READER_COLLECTION_FIELD = "readerCollection";
 /** An optional editorial intro. Both title and body are optional. */
 export interface CollectionEditorial {
   title?: string;
+  /** Plain markdown extracted from stored `at.markpub.markdown` (or legacy string). */
   body?: string;
 }
 
 /** Optional closing credits on the magazine end spread (markdown body). */
 export interface CollectionColophon {
+  /** Plain markdown extracted from stored `at.markpub.markdown` (or legacy string). */
   body?: string;
 }
 
@@ -26,7 +32,7 @@ export interface CollectionColophon {
 export interface CollectionItem {
   /** at-uri of the included `site.standard.document`. */
   document: string;
-  /** Optional markdown note shown ahead of the piece. */
+  /** Optional markdown note extracted from stored `at.markpub.markdown` (or legacy string). */
   note?: string;
 }
 
@@ -50,14 +56,16 @@ function parseEditorial(value: unknown): CollectionEditorial | undefined {
   if (!value || typeof value !== "object") return undefined;
   const raw = value as Record<string, unknown>;
   const title = cleanString(raw.title);
-  const body = cleanString(raw.body);
+  const body = markdownFromCollectionField(raw.body);
   if (title === undefined && body === undefined) return undefined;
   return { ...(title ? { title } : {}), ...(body ? { body } : {}) };
 }
 
 function parseColophon(value: unknown): CollectionColophon | undefined {
   if (!value || typeof value !== "object") return undefined;
-  const body = cleanString((value as Record<string, unknown>).body);
+  const body = markdownFromCollectionField(
+    (value as Record<string, unknown>).body,
+  );
   if (body === undefined) return undefined;
   return { body };
 }
@@ -67,7 +75,7 @@ function parseItem(value: unknown): CollectionItem | null {
   const raw = value as Record<string, unknown>;
   const document = cleanString(raw.document);
   if (!document) return null;
-  const note = cleanString(raw.note);
+  const note = markdownFromCollectionField(raw.note);
   return { document, ...(note ? { note } : {}) };
 }
 
