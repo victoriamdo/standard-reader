@@ -1,9 +1,13 @@
+"use client";
+
 import { ArticleContent } from "#/components/reader/content/article-content";
 import { forwardRef } from "react";
 
 import type { MagFeature, MagIssue, MagMeta } from "./types";
 
+import { MagHoverButton } from "./mag-hover-button";
 import { MagMarkdown } from "./MagMarkdown";
+import { MagazineEndLike } from "./magazine-end-like";
 import { MagazineEndSubscribe } from "./magazine-end-subscribe";
 
 /**
@@ -86,7 +90,7 @@ export function CoverFlow({
         </div>
         <div className="cover-toc-list">
           {issue.features.map((f, i) => (
-            <button
+            <MagHoverButton
               type="button"
               className="cover-toc-row"
               key={f.meta.id}
@@ -95,7 +99,7 @@ export function CoverFlow({
               <span className="n">{String(i + 1).padStart(2, "0")}</span>
               <span className="t">{f.meta.title}</span>
               <span className="p">{f.meta.pubName}</span>
-            </button>
+            </MagHoverButton>
           ))}
         </div>
       </section>
@@ -182,6 +186,12 @@ export const EndCardFlow = forwardRef<HTMLElement, { issue: MagIssue }>(
             </p>
             <MagazineEndSubscribe target={subscribe} />
           </div>
+        ) : null}
+        {issue.documentUri ? (
+          <MagazineEndLike
+            documentUri={issue.documentUri}
+            recommendCount={issue.recommendCount ?? 0}
+          />
         ) : null}
         <div className="colophon">
           {issue.name} · {issue.no}

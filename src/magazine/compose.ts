@@ -108,6 +108,8 @@ export function composeCollectionIssue(input: {
   editorial: CollectionEditorial | null;
   coverImageUrl: string | null;
   theme: CollectionTheme | null;
+  documentUri?: string | null;
+  recommendCount?: number;
   features: Array<{ detail: ArticleDetail; note?: string | null }>;
 }): MagIssue {
   const subscribe =
@@ -130,6 +132,8 @@ export function composeCollectionIssue(input: {
     coverImageUrl: input.coverImageUrl,
     theme: input.theme,
     subscribe,
+    documentUri: input.documentUri ?? null,
+    recommendCount: input.recommendCount ?? 0,
     features: input.features.map((f) => ({
       meta: articleMeta(f.detail),
       detail: f.detail,

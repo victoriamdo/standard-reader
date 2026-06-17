@@ -14,6 +14,7 @@ import type { MagIssue } from "./types";
 import { MagazineColorContext } from "./context";
 import { readMagazineDark } from "./dark-mode";
 import { CoverFlow, EditorialFlow, EndCardFlow, FeatureFlow } from "./flow";
+import { MagHoverButton } from "./mag-hover-button";
 import { MagazineShell } from "./magazine-shell";
 import { useMagazineImageLightbox } from "./use-magazine-image-lightbox";
 
@@ -177,6 +178,8 @@ export function Magazine({
   const featureRefs = useRef<Array<HTMLElement | null>>([]);
   const endRef = useRef<HTMLElement | null>(null);
   const restoredRef = useRef(false);
+  const measureRafRef = useRef(0);
+  const lastScrollWidthRef = useRef(0);
   const photoLightbox = useMagazineImageLightbox(flowRef);
 
   // Own the viewport while mounted (shell handles overflow when embedded).
@@ -245,17 +248,39 @@ export function Magazine({
       const x = el.getBoundingClientRect().left - flowLeft;
       return Math.max(0, Math.round(x / pitch));
     };
-    // Ceil avoids under-counting the last column when scrollWidth is a few px
-    // short; the end-card anchor below guarantees the closing page is reachable.
+    const columnSpanEnd = (el: HTMLElement | null) => {
+      if (!el) return null;
+      const x = el.getBoundingClientRect().right - flowLeft;
+      return Math.max(0, Math.ceil(x / pitch) - 1);
+    };
+    // scrollWidth is the source of truth for total flowed columns. clientWidth /
+    // ResizeObserver stay fixed while columns accrue, so callers must re-run this
+    // when async content (images, fonts, end-spread widgets) settles.
     let columns = Math.max(
       1,
       Math.ceil((flow.scrollWidth + geom.gap - 1) / pitch),
     );
-    const endCol = columnAt(endRef.current);
-    if (endCol != null) {
-      columns = Math.max(columns, endCol + 1);
+    const endEl = endRef.current;
+    const endStartCol = columnAt(endEl);
+    const endSpanCol = columnSpanEnd(endEl);
+    if (mounted && !endEl) return;
+
+    const endAnchorCol =
+      endStartCol != null
+        ? Math.max(endStartCol, endSpanCol ?? endStartCol)
+        : null;
+    if (endAnchorCol != null) {
+      // Spread: end column + facing page. Single: end column only (perView = 1).
+      columns = Math.max(columns, endAnchorCol + geom.perView);
     }
-    const slideCount = Math.max(1, Math.ceil(columns / geom.perView));
+    let slideCount = Math.max(1, Math.ceil(columns / geom.perView));
+    if (endStartCol != null) {
+      slideCount = Math.max(
+        slideCount,
+        Math.floor(endStartCol / geom.perView) + 1,
+      );
+    }
+    lastScrollWidthRef.current = flow.scrollWidth;
     const featureCols = featureRefs.current.map((el) => columnAt(el) ?? 0);
     setMeasure((prev) =>
       prev &&
@@ -266,22 +291,43 @@ export function Magazine({
         ? prev
         : { columns, slideCount, featureCols },
     );
-  }, [geom, issue.features.length]);
+  }, [
+    geom,
+    issue.documentUri,
+    issue.features.length,
+    issue.subscribe?.uri,
+    mounted,
+  ]);
+
+  const scheduleMeasure = useCallback(() => {
+    cancelAnimationFrame(measureRafRef.current);
+    measureRafRef.current = requestAnimationFrame(runMeasure);
+  }, [runMeasure]);
+
+  const setEndRef = useCallback(
+    (el: HTMLElement | null) => {
+      endRef.current = el;
+      if (el) scheduleMeasure();
+    },
+    [scheduleMeasure],
+  );
+
+  // Reset pagination when the issue changes.
+  useEffect(() => {
+    setMeasure(null);
+    restoredRef.current = false;
+    lastScrollWidthRef.current = 0;
+  }, [issue.name, issue.features.length]);
 
   // Re-measure after fonts + late images settle, and whenever geometry changes.
   const themeFontTitle = issue.theme?.fontTitle;
   const themeFontBody = issue.theme?.fontBody;
   useEffect(() => {
-    setMeasure(null);
-    let raf = 0;
     const passes: Array<ReturnType<typeof setTimeout>> = [];
-    const schedule = () => {
-      raf = requestAnimationFrame(runMeasure);
-    };
     if (typeof document !== "undefined" && document.fonts?.ready) {
-      void document.fonts.ready.then(schedule);
+      void document.fonts.ready.then(scheduleMeasure);
     } else {
-      schedule();
+      scheduleMeasure();
     }
     // Custom Google fonts load lazily after their <link> is added, so
     // `fonts.ready` can resolve before they arrive and pagination ends up
@@ -299,30 +345,67 @@ export function Magazine({
         families.map((family) =>
           document.fonts.load(`1em "${family}"`).catch(() => []),
         ),
-      ).then(runMeasure);
+      ).then(scheduleMeasure);
     }
-    for (const delay of [200, 600, 1500, 3000]) {
-      passes.push(setTimeout(runMeasure, delay));
+    for (const delay of [200, 600, 1500, 3000, 6000, 10000]) {
+      passes.push(setTimeout(scheduleMeasure, delay));
     }
-    globalThis.addEventListener("load", runMeasure);
+    globalThis.addEventListener("load", scheduleMeasure);
     return () => {
-      cancelAnimationFrame(raf);
       for (const p of passes) clearTimeout(p);
-      globalThis.removeEventListener("load", runMeasure);
+      globalThis.removeEventListener("load", scheduleMeasure);
     };
-  }, [runMeasure, themeFontTitle, themeFontBody, mounted]);
+  }, [scheduleMeasure, themeFontTitle, themeFontBody, mounted]);
 
-  // Re-measure when flowed content reflows (late images, fonts, end card mount).
+  // Measure synchronously after commit so end-card refs are attached before rAF.
+  useLayoutEffect(() => {
+    if (!mounted) return;
+    runMeasure();
+  }, [mounted, runMeasure]);
+
+  // Async content grows scrollWidth without changing clientWidth, so
+  // ResizeObserver alone misses new columns. Poll + DOM/image hooks catch it.
   useEffect(() => {
     const flow = flowRef.current;
     if (!flow || !mounted) return;
-    if (globalThis.ResizeObserver === undefined) return;
-    const observer = new ResizeObserver(() => {
-      runMeasure();
-    });
-    observer.observe(flow);
-    return () => observer.disconnect();
-  }, [mounted, runMeasure]);
+
+    const onImageLoad = (event: Event) => {
+      if (event.target instanceof HTMLImageElement) scheduleMeasure();
+    };
+    flow.addEventListener("load", onImageLoad, true);
+
+    let mutationObserver: MutationObserver | undefined;
+    if (globalThis.MutationObserver !== undefined) {
+      mutationObserver = new MutationObserver(scheduleMeasure);
+      mutationObserver.observe(flow, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    let resizeObserver: ResizeObserver | undefined;
+    if (globalThis.ResizeObserver !== undefined) {
+      resizeObserver = new ResizeObserver(scheduleMeasure);
+      resizeObserver.observe(flow);
+    }
+
+    // scrollWidth accrues as columns fragment; clientWidth stays one page wide.
+    const poll = setInterval(() => {
+      const el = flowRef.current;
+      if (!el) return;
+      if (el.scrollWidth !== lastScrollWidthRef.current) scheduleMeasure();
+    }, 250);
+    const stopPoll = setTimeout(() => clearInterval(poll), 20_000);
+
+    return () => {
+      flow.removeEventListener("load", onImageLoad, true);
+      mutationObserver?.disconnect();
+      resizeObserver?.disconnect();
+      clearInterval(poll);
+      clearTimeout(stopPoll);
+    };
+  }, [mounted, scheduleMeasure, issue.documentUri, issue.subscribe?.uri]);
 
   const slideCount = measure?.slideCount ?? 1;
   const maxSlide = Math.max(0, slideCount - 1);
@@ -583,12 +666,7 @@ export function Magazine({
                   }}
                 />
               ))}
-              <EndCardFlow
-                issue={issue}
-                ref={(el) => {
-                  endRef.current = el;
-                }}
-              />
+              <EndCardFlow issue={issue} ref={setEndRef} />
             </>
           ) : null}
         </div>
@@ -640,37 +718,37 @@ export function Magazine({
         tabIndex={-1}
       />
 
-      <button
+      <MagHoverButton
         className={`toc-btn ${chromeOn ? "show" : ""}`}
         onClick={() => setToc(true)}
       >
         <span className="mk">S</span>
         Contents
-      </button>
+      </MagHoverButton>
 
-      <button
+      <MagHoverButton
         className={`reader-btn ${chromeOn ? "show" : ""}`}
         onClick={onOpenReader}
         aria-label="Switch to reader view"
       >
         Reader
-      </button>
+      </MagHoverButton>
 
-      <button
+      <MagHoverButton
         className={`theme-btn ${chromeOn ? "show" : ""}`}
         onClick={toggleDark}
         aria-label={dark ? "Switch to light paper" : "Switch to dark paper"}
       >
         {dark ? Icon.sun : Icon.moon}
-      </button>
+      </MagHoverButton>
 
-      <button
+      <MagHoverButton
         className={`exit-btn ${chromeOn ? "show" : ""}`}
         onClick={onExit}
         aria-label="Close magazine"
       >
         {Icon.close}
-      </button>
+      </MagHoverButton>
 
       {showHint ? (
         <div className="hint">
@@ -682,26 +760,26 @@ export function Magazine({
       ) : null}
 
       <div className={`dock ${chromeOn ? "show" : ""}`}>
-        <button
+        <MagHoverButton
           onClick={() => go(-1)}
           disabled={activeSlide <= 0 || photoLightbox.isOpen}
           aria-label="Previous"
         >
           {Icon.prev}
-        </button>
+        </MagHoverButton>
         <div className="pos">
           <span className="ttl">{currentTitle}</span>
           <span>
             {activeSlide + 1} / {slideCount}
           </span>
         </div>
-        <button
+        <MagHoverButton
           onClick={() => go(1)}
           disabled={activeSlide >= maxSlide || photoLightbox.isOpen}
           aria-label="Next"
         >
           {Icon.next}
-        </button>
+        </MagHoverButton>
       </div>
 
       <button
@@ -724,7 +802,7 @@ export function Magazine({
             const num = Math.max(1, col - firstFeatureCol + 1);
             const active = featureForColumn(leftCol) === i;
             return (
-              <button
+              <MagHoverButton
                 key={feature.meta.id}
                 className={`toc-row ${active ? "on" : ""}`}
                 onClick={() => jumpToColumn(col)}
@@ -737,7 +815,7 @@ export function Magazine({
                   <span className="t">{feature.meta.title}</span>
                 </span>
                 <span className="mins">{feature.meta.minutes}m</span>
-              </button>
+              </MagHoverButton>
             );
           })}
         </div>

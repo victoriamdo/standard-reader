@@ -14,6 +14,30 @@ import { useLoginSearch } from "#/utils/use-login-search";
 
 import type { MagSubscribeTarget } from "./types";
 
+import { MagHoverButton } from "./mag-hover-button";
+import { useMagHover } from "./use-mag-hover";
+
+function LoginLink({
+  search,
+  children,
+}: {
+  search: ReturnType<typeof useLoginSearch> & { intent?: "subscribe" };
+  children: string;
+}) {
+  const { hoverProps, isHovered } = useMagHover();
+  return (
+    <Link
+      to="/login"
+      search={search}
+      className="endcard-subscribe-btn"
+      {...hoverProps}
+      data-hovered={isHovered || undefined}
+    >
+      {children}
+    </Link>
+  );
+}
+
 function SubscribeButton({
   label,
   pending,
@@ -26,14 +50,14 @@ function SubscribeButton({
   onPress: () => void;
 }) {
   return (
-    <button
+    <MagHoverButton
       type="button"
       className={`endcard-subscribe-btn${following ? " is-following" : ""}`}
       disabled={pending}
       onClick={onPress}
     >
       {pending ? "Subscribing…" : label}
-    </button>
+    </MagHoverButton>
   );
 }
 
@@ -63,13 +87,9 @@ function PublicationEndSubscribe({
 
   if (!signedIn) {
     return (
-      <Link
-        to="/login"
-        search={{ ...loginSearch, intent: "subscribe" }}
-        className="endcard-subscribe-btn"
-      >
+      <LoginLink search={{ ...loginSearch, intent: "subscribe" }}>
         Subscribe
-      </Link>
+      </LoginLink>
     );
   }
 
@@ -116,11 +136,7 @@ function ListEndSubscribe({
   const pending = saveMutation.isPending || unsaveMutation.isPending;
 
   if (!signedIn) {
-    return (
-      <Link to="/login" search={loginSearch} className="endcard-subscribe-btn">
-        Follow list
-      </Link>
-    );
+    return <LoginLink search={loginSearch}>Follow list</LoginLink>;
   }
 
   const onPress = () => {

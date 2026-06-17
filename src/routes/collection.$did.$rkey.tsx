@@ -201,6 +201,8 @@ function CollectionRouteView({
     if (!collection) return null;
     return composeCollectionIssue({
       ...bootstrapFromCollectionData(collection),
+      documentUri: collection.collectionDoc.uri,
+      recommendCount: collection.collectionDoc.recommendCount,
       features: collection.features,
     });
   }, [collection, isListMode, listData]);

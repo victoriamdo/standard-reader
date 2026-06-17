@@ -291,6 +291,10 @@
 .mag .feature-body a:not(#\#):not(#\#):not(#\#):hover {
   color: var(--accent);
 }
+/* Editorial + editor's-note markdown links — hover via useHover in MagMarkdown. */
+.mag :is(.editorial-body, .feature-note-body) a[data-hovered] {
+  color: var(--accent);
+}
 /* Inline code / highlight chips — ArticleContent uses the reader StyleX palette. */
 .mag .feature-body code:not(#\#):not(#\#):not(#\#) {
   border-radius: 3px;
@@ -746,7 +750,7 @@
 .mag .cover-toc-row:first-of-type {
   border-top: 2px solid var(--line-strong);
 }
-.mag .cover-toc-row:hover {
+.mag .cover-toc-row[data-hovered] {
   background: var(--paper-sunk);
   padding-left: 0.5em;
 }
@@ -774,6 +778,15 @@
 .mag .endcard {
   break-before: column;
   justify-content: center;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mag .mag-flow.spread .endcard {
+  break-after: column;
+}
+.mag .mag-flow.single .endcard {
+  break-after: avoid;
 }
 .mag .endcard::before {
   content: "";
@@ -836,7 +849,7 @@
     color 0.14s,
     opacity 0.14s;
 }
-.mag .endcard-subscribe-btn:hover {
+.mag .endcard-subscribe-btn[data-hovered] {
   background: var(--accent-ink);
   border-color: var(--accent-ink);
   color: var(--paper);
@@ -850,10 +863,81 @@
   border-color: var(--line-strong);
   color: var(--ink);
 }
-.mag .endcard-subscribe-btn.is-following:hover {
+.mag .endcard-subscribe-btn.is-following[data-hovered] {
   background: var(--paper-sunk);
   border-color: var(--line-strong);
   color: var(--ink);
+}
+
+.mag .endcard-like {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1.6em;
+}
+.mag .endcard-like-dek {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(15px, 1.15vw, 19px);
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 32ch;
+}
+.mag .endcard-like-btn {
+  margin-top: 1.2em;
+  align-self: flex-start;
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55em;
+  font-family: var(--sans);
+  font-size: clamp(12px, 0.85vw, 14px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  min-height: 2.75em;
+  padding: 0.65em 1.2em;
+  transition:
+    background 0.14s,
+    border-color 0.14s,
+    color 0.14s,
+    opacity 0.14s;
+}
+.mag .endcard-like-btn[data-hovered] {
+  background: var(--paper-sunk);
+  border-color: var(--ink);
+}
+.mag .endcard-like-btn:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+.mag .endcard-like-btn.is-liked {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line-strong));
+  background: color-mix(in srgb, var(--accent) 12%, var(--paper));
+}
+.mag .endcard-like-btn.is-liked[data-hovered] {
+  background: color-mix(in srgb, var(--accent) 18%, var(--paper));
+  border-color: var(--accent);
+}
+.mag .endcard-like-heart {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.mag .endcard-like-divider {
+  align-self: stretch;
+  border-left: 1px solid var(--line-strong);
+  margin-inline: 0.15em;
+  width: 0;
+}
+.mag .endcard-like-count {
+  color: var(--muted);
+  font-weight: 500;
+  min-width: 1.5em;
+  text-align: center;
 }
 
 /* ============================================================
@@ -967,7 +1051,7 @@
     opacity 0.14s;
   cursor: pointer;
 }
-.mag .dock button:hover {
+.mag .dock button[data-hovered] {
   background: var(--hud-hover);
   color: var(--accent);
 }
@@ -1063,9 +1147,9 @@
   opacity: 1;
   pointer-events: auto;
 }
-.mag .exit-btn:hover,
-.mag .theme-btn:hover,
-.mag .reader-btn:hover {
+.mag .exit-btn[data-hovered],
+.mag .theme-btn[data-hovered],
+.mag .reader-btn[data-hovered] {
   background: color-mix(in oklab, var(--ink) 78%, transparent);
   color: var(--accent);
 }
@@ -1099,7 +1183,7 @@
   opacity: 1;
   pointer-events: auto;
 }
-.mag .toc-btn:hover {
+.mag .toc-btn[data-hovered] {
   background: color-mix(in oklab, var(--ink) 78%, transparent);
 }
 .mag .toc-btn .mk {
@@ -1198,7 +1282,7 @@
   border-bottom: 1px solid var(--line);
   transition: background 0.13s;
 }
-.mag .toc-row:hover {
+.mag .toc-row[data-hovered] {
   background: var(--paper-sunk);
 }
 .mag .toc-row.on {

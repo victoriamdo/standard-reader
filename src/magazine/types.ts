@@ -66,4 +66,8 @@ export interface MagIssue {
   theme?: CollectionTheme | null;
   /** Publication or list to promote on the end spread. */
   subscribe?: MagSubscribeTarget | null;
+  /** Collection document URI — enables the end-spread like button. */
+  documentUri?: string | null;
+  /** Cached recommend count for {@link documentUri}. */
+  recommendCount?: number;
 }
