@@ -149,10 +149,21 @@
 .mag .feature-body img,
 .mag .feature-body pre,
 .mag .feature-body table,
-.mag .feature-body blockquote,
-.mag .feature-body ul,
-.mag .feature-body ol {
+.mag .feature-body blockquote {
   break-inside: avoid;
+}
+/* Lists should pack into leftover column space (e.g. page 4 tail). inline-block
+   is the WebKit/Blink multicol workaround; avoid break-inside on ul/li so items
+   can start on the previous page instead of jumping as a block. */
+.mag .feature-body :is(ul, ol) {
+  break-inside: auto;
+  display: inline-block;
+  width: 100%;
+}
+.mag .feature-body :is(ul, ol) > :is(li, dt, dd) {
+  break-inside: auto;
+  orphans: 2;
+  widows: 2;
 }
 
 /* In-body block photos — intrinsic width (up to column), max 40vh, centered,
@@ -255,6 +266,10 @@
 }
 .mag .feature-body :is(h1, h2, h3) {
   break-after: avoid;
+}
+/* Don't drag a whole list to the next page just to sit under a heading orphan. */
+.mag .feature-body :is(h1, h2, h3):has(+ :is(ul, ol)) {
+  break-after: auto;
 }
 /* Safety net: keep in-body headings legible on the light paper. */
 .mag .feature-body :is(h1, h2, h3, h4, h5, h6) {
@@ -1274,8 +1289,18 @@
 .mag .editorial-body :is(p, ul, ol) {
   margin: 0 0 0.85em;
 }
-.mag .editorial-body :is(figure, img, pre, blockquote, table, ul, ol) {
+.mag .editorial-body :is(figure, img, pre, blockquote, table) {
   break-inside: avoid;
+}
+.mag .editorial-body :is(ul, ol) {
+  break-inside: auto;
+  display: inline-block;
+  width: 100%;
+}
+.mag .editorial-body :is(ul, ol) > :is(li, dt, dd) {
+  break-inside: auto;
+  orphans: 2;
+  widows: 2;
 }
 .mag .editorial-body :is(h1, h2, h3) {
   font-family: var(--mag-title-font, var(--serif));
@@ -1283,6 +1308,9 @@
   color: var(--ink);
   margin: 0.6em 0 0.2em;
   break-after: avoid;
+}
+.mag .editorial-body :is(h1, h2, h3):has(+ :is(ul, ol)) {
+  break-after: auto;
 }
 .mag .editorial-body a {
   color: var(--accent-ink);

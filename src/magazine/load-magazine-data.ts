@@ -2,10 +2,12 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import type { CollectionEditorial } from "#/lib/collections/manifest";
 
+import { queryOptions } from "@tanstack/react-query";
 import {
   documentUriFromParams,
   publicationLinkParams,
 } from "#/components/reader/format";
+import { getQueryClient } from "#/integrations/tanstack-query/query-client";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 
@@ -56,6 +58,47 @@ export function prefetchCollectionMagazineArticles(
       publicationApi.getArticleQueryOptions(item.document),
     );
   }
+}
+
+export type MagazineShellData = {
+  isCollection: boolean;
+  theme: ArticleDetail["collectionTheme"];
+};
+
+export async function loadMagazineShell(
+  queryClient: QueryClient,
+  params: { did: string; rkey: string },
+): Promise<MagazineShellData> {
+  const article = await fetchArticleDetail(
+    queryClient,
+    documentUriFromParams(params.did, params.rkey),
+  );
+  return {
+    isCollection: Boolean(article?.collection),
+    theme: article?.collectionTheme ?? null,
+  };
+}
+
+export function getMagazineShellQueryOptions(params: {
+  did: string;
+  rkey: string;
+}) {
+  return queryOptions({
+    queryKey: ["magazine", "shell", params.did, params.rkey] as const,
+    queryFn: () => loadMagazineShell(getQueryClient(), params),
+    staleTime: 60_000,
+  });
+}
+
+export function getMagazineDataQueryOptions(
+  params: { did: string; rkey: string },
+  deps: MagazineSearchDeps = {},
+) {
+  return queryOptions({
+    queryKey: ["magazine", params.did, params.rkey, deps.ids ?? ""] as const,
+    queryFn: () => loadMagazineData(getQueryClient(), params, deps),
+    staleTime: 60_000,
+  });
 }
 
 export async function loadMagazineData(

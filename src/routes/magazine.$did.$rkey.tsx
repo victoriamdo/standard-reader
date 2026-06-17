@@ -1,3 +1,6 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
 import {
   createFileRoute,
   useCanGoBack,
@@ -13,8 +16,17 @@ import { useMemo } from "react";
 import { z } from "zod";
 
 import { composeCollectionIssue, composeIssue } from "../magazine/compose";
-import { loadMagazineData } from "../magazine/load-magazine-data";
+import {
+  fetchMagazineFontPreloadLinks,
+  magazineThemeFontHeadLinks,
+} from "../magazine/font-preload";
+import {
+  getMagazineDataQueryOptions,
+  getMagazineShellQueryOptions,
+  type MagazineShellData,
+} from "../magazine/load-magazine-data";
 import { Magazine } from "../magazine/Magazine";
+import { MagazineShell } from "../magazine/magazine-shell";
 import "../magazine/magazine.css";
 
 const magazineSearchSchema = z.object({
@@ -23,35 +35,65 @@ const magazineSearchSchema = z.object({
   ids: z.string().optional(),
 });
 
-function MagazinePending() {
+function magazinePendingLabel(shell: MagazineShellData | null | undefined) {
+  return shell?.isCollection === false
+    ? "Opening the issue…"
+    : "Opening the collection…";
+}
+
+function MagazinePendingView({
+  shell,
+}: {
+  shell: MagazineShellData | null | undefined;
+}) {
   return (
-    <div className="mag" aria-busy="true" aria-label="Loading magazine">
+    <MagazineShell
+      theme={shell?.theme ?? null}
+      aria-busy="true"
+      aria-label="Loading magazine"
+    >
       <div className="building">
         <div>
           <div className="spin" />
-          Opening the issue…
+          {magazinePendingLabel(shell)}
         </div>
       </div>
-    </div>
+    </MagazineShell>
   );
+}
+
+export function MagazinePending() {
+  const { shell } = Route.useLoaderData();
+  return <MagazinePendingView shell={shell} />;
 }
 
 export const Route = createFileRoute("/magazine/$did/$rkey")({
   validateSearch: magazineSearchSchema,
-  loaderDeps: ({ search }) => ({ ids: search.ids }),
-  pendingMs: 150,
+  loader: async ({ context, params, preload }) => {
+    const shellOptions = getMagazineShellQueryOptions(params);
+    if (preload) {
+      void context.queryClient.prefetchQuery(shellOptions);
+      return { shell: null, fontPreloads: [] };
+    }
+    const shell = await context.queryClient.ensureQueryData(shellOptions);
+    const fontPreloads = await fetchMagazineFontPreloadLinks(shell.theme);
+    return { shell, fontPreloads };
+  },
   pendingComponent: MagazinePending,
-  loader: ({ context, params, deps }) =>
-    loadMagazineData(context.queryClient, params, deps),
+  pendingMs: 0,
   head: ({ loaderData, match }) => {
-    const name = loaderData?.name ?? "Standard Reader";
     const baseUrl = getPublicUrlClient();
+    const theme = loaderData?.shell?.theme;
     return {
       meta: siteSocialMeta({
-        title: `${name} · The Standard Issue`,
-        description: `Read "${name}" as a magazine edition on Standard Reader.`,
+        title: "The Standard Issue · Standard Reader",
+        description: "Read a magazine edition on Standard Reader.",
         url: `${baseUrl}${match.pathname}`,
       }),
+      links: [
+        ...magazineThemeFontHeadLinks(theme),
+        ...(loaderData?.fontPreloads ?? []),
+      ],
     };
   },
   component: MagazineRoute,
@@ -59,13 +101,22 @@ export const Route = createFileRoute("/magazine/$did/$rkey")({
 
 function MagazineRoute() {
   const { did, rkey } = Route.useParams();
-  const data = Route.useLoaderData();
+  const { ids } = Route.useSearch();
+  const { shell } = Route.useLoaderData();
+  const isClient = globalThis.window !== undefined;
+  const { data, isPending } = useQuery({
+    ...getMagazineDataQueryOptions({ did, rkey }, { ids }),
+    // Full issue composition stays client-side so navigations never block on
+    // fetching every feature article.
+    enabled: isClient,
+  });
   const router = useRouter();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
   const { openInMagazine } = useOpenCollectionsInMagazine();
 
   const issue = useMemo(() => {
+    if (!data) return null;
     if (data.mode === "collection") {
       return composeCollectionIssue({
         name: data.name,
@@ -79,6 +130,10 @@ function MagazineRoute() {
     }
     return composeIssue(data.name, data.ownerHandle, data.articles);
   }, [data]);
+
+  if (!isClient || isPending || !data || !issue) {
+    return <MagazinePendingView shell={shell} />;
+  }
 
   const openReader = () => {
     if (data.mode === "collection") {
@@ -110,7 +165,7 @@ function MagazineRoute() {
 
   if (issue.features.length === 0) {
     return (
-      <div className="mag">
+      <MagazineShell theme={issue.theme ?? null}>
         <div className="building">
           <div>
             <div style={{ marginBottom: 12 }}>Nothing to read here yet.</div>
@@ -123,7 +178,7 @@ function MagazineRoute() {
             </button>
           </div>
         </div>
-      </div>
+      </MagazineShell>
     );
   }
 

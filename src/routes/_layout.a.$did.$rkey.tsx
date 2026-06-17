@@ -70,15 +70,13 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
       readerApi.getBookmarkStatusQueryOptions(uri),
     );
 
-    const [article, openLinks, sharedQuote, openInMagazinePref] =
-      await Promise.all([
-        queryClient.ensureQueryData(publicationApi.getArticleQueryOptions(uri)),
-        queryClient.ensureQueryData(user.getOpenLinksPreferenceQueryOptions),
-        deps.q ? resolveSharedQuote(uri, deps.q) : Promise.resolve(null),
-        queryClient.ensureQueryData(
-          user.getOpenCollectionsInMagazinePreferenceQueryOptions,
-        ),
-      ]);
+    const [article, openLinks, openInMagazinePref] = await Promise.all([
+      queryClient.ensureQueryData(publicationApi.getArticleQueryOptions(uri)),
+      queryClient.ensureQueryData(user.getOpenLinksPreferenceQueryOptions),
+      queryClient.ensureQueryData(
+        user.getOpenCollectionsInMagazinePreferenceQueryOptions,
+      ),
+    ]);
     if (
       article?.collection &&
       openInMagazinePref.openInMagazine &&
@@ -86,11 +84,14 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
       !deps.q &&
       deps.view !== "reader"
     ) {
+      prefetchCollectionMagazineArticles(queryClient, article.collection.items);
       throw redirect({
         to: "/magazine/$did/$rkey",
         params: { did: params.did, rkey: params.rkey },
       });
     }
+
+    const sharedQuote = deps.q ? await resolveSharedQuote(uri, deps.q) : null;
     // Bounce to the publication site when the body isn't renderable in-app, or
     // when the reader prefers links to open on the original site.
     if (
