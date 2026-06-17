@@ -1,21 +1,32 @@
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { STANDARD_NSID } from "#/lib/atproto/nsids";
+import { APP_NSID, STANDARD_NSID } from "#/lib/atproto/nsids";
 import { hexToRgb, rgbToHex } from "#/lib/collections/color";
 import { composeCollectionNewsletterContent } from "#/lib/collections/compose-newsletter";
-import { parseCollectionManifest } from "#/lib/collections/manifest";
+import {
+  collectionManifestFromSources,
+  parseCollectionManifest,
+} from "#/lib/collections/manifest";
 import { getPublicUrl } from "#/lib/public-url";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { blobCid, getBlobUrl } from "#/server/atproto/blob";
 import { resolveIdentity } from "#/server/atproto/identity";
 import {
+  collectionDocumentUri,
+  collectionsPublicationUri,
+  deleteCollectionRecord,
   deleteDocumentRecord,
+  getCollectionRecord,
   getDocumentRecord,
+  getPublicationThemeRecord,
   listCollectionRecords,
   newCollectionRkey,
+  putCollectionRecord,
+  putCollectionsPublicationRecord,
   putDocumentRecord,
   putPublicationRecord,
+  putPublicationThemeRecord,
   uploadBlob,
 } from "#/server/atproto/repo-records";
 import { ensureTracked } from "#/server/ingest/tap-client";
@@ -30,11 +41,12 @@ import { dbMiddleware } from "./db-middleware";
 
 /**
  * Collections — curated, magazine-rendered editions. A collection is a
- * `site.standard.document` (markpub newsletter `content` + a `readerCollection`
- * manifest), all hung off one auto-created `site.standard.publication` per user
- * (marked `readerCollections: true`). Like lists, the user's own collections are
- * read straight from their repo (strongly consistent, no ingest lag); the wider
- * read-model still indexes them so they render and surface in feeds.
+ * `site.standard.document` shell (markpub newsletter `content`) plus an
+ * `app.standard-reader.collection` sidecar manifest at the same rkey, published
+ * under a `site.standard.publication` marked by
+ * `app.standard-reader.collectionsPublication`. Like lists, the user's own
+ * collections are read straight from their repo (strongly consistent, no ingest
+ * lag); the wider read-model still indexes them so they render and surface in feeds.
  */
 
 /** Plain JSON (TanStack server-fn returns must be serializable; `unknown` isn't). */
@@ -193,25 +205,11 @@ function fontField(fonts: unknown, key: "title" | "body"): string | null {
   return null;
 }
 
-/** Read the theme + fonts (as hex/names) out of a publication record value. */
-function themeFromRecord(value: Record<string, unknown>): CollectionsTheme {
-  const basicTheme = isRecord(value.basicTheme) ? value.basicTheme : {};
-  return {
-    background: rgbFieldToHex(basicTheme.background),
-    foreground: rgbFieldToHex(basicTheme.foreground),
-    accent: rgbFieldToHex(basicTheme.accent),
-    accentForeground: rgbFieldToHex(basicTheme.accentForeground),
-    fontTitle: fontField(basicTheme.fonts, "title"),
-    fontBody: fontField(basicTheme.fonts, "body"),
-  };
-}
-
-/** Build a `basicTheme` record object (RGB colors + fonts) from editor input. */
-function buildBasicTheme(
+/** Build a `basicTheme` record object (RGB colors only) from editor input. */
+function buildBasicThemeColors(
   colors: Partial<
     Record<"background" | "foreground" | "accent" | "accentForeground", string>
   >,
-  fonts: { title?: string; body?: string },
 ): Record<string, unknown> | undefined {
   const theme: Record<string, unknown> = {};
   for (const key of [
@@ -223,26 +221,115 @@ function buildBasicTheme(
     const rgb = colors[key] ? hexToRgb(colors[key] as string) : null;
     if (rgb) theme[key] = { r: rgb.r, g: rgb.g, b: rgb.b };
   }
-  const fontObj: Record<string, string> = {};
-  if (fonts.title) fontObj.title = fonts.title;
-  if (fonts.body) fontObj.body = fonts.body;
-  if (Object.keys(fontObj).length > 0) theme.fonts = fontObj;
   return Object.keys(theme).length > 0 ? theme : undefined;
 }
 
-/** Find the user's collections publication record (marked `readerCollections`). */
-async function findCollectionsPublication(
-  client: Parameters<typeof listCollectionRecords>[0],
+type RepoClient = Parameters<typeof listCollectionRecords>[0];
+
+/** Whether a publication record is marked as a collections series (legacy). */
+function isLegacyCollectionsPublication(
+  value: Record<string, unknown>,
+): boolean {
+  return value.readerCollections === true;
+}
+
+/** Resolve collections-series publications from sidecar + legacy markers. */
+async function listCollectionsPublicationRecords(
+  client: RepoClient,
   did: string,
 ) {
-  const records = await listCollectionRecords(
-    client,
-    did,
-    STANDARD_NSID.publication,
+  const [sidecars, publications] = await Promise.all([
+    listCollectionRecords(client, did, APP_NSID.collectionsPublication),
+    listCollectionRecords(client, did, STANDARD_NSID.publication),
+  ]);
+  const publicationByRkey = new Map(
+    publications.map((record) => [record.rkey, record]),
   );
-  return records.find(
-    (r) => isRecord(r.value) && r.value.readerCollections === true,
-  );
+  const marked = new Map<string, (typeof publications)[number]>();
+
+  for (const sidecar of sidecars) {
+    const publication = publicationByRkey.get(sidecar.rkey);
+    if (publication && isRecord(publication.value)) {
+      marked.set(publication.rkey, publication);
+    }
+  }
+
+  for (const publication of publications) {
+    if (
+      !marked.has(publication.rkey) &&
+      isRecord(publication.value) &&
+      isLegacyCollectionsPublication(publication.value)
+    ) {
+      marked.set(publication.rkey, publication);
+    }
+  }
+
+  return [...marked.values()];
+}
+
+/** Find the user's first collections publication (legacy: first marked pub). */
+async function findCollectionsPublication(client: RepoClient, did: string) {
+  const records = await listCollectionsPublicationRecords(client, did);
+  return records[0];
+}
+
+/** Find a reader-collections publication by rkey. */
+async function findCollectionsPublicationByRkey(
+  client: RepoClient,
+  did: string,
+  rkey: string,
+) {
+  const records = await listCollectionsPublicationRecords(client, did);
+  return records.find((record) => record.rkey === rkey);
+}
+
+async function themeFromPublicationRecord(
+  client: RepoClient,
+  did: string,
+  rkey: string,
+  value: Record<string, unknown>,
+): Promise<CollectionsTheme> {
+  const basicTheme = isRecord(value.basicTheme) ? value.basicTheme : {};
+  const sidecar = await getPublicationThemeRecord(client, did, rkey);
+  const sidecarFonts =
+    isRecord(sidecar) && isRecord(sidecar.fonts)
+      ? (sidecar.fonts as Record<string, unknown>)
+      : null;
+  return {
+    background: rgbFieldToHex(basicTheme.background),
+    foreground: rgbFieldToHex(basicTheme.foreground),
+    accent: rgbFieldToHex(basicTheme.accent),
+    accentForeground: rgbFieldToHex(basicTheme.accentForeground),
+    fontTitle:
+      cleanSidecarFont(sidecarFonts?.title) ??
+      fontField(basicTheme.fonts, "title"),
+    fontBody:
+      cleanSidecarFont(sidecarFonts?.body) ??
+      fontField(basicTheme.fonts, "body"),
+  };
+}
+
+function cleanSidecarFont(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+async function manifestForCollectionRkey(
+  client: RepoClient,
+  did: string,
+  rkey: string,
+  documentValue?: unknown,
+): Promise<ReturnType<typeof parseCollectionManifest>> {
+  const sidecar = await getCollectionRecord(client, did, rkey);
+  const fromSidecar = sidecar
+    ? collectionManifestFromSources({ sidecar })
+    : null;
+  if (fromSidecar) return fromSidecar;
+
+  const document =
+    documentValue ?? (await getDocumentRecord(client, did, rkey));
+  return collectionManifestFromSources({ legacyDocument: document });
 }
 
 function iconFromRecord(
@@ -258,13 +345,25 @@ function publicationBaseFromRecord(value: Record<string, unknown>) {
     description:
       typeof value.description === "string" ? value.description : undefined,
     icon: iconFromRecord(value),
-    basicTheme: isRecord(value.basicTheme)
-      ? (value.basicTheme as Record<string, unknown>)
-      : undefined,
+    basicTheme: basicThemeColorsOnly(
+      isRecord(value.basicTheme)
+        ? (value.basicTheme as Record<string, unknown>)
+        : undefined,
+    ),
   };
 }
 
+/** Strip legacy `fonts` from a publication `basicTheme` before re-writing. */
+function basicThemeColorsOnly(
+  theme: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!theme) return undefined;
+  const { fonts: _fonts, ...colors } = theme;
+  return Object.keys(colors).length > 0 ? colors : undefined;
+}
+
 async function publicationFromRecord(
+  client: RepoClient,
   did: string,
   uri: string,
   rkey: string,
@@ -277,28 +376,9 @@ async function publicationFromRecord(
     description:
       typeof value.description === "string" ? value.description : null,
     iconUrl: await resolveBlobUrl(did, value.icon),
-    theme: themeFromRecord(value),
+    theme: await themeFromPublicationRecord(client, did, rkey, value),
     subscriberCount: 0,
   };
-}
-
-/** Find a reader-collections publication by rkey. */
-async function findCollectionsPublicationByRkey(
-  client: Parameters<typeof listCollectionRecords>[0],
-  did: string,
-  rkey: string,
-) {
-  const records = await listCollectionRecords(
-    client,
-    did,
-    STANDARD_NSID.publication,
-  );
-  return records.find(
-    (r) =>
-      r.rkey === rkey &&
-      isRecord(r.value) &&
-      r.value.readerCollections === true,
-  );
 }
 
 const getCollectionsPublication = createServerFn({ method: "GET" }).handler(
@@ -317,7 +397,12 @@ const getCollectionsPublication = createServerFn({ method: "GET" }).handler(
       description:
         typeof value.description === "string" ? value.description : null,
       iconUrl: await resolveBlobUrl(session.did, value.icon),
-      theme: themeFromRecord(value),
+      theme: await themeFromPublicationRecord(
+        session.client,
+        session.did,
+        found.rkey,
+        value,
+      ),
     } satisfies CollectionsPublication;
   }),
 );
@@ -339,6 +424,7 @@ const ensureCollectionsPublication = createServerFn({ method: "POST" })
       }
 
       const rkey = newCollectionRkey();
+      const now = new Date().toISOString();
       const { uri } = await putPublicationRecord(
         session.client,
         session.did,
@@ -347,8 +433,14 @@ const ensureCollectionsPublication = createServerFn({ method: "POST" })
           name: data.name,
           url: getPublicUrl(),
           description: data.description || undefined,
-          readerCollections: true,
         },
+      );
+      await putCollectionsPublicationRecord(
+        session.client,
+        session.did,
+        rkey,
+        uri,
+        now,
       );
       await ensureTracked(session.did, "reader");
       return { uri, rkey, created: true };
@@ -364,19 +456,23 @@ const listCollectionsPublications = createServerFn({ method: "GET" })
       if (!session) return [] satisfies Array<CollectionsPublicationSummary>;
       span.set("did", session.did);
 
-      const records = await listCollectionRecords(
+      const records = await listCollectionsPublicationRecords(
         session.client,
         session.did,
-        STANDARD_NSID.publication,
       );
       const publications = await Promise.all(
         records
-          .filter(
-            (r): r is typeof r & { value: Record<string, unknown> } =>
-              isRecord(r.value) && r.value.readerCollections === true,
+          .filter((r): r is typeof r & { value: Record<string, unknown> } =>
+            isRecord(r.value),
           )
           .map((r) =>
-            publicationFromRecord(session.did, r.uri, r.rkey, r.value),
+            publicationFromRecord(
+              session.client,
+              session.did,
+              r.uri,
+              r.rkey,
+              r.value,
+            ),
           ),
       );
 
@@ -416,6 +512,7 @@ const createCollectionsPublication = createServerFn({ method: "POST" })
 
       const rkey = newCollectionRkey();
       const icon = data.icon ? asJsonObject(data.icon) : undefined;
+      const now = new Date().toISOString();
       const { uri } = await putPublicationRecord(
         session.client,
         session.did,
@@ -425,8 +522,14 @@ const createCollectionsPublication = createServerFn({ method: "POST" })
           url: getPublicUrl(),
           description: data.description || undefined,
           ...(icon ? { icon } : {}),
-          readerCollections: true,
         },
+      );
+      await putCollectionsPublicationRecord(
+        session.client,
+        session.did,
+        rkey,
+        uri,
+        now,
       );
       await ensureTracked(session.did, "reader");
       const iconUrl = icon ? await resolveBlobUrl(session.did, icon) : null;
@@ -455,15 +558,24 @@ const getMyCollections = createServerFn({ method: "GET" }).handler(
     if (!session) return [] satisfies Array<CollectionCard>;
     span.set("did", session.did);
 
-    const records = await listCollectionRecords(
-      session.client,
-      session.did,
-      STANDARD_NSID.document,
+    const [records, sidecars] = await Promise.all([
+      listCollectionRecords(
+        session.client,
+        session.did,
+        STANDARD_NSID.document,
+      ),
+      listCollectionRecords(session.client, session.did, APP_NSID.collection),
+    ]);
+    const sidecarByRkey = new Map(
+      sidecars.map((sidecar) => [sidecar.rkey, sidecar.value]),
     );
     const cards: Array<CollectionCard> = [];
     for (const record of records) {
       if (!isRecord(record.value)) continue;
-      const manifest = parseCollectionManifest(record.value.readerCollection);
+      const manifest = collectionManifestFromSources({
+        sidecar: sidecarByRkey.get(record.rkey),
+        legacyDocument: record.value,
+      });
       if (!manifest) continue;
       cards.push({
         uri: record.uri,
@@ -558,7 +670,12 @@ const getCollectionForEdit = createServerFn({ method: "GET" })
         data.rkey,
       );
       if (!isRecord(value)) return null;
-      const manifest = parseCollectionManifest(value.readerCollection);
+      const manifest = await manifestForCollectionRkey(
+        session.client,
+        session.did,
+        data.rkey,
+        value,
+      );
       if (!manifest) return null;
 
       const { db, schema } = context;
@@ -640,21 +757,28 @@ const putCollection = createServerFn({ method: "POST" })
       const rkey = data.rkey ?? newCollectionRkey();
       span.set("rkey", rkey);
       const now = new Date().toISOString();
+      const manifest = {
+        ...(editorial ? { editorial } : {}),
+        ...(colophon ? { colophon } : {}),
+        items: data.items.map((item) => ({
+          document: item.document,
+          ...(item.note ? { note: item.note } : {}),
+        })),
+      };
+      const documentUri = collectionDocumentUri(session.did, rkey);
       await putDocumentRecord(session.client, session.did, rkey, {
         site: data.publicationUri,
         title: data.title,
         description: editorial?.body?.slice(0, 280) || undefined,
         coverImage: data.coverImage ?? undefined,
         content,
-        readerCollection: {
-          ...(editorial ? { editorial } : {}),
-          ...(colophon ? { colophon } : {}),
-          items: data.items.map((item) => ({
-            document: item.document,
-            ...(item.note ? { note: item.note } : {}),
-          })),
-        },
         publishedAt: data.publishedAt ?? now,
+        updatedAt: data.rkey ? now : undefined,
+      });
+      await putCollectionRecord(session.client, session.did, rkey, {
+        documentUri,
+        manifest,
+        createdAt: data.publishedAt ?? now,
         updatedAt: data.rkey ? now : undefined,
       });
       await ensureTracked(session.did, "reader");
@@ -672,6 +796,7 @@ const deleteCollection = createServerFn({ method: "POST" })
       span.set("rkey", data.rkey);
 
       await deleteDocumentRecord(session.client, session.did, data.rkey);
+      await deleteCollectionRecord(session.client, session.did, data.rkey);
       return { ok: true as const };
     }),
   );
@@ -713,11 +838,29 @@ const putCollectionsTheme = createServerFn({ method: "POST" })
       }
       const value = existing.value;
       const base = publicationBaseFromRecord(value);
+      const now = new Date().toISOString();
+      const publicationUri = collectionsPublicationUri(
+        session.did,
+        existing.rkey,
+      );
       await putPublicationRecord(session.client, session.did, existing.rkey, {
         ...base,
-        basicTheme: buildBasicTheme(data.colors, data.fonts),
-        readerCollections: true,
+        basicTheme: buildBasicThemeColors(data.colors),
       });
+      await putPublicationThemeRecord(
+        session.client,
+        session.did,
+        existing.rkey,
+        {
+          publicationUri,
+          fonts: {
+            ...(data.fonts.title ? { title: data.fonts.title } : {}),
+            ...(data.fonts.body ? { body: data.fonts.body } : {}),
+          },
+          createdAt: now,
+          updatedAt: now,
+        },
+      );
       await ensureTracked(session.did, "reader");
       return { ok: true as const };
     }),
@@ -753,7 +896,6 @@ const putCollectionsPublication = createServerFn({ method: "POST" })
         description: data.description || undefined,
         ...(icon ? { icon } : {}),
         ...(base.basicTheme ? { basicTheme: base.basicTheme } : {}),
-        readerCollections: true,
       });
       await ensureTracked(session.did, "reader");
       const iconUrl = icon ? await resolveBlobUrl(session.did, icon) : null;

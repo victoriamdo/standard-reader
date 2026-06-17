@@ -9,8 +9,11 @@ import type { InferInput } from "@atcute/lexicons/validations";
 
 import { ok } from "@atcute/client";
 import { now as tidNow } from "@atcute/tid";
+import type { CollectionManifest } from "#/lib/collections/manifest";
+
 import { COLLECTION } from "#/lib/atproto/nsids";
 import { createHash } from "node:crypto";
+import { buildAtUri } from "./uri.ts";
 
 /**
  * Server-only helpers for writing the reader's personal state back to their own
@@ -407,7 +410,8 @@ export async function uploadBlob(
 
 /**
  * Create or replace the user's `site.standard.publication` that holds their
- * collections. Fonts ride inside `basicTheme.fonts`; theme is colors + fonts.
+ * collections. Colors ride in `basicTheme`; fonts live in
+ * `app.standard-reader.publicationTheme` at the same rkey.
  */
 export async function putPublicationRecord(
   client: Client,
@@ -419,8 +423,6 @@ export async function putPublicationRecord(
     description?: string;
     icon?: Record<string, unknown>;
     basicTheme?: Record<string, unknown>;
-    /** Marks this as the user's collections home so we can find it again. */
-    readerCollections?: boolean;
   },
 ): Promise<{ uri: string; cid: string }> {
   return repoPutRecord(client, {
@@ -434,15 +436,103 @@ export async function putPublicationRecord(
       ...(pub.description ? { description: pub.description } : {}),
       ...(pub.icon ? { icon: pub.icon } : {}),
       ...(pub.basicTheme ? { basicTheme: pub.basicTheme } : {}),
-      ...(pub.readerCollections ? { readerCollections: true } : {}),
     },
   });
 }
 
+/** Mark a publication as a Standard Reader collections series. */
+export async function putCollectionsPublicationRecord(
+  client: Client,
+  repo: string,
+  publicationRkey: string,
+  publicationUri: string,
+  createdAt: string,
+): Promise<{ uri: string; cid: string }> {
+  return repoPutRecord(client, {
+    repo,
+    collection: COLLECTION.collectionsPublication,
+    rkey: publicationRkey,
+    record: {
+      $type: COLLECTION.collectionsPublication,
+      publication: publicationUri,
+      createdAt,
+    },
+  });
+}
+
+export async function deleteCollectionsPublicationRecord(
+  client: Client,
+  repo: string,
+  publicationRkey: string,
+): Promise<void> {
+  return repoDeleteRecord(client, {
+    repo,
+    collection: COLLECTION.collectionsPublication,
+    rkey: publicationRkey,
+  });
+}
+
+/** Write typography for a collections publication (same rkey as the publication). */
+export async function putPublicationThemeRecord(
+  client: Client,
+  repo: string,
+  publicationRkey: string,
+  theme: {
+    publicationUri: string;
+    fonts?: { title?: string; body?: string };
+    createdAt: string;
+    updatedAt?: string;
+  },
+): Promise<{ uri: string; cid: string }> {
+  const fontObj: Record<string, string> = {};
+  if (theme.fonts?.title) fontObj.title = theme.fonts.title;
+  if (theme.fonts?.body) fontObj.body = theme.fonts.body;
+  return repoPutRecord(client, {
+    repo,
+    collection: COLLECTION.publicationTheme,
+    rkey: publicationRkey,
+    record: {
+      $type: COLLECTION.publicationTheme,
+      publication: theme.publicationUri,
+      ...(Object.keys(fontObj).length > 0 ? { fonts: fontObj } : {}),
+      createdAt: theme.createdAt,
+      ...(theme.updatedAt ? { updatedAt: theme.updatedAt } : {}),
+    },
+  });
+}
+
+export async function deletePublicationThemeRecord(
+  client: Client,
+  repo: string,
+  publicationRkey: string,
+): Promise<void> {
+  return repoDeleteRecord(client, {
+    repo,
+    collection: COLLECTION.publicationTheme,
+    rkey: publicationRkey,
+  });
+}
+
+/** Read one `app.standard-reader.publicationTheme` record's value. */
+export async function getPublicationThemeRecord(
+  client: Client,
+  repo: string,
+  publicationRkey: string,
+): Promise<unknown | null> {
+  const res = await client.get("com.atproto.repo.getRecord", {
+    params: lexGetRecordParams({
+      repo,
+      collection: COLLECTION.publicationTheme,
+      rkey: publicationRkey,
+    }),
+  });
+  return res.ok ? (res.data?.value ?? null) : null;
+}
+
 /**
- * Create or replace a collection as a `site.standard.document`: portable
- * `content` (markpub newsletter) plus the `readerCollection` manifest extension
- * our renderer reads. `coverImage` is the optional blob ref (from uploadBlob).
+ * Create or replace a collection document shell as `site.standard.document`:
+ * portable `content` (markpub newsletter). The curated manifest lives in
+ * `app.standard-reader.collection` at the same rkey.
  */
 export async function putDocumentRecord(
   client: Client,
@@ -452,7 +542,6 @@ export async function putDocumentRecord(
     site: string;
     title: string;
     content: Record<string, unknown>;
-    readerCollection: Record<string, unknown>;
     description?: string;
     coverImage?: Record<string, unknown>;
     publishedAt: string;
@@ -471,9 +560,52 @@ export async function putDocumentRecord(
       ...(doc.updatedAt ? { updatedAt: doc.updatedAt } : {}),
       ...(doc.description ? { description: doc.description } : {}),
       content: doc.content,
-      readerCollection: doc.readerCollection,
       ...(doc.coverImage ? { coverImage: doc.coverImage } : {}),
     },
+  });
+}
+
+/** Write the curated manifest sidecar for a collection document. */
+export async function putCollectionRecord(
+  client: Client,
+  repo: string,
+  rkey: string,
+  collection: {
+    documentUri: string;
+    manifest: CollectionManifest;
+    createdAt: string;
+    updatedAt?: string;
+  },
+): Promise<{ uri: string; cid: string }> {
+  const { manifest } = collection;
+  return repoPutRecord(client, {
+    repo,
+    collection: COLLECTION.collection,
+    rkey,
+    record: {
+      $type: COLLECTION.collection,
+      document: collection.documentUri,
+      ...(manifest.editorial ? { editorial: manifest.editorial } : {}),
+      ...(manifest.colophon ? { colophon: manifest.colophon } : {}),
+      items: manifest.items.map((item) => ({
+        document: item.document,
+        ...(item.note ? { note: item.note } : {}),
+      })),
+      createdAt: collection.createdAt,
+      ...(collection.updatedAt ? { updatedAt: collection.updatedAt } : {}),
+    },
+  });
+}
+
+export async function deleteCollectionRecord(
+  client: Client,
+  repo: string,
+  rkey: string,
+): Promise<void> {
+  return repoDeleteRecord(client, {
+    repo,
+    collection: COLLECTION.collection,
+    rkey,
   });
 }
 
@@ -503,6 +635,35 @@ export async function getDocumentRecord(
     }),
   });
   return res.ok ? (res.data?.value ?? null) : null;
+}
+
+/** Read one `app.standard-reader.collection` sidecar's value from the repo. */
+export async function getCollectionRecord(
+  client: Client,
+  repo: string,
+  rkey: string,
+): Promise<unknown | null> {
+  const res = await client.get("com.atproto.repo.getRecord", {
+    params: lexGetRecordParams({
+      repo,
+      collection: COLLECTION.collection,
+      rkey,
+    }),
+  });
+  return res.ok ? (res.data?.value ?? null) : null;
+}
+
+/** Build the AT URI for a collection document in `repo`. */
+export function collectionDocumentUri(repo: string, rkey: string): string {
+  return buildAtUri(repo, COLLECTION.document, rkey);
+}
+
+/** Build the AT URI for a collections publication in `repo`. */
+export function collectionsPublicationUri(
+  repo: string,
+  publicationRkey: string,
+): string {
+  return buildAtUri(repo, COLLECTION.publication, publicationRkey);
 }
 
 /** Whether the reader has saved `listUri` (an `app.standard-reader.listSave`). */

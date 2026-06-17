@@ -23,6 +23,9 @@ export const scope = [
       "app.standard-reader.bookmark",
       "app.standard-reader.list",
       "app.standard-reader.listSave",
+      "app.standard-reader.collection",
+      "app.standard-reader.collectionsPublication",
+      "app.standard-reader.publicationTheme",
     ],
   }),
 ];

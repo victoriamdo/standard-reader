@@ -3,8 +3,10 @@ import { asc, eq, lt, sql } from "drizzle-orm";
 import type {
   BookmarkRecord,
   BskyProfileRecord,
+  CollectionSidecarRecord,
   DocumentRecord,
   PublicationRecord,
+  PublicationThemeRecord,
   ReadRecord,
   RecommendRecord,
   SubscriptionRecord,
@@ -20,8 +22,10 @@ import {
   deleteRecord,
   upsertBookmark,
   upsertBskyProfile,
+  upsertCollectionSidecar,
   upsertDocument,
   upsertPublication,
+  upsertPublicationTheme,
   upsertRead,
   upsertRecommend,
   upsertSubscription,
@@ -95,6 +99,22 @@ async function handleRecord(payload: TapRecordPayload): Promise<void> {
         rkey,
         cid,
         record as unknown as BookmarkRecord,
+      );
+      return;
+    }
+    case Collections.collection: {
+      await upsertCollectionSidecar(
+        did,
+        rkey,
+        record as unknown as CollectionSidecarRecord,
+      );
+      return;
+    }
+    case Collections.publicationTheme: {
+      await upsertPublicationTheme(
+        did,
+        rkey,
+        record as unknown as PublicationThemeRecord,
       );
       return;
     }

@@ -295,6 +295,12 @@ source of truth; Neon holds a derived view for speed and cross-network querying.
     `publications` at-uris of `site.standard.publication` records + `createdAt`; tid rkey).
   - `app.standard-reader.listSave` — another reader's list saved into this app (`list` at-uri +
     `createdAt`; deterministic rkey so save/unsave/status address one record).
+  - `app.standard-reader.collection` — curated magazine manifest for a
+    `site.standard.document` (same rkey sidecar: editorial, colophon, ordered items).
+  - `app.standard-reader.collectionsPublication` — marks a
+    `site.standard.publication` as a collections series (same rkey sidecar).
+  - `app.standard-reader.publicationTheme` — Google Font names for a collections
+    publication (same rkey sidecar; colors stay on `basicTheme`).
 
 ### AppView XRPC (public API)
 

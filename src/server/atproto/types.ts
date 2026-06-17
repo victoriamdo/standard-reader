@@ -37,8 +37,8 @@ export interface BasicTheme {
   foreground?: ThemeRgb;
   accent?: ThemeRgb;
   accentForeground?: ThemeRgb;
-  /** Standard Reader extension: Google Font names for collection title/body,
-   * kept inside the theme object so they round-trip through `themeJson`. */
+  /** Standard Reader extension (legacy): fonts lived inside basicTheme before
+   * `app.standard-reader.publicationTheme` sidecar records. */
   fonts?: { title?: string; body?: string };
 }
 
@@ -75,9 +75,50 @@ export interface DocumentRecord {
   updatedAt?: string;
   bskyPostRef?: StrongRef;
   contributors?: Array<DocumentContributorRecord>;
-  /** Standard Reader extension: the curated "Collection" manifest, when this
-   * document is a collection. Validated via `parseCollectionManifest`. */
+  /** Legacy Standard Reader extension (pre-sidecar). Prefer
+   * `app.standard-reader.collection` at the same rkey. */
   readerCollection?: unknown;
+}
+
+/** `app.standard-reader.collection` sidecar for a curated magazine edition. */
+export interface CollectionSidecarRecord {
+  $type?: string;
+  document: string;
+  editorial?: CollectionEditorialSidecar;
+  colophon?: CollectionColophonSidecar;
+  items: Array<CollectionItemSidecar>;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CollectionEditorialSidecar {
+  title?: string;
+  body?: string;
+}
+
+export interface CollectionColophonSidecar {
+  body?: string;
+}
+
+export interface CollectionItemSidecar {
+  document: string;
+  note?: string;
+}
+
+/** `app.standard-reader.collectionsPublication` — marks a publication series. */
+export interface CollectionsPublicationRecord {
+  $type?: string;
+  publication: string;
+  createdAt: string;
+}
+
+/** `app.standard-reader.publicationTheme` — typography for a publication. */
+export interface PublicationThemeRecord {
+  $type?: string;
+  publication: string;
+  fonts?: { title?: string; body?: string };
+  createdAt: string;
+  updatedAt?: string;
 }
 
 /** `site.standard.graph.subscription`. */

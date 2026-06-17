@@ -134,6 +134,11 @@ stores in `src/integrations/auth/`, session/user server fns in
         public list pages fetch via unauthenticated `getRecord` on the owner's PDS).
         OAuth scope includes both collections, so sessions created before this change
         need a re-login to write lists.
+  - [x] Collections sidecar lexicons (`app.standard-reader.collection`,
+        `app.standard-reader.collectionsPublication`, `app.standard-reader.publicationTheme`):
+        same-rkey sidecars instead of extension fields on `site.standard.*` records; dual-read
+        legacy `readerCollection` / `readerCollections` / `basicTheme.fonts` until repos migrate;
+        tap filters + ingest handlers wired; OAuth scope updated (re-login to write).
   - [x] Likes reuse `site.standard.graph.recommend` (no app-owned like lexicon)
   - [x] Publish tooling via `goat` (`scripts/goat-lex.mjs`): `pnpm lex:lint`,
         `pnpm atproto:publish-lexicons`. Needs `LEXICON_PUBLISH_*` creds for the

@@ -1,0 +1,50 @@
+{
+  "lexicon": 1,
+  "id": "app.standard-reader.publicationTheme",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Standard Reader typography for a collections publication. Uses the same record key as the publication. Colors remain on the publication's site.standard.theme.basic record.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["publication", "createdAt"],
+        "properties": {
+          "publication": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT URI of the site.standard.publication this theme applies to."
+          },
+          "fonts": {
+            "type": "ref",
+            "ref": "app.standard-reader.publicationTheme#fonts"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the theme record was first published."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the theme record was last edited."
+          }
+        }
+      }
+    },
+    "fonts": {
+      "type": "object",
+      "description": "Google Font family names for collection title and body typography.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "body": {
+          "type": "string",
+          "maxLength": 60
+        }
+      }
+    }
+  }
+}

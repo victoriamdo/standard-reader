@@ -1,0 +1,89 @@
+{
+  "lexicon": 1,
+  "id": "app.standard-reader.collection",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Curated magazine collection manifest for a site.standard.document. Uses the same record key as the document it extends so both records can be fetched with one predictable pair of GETs.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["document", "items", "createdAt"],
+        "properties": {
+          "document": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT URI of the site.standard.document record this collection renders."
+          },
+          "editorial": {
+            "type": "ref",
+            "ref": "app.standard-reader.collection#editorial"
+          },
+          "colophon": {
+            "type": "ref",
+            "ref": "app.standard-reader.collection#colophon"
+          },
+          "items": {
+            "type": "array",
+            "maxLength": 42,
+            "items": {
+              "type": "ref",
+              "ref": "app.standard-reader.collection#item"
+            },
+            "description": "Ordered curated articles plus optional per-item notes."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the collection manifest was first published."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the collection manifest was last edited."
+          }
+        }
+      }
+    },
+    "editorial": {
+      "type": "object",
+      "description": "Optional editorial intro shown ahead of the curated pieces.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "body": {
+          "type": "string",
+          "maxLength": 8000
+        }
+      }
+    },
+    "colophon": {
+      "type": "object",
+      "description": "Optional closing credits on the magazine end spread.",
+      "properties": {
+        "body": {
+          "type": "string",
+          "maxLength": 8000
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "required": ["document"],
+      "properties": {
+        "document": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT URI of an included site.standard.document."
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Optional markdown note shown ahead of the piece."
+        }
+      }
+    }
+  }
+}

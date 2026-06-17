@@ -1,8 +1,8 @@
 /**
  * The collections publication's theme as the renderer consumes it: the flattened
- * `basicTheme` colors (CSS color strings) plus the Google Font names extracted
- * from `basicTheme.fonts` (stored in the publication's `themeJson`). Shared
- * across all of a user's collections. Client-safe.
+ * `basicTheme` colors (CSS color strings) plus Google Font names from
+ * `app.standard-reader.publicationTheme` (merged into `themeJson` on ingest).
+ * Shared across all of a user's collections. Client-safe.
  */
 export interface CollectionTheme {
   background: string | null;

@@ -52,10 +52,9 @@ export const documents = pgTable(
     contentJson: jsonb("content_json"),
     /** `$type` of the content union entry (e.g. the markdown content lexicon). */
     contentFormat: text("content_format"),
-    /** Standard Reader "Collection" manifest, when this document is a curated
-     * collection. Carries the optional editorial + ordered `{ document, note }`
-     * items from the record's `readerCollection` extension field. Null for
-     * ordinary documents; its presence is what marks a doc as a collection. */
+    /** Standard Reader collection manifest from `app.standard-reader.collection`
+     * (indexed from the sidecar at the same rkey as this document). Null for
+     * ordinary documents; its presence marks a doc as a collection. */
     collectionJson: jsonb("collection_json"),
     /** App-derived: whether the reader can render an in-app body for this doc.
      * False for "external" posts (plain text / bsky-anchored / no structured

@@ -1,4 +1,7 @@
-import { parseCollectionManifest } from "#/lib/collections/manifest";
+import {
+  collectionManifestFromSources,
+  parseCollectionManifest,
+} from "#/lib/collections/manifest";
 import { hasRenderableArticleBody } from "#/lib/document/renderable";
 import { documentSearchText } from "#/lib/document/search-text";
 import { isExcludedPublicationUrl } from "#/lib/publication/exclusions";
@@ -13,8 +16,10 @@ import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type {
   BookmarkRecord,
   BskyProfileRecord,
+  CollectionSidecarRecord,
   DocumentRecord,
   PublicationRecord,
+  PublicationThemeRecord,
   ReadRecord,
   RecommendRecord,
   SubscriptionRecord,
@@ -339,9 +344,23 @@ export async function upsertDocument(
     contentJson,
     contentFormat,
   });
-  // A collection rides on the `readerCollection` extension; its presence marks
-  // the document as a collection and guarantees an in-app renderable body.
-  const collectionManifest = parseCollectionManifest(record.readerCollection);
+  // Collection manifest: legacy extension on the document, or indexed earlier
+  // from an `app.standard-reader.collection` sidecar at the same rkey.
+  const legacyManifest = collectionManifestFromSources({
+    legacyDocument: record,
+  });
+  let collectionManifest = legacyManifest;
+  if (!collectionManifest) {
+    const existing = await db
+      .select({ collectionJson: documents.collectionJson })
+      .from(documents)
+      .where(eq(documents.uri, uri))
+      .limit(1);
+    collectionManifest =
+      (existing[0]?.collectionJson as ReturnType<
+        typeof parseCollectionManifest
+      >) ?? null;
+  }
   const renderableBody =
     collectionManifest != null ||
     hasRenderableArticleBody({
@@ -627,6 +646,70 @@ export async function applyIdentity(
     });
 }
 
+/** Index an `app.standard-reader.collection` sidecar onto its document row. */
+export async function upsertCollectionSidecar(
+  did: string,
+  rkey: string,
+  record: CollectionSidecarRecord,
+): Promise<void> {
+  const manifest = parseCollectionManifest(record);
+  if (!manifest) return;
+
+  const documentUri =
+    typeof record.document === "string" ? record.document : null;
+  const where = documentUri
+    ? or(
+        eq(documents.uri, documentUri),
+        and(eq(documents.did, did), eq(documents.rkey, rkey)),
+      )
+    : and(eq(documents.did, did), eq(documents.rkey, rkey));
+
+  await db
+    .update(documents)
+    .set({
+      collectionJson: manifest,
+      hasRenderableBody: true,
+      updatedAt: sql`now()`,
+    })
+    .where(where);
+}
+
+/** Merge `app.standard-reader.publicationTheme` fonts into a publication row. */
+export async function upsertPublicationTheme(
+  did: string,
+  rkey: string,
+  record: PublicationThemeRecord,
+): Promise<void> {
+  const publicationUri =
+    typeof record.publication === "string" ? record.publication : null;
+  const where = publicationUri
+    ? eq(publications.uri, publicationUri)
+    : and(eq(publications.did, did), eq(publications.rkey, rkey));
+
+  const existing = await db
+    .select({ themeJson: publications.themeJson })
+    .from(publications)
+    .where(where)
+    .limit(1);
+  const base =
+    existing[0]?.themeJson && typeof existing[0].themeJson === "object"
+      ? (existing[0].themeJson as Record<string, unknown>)
+      : {};
+  const fonts =
+    record.fonts && typeof record.fonts === "object" ? record.fonts : undefined;
+
+  await db
+    .update(publications)
+    .set({
+      themeJson: sanitizeJson({
+        ...base,
+        ...(fonts ? { fonts } : {}),
+      }),
+      updatedAt: sql`now()`,
+    })
+    .where(where);
+}
+
 /** Hard-delete a record row on a `delete` action (cascades clean up children). */
 export async function deleteRecord(
   uri: string,
@@ -655,6 +738,42 @@ export async function deleteRecord(
     }
     case Collections.bookmark: {
       await db.delete(bookmarks).where(eq(bookmarks.uri, uri));
+      return;
+    }
+    case Collections.collection: {
+      const parsed = parseAtUri(uri);
+      if (!parsed) return;
+      await db
+        .update(documents)
+        .set({ collectionJson: null, updatedAt: sql`now()` })
+        .where(
+          and(eq(documents.did, parsed.did), eq(documents.rkey, parsed.rkey)),
+        );
+      return;
+    }
+    case Collections.publicationTheme: {
+      const parsed = parseAtUri(uri);
+      if (!parsed) return;
+      const existing = await db
+        .select({ uri: publications.uri, themeJson: publications.themeJson })
+        .from(publications)
+        .where(
+          and(
+            eq(publications.did, parsed.did),
+            eq(publications.rkey, parsed.rkey),
+          ),
+        )
+        .limit(1);
+      const row = existing[0];
+      if (!row?.themeJson || typeof row.themeJson !== "object") return;
+      const { fonts: _fonts, ...rest } = row.themeJson as Record<
+        string,
+        unknown
+      >;
+      await db
+        .update(publications)
+        .set({ themeJson: sanitizeJson(rest), updatedAt: sql`now()` })
+        .where(eq(publications.uri, row.uri));
       return;
     }
     default: {

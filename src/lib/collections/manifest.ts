@@ -1,16 +1,15 @@
 /**
  * The Standard Reader "Collection" manifest — the structured representation our
- * renderer reads. It rides along on a `site.standard.document` record under the
- * `readerCollection` extension field (no new lexicon), alongside the portable
- * `at.markpub.markdown` `content`. Theme/fonts live on the owning publication,
- * not here.
+ * renderer reads. Stored in the user's repo as an `app.standard-reader.collection`
+ * sidecar record (same rkey as the `site.standard.document` shell). Theme/fonts
+ * live on the owning publication via `app.standard-reader.publicationTheme`.
  *
  * Client-safe (no server-only imports): used by the ingest mapper, the write
  * composer, the read-model shapes, and the magazine/collection renderers.
  */
 
-/** Record extension field that carries {@link CollectionManifest}. */
-export const READER_COLLECTION_FIELD = "readerCollection";
+/** Legacy extension field on `site.standard.document` (pre-sidecar). */
+export const LEGACY_READER_COLLECTION_FIELD = "readerCollection";
 
 /** An optional editorial intro. Both title and body are optional. */
 export interface CollectionEditorial {
@@ -35,6 +34,10 @@ export interface CollectionManifest {
   editorial?: CollectionEditorial;
   colophon?: CollectionColophon;
   items: Array<CollectionItem>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 function cleanString(value: unknown): string | undefined {
@@ -69,9 +72,9 @@ function parseItem(value: unknown): CollectionItem | null {
 }
 
 /**
- * Validate and normalize a raw `readerCollection` value into a manifest, or
- * `null` when it isn't a well-formed collection (so callers can treat the
- * document as an ordinary article). Requires at least one valid item.
+ * Validate and normalize a raw manifest value into a {@link CollectionManifest},
+ * or `null` when it isn't well-formed. Accepts either a sidecar record body or
+ * the legacy nested `readerCollection` object shape.
  */
 export function parseCollectionManifest(
   value: unknown,
@@ -92,6 +95,27 @@ export function parseCollectionManifest(
     ...(colophon ? { colophon } : {}),
     items,
   };
+}
+
+/**
+ * Resolve a collection manifest from sidecar + legacy document sources.
+ * Sidecar wins when both are present.
+ */
+export function collectionManifestFromSources(sources: {
+  sidecar?: unknown;
+  legacyDocument?: unknown;
+}): CollectionManifest | null {
+  const fromSidecar = sources.sidecar
+    ? parseCollectionManifest(sources.sidecar)
+    : null;
+  if (fromSidecar) return fromSidecar;
+
+  if (isRecord(sources.legacyDocument)) {
+    return parseCollectionManifest(
+      sources.legacyDocument[LEGACY_READER_COLLECTION_FIELD],
+    );
+  }
+  return null;
 }
 
 /** Whether a parsed manifest carries any editorial content. */

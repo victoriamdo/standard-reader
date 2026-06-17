@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  collectionManifestFromSources,
   hasColophon,
   hasEditorial,
   parseCollectionManifest,
@@ -67,5 +68,27 @@ describe("parseCollectionManifest", () => {
     });
     expect(noColophon?.colophon).toBeUndefined();
     expect(noColophon && hasColophon(noColophon)).toBe(false);
+  });
+
+  it("prefers sidecar manifest over legacy document extension", () => {
+    const sidecar = {
+      document: ITEM,
+      items: [{ document: ITEM_2 }],
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const legacy = {
+      readerCollection: { items: [{ document: ITEM }] },
+    };
+    expect(
+      collectionManifestFromSources({ sidecar, legacyDocument: legacy }),
+    ).toEqual({ items: [{ document: ITEM_2 }] });
+  });
+
+  it("falls back to legacy readerCollection on the document", () => {
+    expect(
+      collectionManifestFromSources({
+        legacyDocument: { readerCollection: { items: [{ document: ITEM }] } },
+      }),
+    ).toEqual({ items: [{ document: ITEM }] });
   });
 });
