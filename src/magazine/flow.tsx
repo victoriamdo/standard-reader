@@ -110,25 +110,35 @@ export function CoverFlow({
 /** A feature: art-directed opener (image or text) followed by the real body. */
 export const FeatureFlow = forwardRef<
   HTMLElement,
-  { feature: MagFeature; coverImageUrl: string | null }
->(function FeatureFlowComponent({ feature, coverImageUrl }, ref) {
+  {
+    feature: MagFeature;
+    coverImageUrl: string | null;
+    /** Mobile single-page: bleed photo + overlay to the stage edges. */
+    fullBleed?: boolean;
+  }
+>(function FeatureFlowComponent({ feature, coverImageUrl, fullBleed }, ref) {
   const { meta, detail } = feature;
   const hasImage = Boolean(coverImageUrl);
 
   return (
     <>
       {hasImage ? (
-        <section className="flow-col img-page" ref={ref}>
-          <img className="img-bg" src={coverImageUrl ?? ""} alt="" />
-          <div className="img-caption">
-            <span className="dot" />
-            <span>{meta.topic}</span>
-          </div>
-          <div className="img-overlay">
-            <Kick meta={meta} />
-            <h1 className="headline xl">{meta.title}</h1>
-            {meta.dek ? <p className="dek">{meta.dek}</p> : null}
-            <Byline meta={meta} />
+        <section
+          className={`flow-col img-page${fullBleed ? " is-active-opener" : ""}`}
+          ref={ref}
+        >
+          <div className="img-page-bleed">
+            <img className="img-bg" src={coverImageUrl ?? ""} alt="" />
+            <div className="img-caption">
+              <span className="dot" />
+              <span>{meta.topic}</span>
+            </div>
+            <div className="img-overlay">
+              <Kick meta={meta} />
+              <h1 className="headline xl">{meta.title}</h1>
+              {meta.dek ? <p className="dek">{meta.dek}</p> : null}
+              <Byline meta={meta} />
+            </div>
           </div>
         </section>
       ) : null}

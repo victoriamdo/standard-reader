@@ -141,6 +141,26 @@ function isEdgeTap(clientX: number, edgeWidth: number) {
 /** Ignore synthetic mouse events fired after touch (edge tap, swipe). */
 const POST_TOUCH_MOUSE_MS = 500;
 
+/** Matches `.mag-flow.animate { transition: transform 0.46s ... }`. */
+const PAGE_TURN_MS = 460;
+
+function imgOpenerColForSlide(
+  slide: number,
+  perView: number,
+  spread: boolean,
+  measure: Measure | null,
+  features: MagIssue["features"],
+): number | null {
+  if (spread || !measure) return null;
+  const col = slide * perView;
+  for (let i = 0; i < features.length; i++) {
+    if (features[i].meta.coverImageUrl && measure.featureCols[i] === col) {
+      return col;
+    }
+  }
+  return null;
+}
+
 export function Magazine({
   issue,
   onExit,
@@ -163,6 +183,7 @@ export function Magazine({
   const [geom, setGeom] = useState<Geom>(() => readGeom(390, 844));
   const [measure, setMeasure] = useState<Measure | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [fullBleedCol, setFullBleedCol] = useState<number | null>(null);
   const [animate, setAnimate] = useState(false);
   const [chrome, setChrome] = useState(false);
   const [toc, setToc] = useState(false);
@@ -180,7 +201,82 @@ export function Magazine({
   const restoredRef = useRef(false);
   const measureRafRef = useRef(0);
   const lastScrollWidthRef = useRef(0);
+  const activeSlideRef = useRef(activeSlide);
+  const bleedClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const photoLightbox = useMagazineImageLightbox(flowRef);
+
+  activeSlideRef.current = activeSlide;
+
+  const syncFullBleedCol = useCallback(() => {
+    setFullBleedCol(
+      imgOpenerColForSlide(
+        activeSlideRef.current,
+        geom.perView,
+        geom.spread,
+        measure,
+        issue.features,
+      ),
+    );
+  }, [geom.perView, geom.spread, issue.features, measure]);
+
+  // Hold full-bleed openers through the page-turn animation when leaving them.
+  useEffect(() => {
+    const openerCol = imgOpenerColForSlide(
+      activeSlide,
+      geom.perView,
+      geom.spread,
+      measure,
+      issue.features,
+    );
+    if (bleedClearTimerRef.current) {
+      clearTimeout(bleedClearTimerRef.current);
+      bleedClearTimerRef.current = null;
+    }
+    if (openerCol !== null) {
+      setFullBleedCol(openerCol);
+      return;
+    }
+    if (!animate) {
+      setFullBleedCol(null);
+      return;
+    }
+    bleedClearTimerRef.current = setTimeout(() => {
+      bleedClearTimerRef.current = null;
+      syncFullBleedCol();
+    }, PAGE_TURN_MS);
+  }, [
+    activeSlide,
+    animate,
+    geom.perView,
+    geom.spread,
+    issue.features,
+    measure,
+    syncFullBleedCol,
+  ]);
+
+  useEffect(() => {
+    const flow = flowRef.current;
+    if (!flow || !animate) return;
+
+    const onTransitionEnd = (event: TransitionEvent) => {
+      if (event.target !== flow || event.propertyName !== "transform") return;
+      if (bleedClearTimerRef.current) {
+        clearTimeout(bleedClearTimerRef.current);
+        bleedClearTimerRef.current = null;
+      }
+      syncFullBleedCol();
+    };
+
+    flow.addEventListener("transitionend", onTransitionEnd);
+    return () => flow.removeEventListener("transitionend", onTransitionEnd);
+  }, [animate, syncFullBleedCol]);
+
+  useEffect(
+    () => () => {
+      if (bleedClearTimerRef.current) clearTimeout(bleedClearTimerRef.current);
+    },
+    [],
+  );
 
   // Own the viewport while mounted (shell handles overflow when embedded).
   useEffect(() => {
@@ -480,6 +576,11 @@ export function Magazine({
     hideTimer.current = setTimeout(() => setChrome(false), 2800);
   }, []);
 
+  const dismissChrome = useCallback(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    setChrome(false);
+  }, []);
+
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       const now = Date.now();
@@ -516,13 +617,29 @@ export function Magazine({
       } else if (e.key.toLowerCase() === "t") {
         setToc((v) => !v);
       } else if (e.key === "Escape") {
-        if (toc) setToc(false);
-        else onExit();
+        e.preventDefault();
+        if (toc) {
+          setToc(false);
+        } else if (chrome) {
+          dismissChrome();
+        } else if (showHint) {
+          dismissHint();
+        }
       }
     };
     globalThis.addEventListener("keydown", onKey);
     return () => globalThis.removeEventListener("keydown", onKey);
-  }, [go, maxSlide, onExit, photoLightbox.isOpen, toc, wake]);
+  }, [
+    chrome,
+    dismissChrome,
+    dismissHint,
+    go,
+    maxSlide,
+    photoLightbox.isOpen,
+    showHint,
+    toc,
+    wake,
+  ]);
 
   // Swipe.
   const touchX = useRef<number | null>(null);
@@ -563,12 +680,14 @@ export function Magazine({
     return idx >= 0 ? issue.features[idx]?.meta.title : issue.name;
   })();
 
-  const stageStyle: React.CSSProperties = {
+  const stageStyle = {
     paddingLeft: geom.hMargin,
     paddingRight: geom.hMargin,
     paddingTop: geom.vMargin,
     paddingBottom: geom.vMargin,
-  };
+    "--mag-h-margin": `${geom.hMargin}px`,
+    "--mag-v-margin": `${geom.vMargin}px`,
+  } as React.CSSProperties;
   const flowStyle: React.CSSProperties = {
     columnWidth: `${geom.colW}px`,
     columnGap: `${geom.gap}px`,
@@ -661,6 +780,12 @@ export function Magazine({
                   key={feature.meta.id}
                   feature={feature}
                   coverImageUrl={feature.meta.coverImageUrl}
+                  fullBleed={
+                    !geom.spread &&
+                    Boolean(feature.meta.coverImageUrl) &&
+                    fullBleedCol !== null &&
+                    measure?.featureCols[i] === fullBleedCol
+                  }
                   ref={(el) => {
                     featureRefs.current[i] = el;
                   }}

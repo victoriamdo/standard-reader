@@ -614,6 +614,26 @@
   padding: 0;
   overflow: hidden;
 }
+.mag .img-page-bleed {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+/* Single-page active opener: bleed into stage padding, clip before column gap. */
+.mag .mag-flow.single .img-page.is-active-opener {
+  overflow: visible;
+  clip-path: inset(
+    calc(-1 * var(--mag-v-margin, 0px)) calc(-1 * var(--mag-h-margin, 0px))
+      calc(-1 * var(--mag-v-margin, 0px)) calc(-1 * var(--mag-h-margin, 0px))
+  );
+}
+.mag .mag-flow.single .img-page.is-active-opener .img-page-bleed {
+  position: absolute;
+  top: calc(-1 * var(--mag-v-margin, 0px));
+  left: calc(-1 * var(--mag-h-margin, 0px));
+  width: calc(100% + 2 * var(--mag-h-margin, 0px));
+  height: calc(100% + 2 * var(--mag-v-margin, 0px));
+}
 .mag .img-page .img-bg {
   position: absolute;
   inset: 0;
@@ -656,7 +676,7 @@
   position: absolute;
   top: 6%;
   left: 9%;
-  z-index: 3;
+  z-index: 4;
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.04em;
