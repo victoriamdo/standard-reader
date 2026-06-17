@@ -217,9 +217,11 @@ export async function buildArticleDetail(
     );
     resolvedContentJson = composeCollectionNewsletterContent({
       editorial: collection.editorial,
+      colophon: collection.colophon,
       manifestItems: collection.items,
       cardsByUri: new Map(cards.map((card) => [card.uri, card])),
       baseUrl: getPublicUrl(),
+      omitColophon: true,
     }) as JsonValue;
   }
 

@@ -1,5 +1,8 @@
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
-import type { CollectionEditorial } from "#/lib/collections/manifest";
+import type {
+  CollectionColophon,
+  CollectionEditorial,
+} from "#/lib/collections/manifest";
 import type { CollectionTheme } from "#/lib/collections/theme";
 
 import { parseArticleBlocks } from "#/lib/document/blocks";
@@ -106,6 +109,7 @@ export function composeCollectionIssue(input: {
   publicationParams: { did: string; rkey: string } | null;
   ownerHandle: string | null;
   editorial: CollectionEditorial | null;
+  colophon: CollectionColophon | null;
   coverImageUrl: string | null;
   theme: CollectionTheme | null;
   documentUri?: string | null;
@@ -129,6 +133,7 @@ export function composeCollectionIssue(input: {
     ownerHandle: input.ownerHandle,
     publicationName: input.publicationName,
     editorial: input.editorial,
+    colophon: input.colophon,
     coverImageUrl: input.coverImageUrl,
     theme: input.theme,
     subscribe,

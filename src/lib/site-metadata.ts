@@ -141,6 +141,9 @@ export function listOgImageUrl(
   return `${baseUrl.replace(/\/$/, "")}/api/og/list?${params.toString()}`;
 }
 
+/** Dynamic OG card for a curated collection (`/collection/$did/$rkey`). */
+export { collectionOgImageUrl } from "#/lib/collections/og-meta";
+
 /** Full social meta for one of the main routes (title, OG card, URL). */
 export function pageSocialMeta(
   slug: PageOgSlug,

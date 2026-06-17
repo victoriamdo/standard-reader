@@ -118,6 +118,7 @@ export interface CollectionForEdit {
   /** The publication this collection is published under (its `site` ref). */
   publicationUri: string | null;
   editorial: { title: string | null; body: string | null } | null;
+  colophon: { body: string | null } | null;
   items: Array<CollectionEditItem>;
   /** Existing cover blob ref (to preserve on save) + a resolved preview URL. */
   coverImage: JsonObject | null;
@@ -151,6 +152,11 @@ const putCollectionInput = z.object({
   editorial: z
     .object({
       title: z.string().trim().max(160).optional(),
+      body: z.string().trim().max(8000).optional(),
+    })
+    .optional(),
+  colophon: z
+    .object({
       body: z.string().trim().max(8000).optional(),
     })
     .optional(),
@@ -577,6 +583,11 @@ const getCollectionForEdit = createServerFn({ method: "GET" })
               body: manifest.editorial.body ?? null,
             }
           : null,
+        colophon: manifest.colophon
+          ? {
+              body: manifest.colophon.body ?? null,
+            }
+          : null,
         items: manifest.items.map((item) => {
           const card = cardByUri.get(item.document) ?? null;
           return {
@@ -613,6 +624,7 @@ const putCollection = createServerFn({ method: "POST" })
 
       const content = composeCollectionNewsletterContent({
         editorial: data.editorial,
+        colophon: data.colophon,
         manifestItems: data.items,
         cardsByUri: cardByUri,
         baseUrl: getPublicUrl(),
@@ -622,6 +634,8 @@ const putCollection = createServerFn({ method: "POST" })
         data.editorial && (data.editorial.title || data.editorial.body)
           ? data.editorial
           : undefined;
+      const colophon =
+        data.colophon && data.colophon.body ? data.colophon : undefined;
 
       const rkey = data.rkey ?? newCollectionRkey();
       span.set("rkey", rkey);
@@ -634,6 +648,7 @@ const putCollection = createServerFn({ method: "POST" })
         content,
         readerCollection: {
           ...(editorial ? { editorial } : {}),
+          ...(colophon ? { colophon } : {}),
           items: data.items.map((item) => ({
             document: item.document,
             ...(item.note ? { note: item.note } : {}),

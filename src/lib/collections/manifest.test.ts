@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { hasEditorial, parseCollectionManifest } from "./manifest.ts";
+import {
+  hasColophon,
+  hasEditorial,
+  parseCollectionManifest,
+} from "./manifest.ts";
 
 const ITEM = "at://did:plc:abc/site.standard.document/3kfoo";
 const ITEM_2 = "at://did:plc:abc/site.standard.document/3kbar";
@@ -47,5 +51,21 @@ describe("parseCollectionManifest", () => {
     });
     expect(noEditorial?.editorial).toBeUndefined();
     expect(noEditorial && hasEditorial(noEditorial)).toBe(false);
+  });
+
+  it("keeps a colophon only when it has body copy", () => {
+    expect(
+      parseCollectionManifest({
+        colophon: { body: "Edited by Jane Doe." },
+        items: [{ document: ITEM }],
+      })?.colophon,
+    ).toEqual({ body: "Edited by Jane Doe." });
+
+    const noColophon = parseCollectionManifest({
+      colophon: { body: "   " },
+      items: [{ document: ITEM }],
+    });
+    expect(noColophon?.colophon).toBeUndefined();
+    expect(noColophon && hasColophon(noColophon)).toBe(false);
   });
 });

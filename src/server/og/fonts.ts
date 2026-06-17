@@ -73,6 +73,13 @@ export function loadOgFonts(): Promise<Array<LoadedFont>> {
         400,
         "normal",
       ),
+      loadLocalFont(
+        "@fontsource/archivo",
+        "archivo-latin-700-normal.woff",
+        "Archivo",
+        700,
+        "normal",
+      ),
     ]);
   }
   return ogFontsPromise;

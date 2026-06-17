@@ -9,9 +9,11 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { publicationLinkParams } from "#/components/reader/format";
+import { collectionManifestForOwner } from "#/lib/collections/resolve-manifest";
+import { parseCollectionManifest } from "#/lib/collections/manifest";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { authorPds } from "#/server/atproto/identity";
-import { didFromAtUri } from "#/server/atproto/uri";
+import { parseAtUri, didFromAtUri } from "#/server/atproto/uri";
 import { buildCanonicalUrl } from "#/server/ingest/mappers";
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
@@ -420,6 +422,23 @@ const getArticle = createServerFn({ method: "GET" })
         }
         span.set("found", true);
 
+        let sourceRow = row as ArticleDetailSourceRow;
+        const cachedManifest = parseCollectionManifest(row.collectionJson);
+        if (cachedManifest && session?.did === row.did) {
+          const parsed = parseAtUri(row.uri);
+          if (parsed) {
+            const freshManifest = await collectionManifestForOwner(
+              session.client,
+              row.did,
+              parsed.rkey,
+              cachedManifest,
+            );
+            if (freshManifest) {
+              sourceRow = { ...sourceRow, collectionJson: freshManifest };
+            }
+          }
+        }
+
         const authorProfile = authorProfileRows[0];
         const contributors: Array<ArticleContributor> = contributorRows.map(
           (c) => ({
@@ -439,7 +458,7 @@ const getArticle = createServerFn({ method: "GET" })
         return buildArticleDetail(
           db,
           schema,
-          row as ArticleDetailSourceRow,
+          sourceRow,
           contributors,
           authorPdsEndpoint,
           themeMode,

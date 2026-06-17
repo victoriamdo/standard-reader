@@ -3,7 +3,10 @@ import type {
   ArticleDetail,
   CollectionMagazineData,
 } from "#/integrations/tanstack-query/api-publication.functions";
-import type { CollectionEditorial } from "#/lib/collections/manifest";
+import type {
+  CollectionColophon,
+  CollectionEditorial,
+} from "#/lib/collections/manifest";
 
 import { queryOptions } from "@tanstack/react-query";
 import {
@@ -34,6 +37,7 @@ export type MagazineLoaderData =
       publicationParams: { did: string; rkey: string } | null;
       ownerHandle: string | null;
       editorial: CollectionEditorial | null;
+      colophon: CollectionColophon | null;
       coverImageUrl: string | null;
       theme: ArticleDetail["collectionTheme"];
       features: Array<{ detail: ArticleDetail; note: string | null }>;
@@ -102,6 +106,7 @@ export type MagazineCollectionBootstrap = {
   publicationParams: { did: string; rkey: string } | null;
   ownerHandle: string | null;
   editorial: CollectionEditorial | null;
+  colophon: CollectionColophon | null;
   coverImageUrl: string | null;
   theme: ArticleDetail["collectionTheme"];
 };
@@ -134,6 +139,7 @@ export function bootstrapFromCollectionData(
     publicationParams: data.publicationParams,
     ownerHandle: data.ownerHandle,
     editorial: data.editorial,
+    colophon: data.colophon,
     coverImageUrl: data.coverImageUrl,
     theme: data.theme,
   };
@@ -153,6 +159,7 @@ export function bootstrapFromCollectionDoc(
       : null,
     ownerHandle: article.publicationOwnerHandle,
     editorial: article.collection.editorial ?? null,
+    colophon: article.collection.colophon ?? null,
     coverImageUrl: article.coverImageUrl,
     theme: article.collectionTheme,
   };
@@ -168,6 +175,7 @@ function collectionLoaderDataFromBundle(
     publicationParams: data.publicationParams,
     ownerHandle: data.ownerHandle,
     editorial: data.editorial,
+    colophon: data.colophon,
     coverImageUrl: data.coverImageUrl,
     theme: data.theme,
     features: data.features,

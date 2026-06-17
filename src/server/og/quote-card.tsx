@@ -4,11 +4,12 @@ import type {
 } from "#/server/og/theme-colors";
 import type { Font } from "satori";
 
-import { Resvg } from "@resvg/resvg-js";
 import { initials } from "#/components/reader/format";
 import { truncateQuoteForDisplay } from "#/lib/quote-share";
 import { loadOgFonts } from "#/server/og/fonts";
 import { loadPublicationIcon } from "#/server/og/load-image";
+import { renderOgPng } from "#/server/og/render-png";
+import { ogSatoriOptions } from "#/server/og/satori-options";
 import { resolveQuoteOgColors } from "#/server/og/theme-colors";
 import satori from "satori";
 
@@ -243,16 +244,11 @@ export async function renderQuoteOgImage(
   ]);
   const svg = await satori(
     quoteOgMarkup({ ...input, publicationIcon, colors }),
-    {
+    ogSatoriOptions(fonts as Array<Font>, {
       width: OG_WIDTH,
       height: OG_HEIGHT,
-      fonts: fonts as Array<Font>,
-    },
+    }),
   );
 
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: OG_WIDTH },
-  });
-
-  return resvg.render().asPng();
+  return renderOgPng(svg);
 }

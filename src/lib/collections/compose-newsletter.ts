@@ -1,7 +1,7 @@
 import { collectionPieceReadUrl } from "#/components/reader/format";
 import { MARKPUB_MARKDOWN, MARKPUB_TEXT } from "#/lib/markpub/types.ts";
 
-import type { CollectionEditorial } from "./manifest.ts";
+import type { CollectionColophon, CollectionEditorial } from "./manifest.ts";
 
 /**
  * The portable representation of a collection: a markpub-flavored newsletter
@@ -48,14 +48,18 @@ export function newsletterItemsFromManifest(input: {
 /** Build markpub content for a collection from its manifest + indexed cards. */
 export function composeCollectionNewsletterContent(input: {
   editorial?: CollectionEditorial;
+  colophon?: CollectionColophon;
   manifestItems: Array<{ document: string; note?: string | null }>;
   cardsByUri: Map<string, CollectionNewsletterCard>;
   baseUrl: string;
+  omitColophon?: boolean;
 }): Record<string, unknown> {
   return collectionMarkpubContent(
     composeCollectionNewsletter({
       editorial: input.editorial,
+      colophon: input.colophon,
       items: newsletterItemsFromManifest(input),
+      omitColophon: input.omitColophon,
     }),
   );
 }
@@ -72,7 +76,10 @@ function blockquote(markdown: string): string {
 /** Build the newsletter markdown body for a collection. */
 export function composeCollectionNewsletter(input: {
   editorial?: CollectionEditorial;
+  colophon?: CollectionColophon;
   items: Array<NewsletterItem>;
+  /** When true, omit colophon from the body (rendered separately in-app). */
+  omitColophon?: boolean;
 }): string {
   const parts: Array<string> = [];
 
@@ -91,6 +98,14 @@ export function composeCollectionNewsletter(input: {
     const note = item.note?.trim();
     if (note) parts.push(blockquote(note));
     if (item.url) parts.push(`[Read the piece →](${item.url})`);
+  }
+
+  const colophonBody =
+    !input.omitColophon && input.colophon?.body?.trim()
+      ? input.colophon.body.trim()
+      : null;
+  if (colophonBody) {
+    parts.push("---", colophonBody);
   }
 
   return `${parts.join("\n\n")}\n`;

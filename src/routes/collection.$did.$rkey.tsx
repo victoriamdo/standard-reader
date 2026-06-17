@@ -9,10 +9,15 @@ import {
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
+import { collectionOgDescription } from "#/lib/collections/og-meta";
 import { exitMagazineViewer } from "#/lib/exit-magazine-viewer";
 import { collectionReaderViewSearch } from "#/lib/open-collections-in-magazine";
 import { getPublicUrlClient } from "#/lib/public-url";
-import { siteSocialMeta } from "#/lib/site-metadata";
+import {
+  SITE_NAME,
+  collectionOgImageUrl,
+  siteSocialMeta,
+} from "#/lib/site-metadata";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import {
   useCallback,
@@ -105,11 +110,28 @@ export const Route = createFileRoute("/collection/$did/$rkey")({
     const baseUrl = getPublicUrlClient();
     const theme = loaderData?.shell?.theme;
     const backdrop = magazineRouteBackdropStyle(theme);
+    const collection = loaderData?.collection;
+    const publicationName = collection?.publicationName?.trim() || SITE_NAME;
+    const pageTitle = collection
+      ? `${collection.name} · ${publicationName}`
+      : "The Standard Issue · Standard Reader";
+    const description = collection
+      ? collectionOgDescription({
+          editorial: collection.editorial,
+          description: collection.collectionDoc.description,
+          featureCount: collection.features.length,
+          publicationName: collection.publicationName,
+        })
+      : "Read a collection edition on Standard Reader.";
+
     return {
       meta: siteSocialMeta({
-        title: "The Standard Issue · Standard Reader",
-        description: "Read a collection edition on Standard Reader.",
+        title: pageTitle,
+        description,
         url: `${baseUrl}${match.pathname}`,
+        ogImage: collection
+          ? collectionOgImageUrl(baseUrl, match.params.did, match.params.rkey)
+          : undefined,
       }),
       links: magazineThemeFontHeadLinks(theme),
       styles: backdrop ? [backdrop] : [],

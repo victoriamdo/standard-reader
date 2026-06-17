@@ -1,13 +1,18 @@
 import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
-import type { CollectionEditorial } from "#/lib/collections/manifest";
+import type {
+  CollectionColophon,
+  CollectionEditorial,
+} from "#/lib/collections/manifest";
 import type { CollectionTheme } from "#/lib/collections/theme";
 import type { ThemeMode } from "#/lib/theme";
 import type { ArticleDetailSourceRow } from "#/server/reader/article-detail-build";
 
 import { publicationLinkParams } from "#/components/reader/format";
+import { collectionManifestForOwner } from "#/lib/collections/resolve-manifest";
 import { MAX_MAGAZINE_FEATURES } from "#/magazine/constants";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { authorPds } from "#/server/atproto/identity";
+import { parseAtUri } from "#/server/atproto/uri";
 import {
   buildArticleDetail,
   manifestFromCollectionRow,
@@ -87,6 +92,7 @@ export interface CollectionMagazineData {
   publicationParams: { did: string; rkey: string } | null;
   ownerHandle: string | null;
   editorial: CollectionEditorial | null;
+  colophon: CollectionColophon | null;
   coverImageUrl: string | null;
   theme: CollectionTheme | null;
   /** Full collection document — seeds the article cache for reader view. */
@@ -341,10 +347,29 @@ export async function loadCollectionMagazine(
   const collectionEntry = grouped.find((doc) => doc.kind === "collection");
   if (!collectionEntry) return null;
 
-  const manifest = manifestFromCollectionRow(collectionEntry.row);
+  const session = await getAtprotoSessionForRequest(request);
+  let manifest = manifestFromCollectionRow(collectionEntry.row);
   if (!manifest) return null;
 
-  const session = await getAtprotoSessionForRequest(request);
+  if (session?.did === collectionEntry.row.did) {
+    const parsed = parseAtUri(collectionEntry.row.uri);
+    if (parsed) {
+      const freshManifest = await collectionManifestForOwner(
+        session.client,
+        collectionEntry.row.did,
+        parsed.rkey,
+        manifest,
+      );
+      if (freshManifest) {
+        manifest = freshManifest;
+        collectionEntry.row = {
+          ...collectionEntry.row,
+          collectionJson: freshManifest,
+        };
+      }
+    }
+  }
+
   const themeMode: ThemeMode = await themeModeForRequest(
     db,
     schema,
@@ -396,6 +421,7 @@ export async function loadCollectionMagazine(
       : null,
     ownerHandle: collectionDoc.publicationOwnerHandle,
     editorial: manifest.editorial ?? null,
+    colophon: manifest.colophon ?? null,
     coverImageUrl: collectionDoc.coverImageUrl,
     theme: collectionDoc.collectionTheme,
     collectionDoc,

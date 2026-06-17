@@ -795,6 +795,28 @@
 }
 
 /* ---- end card ---- */
+.mag .colophon-spread {
+  justify-content: center;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mag .mag-flow.spread .colophon-spread {
+  break-after: column;
+}
+.mag .colophon-spread .colophon-body {
+  font-family: var(--serif);
+  font-size: clamp(13px, 0.95vw, 16px);
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 42ch;
+}
+.mag .colophon-spread .colophon-body p {
+  margin: 0 0 0.75em;
+}
+.mag .colophon-spread .colophon-body p:last-child {
+  margin-bottom: 0;
+}
 .mag .endcard {
   break-before: column;
   justify-content: center;

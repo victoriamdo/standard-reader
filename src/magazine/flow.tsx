@@ -182,9 +182,10 @@ export const EndCardFlow = forwardRef<HTMLElement, { issue: MagIssue }>(
   function EndCardFlowComponent({ issue }, ref) {
     const subscribe = issue.subscribe;
     const ctaName = subscribe?.name ?? issue.publicationName ?? issue.name;
+    const colophonBody = issue.colophon?.body?.trim();
 
-    return (
-      <section className="flow-col endcard" ref={ref}>
+    const endActions = (
+      <>
         <h1 className="headline md">The End.</h1>
         {subscribe ? (
           <div className="endcard-subscribe">
@@ -203,6 +204,32 @@ export const EndCardFlow = forwardRef<HTMLElement, { issue: MagIssue }>(
             recommendCount={issue.recommendCount ?? 0}
           />
         ) : null}
+      </>
+    );
+
+    if (colophonBody) {
+      return (
+        <>
+          <section className="flow-col colophon-spread">
+            <header className="opener">
+              {issue.publicationName ? (
+                <div className="editorial-pub">{issue.publicationName}</div>
+              ) : null}
+              <h1 className="headline lg editorial-title">{issue.name}</h1>
+              <hr className="opener-rule" />
+            </header>
+            <MagMarkdown className="colophon-body">{colophonBody}</MagMarkdown>
+          </section>
+          <section className="flow-col endcard" ref={ref}>
+            {endActions}
+          </section>
+        </>
+      );
+    }
+
+    return (
+      <section className="flow-col endcard" ref={ref}>
+        {endActions}
         <div className="colophon">
           {issue.name} · {issue.no}
           <br />

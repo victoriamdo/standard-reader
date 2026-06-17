@@ -18,6 +18,11 @@ export interface CollectionEditorial {
   body?: string;
 }
 
+/** Optional closing credits on the magazine end spread (markdown body). */
+export interface CollectionColophon {
+  body?: string;
+}
+
 /** One curated entry: an article at-uri plus an optional explanatory note (markdown). */
 export interface CollectionItem {
   /** at-uri of the included `site.standard.document`. */
@@ -28,6 +33,7 @@ export interface CollectionItem {
 
 export interface CollectionManifest {
   editorial?: CollectionEditorial;
+  colophon?: CollectionColophon;
   items: Array<CollectionItem>;
 }
 
@@ -44,6 +50,13 @@ function parseEditorial(value: unknown): CollectionEditorial | undefined {
   const body = cleanString(raw.body);
   if (title === undefined && body === undefined) return undefined;
   return { ...(title ? { title } : {}), ...(body ? { body } : {}) };
+}
+
+function parseColophon(value: unknown): CollectionColophon | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const body = cleanString((value as Record<string, unknown>).body);
+  if (body === undefined) return undefined;
+  return { body };
 }
 
 function parseItem(value: unknown): CollectionItem | null {
@@ -73,10 +86,20 @@ export function parseCollectionManifest(
   if (items.length === 0) return null;
 
   const editorial = parseEditorial(raw.editorial);
-  return { ...(editorial ? { editorial } : {}), items };
+  const colophon = parseColophon(raw.colophon);
+  return {
+    ...(editorial ? { editorial } : {}),
+    ...(colophon ? { colophon } : {}),
+    items,
+  };
 }
 
 /** Whether a parsed manifest carries any editorial content. */
 export function hasEditorial(manifest: CollectionManifest): boolean {
   return Boolean(manifest.editorial?.title || manifest.editorial?.body);
+}
+
+/** Whether a parsed manifest carries colophon body copy. */
+export function hasColophon(manifest: CollectionManifest): boolean {
+  return Boolean(manifest.colophon?.body);
 }

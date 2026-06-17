@@ -4,10 +4,11 @@ import type {
 } from "#/server/og/theme-colors";
 import type { Font } from "satori";
 
-import { Resvg } from "@resvg/resvg-js";
 import { initials } from "#/components/reader/format";
 import { loadOgFonts } from "#/server/og/fonts";
 import { loadOgImage, loadPublicationIcon } from "#/server/og/load-image";
+import { OG_HEIGHT, OG_WIDTH, renderOgPng } from "#/server/og/render-png";
+import { ogSatoriOptions } from "#/server/og/satori-options";
 import { truncateAtWord } from "#/server/og/text";
 import { resolveQuoteOgColors } from "#/server/og/theme-colors";
 import satori from "satori";
@@ -328,16 +329,11 @@ export async function renderArticleOgImage(
 
   const svg = await satori(
     articleOgMarkup({ data: input, publicationIcon, coverImage, colors }),
-    {
+    ogSatoriOptions(fonts as Array<Font>, {
       width: OG_WIDTH,
       height: OG_HEIGHT,
-      fonts: fonts as Array<Font>,
-    },
+    }),
   );
 
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: OG_WIDTH },
-  });
-
-  return resvg.render().asPng();
+  return renderOgPng(svg);
 }

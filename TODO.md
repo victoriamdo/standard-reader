@@ -272,6 +272,11 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
       publication-count footer). List record comes from the PDS (`fetchPublicList`); member
       icons/owner handle hydrate from the read model. `/l/...` route `head` emits the card via
       `listOgImageUrl`; cached more briefly than article cards since lists are editable.
+- [x] **Collection OG cards** — publication-themed satori cards for magazine collection links
+      (`/api/og/collection?did&rkey`, `src/server/og/collection-card.tsx`: theme colors,
+      publication kicker, collection title, editorial/description, "In this issue" TOC, feature
+      count). `/collection/...` route `head` emits the card via `collectionOgImageUrl` +
+      collection-specific title/description.
 - [x] **standard.site discovery hints** — `/p/...` emits
       `<link rel="site.standard.publication" href="at://…">` and `/a/...` emits
       `rel="site.standard.document"` (+ the publication hint when the document belongs to one),

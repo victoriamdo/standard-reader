@@ -1,8 +1,9 @@
 import type { Font } from "satori";
 
-import { Resvg } from "@resvg/resvg-js";
 import { SITE_NAME, SITE_TAGLINE } from "#/lib/site-metadata";
 import { loadOgFonts } from "#/server/og/fonts";
+import { renderOgPng } from "#/server/og/render-png";
+import { ogSatoriOptions } from "#/server/og/satori-options";
 import satori from "satori";
 
 const OG_WIDTH = 1200;
@@ -92,15 +93,13 @@ function siteOgMarkup() {
 
 export async function renderSiteOgImage(): Promise<Uint8Array> {
   const fonts = await loadOgFonts();
-  const svg = await satori(siteOgMarkup(), {
-    width: OG_WIDTH,
-    height: OG_HEIGHT,
-    fonts: fonts as Array<Font>,
-  });
+  const svg = await satori(
+    siteOgMarkup(),
+    ogSatoriOptions(fonts as Array<Font>, {
+      width: OG_WIDTH,
+      height: OG_HEIGHT,
+    }),
+  );
 
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: OG_WIDTH },
-  });
-
-  return resvg.render().asPng();
+  return renderOgPng(svg);
 }

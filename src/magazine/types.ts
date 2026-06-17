@@ -1,5 +1,8 @@
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
-import type { CollectionEditorial } from "#/lib/collections/manifest";
+import type {
+  CollectionColophon,
+  CollectionEditorial,
+} from "#/lib/collections/manifest";
 import type { CollectionTheme } from "#/lib/collections/theme";
 
 /** Shell chrome while a collection or list issue is loading. */
@@ -60,6 +63,8 @@ export interface MagIssue {
   publicationName?: string | null;
   /** Collection-only: optional editorial intro spread (markdown body). */
   editorial?: CollectionEditorial | null;
+  /** Collection-only: optional closing credits on the end spread (markdown). */
+  colophon?: CollectionColophon | null;
   /** Collection-only: the issue cover image. */
   coverImageUrl?: string | null;
   /** Collection-only: publication theme colors + Google fonts. */

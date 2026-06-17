@@ -551,6 +551,9 @@ export function CollectionBuilder({
   const [editorialBody, setEditorialBody] = useState(
     initial?.editorial?.body ?? "",
   );
+  const [colophonBody, setColophonBody] = useState(
+    initial?.colophon?.body ?? "",
+  );
   const [items, setItems] = useState<Array<BuilderItem>>(
     () => initial?.items.map(toBuilderItem) ?? [],
   );
@@ -725,6 +728,9 @@ export function CollectionBuilder({
         editorial: editorialBody.trim()
           ? { body: editorialBody.trim() }
           : undefined,
+        colophon: colophonBody.trim()
+          ? { body: colophonBody.trim() }
+          : undefined,
         items: items.map((item) => ({
           document: item.uri,
           note: item.note.trim() || undefined,
@@ -853,6 +859,15 @@ export function CollectionBuilder({
               onChange={setEditorialBody}
               placeholder="Introduce the collection… (markdown supported)"
               rows={6}
+              size="lg"
+            />
+
+            <MarkdownField
+              label="Colophon"
+              value={colophonBody}
+              onChange={setColophonBody}
+              placeholder="Closing credits on the end spread… (markdown supported)"
+              rows={4}
               size="lg"
             />
           </Flex>

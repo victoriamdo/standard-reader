@@ -64,6 +64,7 @@ import {
   articleReadingText,
   articleSpeechText,
 } from "./content/extract-text";
+import { MarkdownArticle } from "./content/renderers/shared/markdown-article";
 import { DocumentShareMenu } from "./document-share-menu";
 import {
   articlePublicationUrl,
@@ -380,6 +381,24 @@ const styles = stylex.create({
     fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
   },
+  colophon: {
+    textAlign: "center",
+    borderTopColor: uiColor.border1,
+    borderTopStyle: "solid",
+    borderTopWidth: 1,
+    marginTop: spacing["14"],
+    paddingTop: spacing["7"],
+  },
+  colophonBody: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.lg,
+    fontStyle: "italic",
+    lineHeight: lineHeight.base,
+    marginLeft: "auto",
+    marginRight: "auto",
+    maxWidth: "46ch",
+  },
   emptyNote: {
     color: uiColor.text1,
     fontFamily: fontFamily.serif,
@@ -621,6 +640,20 @@ function ReaderProgress({ progress }: { progress: number }) {
 }
 
 const COLLECTION_MAGAZINE_INTRO_KEY = "collection-magazine-intro:v1";
+
+function CollectionColophon({ body }: { body: string }) {
+  return (
+    <footer {...stylex.props(styles.colophon)}>
+      <div {...stylex.props(styles.colophonBody)}>
+        <MarkdownArticle
+          text={body}
+          hasHero={false}
+          codeHighlights={undefined}
+        />
+      </div>
+    </footer>
+  );
+}
 
 function hasSeenCollectionMagazineIntro(): boolean {
   if (globalThis.localStorage === undefined) {
@@ -974,6 +1007,10 @@ function ArticleViewBody({
         ) : (
           <ArticleContent article={article} />
         )}
+
+        {article.collection?.colophon?.body ? (
+          <CollectionColophon body={article.collection.colophon.body} />
+        ) : null}
 
         <ArticleLikePrompt
           recommended={recommended}
