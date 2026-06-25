@@ -11,12 +11,7 @@
  */
 
 import { config } from "../src/config.ts";
-import {
-  getScanState,
-  insertLabel,
-  openDb,
-  setScanState,
-} from "../src/db.ts";
+import { getScanState, insertLabel, openDb, setScanState } from "../src/db.ts";
 import { score } from "../src/detector.ts";
 import { loadKeypair, signLabel } from "../src/sign.ts";
 
@@ -83,10 +78,12 @@ async function resolvePds(did: string): Promise<string | null> {
       service?: Array<{ id?: string; type?: string; serviceEndpoint?: string }>;
     }>(docUrl);
     endpoint =
-      doc?.service?.find(
-        (s) =>
-          s.type === "AtprotoPersonalDataServer" || s.id === "#atproto_pds",
-      )?.serviceEndpoint?.replace(/\/$/, "") ?? null;
+      doc?.service
+        ?.find(
+          (s) =>
+            s.type === "AtprotoPersonalDataServer" || s.id === "#atproto_pds",
+        )
+        ?.serviceEndpoint?.replace(/\/$/, "") ?? null;
   }
   pdsCache.set(did, endpoint);
   return endpoint;
@@ -135,7 +132,11 @@ async function main(): Promise<void> {
     const fetched = await documentText(doc.uri, doc.did);
     if (!fetched) continue;
     const result = score(fetched.text);
-    scored.push({ uri: doc.uri, score: result.score, klass: result.classification });
+    scored.push({
+      uri: doc.uri,
+      score: result.score,
+      klass: result.classification,
+    });
 
     const desired = result.score >= config.aiThreshold;
     const prev = getScanState(db, doc.uri);
@@ -168,7 +169,7 @@ async function main(): Promise<void> {
   );
 }
 
-main().catch((err) => {
-  console.error("[backfill] fatal", err);
+main().catch((error) => {
+  console.error("[backfill] fatal", error);
   process.exit(1);
 });

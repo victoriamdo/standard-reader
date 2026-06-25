@@ -9,6 +9,7 @@
     "es2026": true
   },
   "ignorePatterns": [
+    "services/**",
     "**/routeTree.gen.ts",
     "eslint.stylex-autofix.mjs",
     "eslint.react-compiler.mjs",

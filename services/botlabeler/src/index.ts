@@ -27,7 +27,9 @@ async function main(): Promise<void> {
   startIngest(db, keypair);
 }
 
-main().catch((error) => {
-  console.error("[claudeslop] fatal", error);
-  process.exit(1);
-});
+try {
+  await main();
+} catch (error) {
+  console.error("[botlabeler] fatal", error);
+  process.exitCode = 1;
+}

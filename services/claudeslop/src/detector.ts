@@ -97,7 +97,7 @@ const TRANSITIONS = new Set([
 ]);
 
 function clamp01(n: number): number {
-  return n < 0 ? 0 : n > 1 ? 1 : n;
+  return n < 0 ? 0 : Math.min(1, n);
 }
 
 function countOccurrences(haystack: string, needle: string): number {
@@ -112,22 +112,22 @@ function countOccurrences(haystack: string, needle: string): number {
   return count;
 }
 
-function splitSentences(text: string): string[] {
+function splitSentences(text: string): Array<string> {
   return text
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 }
 
-function words(text: string): string[] {
+function words(text: string): Array<string> {
   return text.toLowerCase().match(/[a-z0-9']+/g) ?? [];
 }
 
-function mean(xs: number[]): number {
+function mean(xs: Array<number>): number {
   return xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length;
 }
 
-function stddev(xs: number[]): number {
+function stddev(xs: Array<number>): number {
   if (xs.length < 2) return 0;
   const m = mean(xs);
   return Math.sqrt(mean(xs.map((x) => (x - m) ** 2)));
@@ -138,7 +138,7 @@ function stddev(xs: number[]): number {
  * be judged reliably, so they collapse toward a neutral score.
  */
 export function score(input: string): DetectorResult {
-  const text = (input ?? "").replace(/\s+/g, " ").trim();
+  const text = (input ?? "").replaceAll(/\s+/g, " ").trim();
   const lower = text.toLowerCase();
   const wordList = words(text);
   const wordCount = wordList.length;
@@ -168,7 +168,10 @@ export function score(input: string): DetectorResult {
   const burstiness = clamp01((0.6 - cv) / 0.6);
 
   // Cliché & hedging density, per 1000 words.
-  const clicheHits = CLICHES.reduce((n, p) => n + countOccurrences(lower, p), 0);
+  const clicheHits = CLICHES.reduce(
+    (n, p) => n + countOccurrences(lower, p),
+    0,
+  );
   const hedgeHits = HEDGES.reduce((n, p) => n + countOccurrences(lower, p), 0);
   const per1000 = (hits: number) => (hits / wordCount) * 1000;
   const cliche = clamp01(per1000(clicheHits) / 4);
@@ -217,7 +220,11 @@ export function score(input: string): DetectorResult {
 
   const finalScore = clamp01(weighted);
   const classification: Classification =
-    finalScore >= 0.62 ? "likely-ai" : finalScore >= 0.42 ? "possibly-ai" : "human";
+    finalScore >= 0.62
+      ? "likely-ai"
+      : finalScore >= 0.42
+        ? "possibly-ai"
+        : "human";
 
   return { score: finalScore, classification, signals, wordCount };
 }

@@ -13,6 +13,10 @@ import {
   dbValueToTrackReadingHistory,
 } from "#/lib/track-reading-history";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
+import {
+  filterHiddenDocuments,
+  hiddenDocumentUris,
+} from "#/server/labeler/labels.server";
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
@@ -252,6 +256,16 @@ async function buildHomeFeedCritical(
     latestUnread = articleCardsAsAllRead(latestUnread);
   }
 
+  // Drop anything the reader hid via a subscribed labeler's label.
+  const hidden = await hiddenDocumentUris(db, schema, ctx.did, [
+    ...(featured ? [featured.uri] : []),
+    ...latestUnread.map((article) => article.uri),
+  ]);
+  if (hidden.size > 0) {
+    if (featured && hidden.has(featured.uri)) featured = null;
+    latestUnread = latestUnread.filter((article) => !hidden.has(article.uri));
+  }
+
   span.set("rows", latestUnread.length);
 
   const enriched = await attachCommentCountsToArticles(db, schema, [
@@ -290,9 +304,16 @@ async function buildHomeFeedExtras(
     trendingPubUrisPromise,
   ]);
 
-  const trendingFiltered = trendingRaw
-    .filter((article) => !exclude.has(article.uri))
-    .slice(0, HOME_RAIL_LIMIT);
+  const trendingExcluded = trendingRaw.filter(
+    (article) => !exclude.has(article.uri),
+  );
+  const trendingVisible = await filterHiddenDocuments(
+    db,
+    schema,
+    did,
+    trendingExcluded,
+  );
+  const trendingFiltered = trendingVisible.slice(0, HOME_RAIL_LIMIT);
 
   const [youMightFollowRaw, trending] = await Promise.all([
     personalized && did
@@ -516,10 +537,13 @@ async function loadLatestFeedCritical(
         });
 
   span.set("count", items.length);
+  // Hide labeled posts for the reader, but page on the pre-filter count so
+  // pagination still advances (a page may just show slightly fewer rows).
+  const visibleItems = await filterHiddenDocuments(db, schema, did, items);
   const enrichedItems = await attachCommentCountsToArticles(
     db,
     schema,
-    trackReading ? items : articleCardsAsAllRead(items),
+    trackReading ? visibleItems : articleCardsAsAllRead(visibleItems),
   );
 
   return {

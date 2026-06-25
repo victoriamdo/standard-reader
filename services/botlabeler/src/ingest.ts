@@ -1,17 +1,16 @@
 /**
- * The producer: consume the Jetstream firehose, score every `site.standard.document`
- * that flows by, and emit (or retract) the `ai-writing` label accordingly.
- *
- * Jetstream is a JSON-over-WebSocket view of the AT Proto firehose — far simpler
- * to consume than the raw CBOR relay, which is why it's a good fit for a small
- * labeler. We ask it for just the one collection we care about and resume from a
- * persisted time cursor so a restart doesn't miss anything.
+ * The producer: consume the Jetstream firehose, and for every
+ * `site.standard.document` that flows by, label it `bot` when its author has
+ * self-declared as a bot (a `bot` self-label on their profile).
  */
 
 import type { Secp256k1Keypair } from "@atproto/crypto";
 
-import WebSocket from "ws";
+import { WebSocket } from "ws";
 
+import type { LabelerDb } from "./db.ts";
+
+import { isDeclaredBot } from "./bot.ts";
 import { config } from "./config.ts";
 import {
   getCursor,
@@ -20,8 +19,6 @@ import {
   setCursor,
   setScanState,
 } from "./db.ts";
-import type { LabelerDb } from "./db.ts";
-import { score } from "./detector.ts";
 import { signLabel } from "./sign.ts";
 
 const CURSOR_NAME = "jetstream";
@@ -42,18 +39,10 @@ interface JetstreamEvent {
   };
 }
 
-function documentText(record: Record<string, unknown>): string {
-  const parts = [record.title, record.textContent ?? record.description].filter(
-    (v): v is string => typeof v === "string" && v.length > 0,
-  );
-  return parts.join("\n\n");
-}
-
 export function startIngest(db: LabelerDb, keypair: Secp256k1Keypair): void {
   let backoff = RECONNECT_MIN_MS;
   let lastTimeUs = Number(getCursor(db, CURSOR_NAME) ?? 0);
 
-  // Persist the cursor on a timer rather than on every event.
   setInterval(() => {
     if (lastTimeUs > 0) setCursor(db, CURSOR_NAME, String(lastTimeUs));
   }, 5000).unref();
@@ -116,7 +105,6 @@ async function handleEvent(
   const uri = `at://${event.did}/${commit.collection}/${commit.rkey}`;
   const prev = getScanState(db, uri);
 
-  // Deleted document: retract any label we had on it.
   if (commit.operation === "delete") {
     if (prev?.labeled) {
       await emit(db, keypair, { uri, label: false });
@@ -128,12 +116,9 @@ async function handleEvent(
     return;
   }
 
-  if (!commit.record) return;
-  const result = score(documentText(commit.record));
-  const desired = result.score >= config.aiThreshold;
+  // The author (repo DID) self-declared as a bot?
+  const desired = await isDeclaredBot(event.did);
 
-  // Idempotent: only act when the desired state differs from what we last
-  // recorded at the current detector version.
   if (
     prev &&
     prev.version === config.detectorVersion &&
@@ -148,9 +133,7 @@ async function handleEvent(
       cid: desired ? commit.cid : undefined,
       label: desired,
     });
-    console.log(
-      `[ingest] ${desired ? "+" : "-"}${config.labelValue} ${uri} (score ${result.score.toFixed(2)})`,
-    );
+    console.log(`[ingest] ${desired ? "+" : "-"}${config.labelValue} ${uri}`);
   }
   setScanState(db, uri, { version: config.detectorVersion, labeled: desired });
 }
