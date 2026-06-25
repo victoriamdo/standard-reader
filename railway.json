@@ -6,7 +6,6 @@
   },
   "deploy": {
     "startCommand": "pnpm start",
-    "preDeployCommand": ["pnpm db:migrate"],
     "healthcheckPath": "/api/auth/atproto/metadata.json",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
