@@ -20,12 +20,13 @@ import {
   subscribedLabelerDids,
 } from "#/server/labeler/labels.server";
 import {
+  knownLabelerDids,
   resolveActorDid,
   resolveLabelerView,
 } from "#/server/labeler/resolve.server";
 import { observe } from "#/server/observability/log";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import type { ArticleCard, Db, Schema } from "./api-shapes";
@@ -46,6 +47,12 @@ export interface LabelerCard {
   displayName?: string;
   description?: string;
   labelValueDefinitions?: Array<LabelValueDef>;
+}
+
+/** A labeler in the directory, with the caller's subscription state. */
+export interface LabelerListItem extends LabelerCard {
+  subscribed: boolean;
+  subscriberCount: number;
 }
 
 export type LabelVisibility = "ignore" | "warn" | "hide";
@@ -112,6 +119,45 @@ const getLabelers = createServerFn({ method: "GET" })
       return dids.map(
         (did, i): LabelerCard => views[i] ?? { did },
       ) satisfies Array<LabelerCard>;
+    }),
+  );
+
+const getKnownLabelers = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .handler(
+    observe("labelers.getKnownLabelers", async ({ context }, span) => {
+      const session = await getAtprotoSessionForRequest(getRequest());
+      const subscribed = session
+        ? await subscribedLabelerDids(context.db, context.schema, session.did)
+        : [];
+      const subSet = new Set(subscribed);
+      const ls = context.schema.labelerSubscriptions;
+      const countRows = await context.db
+        .select({
+          labelerDid: ls.labelerDid,
+          subscriberCount: sql<number>`count(*)::int`,
+        })
+        .from(ls)
+        .where(eq(ls.deleted, false))
+        .groupBy(ls.labelerDid);
+      const countByDid = new Map(
+        countRows.map((row) => [row.labelerDid, row.subscriberCount]),
+      );
+      // The known directory plus anything the reader already subscribed to.
+      const dids = [...new Set([...knownLabelerDids(), ...subscribed])];
+      const views = await Promise.all(dids.map((d) => resolveLabelerView(d)));
+      span.set("count", dids.length);
+      return dids
+        .map(
+          (did, i): LabelerListItem => ({
+            ...(views[i] ?? { did }),
+            subscribed: subSet.has(did),
+            subscriberCount: countByDid.get(did) ?? 0,
+          }),
+        )
+        .sort(
+          (a, b) => b.subscriberCount - a.subscriberCount,
+        ) satisfies Array<LabelerListItem>;
     }),
   );
 
@@ -197,13 +243,24 @@ const getLabeledDocuments = createServerFn({ method: "GET" })
     observe("labelers.getLabeledDocuments", async ({ data, context }, span) => {
       span.set("labeler", data.labeler);
       const labels = await fetchAllLabelsFromLabeler(data.labeler);
-      const uris = [
-        ...new Set(
-          labels
-            .map((l) => l.uri)
-            .filter((u) => u.includes("/site.standard.document/")),
-        ),
-      ].slice(0, 60);
+      const labelsByUri: Record<string, Array<string>> = {};
+      const uriLatest = new Map<string, string>();
+
+      for (const label of labels) {
+        if (!label.uri.includes("/site.standard.document/")) continue;
+        const vals = labelsByUri[label.uri] ?? [];
+        if (!vals.includes(label.val)) vals.push(label.val);
+        labelsByUri[label.uri] = vals;
+        const cts = label.cts ?? "";
+        if ((uriLatest.get(label.uri) ?? "") < cts)
+          uriLatest.set(label.uri, cts);
+      }
+
+      const uris = Object.keys(labelsByUri)
+        .sort((a, b) =>
+          (uriLatest.get(b) ?? "").localeCompare(uriLatest.get(a) ?? ""),
+        )
+        .slice(0, 60);
       const documents = await selectArticleCardsByUris(
         context.db,
         context.schema,
@@ -211,7 +268,13 @@ const getLabeledDocuments = createServerFn({ method: "GET" })
         { lite: true },
       );
       span.set("count", documents.length);
-      return { documents } satisfies { documents: Array<ArticleCard> };
+      return {
+        documents,
+        labelsByUri,
+      } satisfies {
+        documents: Array<ArticleCard>;
+        labelsByUri: Record<string, Array<string>>;
+      };
     }),
   );
 
@@ -320,6 +383,14 @@ function getLabelersQueryOptions() {
   });
 }
 
+function getKnownLabelersQueryOptions() {
+  return queryOptions({
+    queryKey: ["reader", "knownLabelers"] as const,
+    queryFn: async () => getKnownLabelers(),
+    staleTime: 5 * 60_000,
+  });
+}
+
 function getLabelerQueryOptions(actor: string) {
   return queryOptions({
     queryKey: ["labeler", actor] as const,
@@ -372,6 +443,8 @@ function unsubscribeLabelerMutationOptions() {
 export const labelerApi = {
   getLabelers,
   getLabelersQueryOptions,
+  getKnownLabelers,
+  getKnownLabelersQueryOptions,
   getLabeler,
   getLabelerQueryOptions,
   getLabeledDocuments,

@@ -58,6 +58,22 @@ async function fetchJson<T>(url: string, ms = 4000): Promise<T | null> {
   }
 }
 
+/**
+ * The labeler DIDs surfaced in the directory (`/labelers`). A seed set the app
+ * knows about — env-configurable (`KNOWN_LABELERS`, comma-separated) — each still
+ * resolved the standard way. Defaults to the first-party claudeslop labeler.
+ */
+export function knownLabelerDids(): Array<string> {
+  const raw = process.env.KNOWN_LABELERS;
+  if (raw) {
+    return raw
+      .split(",")
+      .map((d) => d.trim())
+      .filter((d) => d.length > 0);
+  }
+  return ["did:web:claudeslop.standard-reader.app"];
+}
+
 /** Resolve a DID to its DID document URL (did:web and did:plc supported). */
 function didDocUrl(did: string): string | null {
   if (did.startsWith("did:plc:")) {

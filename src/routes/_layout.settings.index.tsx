@@ -7,7 +7,7 @@ import { buildAuthRedirectPath } from "#/utils/auth-redirect";
 
 import { UserSettingsView } from "../components/user-settings-view";
 
-export const Route = createFileRoute("/_layout/settings")({
+export const Route = createFileRoute("/_layout/settings/")({
   beforeLoad: async ({ context }) => {
     const session = await context.queryClient.ensureQueryData(
       user.getSessionQueryOptions,

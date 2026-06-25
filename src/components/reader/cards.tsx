@@ -31,6 +31,7 @@ import {
   AspectRatio,
   AspectRatioImage,
 } from "../../design-system/aspect-ratio";
+import { Badge } from "../../design-system/badge";
 import { Button } from "../../design-system/button";
 import { Flex } from "../../design-system/flex";
 import { IconButton } from "../../design-system/icon-button";
@@ -1011,16 +1012,26 @@ function CollectionMagazineMeta() {
   );
 }
 
-function ArticleMetaLine({ article }: { article: ArticleCard }) {
+function ArticleMetaLine({
+  article,
+  metaLabels,
+}: {
+  article: ArticleCard;
+  /** When set, replaces article tags in the meta line (e.g. labeler label values). */
+  metaLabels?: Array<string>;
+}) {
   const hasEngagement = article.recommendCount > 0 || article.commentCount > 0;
-  const topics = articleTopics(article);
+  const topics = metaLabels == null ? articleTopics(article) : [];
   const showCollection = article.isCollection;
-  if (!showCollection && !hasEngagement && topics.length === 0) return null;
+  const hasTopics = topics.length > 0;
+  const hasLabelVals = metaLabels != null && metaLabels.length > 0;
+  if (!showCollection && !hasEngagement && !hasTopics && !hasLabelVals)
+    return null;
 
   return (
     <MetaLine>
       {showCollection ? <CollectionMagazineMeta /> : null}
-      {showCollection && (hasEngagement || topics.length > 0) ? (
+      {showCollection && (hasEngagement || hasTopics || hasLabelVals) ? (
         <span aria-hidden {...stylex.props(styles.metaDot)}>
           ·
         </span>
@@ -1031,12 +1042,16 @@ function ArticleMetaLine({ article }: { article: ArticleCard }) {
           commentCount={article.commentCount}
         />
       ) : null}
-      {hasEngagement && topics.length > 0 ? (
+      {hasEngagement && (hasTopics || hasLabelVals) ? (
         <span aria-hidden {...stylex.props(styles.metaDot)}>
           ·
         </span>
       ) : null}
-      <TopicMeta article={article} />
+      {hasLabelVals ? (
+        <LabelValsMeta labels={metaLabels} />
+      ) : (
+        <TopicMeta article={article} />
+      )}
     </MetaLine>
   );
 }
@@ -1265,6 +1280,26 @@ function TopicMeta({ article }: { article: ArticleCard }) {
   );
 }
 
+/** Renders label values inside a {@link MetaLine}. */
+function LabelValsMeta({ labels }: { labels: Array<string> }) {
+  return (
+    <>
+      {labels.map((label, index) => (
+        <Fragment key={label}>
+          {index > 0 ? (
+            <span aria-hidden {...stylex.props(styles.metaDot)}>
+              ·
+            </span>
+          ) : null}
+          <Badge variant="warning" size="sm">
+            {label}
+          </Badge>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
 /* ── Feature (hero) ─────────────────────────────────────────────────────── */
 
 export function FeatureArticle({
@@ -1388,6 +1423,7 @@ export function ArticleRow({
   saveButtonPlacement = "header",
   isFirstInSection = false,
   assumeBookmarked,
+  metaLabels,
 }: {
   article: ArticleCard;
   unread?: boolean;
@@ -1399,6 +1435,8 @@ export function ArticleRow({
   isFirstInSection?: boolean;
   /** Skip per-row bookmark status fetches when the list is already the save queue. */
   assumeBookmarked?: boolean;
+  /** When set, replaces article tags in the meta line (e.g. labeler label values). */
+  metaLabels?: Array<string>;
 }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -1421,15 +1459,17 @@ export function ArticleRow({
     !showByline && isFirstInSection ? styles.rowFirstInSection : false,
   ];
 
+  const bylineHeader = (
+    <Flex align="center" gap="2xl" style={styles.rowHeader}>
+      {showByline ? <Byline article={article} includeDate /> : <span />}
+      {saveBesideMedia ? null : saveButton}
+    </Flex>
+  );
+
   const articleBody = (
     <ArticleLink article={article} extraStyles={gridStyles}>
       <Flex direction="column" gap="2xl">
-        {showByline ? null : (
-          <Flex align="center" style={styles.rowHeader}>
-            <span />
-            {saveBesideMedia ? null : saveButton}
-          </Flex>
-        )}
+        {bylineHeader}
         <ArticleTitleRow
           article={article}
           showByline={showByline}
@@ -1438,7 +1478,7 @@ export function ArticleRow({
           unreadDotStyle={styles.unreadDotRow}
         />
         <ArticleSearchDek article={article} style={styles.rowDek} />
-        <ArticleMetaLine article={article} />
+        <ArticleMetaLine article={article} metaLabels={metaLabels} />
       </Flex>
       {cover ? (
         <AspectRatio
@@ -1463,10 +1503,6 @@ export function ArticleRow({
           isFirstInSection && styles.rowShellFirstInSection,
         )}
       >
-        <Flex align="center" gap="2xl" style={styles.rowHeader}>
-          <Byline article={article} includeDate />
-          {saveBesideMedia ? null : saveButton}
-        </Flex>
         {articleBody}
       </div>
     );

@@ -916,7 +916,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const onAbout = pathname === "/about";
   const onPrivacyExtension = pathname === "/privacy/extension";
   const onPrivacy = pathname === "/privacy" || onPrivacyExtension;
-  const onLabelers = pathname === "/settings/labelers";
+  const onLabelers = pathname === "/labelers";
   const onSettings = pathname === "/settings";
   const staticPageTitle = onAbout
     ? "About"

@@ -52,6 +52,16 @@ export function DocsApiNav() {
         >
           Authentication
         </a>
+        <a
+          href={`#${API_DOCS_INTRO_IDS.labelers}`}
+          {...stylex.props(
+            docsStyles.refNavLink,
+            active === API_DOCS_INTRO_IDS.labelers &&
+              docsStyles.refNavLinkActive,
+          )}
+        >
+          Run a labeler
+        </a>
       </div>
 
       {API_DOCS_SECTIONS.map((section) => {

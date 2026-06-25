@@ -4,9 +4,12 @@ import type { ReadingTypographyPreference } from "#/lib/reading-typography";
 import type { ThemeMode } from "#/lib/theme";
 
 import * as stylex from "@stylexjs/stylex";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { invalidateReadQueries } from "#/components/reader/read-optimistic";
+import { ButtonLink } from "#/components/router-links";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
+import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { DEFAULT_CUSTOM_GOOGLE_FONT } from "#/lib/google-fonts";
@@ -141,6 +144,23 @@ const styles = stylex.create({
       [MOBILE]: "100%",
       default: "auto",
     },
+  },
+  labelerLink: {
+    paddingBlock: verticalSpace.sm,
+    textDecoration: { default: "none", ":hover": "underline" },
+    color: uiColor.text2,
+    display: "block",
+    fontSize: fontSize.sm,
+    paddingLeft: horizontalSpace["3xl"],
+    paddingRight: horizontalSpace["3xl"],
+  },
+  labelerEmpty: {
+    marginBlock: verticalSpace.none,
+    paddingBlock: verticalSpace["xl"],
+    color: uiColor.text1,
+    fontSize: fontSize.sm,
+    paddingLeft: horizontalSpace["3xl"],
+    paddingRight: horizontalSpace["3xl"],
   },
   segmentedControl: {
     width: {
@@ -316,6 +336,7 @@ function DataDeletionRow({
 
 export function UserSettingsView() {
   const queryClient = useQueryClient();
+  const labelers = useQuery(labelerApi.getLabelersQueryOptions());
   const { mode, setMode } = useTheme();
   const { preference: voice, setPreference: setVoice } = useReaderVoice();
   const { preference: typography, setPreference: setTypography } =
@@ -559,6 +580,35 @@ export function UserSettingsView() {
               ))}
             </Select>
           </SettingRow>
+        </div>
+      </section>
+
+      <section {...stylex.props(styles.section)}>
+        <h2 {...stylex.props(styles.sectionHeading)}>Moderation</h2>
+        <div {...stylex.props(styles.settingGroup)}>
+          <SettingRow
+            label="Labelers"
+            description="Subscribe to labelers to flag, blur, or hide content as you read."
+          >
+            <ButtonLink to="/labelers" variant="secondary" size="sm">
+              Browse labelers
+            </ButtonLink>
+          </SettingRow>
+          <Separator />
+          {(labelers.data?.length ?? 0) === 0 ? (
+            <p {...stylex.props(styles.labelerEmpty)}>No labelers subscribed</p>
+          ) : (
+            labelers.data?.map((card) => (
+              <Link
+                key={card.did}
+                to="/labelers/$did"
+                params={{ did: card.did }}
+                {...stylex.props(styles.labelerLink)}
+              >
+                {card.displayName ?? card.did}
+              </Link>
+            ))
+          )}
         </div>
       </section>
 

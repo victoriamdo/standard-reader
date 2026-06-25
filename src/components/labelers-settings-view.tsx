@@ -1,23 +1,20 @@
 "use client";
 
-import type { LabelerCard } from "#/integrations/tanstack-query/api-labelers.functions";
+import type {
+  LabelerCard,
+  LabelerListItem,
+} from "#/integrations/tanstack-query/api-labelers.functions";
 
 import * as stylex from "@stylexjs/stylex";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Avatar } from "../design-system/avatar";
 import { Badge } from "../design-system/badge";
-import { Button } from "../design-system/button";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateTitle,
-} from "../design-system/empty-state";
-import { Switch } from "../design-system/switch";
 import { TextField } from "../design-system/text-field";
+import { animationDuration } from "../design-system/theme/animations.stylex";
 import { uiColor } from "../design-system/theme/color.stylex";
 import {
   gap,
@@ -47,35 +44,61 @@ function initials(card: LabelerCard): string {
     .toUpperCase();
 }
 
-function LabelerRow({
-  card,
-  trailing,
-  linkToDetail = false,
-}: {
-  card: LabelerCard;
-  trailing: React.ReactNode;
-  linkToDetail?: boolean;
-}) {
+function labelerSearchText(card: LabelerCard): string {
+  const parts = [
+    card.displayName,
+    card.did,
+    card.description,
+    ...labelValueNames(card),
+    ...(card.labelValueDefinitions ?? []).map((def) => def.identifier),
+  ];
+  return parts
+    .filter(
+      (part): part is string => typeof part === "string" && part.length > 0,
+    )
+    .join("\n")
+    .toLowerCase();
+}
+
+function labelerSubscriberCount(card: LabelerCard | LabelerListItem): number {
+  return "subscriberCount" in card ? card.subscriberCount : 0;
+}
+
+function sortLabelersBySubscribers<T extends LabelerCard>(
+  items: Array<T>,
+): Array<T> {
+  return [...items].sort(
+    (a, b) => labelerSubscriberCount(b) - labelerSubscriberCount(a),
+  );
+}
+
+function matchesLabeler(card: LabelerCard, query: string): boolean {
+  const trimmed = query.trim();
+  if (!trimmed) return true;
+  return labelerSearchText(card).includes(trimmed.toLowerCase());
+}
+
+/** Labeler directory card — entire surface links to the labeler profile. */
+function LabelerCardItem({ card }: { card: LabelerCard }) {
   const names = labelValueNames(card);
   const displayName = card.displayName ?? card.did;
+
   return (
-    <div {...stylex.props(styles.row)}>
-      <Avatar size="lg" fallback={initials(card)} alt={displayName} />
-      <div {...stylex.props(styles.rowBody)}>
-        {linkToDetail ? (
-          <Link
-            to="/settings/labelers/$did"
-            params={{ did: card.did }}
-            {...stylex.props(styles.rowName, styles.rowLink)}
-          >
-            {displayName}
-          </Link>
-        ) : (
-          <p {...stylex.props(styles.rowName)}>{displayName}</p>
-        )}
-        <p {...stylex.props(styles.rowDid)}>{card.did}</p>
+    <Link
+      to="/labelers/$did"
+      params={{ did: card.did }}
+      {...stylex.props(styles.cardLink)}
+    >
+      <div {...stylex.props(styles.card)}>
+        <div {...stylex.props(styles.cardHead)}>
+          <Avatar size="lg" fallback={initials(card)} alt={displayName} />
+          <div {...stylex.props(styles.cardHeadText)}>
+            <span {...stylex.props(styles.cardName)}>{displayName}</span>
+            <p {...stylex.props(styles.cardDid)}>{card.did}</p>
+          </div>
+        </div>
         {card.description ? (
-          <p {...stylex.props(styles.rowDescription)}>{card.description}</p>
+          <p {...stylex.props(styles.cardDescription)}>{card.description}</p>
         ) : null}
         {names.length > 0 ? (
           <div {...stylex.props(styles.badges)}>
@@ -87,208 +110,146 @@ function LabelerRow({
           </div>
         ) : null}
       </div>
-      <div {...stylex.props(styles.rowTrailing)}>{trailing}</div>
-    </div>
+    </Link>
   );
 }
 
 export function LabelersSettingsView() {
-  const queryClient = useQueryClient();
-  const labelers = useQuery(labelerApi.getLabelersQueryOptions());
+  const known = useQuery(labelerApi.getKnownLabelersQueryOptions());
 
-  const [actor, setActor] = useState("");
-  const [submitted, setSubmitted] = useState("");
-  const lookup = useQuery(labelerApi.getLabelerQueryOptions(submitted));
+  const [search, setSearch] = useState("");
+  const searchTrim = search.trim();
 
-  const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ["reader", "labelers"] });
-    void queryClient.invalidateQueries({ queryKey: ["labeler"] });
-    void queryClient.invalidateQueries({ queryKey: ["labels"] });
-  };
+  const labelers = known.data ?? [];
+  const filtered = useMemo(
+    () =>
+      sortLabelersBySubscribers(
+        labelers.filter((item) => matchesLabeler(item, searchTrim)),
+      ),
+    [labelers, searchTrim],
+  );
 
-  const subscribe = useMutation({
-    ...labelerApi.subscribeLabelerMutationOptions(),
-    onSuccess: () => {
-      invalidate();
-      setActor("");
-      setSubmitted("");
-    },
-  });
-  const unsubscribe = useMutation({
-    ...labelerApi.unsubscribeLabelerMutationOptions(),
-    onSuccess: invalidate,
+  const lookupLocallyMatched = searchTrim.length > 0 && filtered.length > 0;
+  const lookup = useQuery({
+    ...labelerApi.getLabelerQueryOptions(searchTrim),
+    enabled: searchTrim.length > 0 && !lookupLocallyMatched,
   });
 
   const lookupCard = lookup.data?.labeler ?? null;
-  const lookupSubscribed = lookup.data?.subscribed ?? false;
+  const showLookup =
+    lookupCard != null && !labelers.some((item) => item.did === lookupCard.did);
+
+  const visibleCards = sortLabelersBySubscribers(
+    showLookup
+      ? [lookupCard, ...filtered.filter((item) => item.did !== lookupCard.did)]
+      : filtered,
+  );
 
   return (
     <ReaderContent>
       <Masthead
-        kicker="Account"
+        kicker="Moderation"
         title="Labelers"
-        dek="Subscribe to labelers to see their labels on documents as you read. A labeler is just a DID — add one by handle or DID."
+        dek="Labelers are moderation services you subscribe to by DID. Subscribe to see their labels — and blur or hide labeled posts — while you read."
       />
 
-      <section {...stylex.props(styles.section)}>
-        <h2 {...stylex.props(styles.sectionHeading)}>Add a labeler</h2>
-        <div {...stylex.props(styles.settingGroup)}>
-          <form
-            {...stylex.props(styles.addForm)}
-            onSubmit={(e) => {
-              e.preventDefault();
-              setSubmitted(actor.trim());
-            }}
-          >
-            <TextField
-              aria-label="Labeler handle or DID"
-              placeholder="claudeslop.standard-reader.app or did:web:…"
-              value={actor}
-              onChange={setActor}
-              style={styles.addInput}
-            />
-            <Button
-              type="submit"
-              variant="secondary"
-              isPending={lookup.isFetching}
-            >
-              Look up
-            </Button>
-          </form>
+      <TextField
+        aria-label="Search labelers"
+        placeholder="Search"
+        value={search}
+        onChange={setSearch}
+        size="lg"
+        style={styles.searchInput}
+      />
 
-          {submitted && lookup.isFetched && !lookupCard ? (
-            <p {...stylex.props(styles.note)}>
-              Couldn’t find a labeler at “{submitted}”. Check the handle or DID.
-            </p>
-          ) : null}
+      {searchTrim && lookup.isFetched && visibleCards.length === 0 ? (
+        <p {...stylex.props(styles.note)}>No labelers match “{searchTrim}”.</p>
+      ) : null}
 
-          {lookupCard ? (
-            <LabelerRow
-              card={lookupCard}
-              trailing={
-                lookupSubscribed ? (
-                  <Badge variant="success">Subscribed</Badge>
-                ) : (
-                  <Button
-                    variant="primary"
-                    isPending={subscribe.isPending}
-                    onPress={() => subscribe.mutate(lookupCard.did)}
-                  >
-                    Subscribe
-                  </Button>
-                )
-              }
-            />
-          ) : null}
-        </div>
-      </section>
+      <div {...stylex.props(styles.grid)}>
+        {visibleCards.map((item: LabelerListItem | LabelerCard) => (
+          <LabelerCardItem key={item.did} card={item} />
+        ))}
+      </div>
 
-      <section {...stylex.props(styles.section)}>
-        <h2 {...stylex.props(styles.sectionHeading)}>Your labelers</h2>
-        <div {...stylex.props(styles.settingGroup)}>
-          {labelers.isLoading ? (
-            <p {...stylex.props(styles.note)}>Loading…</p>
-          ) : (labelers.data?.length ?? 0) === 0 ? (
-            <EmptyState>
-              <EmptyStateTitle>No labelers yet</EmptyStateTitle>
-              <EmptyStateDescription>
-                Add a labeler above to start seeing its labels while you read.
-              </EmptyStateDescription>
-            </EmptyState>
-          ) : (
-            labelers.data?.map((card) => (
-              <LabelerRow
-                key={card.did}
-                card={card}
-                linkToDetail
-                trailing={
-                  <Switch
-                    aria-label={`Subscribed to ${card.displayName ?? card.did}`}
-                    isSelected
-                    isDisabled={unsubscribe.isPending}
-                    onChange={() => unsubscribe.mutate(card.did)}
-                  />
-                }
-              />
-            ))
-          )}
-        </div>
-      </section>
+      {!known.isLoading && labelers.length === 0 && !searchTrim ? (
+        <p {...stylex.props(styles.note)}>No known labelers yet.</p>
+      ) : null}
     </ReaderContent>
   );
 }
 
 const styles = stylex.create({
-  section: {
-    marginBlockEnd: verticalSpace["3xl"],
+  searchInput: {
+    marginBlockEnd: verticalSpace["2xl"],
+    width: "100%",
   },
-  sectionHeading: {
-    color: uiColor.text1,
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
-    letterSpacing: "0.05em",
-    marginBlockEnd: verticalSpace.xs,
-    textTransform: "uppercase",
+  grid: {
+    gap: gap.lg,
+    display: "grid",
+    gridTemplateColumns: {
+      [MOBILE]: "1fr",
+      default: "repeat(auto-fill, minmax(20rem, 1fr))",
+    },
   },
-  settingGroup: {
+  cardLink: {
+    color: "inherit",
+    cursor: "pointer",
+    display: "block",
+    textDecoration: "none",
+  },
+  card: {
     padding: spacing["4"],
     borderColor: uiColor.border1,
-    borderRadius: spacing["2"],
+    borderRadius: spacing["3"],
     borderStyle: "solid",
     borderWidth: spacing.px,
-    gap: gap.lg,
+    gap: gap.md,
     display: "flex",
     flexDirection: "column",
+    transitionDuration: animationDuration.fast,
+    transitionProperty: "border-color, background-color",
+    ":hover": {
+      backgroundColor: uiColor.component1,
+      borderColor: uiColor.border2,
+    },
   },
-  addForm: {
-    gap: gap.sm,
-    alignItems: "flex-end",
-    display: "flex",
-    flexDirection: { [MOBILE]: "column", default: "row" },
-  },
-  addInput: {
-    flexGrow: 1,
-    width: { [MOBILE]: "100%", default: "auto" },
-  },
-  row: {
+  cardHead: {
     gap: gap.lg,
-    alignItems: "flex-start",
+    alignItems: "center",
     display: "flex",
   },
-  rowBody: {
+  cardHeadText: {
+    gap: gap.xs,
+    display: "flex",
+    flexDirection: "column",
     flexGrow: 1,
     minWidth: 0,
   },
-  rowName: {
+  cardName: {
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
   },
-  rowLink: {
-    textDecoration: { default: "none", ":hover": "underline" },
-    color: "inherit",
-  },
-  rowDid: {
+  cardDid: {
     color: uiColor.text1,
     fontFamily: "monospace",
     fontSize: fontSize.xs,
+    marginBottom: spacing["0"],
+    marginTop: spacing["0"],
     wordBreak: "break-all",
   },
-  rowDescription: {
+  cardDescription: {
     color: uiColor.text1,
     fontSize: fontSize.sm,
-    marginBlockStart: spacing["1"],
   },
   badges: {
     gap: gap.sm,
     display: "flex",
     flexWrap: "wrap",
-    marginBlockStart: spacing["1.5"],
-  },
-  rowTrailing: {
-    flexShrink: 0,
   },
   note: {
     color: uiColor.text1,
     fontSize: fontSize.sm,
+    marginBlockEnd: verticalSpace.lg,
   },
 });

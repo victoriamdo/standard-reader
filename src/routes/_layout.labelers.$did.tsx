@@ -4,10 +4,16 @@ import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
+import { z } from "zod";
 
 import { LabelerDetailView } from "../components/labeler-detail-view";
 
-export const Route = createFileRoute("/_layout/settings/labelers/$did")({
+const labelerSearchSchema = z.object({
+  view: z.enum(["labels", "documents"]).default("labels"),
+});
+
+export const Route = createFileRoute("/_layout/labelers/$did")({
+  validateSearch: labelerSearchSchema,
   beforeLoad: async ({ context, params }) => {
     const session = await context.queryClient.ensureQueryData(
       user.getSessionQueryOptions,
@@ -16,7 +22,7 @@ export const Route = createFileRoute("/_layout/settings/labelers/$did")({
       throw redirect({
         to: "/login",
         search: {
-          redirect: buildAuthRedirectPath(`/settings/labelers/${params.did}`),
+          redirect: buildAuthRedirectPath(`/labelers/${params.did}`),
         },
       });
     }
@@ -24,6 +30,9 @@ export const Route = createFileRoute("/_layout/settings/labelers/$did")({
   loader: async ({ context, params }) => {
     await context.queryClient.ensureQueryData(
       labelerApi.getLabelerQueryOptions(params.did),
+    );
+    void context.queryClient.prefetchQuery(
+      labelerApi.getLabeledDocumentsQueryOptions(params.did),
     );
   },
   head: () => ({
@@ -34,5 +43,6 @@ export const Route = createFileRoute("/_layout/settings/labelers/$did")({
 
 function LabelerDetailPage() {
   const { did } = Route.useParams();
-  return <LabelerDetailView did={did} />;
+  const { view } = Route.useSearch();
+  return <LabelerDetailView did={did} view={view} />;
 }
