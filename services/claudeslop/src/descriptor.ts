@@ -14,6 +14,7 @@ export function labelerServiceView() {
     displayName: "claudeslop",
     description:
       "Flags prose that a heuristic detector thinks reads like AI slop. A vibe check, not proof.",
+    avatar: `${config.publicUrl}/avatar.svg`,
     policies: {
       labelValues: [config.labelValue],
       labelValueDefinitions: [

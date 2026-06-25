@@ -24,6 +24,7 @@ export interface ResolvedLabelerView {
   did: string;
   displayName?: string;
   description?: string;
+  avatar?: string;
   labelValueDefinitions?: Array<LabelValueDef>;
   indexedAt?: string;
 }
@@ -161,6 +162,7 @@ export async function resolveLabelerView(
           typeof raw.displayName === "string" ? raw.displayName : undefined,
         description:
           typeof raw.description === "string" ? raw.description : undefined,
+        avatar: typeof raw.avatar === "string" ? raw.avatar : undefined,
         labelValueDefinitions: policies?.labelValueDefinitions,
         indexedAt:
           typeof raw.indexedAt === "string" ? raw.indexedAt : undefined,

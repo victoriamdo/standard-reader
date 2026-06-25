@@ -12,6 +12,7 @@ export function labelerServiceView() {
     displayName: "Bots",
     description:
       "Labels posts from accounts that have declared themselves bots (a `bot` self-label on their profile).",
+    avatar: `${config.publicUrl}/avatar.svg`,
     policies: {
       labelValues: [config.labelValue],
       labelValueDefinitions: [

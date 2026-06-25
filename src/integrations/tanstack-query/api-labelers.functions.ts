@@ -46,6 +46,7 @@ export interface LabelerCard {
   did: string;
   displayName?: string;
   description?: string;
+  avatar?: string;
   labelValueDefinitions?: Array<LabelValueDef>;
 }
 
@@ -155,7 +156,7 @@ const getKnownLabelers = createServerFn({ method: "GET" })
             subscriberCount: countByDid.get(did) ?? 0,
           }),
         )
-        .sort(
+        .toSorted(
           (a, b) => b.subscriberCount - a.subscriberCount,
         ) satisfies Array<LabelerListItem>;
     }),
@@ -257,7 +258,7 @@ const getLabeledDocuments = createServerFn({ method: "GET" })
       }
 
       const uris = Object.keys(labelsByUri)
-        .sort((a, b) =>
+        .toSorted((a, b) =>
           (uriLatest.get(b) ?? "").localeCompare(uriLatest.get(a) ?? ""),
         )
         .slice(0, 60);

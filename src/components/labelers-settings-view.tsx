@@ -67,7 +67,7 @@ function labelerSubscriberCount(card: LabelerCard | LabelerListItem): number {
 function sortLabelersBySubscribers<T extends LabelerCard>(
   items: Array<T>,
 ): Array<T> {
-  return [...items].sort(
+  return [...items].toSorted(
     (a, b) => labelerSubscriberCount(b) - labelerSubscriberCount(a),
   );
 }
@@ -91,7 +91,12 @@ function LabelerCardItem({ card }: { card: LabelerCard }) {
     >
       <div {...stylex.props(styles.card)}>
         <div {...stylex.props(styles.cardHead)}>
-          <Avatar size="lg" fallback={initials(card)} alt={displayName} />
+          <Avatar
+            size="lg"
+            src={card.avatar}
+            fallback={initials(card)}
+            alt={displayName}
+          />
           <div {...stylex.props(styles.cardHeadText)}>
             <span {...stylex.props(styles.cardName)}>{displayName}</span>
             <p {...stylex.props(styles.cardDid)}>{card.did}</p>
@@ -120,7 +125,7 @@ export function LabelersSettingsView() {
   const [search, setSearch] = useState("");
   const searchTrim = search.trim();
 
-  const labelers = known.data ?? [];
+  const labelers = useMemo(() => known.data ?? [], [known.data]);
   const filtered = useMemo(
     () =>
       sortLabelersBySubscribers(
@@ -193,26 +198,23 @@ const styles = stylex.create({
     },
   },
   cardLink: {
+    textDecoration: "none",
     color: "inherit",
     cursor: "pointer",
     display: "block",
-    textDecoration: "none",
   },
   card: {
     padding: spacing["4"],
-    borderColor: uiColor.border1,
+    borderColor: { default: uiColor.border1, ":hover": uiColor.border2 },
     borderRadius: spacing["3"],
     borderStyle: "solid",
     borderWidth: spacing.px,
     gap: gap.md,
+    backgroundColor: { default: "transparent", ":hover": uiColor.component1 },
     display: "flex",
     flexDirection: "column",
     transitionDuration: animationDuration.fast,
     transitionProperty: "border-color, background-color",
-    ":hover": {
-      backgroundColor: uiColor.component1,
-      borderColor: uiColor.border2,
-    },
   },
   cardHead: {
     gap: gap.lg,
@@ -234,9 +236,9 @@ const styles = stylex.create({
     color: uiColor.text1,
     fontFamily: "monospace",
     fontSize: fontSize.xs,
+    wordBreak: "break-all",
     marginBottom: spacing["0"],
     marginTop: spacing["0"],
-    wordBreak: "break-all",
   },
   cardDescription: {
     color: uiColor.text1,

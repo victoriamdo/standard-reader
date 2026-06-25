@@ -25,8 +25,8 @@ import {
 import { Tab, TabList, TabPanel, Tabs } from "../design-system/tabs";
 import { uiColor } from "../design-system/theme/color.stylex";
 import {
-  gap,
   size as boxSize,
+  gap,
 } from "../design-system/theme/semantic-spacing.stylex";
 import { spacing } from "../design-system/theme/spacing.stylex";
 import {
@@ -126,6 +126,7 @@ export function LabelerDetailView({
         <div {...stylex.props(styles.avRing)}>
           <Avatar
             size="xl"
+            src={card.avatar}
             fallback={initials(name)}
             alt={name}
             style={styles.avatar}
@@ -161,9 +162,7 @@ export function LabelerDetailView({
           <Button
             variant={subscribed ? "secondary" : "primary"}
             size="md"
-            isPending={
-              subscribed ? unsubscribe.isPending : subscribe.isPending
-            }
+            isPending={subscribed ? unsubscribe.isPending : subscribe.isPending}
             onPress={() =>
               subscribed
                 ? unsubscribe.mutate(card.did)
