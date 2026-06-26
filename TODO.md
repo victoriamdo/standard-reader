@@ -49,6 +49,13 @@ Check items off as they land.
       (`pnpm perf:test`, `perf/load-regression.spec.ts`); JSON report in `perf/results/latest.json`;
       fixture discovery via `pnpm perf:discover-fixtures`; signed-in auth via
       `PERF_TEST_IDENTIFIER` + `PERF_TEST_APP_PASSWORD` (or legacy session cookie).
+- [x] **`/collections` read path → DB.** `listCollectionsPublications` /
+      `getCollectionsPublication` made up to 7 paginated PDS `listRecords` round
+      trips on the loader's critical path. Added `publications.collections_publication`
+      (bool, mirrored from the `app.standard-reader.collectionsPublication` sidecar
+      by the tap ingester) and rewrote both reads to hit the DB with a PDS backfill
+      on cold start; write fns eagerly set the flag for read-after-write
+      consistency (`drizzle/0022_cold_silk_fever.sql`).
 
 ## 1. Data ingestion — tap → Neon
 

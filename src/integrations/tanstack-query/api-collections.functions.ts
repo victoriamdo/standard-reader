@@ -23,7 +23,7 @@ import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
 import { parseAtUri } from "#/server/atproto/uri";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
-import { inArray } from "drizzle-orm";
+import { inArray, eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import type { ArticleCard } from "./api-shapes";
@@ -440,6 +440,28 @@ function cleanSidecarFont(value: unknown): string | null {
     : null;
 }
 
+/**
+ * Build a {@link CollectionsTheme} straight from a `publications.themeJson`
+ * row value (the merged `basicTheme` + publicationTheme `fonts` object, kept in
+ * sync by the tap ingester). Mirrors {@link themeFromPublicationRecord} without
+ * any PDS I/O.
+ */
+function themeFromPublicationRow(themeJson: unknown): CollectionsTheme {
+  const theme = isRecord(themeJson) ? themeJson : {};
+  return {
+    background: rgbFieldToHex(theme.background),
+    foreground: rgbFieldToHex(theme.foreground),
+    accent: rgbFieldToHex(theme.accent),
+    accentForeground: rgbFieldToHex(theme.accentForeground),
+    fontTitle:
+      cleanSidecarFont(isRecord(theme.fonts) ? theme.fonts.title : null) ??
+      fontField(theme.fonts, "title"),
+    fontBody:
+      cleanSidecarFont(isRecord(theme.fonts) ? theme.fonts.body : null) ??
+      fontField(theme.fonts, "body"),
+  };
+}
+
 async function manifestForCollectionRkey(
   client: RepoClient,
   did: string,
@@ -506,37 +528,135 @@ async function publicationFromRecord(
   };
 }
 
-const getCollectionsPublication = createServerFn({ method: "GET" }).handler(
-  observe("collections.getPublication", async (_, span) => {
-    const session = await getAtprotoSessionForRequest(getRequest());
-    if (!session) return null;
-    span.set("did", session.did);
+/**
+ * PDS fallback for {@link listCollectionsPublications} + {@link getCollectionsPublication}.
+ * Runs the legacy multi-`listRecords` fan-out (sidecar → publication → referenced-by-collection
+ * documents) and resolves subscriber counts from the DB, then returns the same
+ * shape the DB read path produces. Only used on cold start when the DB has no
+ * series rows for the reader yet; the tap ingester mirrors the sidecar into
+ * `publications.collectionsPublication` so subsequent reads stay on the DB.
+ */
+async function listCollectionsPublicationsFromPds(
+  client: RepoClient,
+  did: string,
+  options?: { repairSidecars?: boolean },
+): Promise<Array<CollectionsPublicationSummary>> {
+  const records = await listCollectionsPublicationRecords(client, did, options);
+  const publications = await Promise.all(
+    records
+      .filter((r): r is typeof r & { value: Record<string, unknown> } =>
+        isRecord(r.value),
+      )
+      .map((r) => publicationFromRecord(client, did, r.uri, r.rkey, r.value)),
+  );
 
-    const found = await findCollectionsPublication(
-      session.client,
-      session.did,
-      {
-        repairSidecars: true,
-      },
-    );
-    if (!found || !isRecord(found.value)) return null;
-    const value = found.value;
-    return {
-      uri: found.uri,
-      rkey: found.rkey,
-      name: typeof value.name === "string" ? value.name : "Series",
-      description:
-        typeof value.description === "string" ? value.description : null,
-      iconUrl: await resolveBlobUrl(session.did, value.icon),
-      theme: await themeFromPublicationRecord(
+  const uris = publications.map((publication) => publication.uri);
+  const subscriberByUri = new Map<string, number>();
+  if (uris.length > 0) {
+    const { db } = await import("#/db/index.server");
+    const { publicationStats } = await import("#/db/schema");
+    const rows = await db
+      .select({
+        publicationUri: publicationStats.publicationUri,
+        subscriberCount: publicationStats.subscriberCount,
+      })
+      .from(publicationStats)
+      .where(inArray(publicationStats.publicationUri, uris));
+    for (const row of rows) {
+      subscriberByUri.set(row.publicationUri, row.subscriberCount ?? 0);
+    }
+    // Persist the series flag so the next read hits the DB, not the PDS.
+    // The tap ingester re-asserts this on subsequent sidecar events.
+    await Promise.all(uris.map((uri) => markCollectionsPublicationInDb(uri)));
+  }
+
+  return publications.map((publication) => ({
+    ...publication,
+    subscriberCount: subscriberByUri.get(publication.uri) ?? 0,
+  }));
+}
+
+/**
+ * Eagerly set `publications.collectionsPublication = true` after a PDS write so
+ * the DB read path returns the new/restored series before the tap catches up.
+ * Idempotent; the tap ingester's `upsertCollectionsPublication` re-asserts it.
+ */
+async function markCollectionsPublicationInDb(
+  publicationUri: string,
+): Promise<void> {
+  const { db } = await import("#/db/index.server");
+  const { publications } = await import("#/db/schema");
+  await db
+    .update(publications)
+    .set({ collectionsPublication: true, updatedAt: sql`now()` })
+    .where(eq(publications.uri, publicationUri));
+}
+
+const getCollectionsPublication = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .handler(
+    observe("collections.getPublication", async ({ context }, span) => {
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) return null;
+      span.set("did", session.did);
+
+      const { db, schema } = context;
+      const [row] = await db
+        .select({
+          uri: schema.publications.uri,
+          rkey: schema.publications.rkey,
+          name: schema.publications.name,
+          description: schema.publications.description,
+          iconUrl: schema.publications.iconUrl,
+          themeJson: schema.publications.themeJson,
+        })
+        .from(schema.publications)
+        .where(
+          and(
+            eq(schema.publications.did, session.did),
+            eq(schema.publications.collectionsPublication, true),
+            eq(schema.publications.deleted, false),
+          ),
+        )
+        .limit(1);
+
+      if (row) {
+        return {
+          uri: row.uri,
+          rkey: row.rkey,
+          name: row.name,
+          description: row.description ?? null,
+          iconUrl: row.iconUrl ?? null,
+          theme: themeFromPublicationRow(row.themeJson),
+        } satisfies CollectionsPublication;
+      }
+
+      // Backfill fallback: DB has no series row yet → fetch from the PDS once.
+      const found = await findCollectionsPublication(
         session.client,
         session.did,
-        found.rkey,
-        value,
-      ),
-    } satisfies CollectionsPublication;
-  }),
-);
+        {
+          repairSidecars: true,
+        },
+      );
+      if (!found || !isRecord(found.value)) return null;
+      const value = found.value;
+      return {
+        uri: found.uri,
+        rkey: found.rkey,
+        name: typeof value.name === "string" ? value.name : "Series",
+        description:
+          typeof value.description === "string" ? value.description : null,
+        iconUrl: await resolveBlobUrl(session.did, value.icon),
+        theme: await themeFromPublicationRecord(
+          session.client,
+          session.did,
+          found.rkey,
+          value,
+        ),
+      } satisfies CollectionsPublication;
+    }),
+  );
 
 const ensureCollectionsPublication = createServerFn({ method: "POST" })
   .inputValidator(ensurePublicationInput)
@@ -579,6 +699,9 @@ const ensureCollectionsPublication = createServerFn({ method: "POST" })
         now,
       );
       await ensureTracked(session.did, "reader");
+      // Eagerly mark the series in the DB mirror so the read path sees the new
+      // series before the tap catches up (read-after-write consistency).
+      await markCollectionsPublicationInDb(uri);
       return { uri, rkey, created: true };
     }),
   );
@@ -592,49 +715,56 @@ const listCollectionsPublications = createServerFn({ method: "GET" })
       if (!session) return [] satisfies Array<CollectionsPublicationSummary>;
       span.set("did", session.did);
 
-      const records = await listCollectionsPublicationRecords(
-        session.client,
-        session.did,
-        { repairSidecars: true },
-      );
-      const publications = await Promise.all(
-        records
-          .filter((r): r is typeof r & { value: Record<string, unknown> } =>
-            isRecord(r.value),
-          )
-          .map((r) =>
-            publicationFromRecord(
-              session.client,
-              session.did,
-              r.uri,
-              r.rkey,
-              r.value,
-            ),
+      const { db, schema } = context;
+      const rows = await db
+        .select({
+          uri: schema.publications.uri,
+          rkey: schema.publications.rkey,
+          name: schema.publications.name,
+          description: schema.publications.description,
+          iconUrl: schema.publications.iconUrl,
+          themeJson: schema.publications.themeJson,
+          subscriberCount: schema.publicationStats.subscriberCount,
+        })
+        .from(schema.publications)
+        .leftJoin(
+          schema.publicationStats,
+          eq(schema.publicationStats.publicationUri, schema.publications.uri),
+        )
+        .where(
+          and(
+            eq(schema.publications.did, session.did),
+            eq(schema.publications.collectionsPublication, true),
+            eq(schema.publications.deleted, false),
           ),
-      );
+        );
 
-      const uris = publications.map((publication) => publication.uri);
-      const subscriberByUri = new Map<string, number>();
-      if (uris.length > 0) {
-        const { db, schema } = context;
-        const st = schema.publicationStats;
-        const rows = await db
-          .select({
-            publicationUri: st.publicationUri,
-            subscriberCount: st.subscriberCount,
-          })
-          .from(st)
-          .where(inArray(st.publicationUri, uris));
-        for (const row of rows) {
-          subscriberByUri.set(row.publicationUri, row.subscriberCount ?? 0);
-        }
+      // Backfill fallback: when the DB has no series rows for this reader yet
+      // (first visit, pre-sync gap), fetch from the PDS once, upsert into the
+      // DB, and serve from the DB on subsequent reads. Per the read-model rule,
+      // the DB mirror is the read path; the PDS is only a cold-start fallback.
+      if (rows.length === 0) {
+        const backfilled = await listCollectionsPublicationsFromPds(
+          session.client,
+          session.did,
+          { repairSidecars: true },
+        );
+        span.set("count", backfilled.length);
+        return backfilled;
       }
 
-      span.set("count", publications.length);
-      return publications.map((publication) => ({
-        ...publication,
-        subscriberCount: subscriberByUri.get(publication.uri) ?? 0,
+      const summaries = rows.map((row) => ({
+        uri: row.uri,
+        rkey: row.rkey,
+        name: row.name,
+        description: row.description ?? null,
+        iconUrl: row.iconUrl ?? null,
+        theme: themeFromPublicationRow(row.themeJson),
+        subscriberCount: row.subscriberCount ?? 0,
       })) satisfies Array<CollectionsPublicationSummary>;
+
+      span.set("count", summaries.length);
+      return summaries;
     }),
   );
 
@@ -674,6 +804,9 @@ const createCollectionsPublication = createServerFn({ method: "POST" })
         now,
       );
       await ensureTracked(session.did, "reader");
+      // Eagerly mark the series in the DB mirror so the read path sees the new
+      // series before the tap catches up (read-after-write consistency).
+      await markCollectionsPublicationInDb(uri);
       const iconUrl = icon ? await resolveBlobUrl(session.did, icon) : null;
       return {
         uri,
@@ -718,7 +851,8 @@ const getMyCollections = createServerFn({ method: "GET" }).handler(
 
     const cards: Array<CollectionCard> = [];
     for (const row of rows) {
-      if (!row.collectionJson || typeof row.collectionJson !== "object") continue;
+      if (!row.collectionJson || typeof row.collectionJson !== "object")
+        continue;
       const manifest = collectionManifestFromSources({
         sidecar: row.collectionJson,
       });
@@ -1033,6 +1167,8 @@ const putCollectionsTheme = createServerFn({ method: "POST" })
         },
       );
       await ensureTracked(session.did, "reader");
+      // Re-assert the series flag in case the sidecar was missing (repair).
+      await markCollectionsPublicationInDb(existing.uri);
       return { ok: true as const };
     }),
   );
@@ -1078,6 +1214,8 @@ const putCollectionsPublication = createServerFn({ method: "POST" })
         new Date().toISOString(),
       );
       await ensureTracked(session.did, "reader");
+      // Re-assert the series flag in case the sidecar was missing (repair).
+      await markCollectionsPublicationInDb(existing.uri);
       const iconUrl = icon ? await resolveBlobUrl(session.did, icon) : null;
       return {
         ok: true as const,

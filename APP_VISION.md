@@ -302,6 +302,10 @@ source of truth; Neon holds a derived view for speed and cross-network querying.
     atomically via `com.atproto.repo.applyWrites` so the URIs are known before publish.
   - `app.standard-reader.collectionsPublication` — marks a
     `site.standard.publication` as a collections series (same rkey sidecar).
+    Mirrored into the read-model as `publications.collections_publication`
+    (bool) so the `/collections` read path stays DB-only (the tap ingester
+    upserts/clears it; write fns eagerly set it for read-after-write
+    consistency, with a PDS backfill on cold start).
   - `app.standard-reader.publicationTheme` — Google Font names for a collections
     publication (same rkey sidecar; colors stay on `basicTheme`).
 

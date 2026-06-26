@@ -4,6 +4,7 @@ import type {
   BookmarkRecord,
   BskyProfileRecord,
   CollectionSidecarRecord,
+  CollectionsPublicationRecord,
   DocumentRecord,
   LabelerServiceRecord,
   LabelerSubscriptionRecord,
@@ -28,6 +29,7 @@ import {
   upsertBookmark,
   upsertBskyProfile,
   upsertCollectionSidecar,
+  upsertCollectionsPublication,
   upsertDocument,
   upsertLabelerService,
   upsertLabelerSubscription,
@@ -146,6 +148,14 @@ async function handleRecord(payload: TapRecordPayload): Promise<void> {
       );
       return;
     }
+    case Collections.collectionsPublication: {
+      await upsertCollectionsPublication(
+        did,
+        rkey,
+        record as unknown as CollectionsPublicationRecord,
+      );
+      return;
+    }
     case Collections.publicationTheme: {
       await upsertPublicationTheme(
         did,
@@ -164,13 +174,7 @@ async function handleRecord(payload: TapRecordPayload): Promise<void> {
       return;
     }
     case Collections.list: {
-      await upsertList(
-        uri,
-        did,
-        rkey,
-        cid,
-        record as unknown as ListRecord,
-      );
+      await upsertList(uri, did, rkey, cid, record as unknown as ListRecord);
       return;
     }
     case Collections.listSave: {

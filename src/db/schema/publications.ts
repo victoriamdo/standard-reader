@@ -57,6 +57,14 @@ export const publications = pgTable(
     /** `preferences.showInDiscover` — whether to surface in discovery feeds. */
     showInDiscover: boolean("show_in_discover").notNull().default(true),
 
+    /** Mirrors `app.standard-reader.collectionsPublication` — marks this
+     * publication as a Standard Reader collections series. Set by the tap
+     * ingester from the sidecar record (whose rkey matches this publication's
+     * rkey); drives the `/collections` read path so it never hits the PDS. */
+    collectionsPublication: boolean("collections_publication")
+      .notNull()
+      .default(false),
+
     /** App-derived topic (standard.site has no topic field). Used for the
      * Discover directory's topic chips; populated by a derivation pass. */
     topic: text("topic"),

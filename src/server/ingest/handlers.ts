@@ -17,6 +17,7 @@ import type {
   BookmarkRecord,
   BskyProfileRecord,
   CollectionSidecarRecord,
+  CollectionsPublicationRecord,
   DocumentRecord,
   LabelerServiceRecord,
   LabelerSubscriptionRecord,
@@ -725,7 +726,8 @@ export async function upsertList(
     ownerDid: did,
     rkey,
     name: record.name,
-    description: typeof record.description === "string" ? record.description : null,
+    description:
+      typeof record.description === "string" ? record.description : null,
     publications: publicationUris,
     createdAt: parseDate(record.createdAt),
     deleted: false,
@@ -893,6 +895,30 @@ export async function upsertPublicationTheme(
     .where(where);
 }
 
+/**
+ * Mark a publication as a Standard Reader collections series by mirroring the
+ * `app.standard-reader.collectionsPublication` sidecar. The sidecar's rkey
+ * matches the publication's rkey and its `publication` field holds the full
+ * at-uri, so we resolve the target publication row by at-uri first, falling
+ * back to `(did, rkey)`.
+ */
+export async function upsertCollectionsPublication(
+  did: string,
+  rkey: string,
+  record: CollectionsPublicationRecord,
+): Promise<void> {
+  const publicationUri =
+    typeof record.publication === "string" ? record.publication : null;
+  const where = publicationUri
+    ? eq(publications.uri, publicationUri)
+    : and(eq(publications.did, did), eq(publications.rkey, rkey));
+
+  await db
+    .update(publications)
+    .set({ collectionsPublication: true, updatedAt: sql`now()` })
+    .where(where);
+}
+
 /** Hard-delete a record row on a `delete` action (cascades clean up children). */
 export async function deleteRecord(
   uri: string,
@@ -967,6 +993,22 @@ export async function deleteRecord(
         .update(publications)
         .set({ themeJson: sanitizeJson(rest), updatedAt: sql`now()` })
         .where(eq(publications.uri, row.uri));
+      return;
+    }
+    case Collections.collectionsPublication: {
+      // The deleted sidecar's rkey is the publication's rkey; clear the marker
+      // on the matching publication row.
+      const parsed = parseAtUri(uri);
+      if (!parsed) return;
+      await db
+        .update(publications)
+        .set({ collectionsPublication: false, updatedAt: sql`now()` })
+        .where(
+          and(
+            eq(publications.did, parsed.did),
+            eq(publications.rkey, parsed.rkey),
+          ),
+        );
       return;
     }
     case Collections.list: {
@@ -1117,10 +1159,7 @@ export async function backfillListsFromRepo(
             : undefined;
       } while (cursor);
     } catch (error: unknown) {
-      console.warn(
-        `[ingest] ${collection} backfill failed for ${did}`,
-        error,
-      );
+      console.warn(`[ingest] ${collection} backfill failed for ${did}`, error);
     }
     return count;
   }
