@@ -700,56 +700,53 @@ const getMyCollections = createServerFn({ method: "GET" }).handler(
     if (!session) return [] satisfies Array<CollectionCard>;
     span.set("did", session.did);
 
-    await repairMissingCollectionsPublicationSidecars(
-      session.client,
-      session.did,
-    );
+    // Read from the DB mirror (documents table already has collectionJson
+    // synced by the tap ingester). No PDS I/O on the read path.
+    const { db } = await import("#/db/index.server");
+    const { documents } = await import("#/db/schema");
+    const { and: andDocs, eq: eqDocs, isNotNull } = await import("drizzle-orm");
 
-    const { listCollectionRecords } = await repoRecords();
-    const [records, sidecars] = await Promise.all([
-      listCollectionRecords(
-        session.client,
-        session.did,
-        STANDARD_NSID.document,
-      ),
-      listCollectionRecords(session.client, session.did, APP_NSID.collection),
-    ]);
-    const sidecarByRkey = new Map(
-      sidecars.map((sidecar) => [sidecar.rkey, sidecar.value]),
-    );
+    const rows = await db
+      .select()
+      .from(documents)
+      .where(
+        andDocs(
+          eqDocs(documents.did, session.did),
+          isNotNull(documents.collectionJson),
+        ),
+      );
+
     const cards: Array<CollectionCard> = [];
-    for (const record of records) {
-      if (!isRecord(record.value)) continue;
+    for (const row of rows) {
+      if (!row.collectionJson || typeof row.collectionJson !== "object") continue;
       const manifest = collectionManifestFromSources({
-        sidecar: sidecarByRkey.get(record.rkey),
-        legacyDocument: record.value,
+        sidecar: row.collectionJson,
       });
       if (!manifest) continue;
       cards.push({
-        uri: record.uri,
+        uri: row.uri,
         did: session.did,
-        rkey: record.rkey,
-        publicationUri:
-          typeof record.value.site === "string" ? record.value.site : null,
-        title:
-          typeof record.value.title === "string"
-            ? record.value.title
-            : "Untitled collection",
+        rkey: row.rkey,
+        publicationUri: row.publicationUri,
+        title: row.title ?? "Untitled collection",
         itemCount: manifest.items.length,
         hasEditorial: Boolean(
           manifest.editorial?.title || manifest.editorial?.body,
         ),
-        updatedAt:
-          typeof record.value.updatedAt === "string"
-            ? record.value.updatedAt
-            : typeof record.value.publishedAt === "string"
-              ? record.value.publishedAt
-              : null,
+        updatedAt: row.updatedAt?.toISOString() ?? null,
       });
     }
-    // Newest first by updated/published timestamp.
+    // Newest first by updated timestamp.
     cards.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
     span.set("count", cards.length);
+
+    // Run sidecar repair in the background (no PDS read on the hot path;
+    // repair only writes missing sidecars, which the ingester will catch up).
+    void repairMissingCollectionsPublicationSidecars(
+      session.client,
+      session.did,
+    ).catch(() => {});
+
     return cards satisfies Array<CollectionCard>;
   }),
 );
