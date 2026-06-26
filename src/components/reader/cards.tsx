@@ -31,7 +31,6 @@ import {
   AspectRatio,
   AspectRatioImage,
 } from "../../design-system/aspect-ratio";
-import { Badge } from "../../design-system/badge";
 import { Button } from "../../design-system/button";
 import { Flex } from "../../design-system/flex";
 import { IconButton } from "../../design-system/icon-button";
@@ -60,6 +59,7 @@ import {
   formatTaggedPostCount,
   publicationLinkParams,
 } from "./format";
+import { LabelerPill } from "./labeler-pill";
 import {
   ArticleEngagement,
   Handle,
@@ -1018,21 +1018,25 @@ function ArticleMetaLine({
 }: {
   article: ArticleCard;
   /** When set, replaces article tags in the meta line (e.g. labeler label values). */
-  metaLabels?: Array<string>;
+  metaLabels?: Array<{ src: string; val: string }>;
 }) {
   const hasEngagement = article.recommendCount > 0 || article.commentCount > 0;
   const topics = metaLabels == null ? articleTopics(article) : [];
   // Labels from the reader's subscribed labelers (attached server-side), shown
   // alongside the article's tags. Skipped when `metaLabels` overrides the line.
+  // De-duped by `val` (first emitting labeler wins) but keeps `src` so each
+  // pill can resolve its display name and link to the labeler.
   const cardLabelVals =
     metaLabels == null
-      ? [
-          ...new Set(
-            (article.labels ?? [])
-              .filter((l) => l.visibility !== "ignore")
-              .map((l) => l.val),
-          ),
-        ]
+      ? (() => {
+          const byVal = new Map<string, { src: string; val: string }>();
+          for (const l of article.labels ?? []) {
+            if (l.visibility === "ignore") continue;
+            if (byVal.has(l.val)) continue;
+            byVal.set(l.val, { src: l.src, val: l.val });
+          }
+          return [...byVal.values()];
+        })()
       : [];
   const showCollection = article.isCollection;
   const hasTopics = topics.length > 0;
@@ -1300,19 +1304,21 @@ function TopicMeta({ article }: { article: ArticleCard }) {
 }
 
 /** Renders label values inside a {@link MetaLine}. */
-function LabelValsMeta({ labels }: { labels: Array<string> }) {
+function LabelValsMeta({
+  labels,
+}: {
+  labels: Array<{ src: string; val: string }>;
+}) {
   return (
     <>
       {labels.map((label, index) => (
-        <Fragment key={label}>
+        <Fragment key={`${label.src}:${label.val}`}>
           {index > 0 ? (
             <span aria-hidden {...stylex.props(styles.metaDot)}>
               ·
             </span>
           ) : null}
-          <Badge variant="warning" size="sm">
-            {label}
-          </Badge>
+          <LabelerPill src={label.src} val={label.val} />
         </Fragment>
       ))}
     </>
@@ -1455,7 +1461,7 @@ export function ArticleRow({
   /** Skip per-row bookmark status fetches when the list is already the save queue. */
   assumeBookmarked?: boolean;
   /** When set, replaces article tags in the meta line (e.g. labeler label values). */
-  metaLabels?: Array<string>;
+  metaLabels?: Array<{ src: string; val: string }>;
 }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);

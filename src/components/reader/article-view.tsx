@@ -34,7 +34,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { Alert } from "../../design-system/alert";
 import { Avatar } from "../../design-system/avatar";
-import { Badge } from "../../design-system/badge";
 import { Button } from "../../design-system/button";
 import { Flex } from "../../design-system/flex";
 import { IconButton } from "../../design-system/icon-button";
@@ -79,6 +78,7 @@ import {
   initials,
   publicationLinkParams,
 } from "./format";
+import { LabelerPill } from "./labeler-pill";
 import {
   ArticleEngagement,
   Handle,
@@ -708,13 +708,17 @@ function ArticleViewBody({
   const { data: labelData } = useQuery(
     labelerApi.getDocumentLabelsQueryOptions(article.uri),
   );
-  const labelVals = [
-    ...new Set(
-      (labelData?.labels ?? [])
-        .filter((l) => l.visibility !== "ignore")
-        .map((l) => l.val),
-    ),
-  ];
+  // De-dup by `val` (first emitting labeler wins) but keep the labeler DID
+  // (`src`) so each pill can resolve its display name and link to the labeler.
+  const labelRefs = (() => {
+    const byVal = new Map<string, { src: string; val: string }>();
+    for (const l of labelData?.labels ?? []) {
+      if (l.visibility === "ignore") continue;
+      if (byVal.has(l.val)) continue;
+      byVal.set(l.val, { src: l.src, val: l.val });
+    }
+    return [...byVal.values()];
+  })();
   const readingLabel = formatReadingTime(articleReadingText(article));
   const date = formatDate(article.publishedAt);
   const publicationArticleUrl = articlePublicationUrl(article);
@@ -942,14 +946,12 @@ function ArticleViewBody({
           </div>
         ) : null}
 
-        {topic || labelVals.length > 0 ? (
+        {topic || labelRefs.length > 0 ? (
           <div {...stylex.props(styles.kicker)}>
-            {labelVals.length > 0 ? (
+            {labelRefs.length > 0 ? (
               <div {...stylex.props(styles.labelBadges)}>
-                {labelVals.map((val) => (
-                  <Badge key={val} variant="warning">
-                    {val}
-                  </Badge>
+                {labelRefs.map((ref) => (
+                  <LabelerPill key={`${ref.src}:${ref.val}`} src={ref.src} val={ref.val} />
                 ))}
               </div>
             ) : null}

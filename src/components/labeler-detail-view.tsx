@@ -57,11 +57,6 @@ function defDescription(def: LabelValueDef): string | undefined {
   return def.locales?.[0]?.description;
 }
 
-function labelValDisplayName(defs: Array<LabelValueDef>, val: string): string {
-  const def = defs.find((d) => d.identifier === val);
-  return def ? defName(def) : val;
-}
-
 function initials(name: string): string {
   return name
     .replace(/^did:\w+:/, "")
@@ -273,8 +268,8 @@ export function LabelerDetailView({
                     isFirstInSection={index === 0}
                     unread={trackReading && !article.isRead}
                     showSaveButton={false}
-                    metaLabels={(labelsByUri[article.uri] ?? []).map((val) =>
-                      labelValDisplayName(defs, val),
+                    metaLabels={(labelsByUri[article.uri] ?? []).map(
+                      (val) => ({ src: did, val }),
                     )}
                   />
                 ))}
