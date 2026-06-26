@@ -78,7 +78,7 @@ export async function loadSidebarData(
 
 /** Own publication lists from the reader's repo (sidebar folders). */
 export async function loadOwnSubscriptionLists(
-  _client: Client,
+  _client: unknown,
   did: string,
 ): Promise<Array<SubscriptionList>> {
   // Read from the DB mirror (synced by the tap ingester). Falls back to a PDS
@@ -210,17 +210,16 @@ export async function loadShellSnapshot(
   schema: Schema,
   {
     did,
-    client,
     trackReading,
   }: {
     did: string;
-    client: Client;
+    client?: Client;
     trackReading: boolean;
   },
 ): Promise<ShellSnapshot> {
   const [sidebar, lists, savedLists] = await Promise.all([
     loadSidebarData(db, schema, did, trackReading),
-    loadOwnSubscriptionLists(client, did),
+    loadOwnSubscriptionLists(null, did),
     loadSavedListsHydrated(db, schema, did),
   ]);
   return { sidebar, lists, savedLists };

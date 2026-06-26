@@ -1,6 +1,10 @@
 ---
 name: atproto-publish-lexicon
-description: This skill should be used when the user is publishing an AT Protocol lexicon as a `com.atproto.lexicon.schema` record on the network, or resolving such a record back to a lexicon document. Triggers on phrases like "publish my lexicon", "publish lexicon to PDS", "lexicon publication", "lexicon registry", "schema registry", "who owns this NSID", "NSID authority", "`_lexicon.` TXT record", "lexicon DNS record", "lexicon resolution", "resolve an NSID to a lexicon", "describe_lexicon", "`com.atproto.lexicon.schema`", "putRecord lexicon", "createRecord lexicon", "lexicon revision", "lexicon versioning", "publish NSID", "how do clients fetch my lexicon", "rkey is the NSID". Also covers error surfaces like "InvalidRecord" when publishing a lexicon, the `rkey = <full NSID>` convention, and the authority-to-DID binding that gates resolution at consumer time. Uses the `lexicon-garden` and `atpmcp` MCP tools (`validate_lexicon`, `check_compatibility`, `create_record_cid`, `invoke_xrpc`, `describe_lexicon`, `get_record`) rather than hand-rolled validators. Does NOT cover authoring the lexicon JSON document, catalog loading, codegen, or client-side record/XRPC validation (see `atproto-lexicon`); DID/handle resolution internals or the `_atproto.` TXT record (see `atproto-identity-resolution`); CAR/MST/commit signing (see `atproto-repository`); CID computation internals (see `atproto-cid`); or Bluesky-domain (`app.bsky.*`) lexicons (out of scope for this plugin).
+description: >-
+  Guides publishing an AT Protocol lexicon as a com.atproto.lexicon.schema record
+  and resolving NSIDs back to lexicon documents. Use when the user mentions publish
+  my lexicon, lexicon registry, NSID authority, _lexicon TXT record, describe_lexicon,
+  com.atproto.lexicon.schema, rkey is the NSID, lexicon-garden, or atpmcp.
 version: 0.1.0
 ---
 

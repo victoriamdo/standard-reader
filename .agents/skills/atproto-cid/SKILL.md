@@ -1,6 +1,11 @@
 ---
 name: atproto-cid
-description: This skill should be used when the user is working with AT Protocol or DASL CIDs (Content Identifiers) in Rust, TypeScript, or Go — parsing, constructing, validating, verifying, or debugging them. Triggers on phrases like "parse a CID", "compute a CID for this record", "verify a blob CID", "why is this CID invalid", "CID mismatch", "tag 42 in DAG-CBOR", "identity multibase prefix", "the $link format", "base32lower", "digest length error", "what does the b prefix mean", "CIDv1 vs CIDv0", "bafyrei / bafkrei prefix", "dag-cbor codec", "multihash", "BLAKE3 CID", "BDASL". Also triggers on dependency/import names like `atproto-dasl`, `cid`, `multihash-codetable`, `libipld`, `multiformats`, `@ipld/dag-cbor`, `CID.parse`, `CID.create`, `github.com/ipfs/go-cid`, `go-multihash`, or lockfile names `Cargo.toml`, `package.json`, `pnpm-lock.yaml`, `go.mod`, `go.sum`. Covers the strict DASL CID profile (CIDv1 only, codec raw 0x55 or dag-cbor 0x71, hash SHA-256 0x12, 32-byte digest, base32lower string form with 'b' prefix, 36-byte binary form), the BDASL extension permitting BLAKE3 (0x1e) for large-file content, the DAG-CBOR wire form (CBOR tag 42 plus identity multibase 0x00 prefix), and the AT Protocol JSON `{"$link": "..."}` form. Use this skill to implement CID support in SDKs, clients, servers, firehose consumers, repo tooling, or diagnostic scripts in any of the three supported languages; for an unsupported language point at `shared/spec.md` and a reference implementation. Does NOT cover general IPFS / multiformats CID questions (DASL is a strict subset — reject anything outside the allowed constants); for MST tree traversal, CAR inspection, or DAG-CBOR canonicalization beyond the CID tag see `atproto-repository`.
+description: >-
+  Guides AT Protocol / DASL CID work in Rust, TypeScript, or Go: parsing,
+  constructing, validating, and debugging CIDs. Use when the user mentions CID
+  mismatch, tag 42 in DAG-CBOR, base32lower, bafyrei / bafkrei, $link format,
+  DASL CID profile, BLAKE3 / BDASL, or libraries like multiformats, @ipld/dag-cbor,
+  atproto-dasl, github.com/ipfs/go-cid, or go-multihash.
 version: 0.2.0
 ---
 

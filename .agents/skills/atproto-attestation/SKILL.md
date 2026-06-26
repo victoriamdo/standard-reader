@@ -1,6 +1,12 @@
 ---
 name: atproto-attestation
-description: This skill should be used when the user is implementing, debugging, or reasoning about AT Protocol record attestations per the badge.blue specification — inline (embedded ECDSA signature) or remote (content-addressed strongRef to a proof record) — in Rust, TypeScript, or Go. Triggers on phrases like "sign an atproto record", "inline attestation", "remote attestation", "badge.blue", "attest a record", "record signatures array", "`$sig` metadata", "content CID for signing", "com.atproto.repo.strongRef in signatures", "proof record", "verify an attestation", "attestation CID mismatch", "low-S signature", "ECDSA r‖s", "IEEE P1363", "signature normalization", "did:key signing", "replay protection", "cross-repo replay", "signatures[] append", as well as error strings from the reference crate like `error-atproto-attestation-*`, `UnsupportedKeyType`, `RemoteAttestationCidMismatch`, `SignatureValidationFailed`. Also triggers on dependency/import names `atproto-attestation`, `atproto-identity`, `atproto-client`, `k256`, `p256`, `@noble/curves`, `@ipld/dag-cbor`, `multiformats/cid`, `dcrec/secp256k1`, `go-ipld-prime`, `go-cid`, and references to the reference Rust crate at `/crates/atproto-attestation` in ngerakines.me/atproto-crates. Covers the CID-first signing model (DAG-CBOR of `record + $sig(repository)` → SHA-256 → CIDv1 → sign), low-S normalization for P-256 and K-256, the P-384 normalization gap in the reference crate, the two-CID distinction in remote attestations (content CID inside proof record vs proof record's DAG-CBOR CID inside strongRef), and per-language library choices. Use this skill to implement, port, or audit attestation code in SDKs, tools, or applications. Does NOT cover general atproto record parsing or XRPC invocation (see `atproto-lexicon`), DID/handle resolution internals (see `atproto-identity-resolution`), CAR/MST/commit signing (see `atproto-repository`), OAuth token flows (see `atproto-oauth`), or CID parsing/construction for non-attestation records (see `atproto-cid`).
+description: >-
+  Guides AT Protocol record attestations per badge.blue in Rust, TypeScript, or Go:
+  inline ECDSA signatures, remote strongRef proof records, CID-first signing,
+  low-S normalization, and the two-CID model. Use when the user mentions sign an
+  atproto record, inline attestation, remote attestation, badge.blue, $sig metadata,
+  content CID for signing, proof record, low-S signature, ECDSA r‖s, replay protection,
+  atproto-attestation, @noble/curves, k256, or p256.
 version: 0.1.0
 ---
 

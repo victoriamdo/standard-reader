@@ -212,53 +212,107 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
       return guestBootstrap;
     }
 
-    const loaded = await loadSessionFromToken(sessionToken);
-    if (!loaded) {
-      return guestBootstrap;
-    }
-
-    const {
-      themeMode,
-      trackReadingHistory,
-      homeScope,
-      readerVoice,
-      openLinksExternally,
-      openCollectionsInMagazine,
-      readingTypography,
-      client,
-      user,
-      session: sessionRow,
-    } = loaded;
-    const trackReading = dbValueToTrackReadingHistory(trackReadingHistory);
-
+    // Phase 1: DB session lookup (fast — one query to Neon for session + user
+    // prefs). This gives us the DID, trackReading, and all preferences before
+    // the expensive PDS client restore.
     const [{ db }, schema] = await Promise.all([
       import("#/db/index.server"),
       import("#/db/schema"),
     ]);
-    const shell = await loadShellSnapshot(db, schema, {
-      did: user.did,
-      client,
-      trackReading,
+    const sessionRow = await db.query.session.findFirst({
+      where: eq(schema.session.token, sessionToken),
+      with: {
+        user: {
+          columns: {
+            id: true,
+            name: true,
+            email: true,
+            did: true,
+            image: true,
+            isAdmin: true,
+            createdAt: true,
+            updatedAt: true,
+            themeMode: true,
+            trackReadingHistory: true,
+            homeScope: true,
+            readerVoice: true,
+            openLinksExternally: true,
+            openCollectionsInMagazine: true,
+            readingTypography: true,
+          },
+        },
+      },
     });
 
+    if (!sessionRow || sessionRow.expiresAt.getTime() <= Date.now()) {
+      return guestBootstrap;
+    }
+
+    const userRow = sessionRow.user;
+    if (!userRow?.did || !isDid(userRow.did)) {
+      return guestBootstrap;
+    }
+
+    const trackReading = dbValueToTrackReadingHistory(
+      userRow.trackReadingHistory,
+    );
+
+    // Phase 2: shell snapshot (DB-only, no PDS I/O) runs in parallel with a
+    // lightweight profile handle lookup. The PDS client restore and PLC
+    // identity resolution are NOT needed here — the bootstrap only returns
+    // serializable data (prefs, sidebar, lists), and the client is never
+    // passed to the browser. The `getAtprotoSessionForRequest` per-request
+    // cache handles client restore lazily for server fns that actually need it.
+    const [profileRow, shell] = await Promise.all([
+      db.query.profiles.findFirst({
+        where: eq(schema.profiles.did, userRow.did),
+        columns: { handle: true },
+      }),
+      loadShellSnapshot(db, schema, {
+        did: userRow.did,
+        trackReading,
+      }),
+    ]);
+
+    const handle = profileRow?.handle ?? null;
+
     return {
-      session: { user, session: sessionRow },
-      theme: { mode: dbValueToThemeMode(themeMode) },
+      session: {
+        user: {
+          id: userRow.id,
+          name: userRow.name,
+          email: userRow.email,
+          did: userRow.did,
+          image: userRow.image,
+          isAdmin: userRow.isAdmin,
+          createdAt: userRow.createdAt,
+          updatedAt: userRow.updatedAt,
+          handle,
+        },
+        session: {
+          id: sessionRow.id,
+          userId: userRow.id,
+          expiresAt: sessionRow.expiresAt,
+        },
+      },
+      theme: { mode: dbValueToThemeMode(userRow.themeMode) },
       trackReading: { enabled: trackReading },
-      homeScope: { scope: dbValueToHomeScope(homeScope) },
+      homeScope: { scope: dbValueToHomeScope(userRow.homeScope) },
       readerVoice: {
-        preference: dbValueToReaderVoicePreference(readerVoice),
+        preference: dbValueToReaderVoicePreference(userRow.readerVoice),
       },
       openLinks: {
-        openExternally: dbValueToOpenLinksExternally(openLinksExternally),
+        openExternally: dbValueToOpenLinksExternally(
+          userRow.openLinksExternally,
+        ),
       },
       openCollectionsInMagazine: {
         openInMagazine: dbValueToOpenCollectionsInMagazine(
-          openCollectionsInMagazine,
+          userRow.openCollectionsInMagazine,
         ),
       },
       readingTypography: {
-        preference: dbValueToReadingTypography(readingTypography),
+        preference: dbValueToReadingTypography(userRow.readingTypography),
       },
       shell,
     };
