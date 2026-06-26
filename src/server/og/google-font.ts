@@ -1,4 +1,4 @@
-import type { Font } from "satori";
+import type { Font, FontWeight } from "satori";
 
 const FETCH_TIMEOUT_MS = 8000;
 
@@ -8,7 +8,7 @@ const TTF_UA =
 const faceCache = new Map<string, Font>();
 
 interface FontFaceSpec {
-  weight: number;
+  weight: FontWeight;
   style: "normal" | "italic";
   url: string;
 }
@@ -22,7 +22,7 @@ function parseGoogleFontCss(css: string): Array<FontFaceSpec> {
       /url\(([^)]+)\)\s*format\('(?:truetype|opentype|woff)'\)/.exec(block);
     if (!weightMatch || !styleMatch || !urlMatch) continue;
     faces.push({
-      weight: Number(weightMatch[1]),
+      weight: Number(weightMatch[1]) as FontWeight,
       style: styleMatch[1] as FontFaceSpec["style"],
       url: urlMatch[1].replaceAll(/^["']|["']$/g, ""),
     });
@@ -76,7 +76,7 @@ async function loadFace(
 export async function loadGoogleFontFaces(
   family: string,
   options: {
-    weights?: Array<number>;
+    weights?: Array<FontWeight>;
     styles?: Array<"normal" | "italic">;
   } = {},
 ): Promise<Array<Font>> {

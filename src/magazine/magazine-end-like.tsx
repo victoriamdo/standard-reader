@@ -1,10 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Heart } from "lucide-react";
 import { formatReaders } from "#/components/reader/format";
 import { useArticleRecommend } from "#/components/reader/use-article-recommend";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { Heart } from "lucide-react";
 
 import { MagHoverButton } from "./mag-hover-button";
 

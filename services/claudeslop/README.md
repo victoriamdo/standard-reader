@@ -32,13 +32,13 @@ Jetstream ──▶ detector ──▶ sign ──▶ SQLite ──▶ queryLabe
 
 ## Endpoints
 
-| Endpoint | What it does |
-| --- | --- |
-| `GET /.well-known/did.json` | The did:web document (labeler service + signing key). |
-| `GET /xrpc/com.atproto.label.queryLabels` | Point-in-time label lookup (`uriPatterns`, `sources`, `cursor`, `limit`). |
-| `GET /xrpc/com.atproto.label.subscribeLabels` | WebSocket firehose of labels (replays from `?cursor=`, then streams live). |
+| Endpoint                                            | What it does                                                                                                            |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `GET /.well-known/did.json`                         | The did:web document (labeler service + signing key).                                                                   |
+| `GET /xrpc/com.atproto.label.queryLabels`           | Point-in-time label lookup (`uriPatterns`, `sources`, `cursor`, `limit`).                                               |
+| `GET /xrpc/com.atproto.label.subscribeLabels`       | WebSocket firehose of labels (replays from `?cursor=`, then streams live).                                              |
 | `GET /xrpc/app.standard-reader.labeler.getServices` | The labeler descriptor + label-value definitions (a did:web has no repo to hold a service record, so it's served here). |
-| `GET /health` | Liveness + current label count. |
+| `GET /health`                                       | Liveness + current label count.                                                                                         |
 
 `subscribeLabels` frames are the standard two-block dag-cbor format: a header
 `{ op: 1, t: "#labels" }` followed by a body `{ seq, labels: [label] }`, where each `label`

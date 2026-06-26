@@ -65,7 +65,11 @@ export const XRPC_REGISTRY = new Map<string, XrpcRegistryEntry>([
   // Labelers — discovery + per-subject labels from subscribed labelers
   [
     "app.standard-reader.getLabelers",
-    { method: "query", auth: "optional-did", handler: labels.handleGetLabelers },
+    {
+      method: "query",
+      auth: "optional-did",
+      handler: labels.handleGetLabelers,
+    },
   ],
   [
     "app.standard-reader.getLabeler",

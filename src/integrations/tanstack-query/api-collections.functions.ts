@@ -1,15 +1,14 @@
+import type { Client } from "@atcute/client";
+import type { parseCollectionManifest } from "#/lib/collections/manifest";
+
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import type { Client } from "@atcute/client";
-import { APP_NSID, STANDARD_NSID } from "#/lib/atproto/nsids";
 import { collectionsPublicationUri } from "#/lib/atproto/collection-uris";
+import { APP_NSID, STANDARD_NSID } from "#/lib/atproto/nsids";
 import { hexToRgb, rgbToHex } from "#/lib/collections/color";
 import { composeCollectionNewsletterContent } from "#/lib/collections/compose-newsletter";
-import {
-  collectionManifestFromSources,
-  parseCollectionManifest,
-} from "#/lib/collections/manifest";
+import { collectionManifestFromSources } from "#/lib/collections/manifest";
 import { getPublicUrl } from "#/lib/public-url";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { blobCid, getBlobUrl } from "#/server/atproto/blob";
@@ -19,11 +18,11 @@ import {
   getDocumentRecord,
   getPublicationThemeRecord,
 } from "#/server/atproto/repo-get-records";
+import { parseAtUri } from "#/server/atproto/uri";
 import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
-import { parseAtUri } from "#/server/atproto/uri";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
-import { inArray, eq, and, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import type { ArticleCard } from "./api-shapes";
@@ -399,7 +398,7 @@ async function findCollectionsPublicationByRkey(
     STANDARD_NSID.publication,
   );
   const publication = publications.find((record) => record.rkey === rkey);
-  if (!publication || !isRecord(publication.value)) return undefined;
+  if (!publication || !isRecord(publication.value)) return;
 
   const referencedUris = await publicationUrisReferencedByCollections(
     client,

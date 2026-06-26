@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   applyForcedColumnBreaks,
@@ -49,13 +49,13 @@ describe("applyForcedColumnBreaks", () => {
     const changed = applyForcedColumnBreaks(flow);
     const spacer = flow.querySelector("[data-mag-col-spacer]");
 
-    if (!supportsForcedColumnBreaks()) {
+    if (supportsForcedColumnBreaks()) {
+      expect(changed).toBe(false);
+      expect(spacer).toBeNull();
+    } else {
       expect(changed).toBe(true);
       expect(spacer).not.toBeNull();
       expect((spacer as HTMLElement).style.height).toBe("150px");
-    } else {
-      expect(changed).toBe(false);
-      expect(spacer).toBeNull();
     }
   });
 

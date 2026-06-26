@@ -1,10 +1,10 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { use } from "react";
 import { AspectRatio, AspectRatioImage } from "#/design-system/aspect-ratio";
 import { normalizeImageAlt } from "#/lib/document/structured-content/image";
 import { MagazineColorContext } from "#/magazine/context";
+import { use } from "react";
 
 import { articleBodyStyles } from "../../body-styles";
 

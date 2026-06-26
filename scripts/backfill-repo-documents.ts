@@ -1,3 +1,4 @@
+import { recomputePublicationStats } from "../src/server/ingest/recompute.ts";
 /**
  * Reconcile `site.standard.publication` and `site.standard.document` records
  * for one or more repos against their PDS: upsert what exists on-chain and
@@ -9,7 +10,6 @@
  *   pnpm backfill:repo-documents --prune-only <did> [<did> ...]
  */
 import { reconcileRepoFromPds } from "../src/server/ingest/repo-sync.ts";
-import { recomputePublicationStats } from "../src/server/ingest/recompute.ts";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");

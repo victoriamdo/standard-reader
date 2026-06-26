@@ -177,7 +177,9 @@ function useMarkdownComponents(
         <em {...stylex.props(articleBodyStyles.facetItalic)}>{children}</em>
       ),
       mark: ({ children }) => (
-        <mark {...stylex.props(articleBodyStyles.facetHighlight)}>{children}</mark>
+        <mark {...stylex.props(articleBodyStyles.facetHighlight)}>
+          {children}
+        </mark>
       ),
       div: ({ className, children }) => {
         if (className === "playlist-songs") {

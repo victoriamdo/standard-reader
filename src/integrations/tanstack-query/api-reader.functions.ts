@@ -775,7 +775,10 @@ const deleteAllReadHistory = createServerFn({ method: "POST" })
 
       // Read rkeys from the DB mirror (no PDS I/O for the read).
       const readRows = await context.db
-        .select({ rkey: context.schema.reads.rkey, subject: context.schema.reads.documentUri })
+        .select({
+          rkey: context.schema.reads.rkey,
+          subject: context.schema.reads.documentUri,
+        })
         .from(context.schema.reads)
         .where(eq(context.schema.reads.ownerDid, session.did));
 
@@ -807,17 +810,16 @@ const deleteAllBookmarks = createServerFn({ method: "POST" })
 
       // Read rkeys from the DB mirror (no PDS I/O for the read).
       const bookmarkRows = await context.db
-        .select({ rkey: context.schema.bookmarks.rkey, subject: context.schema.bookmarks.documentUri })
+        .select({
+          rkey: context.schema.bookmarks.rkey,
+          subject: context.schema.bookmarks.documentUri,
+        })
         .from(context.schema.bookmarks)
         .where(eq(context.schema.bookmarks.ownerDid, session.did));
 
       await Promise.all(
         bookmarkRows.map(async (row) => {
-          await deleteBookmarkRecord(
-            session.client,
-            session.did,
-            row.subject,
-          );
+          await deleteBookmarkRecord(session.client, session.did, row.subject);
         }),
       );
 

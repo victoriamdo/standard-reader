@@ -268,9 +268,10 @@ export function LabelerDetailView({
                     isFirstInSection={index === 0}
                     unread={trackReading && !article.isRead}
                     showSaveButton={false}
-                    metaLabels={(labelsByUri[article.uri] ?? []).map(
-                      (val) => ({ src: did, val }),
-                    )}
+                    metaLabels={(labelsByUri[article.uri] ?? []).map((val) => ({
+                      src: did,
+                      val,
+                    }))}
                   />
                 ))}
               </div>

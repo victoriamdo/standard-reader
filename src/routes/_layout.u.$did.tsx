@@ -1,3 +1,4 @@
+import type { AuthorProfile } from "#/integrations/tanstack-query/api-author.functions";
 import type {
   ArticleCard,
   PublicationCard,
@@ -8,7 +9,6 @@ import * as stylex from "@stylexjs/stylex";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { formatReaders, initials } from "#/components/reader/format";
-import type { AuthorProfile } from "#/integrations/tanstack-query/api-author.functions";
 import {
   AUTHOR_ACTIVITY_PAGE_SIZE,
   authorApi,

@@ -26,6 +26,7 @@ function magazineBodyBackdrop(
 }
 
 /** Shared css for route head (SSR) and the client-managed document chrome style. */
+// eslint-disable-next-line react/only-export-components -- SSR string helper, not a component
 export function magazineDocumentChromeCss(
   theme: CollectionTheme | null | undefined,
   dark: boolean,
@@ -35,6 +36,7 @@ export function magazineDocumentChromeCss(
 }
 
 /** Route head: paint html/body before React mounts the magazine shell. */
+// eslint-disable-next-line react/only-export-components -- SSR string helper, not a component
 export function magazineRouteBackdropStyle(
   theme: CollectionTheme | null | undefined,
 ): { type: "text/css"; children: string } | null {
@@ -59,11 +61,11 @@ function installMagazineDocumentChrome(
 ) {
   if (globalThis.document === undefined) return;
 
-  let style = document.getElementById(MAGAZINE_DOCUMENT_CHROME_STYLE_ID);
+  let style = document.querySelector(`#${MAGAZINE_DOCUMENT_CHROME_STYLE_ID}`);
   if (!style) {
     style = document.createElement("style");
     style.id = MAGAZINE_DOCUMENT_CHROME_STYLE_ID;
-    document.head.appendChild(style);
+    document.head.append(style);
   }
   style.textContent = magazineDocumentChromeCss(theme, dark);
   // Leave route-head <style> tags to HeadContent — removing duplicates here
@@ -78,7 +80,7 @@ function clearMagazineDocumentChrome(
 ) {
   if (globalThis.document === undefined) return;
 
-  document.getElementById(MAGAZINE_DOCUMENT_CHROME_STYLE_ID)?.remove();
+  document.querySelector(`#${MAGAZINE_DOCUMENT_CHROME_STYLE_ID}`)?.remove();
 
   const html = document.documentElement;
   const body = document.body;

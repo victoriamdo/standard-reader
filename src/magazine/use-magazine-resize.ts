@@ -1,22 +1,21 @@
+import type { Dispatch, RefObject, SetStateAction } from "react";
+
 import {
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  type Dispatch,
-  type RefObject,
-  type SetStateAction,
 } from "react";
 import { flushSync } from "react-dom";
 
 import type { Geom } from "./magazine-geom";
+import type { FlowMeasure, ResizeAnchor } from "./magazine-measure";
+
 import {
   captureResizeAnchor,
   featureIndexAtColumn,
   slideForAnchor,
-  type FlowMeasure,
-  type ResizeAnchor,
 } from "./magazine-measure";
 import {
   beginResizeChrome,

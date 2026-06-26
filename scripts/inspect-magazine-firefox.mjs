@@ -30,14 +30,19 @@ async function inspect(browserType, label) {
     const flowRect = flow.getBoundingClientRect();
     const style = getComputedStyle(flow);
     const colWidth = Number.parseFloat(style.columnWidth) || 0;
-    const regionsMode = document.querySelector(".mag")?.classList.contains("regions-mode");
+    const regionsMode = document
+      .querySelector(".mag")
+      ?.classList.contains("regions-mode");
     const regionCount = document.querySelectorAll(".mag-region").length;
     const pitch =
       colWidth > 0
         ? colWidth + (Number.parseFloat(style.columnGap) || 0)
         : flow.querySelector(".mag-region")
-          ? (flow.querySelector(".mag-region")?.getBoundingClientRect().width ?? 0) +
-            (Number.parseFloat(getComputedStyle(flow.querySelector(".mag-region")).marginRight) || 0)
+          ? (flow.querySelector(".mag-region")?.getBoundingClientRect().width ??
+              0) +
+            (Number.parseFloat(
+              getComputedStyle(flow.querySelector(".mag-region")).marginRight,
+            ) || 0)
           : 0;
 
     function colInfo(el) {
@@ -50,7 +55,10 @@ async function inspect(browserType, label) {
         colIndex,
         topOffset: Math.round(topOffset),
         atColumnTop: topOffset <= 14,
-        text: (el.textContent ?? "").slice(0, 70).replace(/\s+/g, " ").trim(),
+        text: (el.textContent ?? "")
+          .slice(0, 70)
+          .replaceAll(/\s+/g, " ")
+          .trim(),
       };
     }
 

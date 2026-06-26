@@ -1,3 +1,6 @@
+import type { Dispatch, SetStateAction } from "react";
+
+import * as stylex from "@stylexjs/stylex";
 import { Lightbox } from "#/design-system/lightbox";
 import {
   useCallback,
@@ -5,25 +8,23 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type Dispatch,
-  type SetStateAction,
 } from "react";
 import { flushSync } from "react-dom";
 
+import type { Geom } from "./magazine-geom";
 import type { MagIssue } from "./types";
 
 import { MagazineColorContext } from "./context";
 import { readMagazineDark } from "./dark-mode";
 import { CoverFlow, EditorialFlow, EndCardFlow, FeatureFlow } from "./flow";
 import { MagHoverButton } from "./mag-hover-button";
-import type { Geom } from "./magazine-geom";
 import { geomEqual, readGeom } from "./magazine-geom";
 import { readFlowMeasure } from "./magazine-measure";
 import { MagazineShell } from "./magazine-shell";
 import {
-  isResizeChromeActive,
   MAG_RESIZE_END,
   MAG_RESIZE_START,
+  isResizeChromeActive,
 } from "./resize-chrome";
 import { useMagazineImageLightbox } from "./use-magazine-image-lightbox";
 import { useMagazineResize } from "./use-magazine-resize";
@@ -371,7 +372,7 @@ export function Magazine({
         ),
       ).then(scheduleMeasure);
     }
-    for (const delay of [200, 600, 1500, 3000, 6000, 10000]) {
+    for (const delay of [200, 600, 1500, 3000, 6000, 10_000]) {
       passes.push(setTimeout(scheduleMeasure, delay));
     }
     globalThis.addEventListener("load", scheduleMeasure);
@@ -987,8 +988,14 @@ export function Magazine({
         images={photoLightbox.images}
         initialIndex={photoLightbox.initialIndex}
         alt="Image"
-        style={{ zIndex: 1100 }}
+        style={lightboxStyles.overlay}
       />
     </MagazineColorContext>
   );
 }
+
+const lightboxStyles = stylex.create({
+  overlay: {
+    zIndex: 1100,
+  },
+});

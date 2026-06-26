@@ -70,13 +70,10 @@ export async function handleSubscribeLabeler(ctx: XrpcRequestContext) {
     labelerDid,
     createdAt,
   );
-  await upsertLabelerSubscription(
-    uri,
-    auth.did,
-    subjectRkey(labelerDid),
-    cid,
-    { labeler: labelerDid, createdAt },
-  );
+  await upsertLabelerSubscription(uri, auth.did, subjectRkey(labelerDid), cid, {
+    labeler: labelerDid,
+    createdAt,
+  });
   return {};
 }
 
@@ -86,7 +83,11 @@ export async function handleUnsubscribeLabeler(ctx: XrpcRequestContext) {
   const labelerDid = requireBodyField(ctx.body, "labeler");
   await deleteLabelerSubscriptionRecord(auth.client, auth.did, labelerDid);
   await deleteRecord(
-    buildAtUri(auth.did, Collections.labelerSubscription, subjectRkey(labelerDid)),
+    buildAtUri(
+      auth.did,
+      Collections.labelerSubscription,
+      subjectRkey(labelerDid),
+    ),
     Collections.labelerSubscription,
   );
   return {};

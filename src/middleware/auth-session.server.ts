@@ -95,7 +95,12 @@ async function resolveAtprotoSession(
     return;
   }
 
-  const result = { did, atprotoSession: client, client, session: { user: userRow } };
+  const result = {
+    did,
+    atprotoSession: client,
+    client,
+    session: { user: userRow },
+  };
   // Cache the resolved session by token so sibling server fns in the same
   // page load reuse it instead of each re-querying the DB for the session row.
   sessionTokenCache.set(sessionToken, {

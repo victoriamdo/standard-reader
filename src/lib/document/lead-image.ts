@@ -5,22 +5,22 @@ import {
   leafletDocumentContent,
   structuredFormatBlocks,
 } from "#/lib/document/content-formats";
+import { altMarkdownText } from "#/lib/document/structured-content/alt-markdown";
+import { htmlContentBody } from "#/lib/document/structured-content/html";
 import {
   structuredImageHasSource,
   structuredImageUrl,
 } from "#/lib/document/structured-content/image";
 import { markdownPlaintext } from "#/lib/document/structured-content/markdown";
-import { altMarkdownText } from "#/lib/document/structured-content/alt-markdown";
-import { htmlContentBody } from "#/lib/document/structured-content/html";
 import { leafletBlocks } from "#/lib/leaflet/blocks";
 import { leafletImageUrl } from "#/lib/leaflet/image";
 import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
 import { prepareMarkpubMarkdown } from "#/lib/markpub/markdown";
 import { offprintBlocks } from "#/lib/offprint/blocks";
+import { OFFPRINT_CONTENT } from "#/lib/offprint/types";
 import { pcktBlocks } from "#/lib/pckt/blocks";
 import { pcktImageHasSource, pcktImageUrl } from "#/lib/pckt/image";
 import { PCKT_CONTENT } from "#/lib/pckt/types";
-import { OFFPRINT_CONTENT } from "#/lib/offprint/types";
 
 export type ArticleHeroImage = {
   url: string;

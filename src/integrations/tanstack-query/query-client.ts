@@ -18,9 +18,11 @@ function makeQueryClient() {
       onError: (error) => {
         if (isServer) return;
         if (!isAtprotoScopeMissingError(error)) return;
-        void import("#/lib/atproto/reauth-toast").then(({ showReauthToast }) => {
-          showReauthToast();
-        });
+        void import("#/lib/atproto/reauth-toast").then(
+          ({ showReauthToast }) => {
+            showReauthToast();
+          },
+        );
       },
     }),
   });

@@ -15,6 +15,7 @@
 
 import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 
+import { db } from "#/db/index.server";
 import { listSaves, lists } from "#/db/schema";
 import { APP_NSID } from "#/lib/atproto/nsids";
 import { resolveIdentity } from "#/server/atproto/identity";
@@ -112,7 +113,6 @@ export async function fetchPublicList(
  * repo we haven't backfilled), then backfills for next time.
  */
 export async function readList(
-  db: Db,
   did: string,
   rkey: string,
 ): Promise<SubscriptionList | null> {
@@ -151,7 +151,6 @@ export async function readList(
  * mirror. No PDS I/O.
  */
 export async function hasSavedListDb(
-  db: Db,
   saverDid: string,
   listUri: string,
 ): Promise<boolean> {
@@ -184,7 +183,6 @@ const inflight = new Map<string, Promise<Array<SubscriptionList>>>();
  * Falls back to a PDS fetch + backfill when no list_saves rows exist yet.
  */
 export async function savedListsForReader(
-  db: Db,
   did: string,
 ): Promise<Array<SubscriptionList>> {
   const cached = cache.get(did);
@@ -294,10 +292,9 @@ export function invalidateSavedLists(did: string): void {
 
 /** Distinct publication uris contributed by the reader's saved lists. */
 export async function savedListPublicationUris(
-  db: Db,
   did: string,
 ): Promise<Array<string>> {
-  const resolvedLists = await savedListsForReader(db, did);
+  const resolvedLists = await savedListsForReader(did);
   return [...new Set(resolvedLists.flatMap((list) => list.publications))];
 }
 
@@ -308,7 +305,7 @@ async function effectiveFollowUrisImpl(
 ): Promise<Array<string>> {
   const [followUris, listUris] = await Promise.all([
     selectFollowUris(dbArg, schema, did),
-    savedListPublicationUris(dbArg, did),
+    savedListPublicationUris(did),
   ]);
   return [...new Set([...followUris, ...listUris])];
 }

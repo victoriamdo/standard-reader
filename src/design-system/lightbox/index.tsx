@@ -64,9 +64,12 @@ function LightboxImage({
 
   return (
     <div
-      {...stylex.props(styles.imageFrame, !loaded && styles.imageFrameLoading)}
+      {...stylex.props(
+        styles.imageFrame,
+        loaded ? null : styles.imageFrameLoading,
+      )}
     >
-      {!loaded ? (
+      {loaded ? null : (
         <div {...stylex.props(styles.loadingOverlay)}>
           <ProgressCircle
             isIndeterminate
@@ -74,7 +77,7 @@ function LightboxImage({
             aria-label="Loading image"
           />
         </div>
-      ) : null}
+      )}
       {/* eslint-disable-next-line jsx-a11y/alt-text -- alt passed via prop; empty when presentation */}
       <img
         ref={imgRef}
@@ -83,7 +86,7 @@ function LightboxImage({
         role={presentation ? "presentation" : undefined}
         onLoad={() => setLoaded(true)}
         onError={() => setLoaded(true)}
-        {...stylex.props(styles.image, !loaded && styles.imageHidden)}
+        {...stylex.props(styles.image, loaded ? null : styles.imageHidden)}
       />
     </div>
   );

@@ -15,4 +15,3 @@ const result = await syncAllLabels(db, schema);
 console.log(
   `[sync-labels] synced ${result.labels} label(s) from ${result.labelers} labeler(s)`,
 );
-process.exit(0);

@@ -1,5 +1,6 @@
-import { applyForcedColumnBreaks } from "./feature-layout";
 import type { Geom } from "./magazine-geom";
+
+import { applyForcedColumnBreaks } from "./feature-layout";
 
 export interface FlowMeasure {
   columns: number;
@@ -97,9 +98,9 @@ export function readFlowMeasure({
   if (requireEnd && !endEl) return null;
 
   const endAnchorCol =
-    endStartCol != null
-      ? Math.max(endStartCol, endSpanCol ?? endStartCol)
-      : null;
+    endStartCol == null
+      ? null
+      : Math.max(endStartCol, endSpanCol ?? endStartCol);
   if (endAnchorCol != null) {
     columns = Math.max(columns, endAnchorCol + geom.perView);
   }

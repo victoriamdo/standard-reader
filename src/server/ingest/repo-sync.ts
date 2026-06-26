@@ -1,12 +1,12 @@
-import type { DocumentRecord, PublicationRecord } from "../atproto/types.ts";
-
 import { asc, eq, inArray, or } from "drizzle-orm";
+
+import type { DocumentRecord, PublicationRecord } from "../atproto/types.ts";
 
 import { db } from "../../db/index.ts";
 import { documents, publications, trackedRepos } from "../../db/schema.ts";
 import { resolveIdentity } from "../atproto/identity.ts";
-import { logEvent } from "../observability/log.ts";
 import { Collections } from "../atproto/uri.ts";
+import { logEvent } from "../observability/log.ts";
 import { upsertDocument, upsertPublication } from "./handlers.ts";
 
 const LIST_PAGE = 100;

@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest";
-
 import {
   collectionDocumentLink,
   collectionDocumentUri,
   collectionSidecarUri,
 } from "#/lib/atproto/collection-uris";
+import { describe, expect, it } from "vitest";
 
 describe("collection document pair URIs", () => {
   const did = "did:plc:abc";

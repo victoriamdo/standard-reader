@@ -1,3 +1,5 @@
+import type { FontWeight } from "satori";
+
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -5,7 +7,7 @@ import { dirname, join } from "node:path";
 interface LoadedFont {
   name: string;
   data: ArrayBuffer;
-  weight: number;
+  weight: FontWeight;
   style: "normal" | "italic";
 }
 
@@ -23,7 +25,7 @@ async function loadLocalFont(
   pkg: string,
   filename: string,
   name: string,
-  weight: number,
+  weight: FontWeight,
   style: "normal" | "italic",
 ): Promise<LoadedFont> {
   const path = fontsourceFile(pkg, filename);

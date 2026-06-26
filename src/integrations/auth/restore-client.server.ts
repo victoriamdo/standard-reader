@@ -67,10 +67,10 @@ export async function restoreAuthenticatedClient(
   try {
     const entry = await promise;
     return entry.client;
-  } catch (err) {
+  } catch (error) {
     // Don't poison the cache on error — let the next caller retry.
     clientCache.delete(did);
-    throw err;
+    throw error;
   }
 }
 

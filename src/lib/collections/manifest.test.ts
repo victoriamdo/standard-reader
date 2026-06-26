@@ -10,9 +10,15 @@ import {
 const ITEM = "at://did:plc:abc/site.standard.document/3kfoo";
 const ITEM_2 = "at://did:plc:abc/site.standard.document/3kbar";
 
+const markpub = (markdown: string) => ({
+  $type: "at.markpub.markdown",
+  flavor: "gfm",
+  text: { $type: "at.markpub.text", markdown },
+});
+
 describe("parseCollectionManifest", () => {
   it("returns null for non-collection values", () => {
-    expect(parseCollectionManifest(undefined)).toBeNull();
+    expect(parseCollectionManifest(void 0)).toBeNull();
     expect(parseCollectionManifest(null)).toBeNull();
     expect(parseCollectionManifest("nope")).toBeNull();
     expect(parseCollectionManifest({})).toBeNull();
@@ -93,12 +99,6 @@ describe("parseCollectionManifest", () => {
   });
 
   it("parses markpub editorial, colophon, and item notes", () => {
-    const markpub = (markdown: string) => ({
-      $type: "at.markpub.markdown",
-      flavor: "gfm",
-      text: { $type: "at.markpub.text", markdown },
-    });
-
     expect(
       parseCollectionManifest({
         editorial: { title: "Issue", body: markpub("Intro copy.") },

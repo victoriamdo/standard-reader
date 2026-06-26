@@ -1,6 +1,7 @@
 "use client";
 
 import type { CollectionMagazineData } from "#/integrations/tanstack-query/api-publication.functions";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -19,14 +20,7 @@ import {
   siteSocialMeta,
 } from "#/lib/site-metadata";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
-import {
-  useCallback,
-  useMemo,
-  useState,
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-} from "react";
+import { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 
 import type { MagazineShellData } from "../magazine/types";
@@ -227,7 +221,7 @@ function CollectionRouteView({
       recommendCount: collection.collectionDoc.recommendCount,
       features: collection.features,
     });
-  }, [collection, isListMode, listData]);
+  }, [collection, isListMode, listData, did, rkey]);
 
   const publicationParams = isListMode
     ? null

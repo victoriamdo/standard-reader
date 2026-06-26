@@ -173,7 +173,7 @@ export async function loadSavedListsHydrated(
   schema: Schema,
   did: string,
 ): Promise<Array<SavedList>> {
-  const lists = await savedListsForReader(did);
+  const lists = await savedListsForReader(db, did);
   const allUris = [...new Set(lists.flatMap((list) => list.publications))];
   const [cards, owners] = await Promise.all([
     followedPublications(db, schema, allUris),

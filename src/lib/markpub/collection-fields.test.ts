@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { MARKPUB_MARKDOWN, MARKPUB_TEXT } from "./types";
-
 import {
   collectionMarkpubContent,
   markdownFromCollectionField,
   serializeCollectionManifestForRepo,
 } from "./collection-fields";
+import { MARKPUB_MARKDOWN, MARKPUB_TEXT } from "./types";
 
 const ITEM = "at://did:plc:abc/site.standard.document/3kfoo";
 

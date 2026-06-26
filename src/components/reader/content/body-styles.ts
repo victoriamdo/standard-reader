@@ -527,9 +527,9 @@ export const articleBodyStyles = stylex.create({
     paddingTop: spacing["4"],
   },
   websiteCardText: {
-    flexBasis: '0%',
-    flexGrow: '1',
-    flexShrink: '1',
+    flexBasis: "0%",
+    flexGrow: "1",
+    flexShrink: "1",
     minWidth: 0,
   },
   websiteCardExternalIcon: {

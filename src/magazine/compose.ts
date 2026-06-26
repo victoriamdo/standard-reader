@@ -78,15 +78,15 @@ export function composeIssue(
   list?: { did: string; rkey: string; listUri: string | null },
 ): MagIssue {
   const subscribe =
-    list?.listUri != null
-      ? ({
+    list?.listUri == null
+      ? null
+      : ({
           kind: "list",
           uri: list.listUri,
           name,
           did: list.did,
           rkey: list.rkey,
-        } satisfies MagIssue["subscribe"])
-      : null;
+        } satisfies MagIssue["subscribe"]);
 
   return {
     name,

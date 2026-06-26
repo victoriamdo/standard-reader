@@ -70,13 +70,13 @@ function SubscribePage() {
   const [outcome, setOutcome] = useState<"idle" | "success">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const phase: SubscribeCardPhase = !followStatusReady
-    ? "subscribing"
-    : followStatus?.isFollowing
+  const phase: SubscribeCardPhase = followStatusReady
+    ? followStatus?.isFollowing
       ? "already"
       : outcome === "success"
         ? "success"
-        : "subscribing";
+        : "subscribing"
+    : "subscribing";
 
   useEffect(() => {
     if (!followStatusReady) return;

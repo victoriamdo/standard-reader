@@ -1,7 +1,8 @@
+import babel from "@rolldown/plugin-babel";
 import stylexPlugin from "@stylexjs/unplugin/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import viteReact from "@vitejs/plugin-react";
+import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react";
 import browserslist from "browserslist";
 import { browserslistToTargets } from "lightningcss";
 import { nitro } from "nitro/vite";
@@ -27,13 +28,7 @@ const config = defineConfig({
   // linked globally, so most pages render unstyled on first paint. Emitting a
   // single stylesheet keeps the StyleX output linked on every route.
   build: { cssCodeSplit: false },
-  // Official Rust React Compiler via OXC (facebook/react#36173), wired through
-  // Vite's native transform pipeline — see oxc.rs/docs/.../react-compiler.html
   oxc: {
-    reactCompiler: {
-      compilationMode: "infer",
-      target: "19",
-    },
     exclude: ["src/design-system/**"],
   },
   plugins: [
@@ -52,6 +47,17 @@ const config = defineConfig({
     nitro(),
     tanstackStart(),
     viteReact(),
+    // React Compiler (facebook/react#36173) via @rolldown/plugin-babel +
+    // reactCompilerPreset from @vitejs/plugin-react.
+    babel({
+      presets: [
+        reactCompilerPreset({
+          compilationMode: "infer",
+          target: "19",
+        }),
+      ],
+      exclude: /\/src\/design-system\//,
+    }),
   ],
   server: {
     // Bluesky OAuth requires loopback IP — use 127.0.0.1, not localhost.

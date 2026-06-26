@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, type RefObject } from "react";
+import type { RefObject } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 
 const PHOTO_SCOPE =
   ".feature-body, .editorial-body, .feature-note-body, .editorial-spread";
@@ -101,7 +103,7 @@ export function useMagazineImageLightbox(
           const scope = galleryScopeFor(img);
           const imgs = photoImagesIn(scope, root);
           const urls = imgs
-            .map(lightboxImageUrl)
+            .map((photo) => lightboxImageUrl(photo))
             .filter((url) => url.length > 0);
           openAt(urls, Math.max(0, imgs.indexOf(img)));
         };

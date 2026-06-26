@@ -260,10 +260,11 @@ const getList = createServerFn({ method: "GET" })
 
       const session = await getAtprotoSessionForRequest(getRequest());
       const isOwner = session?.did === data.did;
+      const { db, schema } = context;
       const [list, isSaved] = await Promise.all([
-        readList(data.did, data.rkey),
+        readList(db, data.did, data.rkey),
         session && !isOwner
-          ? hasSavedListDb(session.did, listUri)
+          ? hasSavedListDb(db, session.did, listUri)
           : Promise.resolve(false),
       ]);
       if (!list) {
@@ -279,8 +280,6 @@ const getList = createServerFn({ method: "GET" })
           },
         } satisfies ListPage;
       }
-
-      const { db, schema } = context;
       const [publications, owners] = await Promise.all([
         hydrateInListOrder(db, schema, list.publications),
         lookupOwners(db, schema, [data.did]),
@@ -310,7 +309,8 @@ const getListFeed = createServerFn({ method: "GET" })
       span.set("rkey", data.rkey);
       span.set("offset", data.offset);
 
-      const list = await readList(data.did, data.rkey);
+      const { db, schema, trackReadingEnabled } = context;
+      const list = await readList(db, data.did, data.rkey);
       if (!list || list.publications.length === 0) {
         span.set("count", 0);
         return {
@@ -320,7 +320,6 @@ const getListFeed = createServerFn({ method: "GET" })
       }
 
       const session = await getAtprotoSessionForRequest(getRequest());
-      const { db, schema, trackReadingEnabled } = context;
       const trackReading = session == null ? false : trackReadingEnabled;
 
       const items = await selectArticleCards(db, schema, {

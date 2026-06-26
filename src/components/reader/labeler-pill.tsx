@@ -13,7 +13,7 @@ import { Avatar } from "../../design-system/avatar";
 import { Badge } from "../../design-system/badge";
 import { HoverCard } from "../../design-system/hover-card";
 import { animationDuration } from "../../design-system/theme/animations.stylex";
-import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
+import { uiColor } from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
 import {
   gap,

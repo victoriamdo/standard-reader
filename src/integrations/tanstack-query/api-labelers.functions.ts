@@ -266,8 +266,7 @@ const getLabeledDocuments = createServerFn({ method: "GET" })
         if (!vals.includes(row.val)) vals.push(row.val);
         labelsByUri[row.uri] = vals;
         const cts = row.cts ? row.cts.toISOString() : "";
-        if ((uriLatest.get(row.uri) ?? "") < cts)
-          uriLatest.set(row.uri, cts);
+        if ((uriLatest.get(row.uri) ?? "") < cts) uriLatest.set(row.uri, cts);
       }
 
       const uris = Object.keys(labelsByUri)

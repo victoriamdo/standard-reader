@@ -120,6 +120,7 @@
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "^4.5.0",
     "@playwright/test": "^1.60.0",
+    "@rolldown/plugin-babel": "0.2.3",
     "@stylexjs/eslint-plugin": "^0.18.3",
     "@stylexjs/unplugin": "^0.18.2",
     "@stylistic/eslint-plugin": "^5.6.1",

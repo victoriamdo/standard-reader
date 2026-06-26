@@ -12,8 +12,8 @@ import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { publicationOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
-import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useDelayedLoading } from "#/lib/use-delayed-loading";
+import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { ExternalLink } from "lucide-react";
 import {
   Suspense,

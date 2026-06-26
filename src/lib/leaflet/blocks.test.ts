@@ -49,10 +49,7 @@ describe("leafletBlocks page references", () => {
       ],
     });
 
-    expect(blocks.map((block) => block.kind)).toEqual([
-      "text",
-      "pageEmbed",
-    ]);
+    expect(blocks.map((block) => block.kind)).toEqual(["text", "pageEmbed"]);
     expect(blocks[0]).toMatchObject({
       kind: "text",
       block: { plaintext: "On canvas" },
@@ -105,6 +102,7 @@ describe("leafletBlocks page references", () => {
       {
         kind: "pageEmbed",
         pageId: "child-page",
+        pageType: LEAFLET_PAGE.linearDocument,
         blocks: [
           {
             kind: "header",

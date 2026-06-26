@@ -951,7 +951,11 @@ function ArticleViewBody({
             {labelRefs.length > 0 ? (
               <div {...stylex.props(styles.labelBadges)}>
                 {labelRefs.map((ref) => (
-                  <LabelerPill key={`${ref.src}:${ref.val}`} src={ref.src} val={ref.val} />
+                  <LabelerPill
+                    key={`${ref.src}:${ref.val}`}
+                    src={ref.src}
+                    val={ref.val}
+                  />
                 ))}
               </div>
             ) : null}

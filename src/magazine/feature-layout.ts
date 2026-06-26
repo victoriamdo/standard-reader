@@ -53,7 +53,9 @@ function insertSpacerBefore(el: HTMLElement, height: number): void {
 
 /** Remove spacers inserted by {@link applyForcedColumnBreaks}. */
 export function clearForcedColumnBreaks(root: ParentNode): void {
-  root.querySelectorAll(`[${SPACER_ATTR}]`).forEach((node) => node.remove());
+  for (const node of root.querySelectorAll(`[${SPACER_ATTR}]`)) {
+    node.remove();
+  }
 }
 
 /**

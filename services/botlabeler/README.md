@@ -18,13 +18,13 @@ posts `bot` when present (`src/bot.ts`).
 
 Identical surface to claudeslop:
 
-| Endpoint | What it does |
-| --- | --- |
-| `GET /.well-known/did.json` | The did:web document (labeler service + signing key). |
-| `GET /xrpc/com.atproto.label.queryLabels` | Point-in-time label lookup. |
-| `GET /xrpc/com.atproto.label.subscribeLabels` | WebSocket firehose of labels. |
-| `GET /xrpc/app.standard-reader.labeler.getServices` | The labeler descriptor. |
-| `GET /health` | Liveness + label count. |
+| Endpoint                                            | What it does                                          |
+| --------------------------------------------------- | ----------------------------------------------------- |
+| `GET /.well-known/did.json`                         | The did:web document (labeler service + signing key). |
+| `GET /xrpc/com.atproto.label.queryLabels`           | Point-in-time label lookup.                           |
+| `GET /xrpc/com.atproto.label.subscribeLabels`       | WebSocket firehose of labels.                         |
+| `GET /xrpc/app.standard-reader.labeler.getServices` | The labeler descriptor.                               |
+| `GET /health`                                       | Liveness + label count.                               |
 
 ## Running it
 
