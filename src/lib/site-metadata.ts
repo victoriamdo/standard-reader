@@ -141,6 +141,12 @@ export function listOgImageUrl(
   return `${baseUrl.replace(/\/$/, "")}/api/og/list?${params.toString()}`;
 }
 
+/** Dynamic OG card for an author profile (`/u/$did`). */
+export function profileOgImageUrl(baseUrl: string, did: string): string {
+  const params = new URLSearchParams({ did });
+  return `${baseUrl.replace(/\/$/, "")}/api/og/profile?${params.toString()}`;
+}
+
 /** Dynamic OG card for a curated collection (`/collection/$did/$rkey`). */
 export { collectionOgImageUrl } from "#/lib/collections/og-meta";
 

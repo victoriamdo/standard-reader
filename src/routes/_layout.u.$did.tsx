@@ -14,7 +14,7 @@ import {
   authorApi,
 } from "#/integrations/tanstack-query/api-author.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
-import { siteSocialMeta } from "#/lib/site-metadata";
+import { profileOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
 import { ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -82,6 +82,7 @@ export const Route = createFileRoute("/_layout/u/$did")({
           loaderData?.description?.trim() ||
           `Publications by ${handle ? `@${handle}` : name} on Standard Reader.`,
         url: `${baseUrl}${match.pathname}`,
+        ogImage: profileOgImageUrl(baseUrl, match.params.did),
       }),
     };
   },
