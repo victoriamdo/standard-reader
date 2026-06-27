@@ -67,6 +67,36 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # Loose-documents signal instance: tracks every repo that publishes a
+  # `site.standard.document` record, so authors with no publication record
+  # (e.g. Leaflet-hosted, or any https `site` doc) still get tracked +
+  # backfilled. Publication-bound documents are already covered by the primary
+  # tap instance's `site.standard.publication` signal; this one catches the
+  # orphan set. The ingest worker consumes it via `TAP_DOCS_API_URL`. Mirrors
+  # tap-labeler exactly. (Could be folded into the primary tap instance later
+  # by switching its `TAP_SIGNAL_COLLECTION` to `site.standard.document`.)
+  tap-docs:
+    image: ghcr.io/bluesky-social/indigo/tap:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:2482:2482"
+    environment:
+      TAP_DATABASE_URL: "sqlite:///data/tap-docs.db"
+      TAP_BIND: ":2482"
+      TAP_RELAY_URL: "${TAP_RELAY_URL:-https://relay1.us-east.bsky.network}"
+      TAP_PLC_URL: "${TAP_PLC_URL:-https://plc.directory}"
+      TAP_SIGNAL_COLLECTION: "site.standard.document"
+      # Deliver the same collections as the primary tap (publishers often own
+      # loose docs too, plus their profile/subscriptions/recommends).
+      TAP_COLLECTION_FILTERS: "${TAP_COLLECTION_FILTERS:-site.standard.publication,site.standard.document,site.standard.graph.subscription,site.standard.graph.recommend,app.bsky.actor.profile,app.standard-reader.read,app.standard-reader.bookmark,app.standard-reader.collection,app.standard-reader.collectionsPublication,app.standard-reader.publicationTheme,app.standard-reader.labelerSubscription,app.standard-reader.labeler.service}"
+      TAP_ADMIN_PASSWORD: "${TAP_ADMIN_PASSWORD:?set TAP_ADMIN_PASSWORD in .env}"
+      TAP_LOG_LEVEL: "${TAP_LOG_LEVEL:-info}"
+    volumes:
+      - tap-docs-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   tap-data:
   tap-labeler-data:
+  tap-docs-data:

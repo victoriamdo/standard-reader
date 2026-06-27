@@ -30,6 +30,16 @@ export const ingestConfig = {
     return process.env.TAP_LABELER_API_URL ?? null;
   },
 
+  /**
+   * Optional third tap instance signaled on `site.standard.document`
+   * (`TAP_DOCS_API_URL`) so repos that publish documents without a publication
+   * record ("loose documents", e.g. Leaflet-hosted) get tracked + backfilled.
+   * Shares `TAP_ADMIN_PASSWORD`.
+   */
+  get tapDocsApiUrl(): string | null {
+    return process.env.TAP_DOCS_API_URL ?? null;
+  },
+
   /** Basic-auth admin password for tap (`TAP_ADMIN_PASSWORD`), if configured. */
   get tapAdminPassword(): string | null {
     return process.env.TAP_ADMIN_PASSWORD ?? null;

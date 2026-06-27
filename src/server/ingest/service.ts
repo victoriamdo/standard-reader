@@ -579,6 +579,12 @@ const tapChannel = startTapChannel(
 const labelerTapChannel = ingestConfig.tapLabelerApiUrl
   ? startTapChannel(ingestConfig.tapLabelerApiUrl)
   : null;
+// Optional third tap instance signaled on `site.standard.document`, so repos
+// that publish documents without a publication record ("loose documents") get
+// tracked + backfilled.
+const docsTapChannel = ingestConfig.tapDocsApiUrl
+  ? startTapChannel(ingestConfig.tapDocsApiUrl)
+  : null;
 const pendingTrackedReconcile = startPendingTrackedReconcile(
   reconcileTrackedWithBackfill,
 );
@@ -593,6 +599,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
       labelSync.stop();
       await tapChannel.destroy();
       await labelerTapChannel?.destroy();
+      await docsTapChannel?.destroy();
       const { flushHoneycomb } = await import("../observability/honeycomb.ts");
       await flushHoneycomb();
       process.exit(0);

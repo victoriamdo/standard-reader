@@ -103,6 +103,16 @@ tracked and its record indexed. The ingest worker consumes it via
 `TAP_LABELER_API_URL`. In production, run it as a second tap service alongside
 the primary.
 
+**Loose-document discovery** uses the same pattern: `docker-compose.yml` runs a
+third tap (`tap-docs`, port 2482) signaled on `site.standard.document`, so repos
+that publish documents without a publication record (e.g. Leaflet-hosted, or any
+doc whose `site` is an `https://` URL) get tracked + backfilled. The ingest
+worker consumes it via `TAP_DOCS_API_URL`. In production, run it as a third tap
+service alongside the primary. Publication-bound documents are already covered
+by the primary tap's `site.standard.publication` signal; this instance catches
+the orphan set. (Could be folded into the primary tap later by switching its
+`TAP_SIGNAL_COLLECTION` to `site.standard.document`.)
+
 > ⚠️ Bandwidth note: tap consumes the **entire** firehose and filters locally,
 > so egress/ingress is non-trivial. Budget accordingly (or use a lighter
 > Jetstream-based consumer if you don't need backfill/verification).
