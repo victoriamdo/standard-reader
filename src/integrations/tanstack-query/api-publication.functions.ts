@@ -314,6 +314,7 @@ const getArticle = createServerFn({ method: "GET" })
         const st = schema.publicationStats;
         const dc = schema.documentContributors;
         const pr = schema.profiles;
+        const pa = schema.profiles;
         const rec = schema.recommends;
         const reads = schema.reads;
         span.set("documentUri", data.documentUri);
@@ -352,9 +353,9 @@ const getArticle = createServerFn({ method: "GET" })
                 pubThemeAccent: p.themeAccent,
                 pubThemeAccentForeground: p.themeAccentForeground,
                 pubThemeJson: p.themeJson,
-                pubOwnerAvatarUrl: pr.avatarUrl,
-                pubOwnerHandle: pr.handle,
-                pubOwnerDisplayName: pr.displayName,
+                pubOwnerAvatarUrl: sql<string | null>`coalesce(${pr.avatarUrl}, ${pa.avatarUrl})`,
+                pubOwnerHandle: sql<string | null>`coalesce(${pr.handle}, ${pa.handle})`,
+                pubOwnerDisplayName: sql<string | null>`coalesce(${pr.displayName}, ${pa.displayName})`,
                 pubTopic: p.topic,
                 pubVerified: p.verified,
                 pubSubscriberCount: st.subscriberCount,
@@ -365,6 +366,7 @@ const getArticle = createServerFn({ method: "GET" })
               .leftJoin(p, eq(p.uri, d.publicationUri))
               .leftJoin(st, eq(st.publicationUri, p.uri))
               .leftJoin(pr, eq(pr.did, p.did))
+              .leftJoin(pa, eq(pa.did, d.did))
               .where(eq(d.uri, data.documentUri))
               .limit(1),
             db

@@ -869,25 +869,52 @@ function Byline({
   includeDate?: boolean;
 }) {
   const date = formatDate(article.publishedAt);
+
+  // Loose documents have no publication row, so the byline shows the author's
+  // profile (handle / avatar) and links to `/u/$did` instead of a publication.
+  const isLoose = article.publicationName == null;
+  const authorName =
+    article.authorDisplayName ??
+    (article.authorHandle ? `@${article.authorHandle}` : null);
+  const authorAvatar =
+    article.authorAvatarUrl ?? article.publicationOwnerAvatarUrl ?? null;
+
   return (
     <Flex align="center" gap="md" wrap style={styles.byline}>
-      <PublicationNameLink
-        publicationUri={article.publicationUri}
-        linkStyle={styles.bylineEyebrow}
-        nested
-      >
-        <PublicationAvatar
-          pub={{
-            name: article.publicationName ?? "Unknown",
-            iconUrl: article.publicationIconUrl,
-            ownerAvatarUrl: article.publicationOwnerAvatarUrl,
-          }}
-          size="sm"
-        />
-        <span {...stylex.props(styles.bylineName)}>
-          {article.publicationName ?? "Unknown publication"}
-        </span>
-      </PublicationNameLink>
+      {isLoose && authorName && article.did ? (
+        <AuthorProfileLink
+          authorRef={article.did}
+          linkStyle={styles.bylineEyebrow}
+        >
+          <PublicationAvatar
+            pub={{
+              name: authorName,
+              iconUrl: null,
+              ownerAvatarUrl: authorAvatar,
+            }}
+            size="sm"
+          />
+          <span {...stylex.props(styles.bylineName)}>{authorName}</span>
+        </AuthorProfileLink>
+      ) : (
+        <PublicationNameLink
+          publicationUri={article.publicationUri}
+          linkStyle={styles.bylineEyebrow}
+          nested
+        >
+          <PublicationAvatar
+            pub={{
+              name: article.publicationName ?? "Unknown",
+              iconUrl: article.publicationIconUrl,
+              ownerAvatarUrl: article.publicationOwnerAvatarUrl,
+            }}
+            size="sm"
+          />
+          <span {...stylex.props(styles.bylineName)}>
+            {article.publicationName ?? "Unknown publication"}
+          </span>
+        </PublicationNameLink>
+      )}
       {includeDate && date ? (
         <>
           <span aria-hidden {...stylex.props(styles.metaDot)}>
@@ -1562,9 +1589,20 @@ export function CompactRow({
               ·
             </span>
           ) : null}
-          <PublicationNameLink publicationUri={article.publicationUri} nested>
-            <span>{article.publicationName ?? "Unknown"}</span>
-          </PublicationNameLink>
+          {article.publicationName ? (
+            <PublicationNameLink publicationUri={article.publicationUri} nested>
+              <span>{article.publicationName}</span>
+            </PublicationNameLink>
+          ) : article.authorHandle && article.did ? (
+            <AuthorProfileLink
+              authorRef={article.did}
+              linkStyle={styles.bylineEyebrow}
+            >
+              <span>@{article.authorHandle}</span>
+            </AuthorProfileLink>
+          ) : (
+            <span>Unknown</span>
+          )}
           {hasEngagement ? (
             <>
               <span aria-hidden {...stylex.props(styles.metaDot)}>

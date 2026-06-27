@@ -2054,3 +2054,47 @@ export async function authorPublications(
 
   return rows.map((row) => toPublicationCard(row));
 }
+
+/**
+ * Loose documents authored by this DID — `site.standard.document` records
+ * whose `site` is an `https://` URL with no matching publication row
+ * (`publication_uri IS NULL`). Newest first. Backs the "Documents" section
+ * of the author profile so authors who publish off-platform (e.g. Leaflet-
+ * hosted) still have their writing listed.
+ */
+export async function authorLooseDocuments(
+  db: Db,
+  schema: Schema,
+  opts: { did: string; limit: number; offset?: number },
+): Promise<AuthorActivityPage<ArticleCard>> {
+  const d = schema.documents;
+  const p = schema.publications;
+  const pa = schema.profiles;
+  const where = and(
+    eq(d.did, opts.did),
+    eq(d.deleted, false),
+    isNull(d.publicationUri),
+    documentPublishedNotInFuture(d),
+  );
+
+  const [countRow, rows] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int`.mapWith(Number) }).from(d).where(where),
+    db
+      .select({
+        ...articleCardColumns(schema),
+        isRead: documentReadExistsColumn(schema, opts.did),
+      })
+      .from(d)
+      .leftJoin(p, eq(p.uri, d.publicationUri))
+      .leftJoin(pa, eq(pa.did, d.did))
+      .where(where)
+      .orderBy(desc(d.publishedAt), desc(d.uri))
+      .limit(opts.limit)
+      .offset(opts.offset ?? 0),
+  ]);
+
+  return {
+    items: rows.map((row) => toArticleCard(row)),
+    total: countRow[0]?.count ?? 0,
+  };
+}

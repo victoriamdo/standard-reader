@@ -341,6 +341,13 @@ function AuthorProfileContent({
     number | null
   >(() => initialPage?.recommendationsNextOffset ?? null);
 
+  const [documents, setDocuments] = useState<Array<ArticleCard>>(
+    () => initialPage?.documents ?? [],
+  );
+  const [documentsNextOffset, setDocumentsNextOffset] = useState<
+    number | null
+  >(() => initialPage?.documentsNextOffset ?? null);
+
   const loadMorePublications = useCallback(async () => {
     if (publicationsNextOffset == null) return;
     const page = await authorApi.getAuthorPublications({
@@ -392,6 +399,25 @@ function AuthorProfileContent({
     setRecommendationsNextOffset(page.nextOffset);
   }, [did, recommendationsNextOffset]);
 
+  const loadMoreDocuments = useCallback(async () => {
+    if (documentsNextOffset == null) return;
+    const page = await authorApi.getAuthorDocuments({
+      data: {
+        did,
+        limit: AUTHOR_ACTIVITY_PAGE_SIZE,
+        offset: documentsNextOffset,
+      },
+    });
+    setDocuments((prev) => {
+      const seen = new Set(prev.map((article) => article.uri));
+      return [
+        ...prev,
+        ...page.items.filter((article) => !seen.has(article.uri)),
+      ];
+    });
+    setDocumentsNextOffset(page.nextOffset);
+  }, [did, documentsNextOffset]);
+
   const publicationsScroll = useInfiniteScroll(
     publicationsNextOffset,
     loadMorePublications,
@@ -403,6 +429,10 @@ function AuthorProfileContent({
   const recommendationsScroll = useInfiniteScroll(
     recommendationsNextOffset,
     loadMoreRecommendations,
+  );
+  const documentsScroll = useInfiniteScroll(
+    documentsNextOffset,
+    loadMoreDocuments,
   );
 
   if (!initialPage) {
@@ -418,6 +448,7 @@ function AuthorProfileContent({
   const { profile, stats } = initialPage;
   const name = authorDisplayName(profile);
   const pageUrl = `${getPublicUrlClient()}/u/${did}`;
+  const showDocuments = documents.length > 0;
   const showSubscriptions = stats.subscriptionCount > 0;
   const showRecommendations = stats.recommendationCount > 0;
 
@@ -500,7 +531,10 @@ function AuthorProfileContent({
         <div
           {...stylex.props(
             styles.section,
-            !showSubscriptions && !showRecommendations && styles.sectionLast,
+            !showDocuments &&
+              !showSubscriptions &&
+              !showRecommendations &&
+              styles.sectionLast,
           )}
         >
           <SectionHead kicker="Publications" title="All publications" />
@@ -529,6 +563,32 @@ function AuthorProfileContent({
             </div>
           )}
         </div>
+
+        {showDocuments ? (
+          <div
+            {...stylex.props(
+              styles.section,
+              !showSubscriptions && !showRecommendations && styles.sectionLast,
+            )}
+          >
+            <SectionHead kicker="Documents" title="Loose documents" />
+            <div>
+              {documents.map((article, index) => (
+                <ArticleRow
+                  key={article.uri}
+                  article={article}
+                  isFirstInSection={index === 0}
+                  showSaveButton={false}
+                />
+              ))}
+              <LoadMoreFooter
+                nextOffset={documentsNextOffset}
+                loadingMore={documentsScroll.loadingMore}
+                sentinelRef={documentsScroll.sentinelRef}
+              />
+            </div>
+          </div>
+        ) : null}
 
         {showSubscriptions ? (
           <div

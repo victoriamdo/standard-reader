@@ -6,6 +6,7 @@ import { resolveAuthorDid } from "#/server/atproto/resolve-author-ref";
 import { resolveSifaProfileUrl } from "#/server/atproto/sifa-profile";
 import { observe } from "#/server/observability/log";
 import {
+  authorLooseDocuments,
   authorProfileStats,
   authorPublications,
   authorRecommendations,
@@ -74,6 +75,8 @@ export interface AuthorProfile {
   subscriptionsNextOffset: number | null;
   recommendations: Array<ArticleCard>;
   recommendationsNextOffset: number | null;
+  documents: Array<ArticleCard>;
+  documentsNextOffset: number | null;
 }
 
 export interface AuthorPublicationsPage {
@@ -87,6 +90,11 @@ export interface AuthorSubscriptionsPage {
 }
 
 export interface AuthorRecommendationsPage {
+  items: Array<ArticleCard>;
+  nextOffset: number | null;
+}
+
+export interface AuthorDocumentsPage {
   items: Array<ArticleCard>;
   nextOffset: number | null;
 }
@@ -171,6 +179,7 @@ const getAuthorProfile = createServerFn({ method: "GET" })
           publications,
           subscriptionsPage,
           recommendationsPage,
+          documentsPage,
         ] = await Promise.all([
           resolveAuthorProfile(db, schema, did),
           authorProfileStats(db, schema, did),
@@ -187,6 +196,10 @@ const getAuthorProfile = createServerFn({ method: "GET" })
             did,
             limit: data.activityLimit,
           }),
+          authorLooseDocuments(db, schema, {
+            did,
+            limit: data.activityLimit,
+          }),
         ]);
 
         const hasIdentity =
@@ -196,7 +209,8 @@ const getAuthorProfile = createServerFn({ method: "GET" })
           profile.avatarUrl != null ||
           stats.publicationCount > 0 ||
           stats.subscriptionCount > 0 ||
-          stats.recommendationCount > 0;
+          stats.recommendationCount > 0 ||
+          documentsPage.total > 0;
 
         if (!hasIdentity) {
           span.set("found", false);
@@ -207,6 +221,7 @@ const getAuthorProfile = createServerFn({ method: "GET" })
         span.set("publicationCount", publications.length);
         span.set("subscriptionCount", subscriptionsPage.items.length);
         span.set("recommendationCount", recommendationsPage.items.length);
+        span.set("documentCount", documentsPage.items.length);
 
         return {
           profile,
@@ -229,6 +244,13 @@ const getAuthorProfile = createServerFn({ method: "GET" })
             data.activityLimit,
             recommendationsPage.items.length,
             recommendationsPage.total,
+          ),
+          documents: documentsPage.items,
+          documentsNextOffset: nextOffsetForPage(
+            0,
+            data.activityLimit,
+            documentsPage.items.length,
+            documentsPage.total,
           ),
         };
       },
@@ -333,6 +355,34 @@ const getAuthorRecommendations = createServerFn({ method: "GET" })
     ),
   );
 
+const getAuthorDocuments = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(authorActivityInput)
+  .handler(
+    observe(
+      "author.getDocuments",
+      async ({ data, context }, span): Promise<AuthorDocumentsPage> => {
+        const { db, schema } = context;
+        const did = await resolveAuthorDid(db, schema, data.did);
+        span.set("did", did);
+        span.set("offset", data.offset);
+
+        const page = await authorLooseDocuments(db, schema, { ...data, did });
+        span.set("count", page.items.length);
+
+        return {
+          items: page.items,
+          nextOffset: nextOffsetForPage(
+            data.offset,
+            data.limit,
+            page.items.length,
+            page.total,
+          ),
+        };
+      },
+    ),
+  );
+
 function getAuthorProfileQueryOptions(
   did: string,
   {
@@ -388,6 +438,19 @@ function getAuthorRecommendationsQueryOptions(
   });
 }
 
+function getAuthorDocumentsQueryOptions(
+  did: string,
+  {
+    limit = AUTHOR_ACTIVITY_PAGE_SIZE,
+    offset = 0,
+  }: { limit?: number; offset?: number } = {},
+) {
+  return queryOptions({
+    queryKey: ["author", "documents", did, limit, offset] as const,
+    queryFn: async () => getAuthorDocuments({ data: { did, limit, offset } }),
+  });
+}
+
 export const authorApi = {
   getAuthorProfile,
   getAuthorProfileQueryOptions,
@@ -398,4 +461,6 @@ export const authorApi = {
   getAuthorSubscriptionsQueryOptions,
   getAuthorRecommendations,
   getAuthorRecommendationsQueryOptions,
+  getAuthorDocuments,
+  getAuthorDocumentsQueryOptions,
 };
