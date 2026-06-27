@@ -56,6 +56,15 @@ Check items off as they land.
       data stays fresh instead of refetching (was `0`). Wrapped `getShellBootstrap` in
       `observe()` for ongoing Honeycomb visibility. Result: cold `/saved` 5.2s→3.6s,
       cold `/likes` 3.7s, cold `/history` 1.3s; warm loads ~0.8s across all routes.
+- [x] **`/saved` perf: sequential DB query chains.** Phase timing revealed
+      `loadShellSnapshot` was dominated by `savedListsForReader` (3 sequential DB
+      round trips: listSaves → refetch listSaves → lists) and `loadSidebarData`
+      (bookmark count blocked behind `effectiveFollowUris`). Fix: rewrote
+      `savedListsForReader` to use a single `listSaves LEFT JOIN lists` query (one
+      round trip instead of 3); eliminated the redundant re-query on the non-backfill
+      path; started the bookmark count query in parallel with `effectiveFollowUris`
+      in `loadSidebarData`. Remaining cold latency (~2–3s) is Neon compute wake-up
+      (scale-to-zero); warm loads are ~0.4–0.7s across all routes.
 - [x] **Load perf regression suite.** Playwright budgets for guest + signed-in views
       (`pnpm perf:test`, `perf/load-regression.spec.ts`); JSON report in `perf/results/latest.json`;
       fixture discovery via `pnpm perf:discover-fixtures`; signed-in auth via

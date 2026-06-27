@@ -19,7 +19,7 @@ import { listSaves, lists } from "#/db/schema";
 import { APP_NSID } from "#/lib/atproto/nsids";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { selectFollowUris } from "#/server/reader/queries";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { cache as reactCache } from "react";
 
 const RECORD_FETCH_TIMEOUT_MS = 8000;
@@ -178,6 +178,52 @@ interface CacheEntry {
 const cache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<Array<SubscriptionList>>>();
 
+/** Map joined listSaves × lists rows to SubscriptionList, skipping own-list saves. */
+function mapJoinedRows(
+  rows: Array<{
+    listUri: string;
+    uri: string | null;
+    rkey: string | null;
+    name: string | null;
+    description: string | null;
+    publications: unknown;
+    createdAt: Date | null;
+  }>,
+  readerDid: string,
+): Array<SubscriptionList> {
+  const result = rows
+    .filter(
+      (
+        row,
+      ): row is Omit<(typeof rows)[number], "uri" | "rkey" | "name"> & {
+        uri: string;
+        rkey: string;
+        name: string;
+      } => row.uri !== null && row.rkey !== null && row.name !== null,
+    )
+    .filter((row) => {
+      // A save of your own list would just duplicate the sidebar group.
+      const ownerDid = row.listUri.slice("at://".length).split("/")[0];
+      return ownerDid !== readerDid;
+    })
+    .map(
+      (row): SubscriptionList => ({
+        uri: row.uri,
+        rkey: row.rkey,
+        name: row.name,
+        description: row.description,
+        publications: (row.publications as Array<string>) ?? [],
+        createdAt: row.createdAt ? row.createdAt.toISOString() : null,
+      }),
+    );
+
+  cache.set(readerDid, {
+    lists: result,
+    expires: Date.now() + SAVED_LISTS_TTL_MS,
+  });
+  return result;
+}
+
 /**
  * The reader's saved lists (excluding saves that point at their own lists),
  * resolved from the DB mirror and cached for {@link SAVED_LISTS_TTL_MS}.
@@ -196,88 +242,56 @@ export async function savedListsForReader(
     return pending;
   }
   const promise = (async () => {
-    const saveRows = await db
-      .select({ listUri: listSaves.listUri })
+    // Single JOIN: saved list URIs + their list rows in one round trip.
+    const joined = await db
+      .select({
+        listUri: listSaves.listUri,
+        uri: lists.uri,
+        rkey: lists.rkey,
+        name: lists.name,
+        description: lists.description,
+        publications: lists.publications,
+        createdAt: lists.createdAt,
+      })
       .from(listSaves)
-      .where(and(eq(listSaves.saverDid, did), eq(listSaves.deleted, false)));
+      .leftJoin(lists, eq(lists.uri, listSaves.listUri))
+      .where(
+        and(
+          eq(listSaves.saverDid, did),
+          eq(listSaves.deleted, false),
+          eq(lists.deleted, false),
+        ),
+      );
 
-    // No rows yet — backfill from the PDS and retry.
-    if (saveRows.length === 0) {
+    // No rows yet — backfill from the PDS and retry once.
+    if (joined.length === 0) {
       const { backfillListsFromRepo } =
         await import("#/server/ingest/handlers");
       await backfillListsFromRepo(did);
+
+      const refetched = await db
+        .select({
+          listUri: listSaves.listUri,
+          uri: lists.uri,
+          rkey: lists.rkey,
+          name: lists.name,
+          description: lists.description,
+          publications: lists.publications,
+          createdAt: lists.createdAt,
+        })
+        .from(listSaves)
+        .leftJoin(lists, eq(lists.uri, listSaves.listUri))
+        .where(
+          and(
+            eq(listSaves.saverDid, did),
+            eq(listSaves.deleted, false),
+            eq(lists.deleted, false),
+          ),
+        );
+      return mapJoinedRows(refetched, did);
     }
 
-    const refetched = await db
-      .select({ listUri: listSaves.listUri })
-      .from(listSaves)
-      .where(and(eq(listSaves.saverDid, did), eq(listSaves.deleted, false)));
-
-    const savedUris = refetched.map((row) => row.listUri);
-    const refs = savedUris
-      .map((uri) => listRefFromUri(uri))
-      .filter((ref): ref is { did: string; rkey: string } => ref !== null)
-      // A save of your own list would just duplicate the sidebar group.
-      .filter((ref) => ref.did !== did);
-
-    if (refs.length === 0) {
-      cache.set(did, { lists: [], expires: Date.now() + SAVED_LISTS_TTL_MS });
-      return [];
-    }
-
-    // Batch-fetch all referenced lists from the DB mirror.
-    const listUris = refs.map((ref) => listUriFromParams(ref.did, ref.rkey));
-    const listRows = await db
-      .select()
-      .from(lists)
-      .where(and(inArray(lists.uri, listUris), eq(lists.deleted, false)));
-
-    const listByUri = new Map(listRows.map((row) => [row.uri, row]));
-
-    // Any list not yet in the DB (owned by a different repo we haven't
-    // backfilled) falls back to a single PDS fetch.
-    const missing = refs.filter(
-      (ref) => !listByUri.has(listUriFromParams(ref.did, ref.rkey)),
-    );
-    if (missing.length > 0) {
-      const fetched = await Promise.all(
-        missing.map((ref) => fetchPublicList(ref.did, ref.rkey)),
-      );
-      for (const list of fetched) {
-        if (list) {
-          listByUri.set(list.uri, {
-            uri: list.uri,
-            name: list.name,
-            description: list.description,
-            publications: list.publications,
-            rkey: list.rkey,
-            ownerDid: list.uri.slice("at://".length).split("/")[0] as string,
-            cid: null,
-            createdAt: list.createdAt ? new Date(list.createdAt) : null,
-            deleted: false,
-            indexedAt: new Date(),
-            updatedAt: new Date(),
-          });
-        }
-      }
-    }
-
-    const result = refs
-      .map((ref) => listByUri.get(listUriFromParams(ref.did, ref.rkey)))
-      .filter((row): row is NonNullable<typeof row> => row != null)
-      .map(
-        (row): SubscriptionList => ({
-          uri: row.uri,
-          rkey: row.rkey,
-          name: row.name,
-          description: row.description,
-          publications: (row.publications as Array<string>) ?? [],
-          createdAt: row.createdAt ? row.createdAt.toISOString() : null,
-        }),
-      );
-
-    cache.set(did, { lists: result, expires: Date.now() + SAVED_LISTS_TTL_MS });
-    return result;
+    return mapJoinedRows(joined, did);
   })();
   inflight.set(did, promise);
   try {

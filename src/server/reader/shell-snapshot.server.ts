@@ -45,9 +45,15 @@ export async function loadSidebarData(
     };
   }
 
+  const b = schema.bookmarks;
+  // Start the bookmark count immediately — it doesn't depend on followUris.
+  const savedCountPromise = db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(b)
+    .where(and(eq(b.ownerDid, did), eq(b.deleted, false)));
+
   const followUris = await effectiveFollowUris(db, schema, did);
   const hasFollows = followUris.length > 0;
-  const b = schema.bookmarks;
   const [following, counts, unreadByPublication, savedCountRow] =
     await Promise.all([
       followedPublications(db, schema, followUris),
@@ -57,10 +63,7 @@ export async function loadSidebarData(
       trackReading && followUris.length > 0
         ? countUnreadByPublication(db, schema, followUris, did)
         : Promise.resolve(new Map<string, number>()),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(b)
-        .where(and(eq(b.ownerDid, did), eq(b.deleted, false))),
+      savedCountPromise,
     ]);
 
   return {
