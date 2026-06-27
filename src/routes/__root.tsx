@@ -106,7 +106,7 @@ const ROOT_BOOTSTRAP_STALE_TIME_MS = 5 * 60_000;
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   staleTime: ROOT_BOOTSTRAP_STALE_TIME_MS,
-  beforeLoad: async ({ context }) => {
+  loader: async ({ context }) => {
     const bootstrap = await user.getShellBootstrap();
     context.queryClient.setQueryData(
       user.getSessionQueryOptions.queryKey,
