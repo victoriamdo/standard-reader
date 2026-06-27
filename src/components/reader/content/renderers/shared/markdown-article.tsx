@@ -24,6 +24,7 @@ import { articleBodyStyles, readingDropCapStyleProps } from "../../body-styles";
 import { ArticleBody } from "./article-body";
 import { CodeBlockView } from "./code-block";
 import { MarkdownIframeEmbed } from "./iframe-embed";
+import { reactNodePlainText } from "./react-node-text";
 
 const markdownStyles = stylex.create({
   blockquote: {
@@ -78,25 +79,32 @@ function useMarkdownComponents(
         ),
       p: ({ children }) => {
         if (!dropCapApplied.current) {
-          dropCapApplied.current = true;
-          const text = String(children ?? "");
-          const chars = [...text];
-          const firstChar = chars[0] ?? "";
-          const rest = chars.slice(1).join("");
-          if (firstChar) {
-            return (
-              <p
-                {...stylex.props(
-                  articleBodyStyles.paragraph,
-                  articleBodyStyles.dropCapParagraph,
-                )}
-              >
-                <span {...readingDropCapStyleProps(preference)} aria-hidden>
-                  {firstChar}
-                </span>
-                {rest}
-              </p>
-            );
+          // Only apply the drop cap when the paragraph is plain text. When the
+          // first paragraph contains inline markup (a link, bold, code, …)
+          // `String(children)` would stringify a React element to
+          // `"[object Object]"` and lose the formatting — skip the drop cap
+          // and render the children untouched instead.
+          const text = reactNodePlainText(children);
+          if (text !== null) {
+            const chars = [...text];
+            const firstChar = chars[0] ?? "";
+            const rest = chars.slice(1).join("");
+            if (firstChar) {
+              dropCapApplied.current = true;
+              return (
+                <p
+                  {...stylex.props(
+                    articleBodyStyles.paragraph,
+                    articleBodyStyles.dropCapParagraph,
+                  )}
+                >
+                  <span {...readingDropCapStyleProps(preference)} aria-hidden>
+                    {firstChar}
+                  </span>
+                  {rest}
+                </p>
+              );
+            }
           }
         }
         return <p {...stylex.props(articleBodyStyles.paragraph)}>{children}</p>;
