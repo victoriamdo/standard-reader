@@ -89,6 +89,8 @@ export const Route = createFileRoute("/_layout/discover")({
   validateSearch: discoverSearchSchema,
   loaderDeps: ({ search }) => ({ topic: search.topic, sort: search.sort }),
   loader: async ({ context, deps, preload }) => {
+    const knownCountOptions =
+      discoverApi.getKnownPublicationCountQueryOptions();
     const extrasOptions = discoverApi.getDiscoverExtrasQueryOptions({
       recommendedLimit: RAIL_LIMIT,
       socialProofLimit: SOCIAL_PROOF_MAX,
@@ -107,6 +109,7 @@ export const Route = createFileRoute("/_layout/discover")({
     });
 
     if (preload) {
+      void context.queryClient.prefetchQuery(knownCountOptions);
       void context.queryClient.prefetchQuery(extrasOptions);
       void context.queryClient.prefetchQuery(trendingOptions);
       void context.queryClient.prefetchQuery(topicsOptions);
@@ -114,10 +117,16 @@ export const Route = createFileRoute("/_layout/discover")({
       return;
     }
 
+    // Await only the masthead count + trending (first content rail). Both are
+    // fast (~115ms) so the page paints immediately without a header skeleton.
+    // The recommended + social-proof rails (getDiscoverExtras, ~750ms) are
+    // prefetched here and stream in via a non-blocking useQuery in the
+    // component, so they never gate first paint.
     await Promise.all([
-      context.queryClient.ensureQueryData(extrasOptions),
+      context.queryClient.ensureQueryData(knownCountOptions),
       context.queryClient.ensureQueryData(trendingOptions),
     ]);
+    void context.queryClient.prefetchQuery(extrasOptions);
     void context.queryClient.prefetchQuery(topicsOptions);
     void context.queryClient.prefetchQuery(directoryOptions);
   },
@@ -346,6 +355,18 @@ function DeferredMount({
   return <div ref={rootRef}>{mounted ? children : fallback}</div>;
 }
 
+function DiscoverRailSkeleton({ count }: { count: number }) {
+  return (
+    <div {...stylex.props(styles.railWrap)} aria-hidden>
+      <div {...stylex.props(styles.railScroll)}>
+        {Array.from({ length: count }, (_, index) => (
+          <PubCardSkeleton key={index} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DiscoverDirectoryToolbarSkeleton() {
   return (
     <div
@@ -396,7 +417,7 @@ function DiscoverRecommendedSection({
   recommended,
 }: {
   signedIn: boolean;
-  recommended: Array<PublicationCard>;
+  recommended: Array<PublicationCard> | undefined;
 }) {
   const recommendedKicker = signedIn
     ? "Tuned to your follows"
@@ -414,7 +435,9 @@ function DiscoverRecommendedSection({
           </SectionIcon>
         }
       />
-      {recommended.length > 0 ? (
+      {recommended === undefined ? (
+        <DiscoverRailSkeleton count={RAIL_LIMIT} />
+      ) : recommended.length > 0 ? (
         <HorizontalRail pubs={recommended} />
       ) : (
         <p {...stylex.props(styles.emptyRail)}>
@@ -428,7 +451,7 @@ function DiscoverRecommendedSection({
 function DiscoverSocialProofSection({
   followedBy,
 }: {
-  followedBy: Array<PublicationCard>;
+  followedBy: Array<PublicationCard> | undefined;
 }) {
   const [socialProofExpanded, setSocialProofExpanded] = useState(false);
 
@@ -443,7 +466,7 @@ function DiscoverSocialProofSection({
           </SectionIcon>
         }
         action={
-          followedBy.length > SOCIAL_PROOF_COLLAPSED ? (
+          followedBy && followedBy.length > SOCIAL_PROOF_COLLAPSED ? (
             <Button
               variant="tertiary"
               size="sm"
@@ -454,7 +477,13 @@ function DiscoverSocialProofSection({
           ) : undefined
         }
       />
-      {followedBy.length > 0 ? (
+      {followedBy === undefined ? (
+        <Grid columnGap="lg" rowGap="lg" style={styles.socialGrid}>
+          {Array.from({ length: SOCIAL_PROOF_COLLAPSED }, (_, index) => (
+            <PubCardSkeleton key={index} />
+          ))}
+        </Grid>
+      ) : followedBy.length > 0 ? (
         <Grid columnGap="lg" rowGap="lg" style={styles.socialGrid}>
           {(socialProofExpanded
             ? followedBy
@@ -859,12 +888,19 @@ function Discover() {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
 
-  const { data: extras } = useSuspenseQuery(
-    discoverApi.getDiscoverExtrasQueryOptions({
+  // Masthead count — loader-seeded, fast (~115ms), gates first paint.
+  const { data: knownPublicationCount = 0 } = useSuspenseQuery(
+    discoverApi.getKnownPublicationCountQueryOptions(),
+  );
+
+  // Recommended + social-proof rails — prefetched by the loader but never
+  // gates first paint. Streams in with rail skeletons while resolving.
+  const { data: extras } = useQuery({
+    ...discoverApi.getDiscoverExtrasQueryOptions({
       recommendedLimit: RAIL_LIMIT,
       socialProofLimit: SOCIAL_PROOF_MAX,
     }),
-  );
+  });
 
   return (
     <ReaderContent>
@@ -873,25 +909,23 @@ function Discover() {
         kickerIcon={<Compass size={13} />}
         title="Discover"
         dek={
-          <DiscoverMastheadDek
-            knownPublicationCount={extras.knownPublicationCount}
-          />
+          <DiscoverMastheadDek knownPublicationCount={knownPublicationCount} />
         }
         metaLabel="Known publications"
         metaValue={
-          extras.knownPublicationCount > 0
-            ? formatCount(extras.knownPublicationCount)
+          knownPublicationCount > 0
+            ? formatCount(knownPublicationCount)
             : undefined
         }
       />
 
       <DiscoverRecommendedSection
         signedIn={signedIn}
-        recommended={extras.recommended}
+        recommended={extras?.recommended}
       />
 
       {signedIn ? (
-        <DiscoverSocialProofSection followedBy={extras.followedBy} />
+        <DiscoverSocialProofSection followedBy={extras?.followedBy ?? []} />
       ) : null}
 
       <DiscoverTrendingSection />
