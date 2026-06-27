@@ -1,3 +1,4 @@
+import type * as DbSchema from "#/db/schema";
 import type { PublicationRecord } from "#/server/atproto/types";
 
 import { isDid } from "@atcute/lexicons/syntax";
@@ -152,7 +153,7 @@ const searchArticles = createServerFn({ method: "GET" })
 
       const tsq = sql`websearch_to_tsquery('english', ${data.q})`;
       const hints = documentQueryHints(data.q);
-      const matchClause = documentMatchSql(d, pr, tsq, hints);
+      const matchClause = documentMatchSql(d, pr, pa, tsq, hints);
       const articleWhere = and(
         eq(d.deleted, false),
         matchClause,
@@ -389,9 +390,13 @@ function documentQueryHints(input: string): DocumentQueryHints {
  * any author handle/DID match so "alice.bsky.social" surfaces her articles
  * alongside ordinary title/body hits.
  */
+/** Aliased `profiles` table (`pa`) — the document author's profile. */
+type ProfileAlias = ReturnType<typeof alias<typeof DbSchema.profiles, "pa">>;
+
 function documentMatchSql(
   d: Schema["documents"],
   pr: Schema["profiles"],
+  pa: ProfileAlias,
   tsq: ReturnType<typeof sql>,
   hints: DocumentQueryHints,
 ) {
@@ -400,7 +405,11 @@ function documentMatchSql(
 
   const parts = [sql`${d.searchVector} @@ ${tsq}`];
   if (hints.authorHandle) {
+    // Match the handle on either the publication owner (`pr`) or the document
+    // author (`pa`). Loose documents have no publication row, so `pr.handle`
+    // is null — without `pa` the author's own handle never surfaces their docs.
     parts.push(ilike(pr.handle, `%${hints.authorHandle}%`));
+    parts.push(ilike(pa.handle, `%${hints.authorHandle}%`));
   }
   if (hints.authorDid) {
     parts.push(eq(d.did, hints.authorDid));
