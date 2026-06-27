@@ -38,6 +38,7 @@ import {
 } from "#/server/reader/queries";
 import { themeModeForRequest } from "#/server/theme-preference";
 import { and, eq, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 import type {
@@ -314,7 +315,7 @@ const getArticle = createServerFn({ method: "GET" })
         const st = schema.publicationStats;
         const dc = schema.documentContributors;
         const pr = schema.profiles;
-        const pa = schema.profiles;
+        const pa = alias(schema.profiles, "pa");
         const rec = schema.recommends;
         const reads = schema.reads;
         span.set("documentUri", data.documentUri);

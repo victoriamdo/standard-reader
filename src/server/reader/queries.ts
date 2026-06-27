@@ -56,6 +56,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 /** Blend weights for personalized publication ranking (tunable). */
 const RECOMMENDATION_BLEND = {
@@ -121,7 +122,7 @@ export async function selectArticleCards(
   const d = schema.documents;
   const p = schema.publications;
   const pr = schema.profiles;
-  const pa = schema.profiles;
+  const pa = alias(schema.profiles, "pa");
   const r = schema.reads;
 
   const conds = [eq(d.deleted, false), documentPublishedNotInFuture(d)];
@@ -522,7 +523,7 @@ export async function trendingArticles(
   const d = schema.documents;
   const p = schema.publications;
   const pr = schema.profiles;
-  const pa = schema.profiles;
+  const pa = alias(schema.profiles, "pa");
 
   if (scope === "page") {
     const rows = await db
@@ -1663,7 +1664,7 @@ export async function selectArticleCardsByUris(
   const d = schema.documents;
   const p = schema.publications;
   const pr = schema.profiles;
-  const pa = schema.profiles;
+  const pa = alias(schema.profiles, "pa");
   const rows = await db
     .select(
       opts?.lite ? articleQueueCardColumns(schema) : articleCardColumns(schema),
@@ -1967,7 +1968,7 @@ export async function authorRecommendations(
   const d = schema.documents;
   const p = schema.publications;
   const pr = schema.profiles;
-  const pa = schema.profiles;
+  const pa = alias(schema.profiles, "pa");
   const where = and(eq(rec.recommenderDid, opts.did), eq(rec.deleted, false));
 
   const [countRow, rows] = await Promise.all([
@@ -2069,7 +2070,7 @@ export async function authorLooseDocuments(
 ): Promise<AuthorActivityPage<ArticleCard>> {
   const d = schema.documents;
   const p = schema.publications;
-  const pa = schema.profiles;
+  const pa = alias(schema.profiles, "pa");
   const where = and(
     eq(d.did, opts.did),
     eq(d.deleted, false),

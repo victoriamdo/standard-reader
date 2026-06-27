@@ -12,6 +12,7 @@ import {
 } from "#/server/reader/queries";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import type { XrpcRequestContext } from "../types";
 
@@ -250,7 +251,7 @@ async function loadReaderDocumentQueue(
   const d = ctx.schema.documents;
   const p = ctx.schema.publications;
   const pr = ctx.schema.profiles;
-  const pa = ctx.schema.profiles;
+  const pa = alias(ctx.schema.profiles, "pa");
 
   if (collection === "bookmarks") {
     const b = ctx.schema.bookmarks;

@@ -25,6 +25,7 @@ import {
   publicationSearchSnippetHeadline,
 } from "#/server/reader/search-headline";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 import type { ArticleCard, Db, PublicationCard, Schema } from "./api-shapes";
@@ -144,7 +145,7 @@ const searchArticles = createServerFn({ method: "GET" })
       const d = schema.documents;
       const p = schema.publications;
       const pr = schema.profiles;
-      const pa = schema.profiles;
+      const pa = alias(schema.profiles, "pa");
       span.set("q", data.q);
       span.set("offset", data.offset);
       await attachReaderSpanContext(span, getRequest());

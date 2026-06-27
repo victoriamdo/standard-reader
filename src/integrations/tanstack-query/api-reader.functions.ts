@@ -28,6 +28,7 @@ import { markDocumentsRead } from "#/server/reader/mark-documents-read";
 import { selectUnreadDocumentUris } from "#/server/reader/queries";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 import type { ArticleCard } from "./api-shapes";
@@ -381,7 +382,7 @@ const getLikes = createServerFn({ method: "GET" })
       const d = context.schema.documents;
       const p = context.schema.publications;
       const pr = context.schema.profiles;
-      const pa = context.schema.profiles;
+      const pa = alias(context.schema.profiles, "pa");
       const cols = articleQueueCardColumns(context.schema);
       const where = and(eq(rec.recommenderDid, did), eq(rec.deleted, false));
 
@@ -605,7 +606,7 @@ const getReadingHistory = createServerFn({ method: "GET" })
       const d = context.schema.documents;
       const p = context.schema.publications;
       const pr = context.schema.profiles;
-      const pa = context.schema.profiles;
+      const pa = alias(context.schema.profiles, "pa");
       const cols = articleQueueCardColumns(context.schema);
       const where = and(eq(r.ownerDid, did), eq(r.deleted, false));
 
@@ -695,7 +696,7 @@ const getSaved = createServerFn({ method: "GET" })
       const d = context.schema.documents;
       const p = context.schema.publications;
       const pr = context.schema.profiles;
-      const pa = context.schema.profiles;
+      const pa = alias(context.schema.profiles, "pa");
       const cols = articleQueueCardColumns(context.schema);
       const where = and(eq(b.ownerDid, did), eq(b.deleted, false));
 

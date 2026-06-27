@@ -4,6 +4,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import { cdnImageUrl } from "#/server/atproto/blob";
 import { sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 /**
  * Shared shapes + helpers for the read-model query layer (`APP_VISION.md` §5).
@@ -185,7 +186,11 @@ export function articleCardColumns(schema: Schema) {
   const d = schema.documents;
   const p = schema.publications;
   const pr = schema.profiles;
-  const pa = schema.profiles;
+  // Distinct alias of `profiles` so a query can join the publication owner
+  // (`pr`, on `publications.did`) and the document author (`pa`, on
+  // `documents.did`) at the same time. Joining the same table object twice
+  // throws "Alias 'profiles' is already used in this query".
+  const pa = alias(schema.profiles, "pa");
   const rec = schema.recommends;
   return {
     uri: d.uri,
