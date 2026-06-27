@@ -20,6 +20,14 @@ import { z } from "zod";
 
 import { SiteLegalLinks } from "../components/site-legal-links";
 import { UserHandleAutocomplete } from "../components/user-handle-autocomplete";
+import { AlertDialog } from "../design-system/alert-dialog";
+import {
+  AlertDialogActionButton,
+  AlertDialogCancelButton,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+} from "../design-system/alert-dialog";
 import { Avatar } from "../design-system/avatar";
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
@@ -38,6 +46,7 @@ import {
 } from "../design-system/theme/semantic-spacing.stylex";
 import { Body } from "../design-system/typography";
 import { Text } from "../design-system/typography/text";
+import { Link } from "../design-system/link";
 
 const searchSchema = z.object({
   redirect: z.string().optional(),
@@ -369,17 +378,42 @@ function AuthPage() {
                   Log in
                 </Button>
               )}
-              <Button
-                size="lg"
-                type="button"
-                variant="outline"
-                onPress={() => handleSignup.mutate()}
-                isPending={handleSignup.isPending}
-                isDisabled={loginMutation.isPending}
-                style={styles.signupButton}
+              <AlertDialog
+                trigger={
+                  <Button
+                    size="lg"
+                    type="button"
+                    variant="outline"
+                    isPending={handleSignup.isPending}
+                    isDisabled={loginMutation.isPending}
+                    style={styles.signupButton}
+                  >
+                    Create account
+                  </Button>
+                }
               >
-                Create account
-              </Button>
+                <AlertDialogHeader>Are you sure?</AlertDialogHeader>
+                <AlertDialogDescription>
+                  You can use any Atmosphere account, including accounts from
+                  Bluesky, Tangled, Semble, and all the{" "}
+                  <Link
+                    href="https://atstore.fyi"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    other apps.
+                  </Link>
+                </AlertDialogDescription>
+                <AlertDialogFooter>
+                  <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
+                  <AlertDialogActionButton
+                    isPending={handleSignup.isPending}
+                    onPress={() => handleSignup.mutate()}
+                  >
+                    Continue
+                  </AlertDialogActionButton>
+                </AlertDialogFooter>
+              </AlertDialog>
             </Flex>
           </Flex>
         </Form>
