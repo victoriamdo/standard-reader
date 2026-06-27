@@ -31,7 +31,10 @@ import {
 } from "#/integrations/tanstack-query/api-shapes";
 import { EXCLUDED_PUBLICATION_URL_PATTERN } from "#/lib/publication/exclusions";
 import { documentPublishedNotInFuture } from "#/server/reader/document-filters";
-import { discoverEligiblePublicationWhere } from "#/server/reader/publication-filters";
+import {
+  discoverEligibleArticleWhere,
+  discoverEligiblePublicationWhere,
+} from "#/server/reader/publication-filters";
 import {
   MIN_ARTICLE_RECOMMENDERS,
   TRENDING_MAX_AGE_DAYS,
@@ -118,6 +121,7 @@ export async function selectArticleCards(
   const d = schema.documents;
   const p = schema.publications;
   const pr = schema.profiles;
+  const pa = schema.profiles;
   const r = schema.reads;
 
   const conds = [eq(d.deleted, false), documentPublishedNotInFuture(d)];
@@ -128,10 +132,11 @@ export async function selectArticleCards(
     conds.push(eq(d.featured, true));
   }
   if (opts.discoverOnly) {
-    conds.push(
-      isNotNull(d.publicationUri),
-      discoverEligiblePublicationWhere(p),
-    );
+    // Loose documents (publicationUri IS NULL, no publication row) are
+    // discover-eligible; publication-bound documents must be on a discover-
+    // eligible publication. `p` is leftJoin'd below, so loose docs surface as
+    // `p.uri IS NULL` and pass the `or(isNull(p.uri), …)` clause.
+    conds.push(discoverEligibleArticleWhere(p));
   }
   if (opts.tag) {
     conds.push(documentCarriesTagWhere(d, opts.tag));
@@ -150,6 +155,7 @@ export async function selectArticleCards(
     .from(d)
     .leftJoin(p, eq(p.uri, d.publicationUri))
     .leftJoin(pr, eq(pr.did, p.did))
+    .leftJoin(pa, eq(pa.did, d.did))
     .$dynamic();
 
   if (opts.unreadForDid) {
@@ -250,6 +256,11 @@ export async function selectPublicationArticleCards(
       publicationOwnerHandle: null,
       publicationBannerUrl: null,
       publicationTopic: null,
+      // These documents belong to a publication, so the author-byline fields
+      // (used only for loose docs) are not needed here.
+      authorHandle: null,
+      authorAvatarUrl: null,
+      authorDisplayName: null,
     }),
   );
 }
@@ -390,8 +401,7 @@ export async function countNetworkDocuments(
       and(
         eq(d.deleted, false),
         documentPublishedNotInFuture(d),
-        isNotNull(d.publicationUri),
-        discoverEligiblePublicationWhere(p),
+        discoverEligibleArticleWhere(p),
       ),
     );
   return row?.count ?? 0;
@@ -465,8 +475,10 @@ function trendingArticleWhere(
 
   const conds = [
     eq(d.deleted, false),
-    isNotNull(d.publicationUri),
-    discoverEligiblePublicationWhere(p),
+    // Loose documents (no publication) are eligible; publication-bound ones
+    // must be on a discover-eligible publication. `p` is leftJoin'd in the
+    // trending query builders.
+    discoverEligibleArticleWhere(p),
     documentPublishedNotInFuture(d),
     sql`${d.publishedAt} > now() - (${TRENDING_MAX_AGE_DAYS}::text || ' days')::interval`,
   ];
@@ -510,13 +522,15 @@ export async function trendingArticles(
   const d = schema.documents;
   const p = schema.publications;
   const pr = schema.profiles;
+  const pa = schema.profiles;
 
   if (scope === "page") {
     const rows = await db
       .select(trendingArticleSelection(schema, readForDid))
       .from(d)
-      .innerJoin(p, eq(p.uri, d.publicationUri))
+      .leftJoin(p, eq(p.uri, d.publicationUri))
       .leftJoin(pr, eq(pr.did, p.did))
+      .leftJoin(pa, eq(pa.did, d.did))
       .where(and(...trendingArticleWhere(schema, scope, excludeUris)))
       .orderBy(desc(d.trendingScore), desc(d.publishedAt))
       .limit(limit)
@@ -531,8 +545,9 @@ export async function trendingArticles(
   const rows = await db
     .select(trendingArticleSelection(schema, readForDid))
     .from(d)
-    .innerJoin(p, eq(p.uri, d.publicationUri))
+    .leftJoin(p, eq(p.uri, d.publicationUri))
     .leftJoin(pr, eq(pr.did, p.did))
+    .leftJoin(pa, eq(pa.did, d.did))
     .where(and(...trendingArticleWhere(schema, scope, excludeUris)))
     .orderBy(desc(d.trendingScore), desc(d.publishedAt))
     .limit(poolSize);
@@ -554,7 +569,7 @@ export async function countTrendingDocuments(
   const [row] = await db
     .select({ count: sql<number>`count(*)`.mapWith(Number) })
     .from(d)
-    .innerJoin(p, eq(p.uri, d.publicationUri))
+    .leftJoin(p, eq(p.uri, d.publicationUri))
     .where(and(...trendingArticleWhere(schema, scope)));
   return row?.count ?? 0;
 }
@@ -870,8 +885,7 @@ export async function countTagArticles(
       and(
         eq(d.deleted, false),
         documentPublishedNotInFuture(d),
-        isNotNull(d.publicationUri),
-        discoverEligiblePublicationWhere(p),
+        discoverEligibleArticleWhere(p),
         documentCarriesTagWhere(d, tag),
       ),
     );
@@ -1649,6 +1663,7 @@ export async function selectArticleCardsByUris(
   const d = schema.documents;
   const p = schema.publications;
   const pr = schema.profiles;
+  const pa = schema.profiles;
   const rows = await db
     .select(
       opts?.lite ? articleQueueCardColumns(schema) : articleCardColumns(schema),
@@ -1656,6 +1671,7 @@ export async function selectArticleCardsByUris(
     .from(d)
     .leftJoin(p, eq(p.uri, d.publicationUri))
     .leftJoin(pr, eq(pr.did, p.did))
+    .leftJoin(pa, eq(pa.did, d.did))
     .where(
       and(
         inArray(d.uri, uris),
@@ -1779,7 +1795,10 @@ export type AuthorPublicationStats = AuthorProfileStats;
 
 /**
  * Aggregate stats for an author profile header: owned publications plus
- * `site.standard.graph.subscription` / `recommend` activity.
+ * `site.standard.graph.subscription` / `recommend` activity. `documentCount`
+ * sums per-publication stats *and* adds loose documents (records whose `site`
+ * is an `https://` URL with no matching publication) authored by this DID, so
+ * authors who publish off-platform still show a real article total.
  */
 export async function authorProfileStats(
   db: Db,
@@ -1790,8 +1809,9 @@ export async function authorProfileStats(
   const st = schema.publicationStats;
   const sub = schema.subscriptions;
   const rec = schema.recommends;
+  const d = schema.documents;
 
-  const [pubRow, subRow, recRow] = await Promise.all([
+  const [pubRow, subRow, recRow, looseRow] = await Promise.all([
     db
       .select({
         publicationCount: sql<number>`count(*)::int`.mapWith(Number),
@@ -1827,11 +1847,26 @@ export async function authorProfileStats(
       })
       .from(rec)
       .where(and(eq(rec.recommenderDid, did), eq(rec.deleted, false))),
+    // Loose documents (no publication) authored by this DID — not covered by
+    // the per-publication stats sum above.
+    db
+      .select({
+        count: sql<number>`count(*)::int`.mapWith(Number),
+      })
+      .from(d)
+      .where(
+        and(
+          eq(d.did, did),
+          eq(d.deleted, false),
+          isNull(d.publicationUri),
+          documentPublishedNotInFuture(d),
+        ),
+      ),
   ]);
 
   return {
     publicationCount: pubRow[0]?.publicationCount ?? 0,
-    documentCount: pubRow[0]?.documentCount ?? 0,
+    documentCount: (pubRow[0]?.documentCount ?? 0) + (looseRow[0]?.count ?? 0),
     subscriberCount: pubRow[0]?.subscriberCount ?? 0,
     subscriptionCount: subRow[0]?.count ?? 0,
     recommendationCount: recRow[0]?.count ?? 0,
@@ -1932,6 +1967,7 @@ export async function authorRecommendations(
   const d = schema.documents;
   const p = schema.publications;
   const pr = schema.profiles;
+  const pa = schema.profiles;
   const where = and(eq(rec.recommenderDid, opts.did), eq(rec.deleted, false));
 
   const [countRow, rows] = await Promise.all([
@@ -1947,6 +1983,7 @@ export async function authorRecommendations(
       .leftJoin(d, eq(d.uri, rec.documentUri))
       .leftJoin(p, eq(p.uri, d.publicationUri))
       .leftJoin(pr, eq(pr.did, p.did))
+      .leftJoin(pa, eq(pa.did, d.did))
       .where(and(where, eq(d.deleted, false)))
       .orderBy(desc(rec.createdAt), desc(rec.uri))
       .limit(opts.limit)

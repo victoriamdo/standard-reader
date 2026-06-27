@@ -74,6 +74,18 @@ export interface ArticleCard {
   publicationBannerUrl: string | null;
   /** Owning publication's derived topic (e.g. "Design"), for meta labels. */
   publicationTopic: string | null;
+  /**
+   * Document author's Bluesky handle (e.g. `alice.bsky.social`). Joined from
+   * `profiles` on `documents.did`. For publication-bound documents this is the
+   * same profile as the publication owner; for loose documents (no
+   * publication) this is the only byline source. Surfaces in the UI when the
+   * publication name is null.
+   */
+  authorHandle: string | null;
+  /** Document author's avatar URL (fallback byline icon for loose documents). */
+  authorAvatarUrl: string | null;
+  /** Document author's display name (fallback byline label for loose docs). */
+  authorDisplayName: string | null;
   /** Free-form tags from the document record. */
   tags: Array<string> | null;
   /** Plaintext body when indexed (used for reading-time on cards). */
@@ -161,12 +173,19 @@ export function publicationCardColumns(schema: Schema) {
  * Select-columns for an {@link ArticleCard}. Pulls the document plus its
  * publication's name/icon and the owner profile's banner; queries should
  * `leftJoin` publications on `publications.uri = documents.publication_uri`
- * (loose documents have none) and `profiles` on `profiles.did = publications.did`.
+ * (loose documents have none), `profiles` (`pr`) on `profiles.did =
+ * publications.did` (the publication owner), **and** `profiles` (`pa`) on
+ * `profiles.did = documents.did` (the document author). The author join is
+ * what gives loose documents — which have no publication row — a byline
+ * (handle + avatar). For publication-bound documents the author and owner are
+ * the same DID, so `pa` and `pr` resolve to the same profile; the mapper
+ * prefers the publication fields and falls back to the author fields.
  */
 export function articleCardColumns(schema: Schema) {
   const d = schema.documents;
   const p = schema.publications;
   const pr = schema.profiles;
+  const pa = schema.profiles;
   const rec = schema.recommends;
   return {
     uri: d.uri,
@@ -186,6 +205,11 @@ export function articleCardColumns(schema: Schema) {
     publicationOwnerHandle: pr.handle,
     publicationBannerUrl: pr.bannerUrl,
     publicationTopic: p.topic,
+    // Author profile (joined on documents.did). For loose documents this is
+    // the only profile signal; the mapper falls back to it for byline fields.
+    authorHandle: pa.handle,
+    authorAvatarUrl: pa.avatarUrl,
+    authorDisplayName: pa.displayName,
     tags: d.tags,
     textContent: d.textContent,
     hasRenderableBody: d.hasRenderableBody,
@@ -338,6 +362,9 @@ type ArticleCardRow = {
   publicationOwnerHandle: string | null;
   publicationBannerUrl: string | null;
   publicationTopic: string | null;
+  authorHandle: string | null;
+  authorAvatarUrl: string | null;
+  authorDisplayName: string | null;
   tags: Array<string> | null;
   textContent?: string | null;
   hasRenderableBody?: boolean | null;
@@ -367,10 +394,17 @@ export function toArticleCard(row: ArticleCardRow): ArticleCard {
       row.publicationIconCid && row.publicationDid
         ? cdnImageUrl(row.publicationDid, row.publicationIconCid, "png")
         : null,
-    publicationOwnerAvatarUrl: row.publicationOwnerAvatarUrl,
-    publicationOwnerHandle: row.publicationOwnerHandle,
+    // Publication owner = author for publication-bound documents; for loose
+    // documents there's no publication row, so fall back to the author profile
+    // (joined on documents.did) so bylines + avatars resolve.
+    publicationOwnerAvatarUrl:
+      row.publicationOwnerAvatarUrl ?? row.authorAvatarUrl,
+    publicationOwnerHandle: row.publicationOwnerHandle ?? row.authorHandle,
     publicationBannerUrl: row.publicationBannerUrl,
     publicationTopic: row.publicationTopic,
+    authorHandle: row.authorHandle,
+    authorAvatarUrl: row.authorAvatarUrl,
+    authorDisplayName: row.authorDisplayName,
     tags: row.tags,
     textContent: row.textContent ?? null,
     hasRenderableBody: row.hasRenderableBody ?? true,

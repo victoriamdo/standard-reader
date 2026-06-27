@@ -144,6 +144,7 @@ const searchArticles = createServerFn({ method: "GET" })
       const d = schema.documents;
       const p = schema.publications;
       const pr = schema.profiles;
+      const pa = schema.profiles;
       span.set("q", data.q);
       span.set("offset", data.offset);
       await attachReaderSpanContext(span, getRequest());
@@ -163,6 +164,7 @@ const searchArticles = createServerFn({ method: "GET" })
           .from(d)
           .leftJoin(p, eq(p.uri, d.publicationUri))
           .leftJoin(pr, eq(pr.did, p.did))
+          .leftJoin(pa, eq(pa.did, d.did))
           .where(articleWhere),
         db
           .select({
@@ -177,6 +179,7 @@ const searchArticles = createServerFn({ method: "GET" })
           .from(d)
           .leftJoin(p, eq(p.uri, d.publicationUri))
           .leftJoin(pr, eq(pr.did, p.did))
+          .leftJoin(pa, eq(pa.did, d.did))
           .where(articleWhere)
           .orderBy(
             sql`ts_rank(${d.searchVector}, ${tsq}) desc`,

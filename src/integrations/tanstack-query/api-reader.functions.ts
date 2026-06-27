@@ -89,6 +89,9 @@ type JoinedArticleRow = {
   publicationOwnerHandle: string | null;
   publicationBannerUrl: string | null;
   publicationTopic: string | null;
+  authorHandle: string | null;
+  authorAvatarUrl: string | null;
+  authorDisplayName: string | null;
   tags: Array<string> | null;
   textContent?: string | null;
   hasRenderableBody: boolean | null;
@@ -127,6 +130,9 @@ function hydrateArticleFromRow(
     publicationOwnerHandle: row.publicationOwnerHandle,
     publicationBannerUrl: row.publicationBannerUrl,
     publicationTopic: row.publicationTopic,
+    authorHandle: row.authorHandle,
+    authorAvatarUrl: row.authorAvatarUrl,
+    authorDisplayName: row.authorDisplayName,
     tags: row.tags,
     textContent: row.textContent ?? null,
     hasRenderableBody: row.hasRenderableBody,
@@ -375,6 +381,7 @@ const getLikes = createServerFn({ method: "GET" })
       const d = context.schema.documents;
       const p = context.schema.publications;
       const pr = context.schema.profiles;
+      const pa = context.schema.profiles;
       const cols = articleQueueCardColumns(context.schema);
       const where = and(eq(rec.recommenderDid, did), eq(rec.deleted, false));
 
@@ -394,6 +401,7 @@ const getLikes = createServerFn({ method: "GET" })
           .leftJoin(d, eq(d.uri, rec.documentUri))
           .leftJoin(p, eq(p.uri, d.publicationUri))
           .leftJoin(pr, eq(pr.did, p.did))
+          .leftJoin(pa, eq(pa.did, d.did))
           .where(where)
           .orderBy(desc(rec.createdAt))
           .limit(data.limit)
@@ -597,6 +605,7 @@ const getReadingHistory = createServerFn({ method: "GET" })
       const d = context.schema.documents;
       const p = context.schema.publications;
       const pr = context.schema.profiles;
+      const pa = context.schema.profiles;
       const cols = articleQueueCardColumns(context.schema);
       const where = and(eq(r.ownerDid, did), eq(r.deleted, false));
 
@@ -616,6 +625,7 @@ const getReadingHistory = createServerFn({ method: "GET" })
           .leftJoin(d, eq(d.uri, r.documentUri))
           .leftJoin(p, eq(p.uri, d.publicationUri))
           .leftJoin(pr, eq(pr.did, p.did))
+          .leftJoin(pa, eq(pa.did, d.did))
           .where(where)
           .orderBy(desc(r.createdAt))
           .limit(data.limit)
@@ -685,6 +695,7 @@ const getSaved = createServerFn({ method: "GET" })
       const d = context.schema.documents;
       const p = context.schema.publications;
       const pr = context.schema.profiles;
+      const pa = context.schema.profiles;
       const cols = articleQueueCardColumns(context.schema);
       const where = and(eq(b.ownerDid, did), eq(b.deleted, false));
 
@@ -704,6 +715,7 @@ const getSaved = createServerFn({ method: "GET" })
           .leftJoin(d, eq(d.uri, b.documentUri))
           .leftJoin(p, eq(p.uri, d.publicationUri))
           .leftJoin(pr, eq(pr.did, p.did))
+          .leftJoin(pa, eq(pa.did, d.did))
           .where(where)
           .orderBy(desc(b.createdAt))
           .limit(data.limit)

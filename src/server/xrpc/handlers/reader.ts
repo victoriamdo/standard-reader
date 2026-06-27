@@ -250,6 +250,7 @@ async function loadReaderDocumentQueue(
   const d = ctx.schema.documents;
   const p = ctx.schema.publications;
   const pr = ctx.schema.profiles;
+  const pa = ctx.schema.profiles;
 
   if (collection === "bookmarks") {
     const b = ctx.schema.bookmarks;
@@ -265,6 +266,7 @@ async function loadReaderDocumentQueue(
         .innerJoin(d, eq(d.uri, b.documentUri))
         .leftJoin(p, eq(p.uri, d.publicationUri))
         .leftJoin(pr, eq(pr.did, p.did))
+        .leftJoin(pa, eq(pa.did, d.did))
         .where(where)
         .orderBy(desc(b.createdAt))
         .limit(limit)
@@ -295,6 +297,7 @@ async function loadReaderDocumentQueue(
         .innerJoin(d, eq(d.uri, r.documentUri))
         .leftJoin(p, eq(p.uri, d.publicationUri))
         .leftJoin(pr, eq(pr.did, p.did))
+        .leftJoin(pa, eq(pa.did, d.did))
         .where(where)
         .orderBy(desc(r.createdAt))
         .limit(limit)
@@ -324,6 +327,7 @@ async function loadReaderDocumentQueue(
       .innerJoin(d, eq(d.uri, rec.documentUri))
       .leftJoin(p, eq(p.uri, d.publicationUri))
       .leftJoin(pr, eq(pr.did, p.did))
+      .leftJoin(pa, eq(pa.did, d.did))
       .where(where)
       .orderBy(desc(rec.createdAt))
       .limit(limit)
