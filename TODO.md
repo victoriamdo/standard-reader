@@ -97,6 +97,25 @@ Check items off as they land.
       quote), extension page resolver, raw SQL in `queries.ts` /
       `collection-magazine.ts`, and in-content image builders
       (`leafletImageUrl` / `pcktImageUrl` / `structuredImageUrl` / `blobImageUrl`).
+- [x] **`/saved` (and `/likes`, `/history`) read-path → no PDS client restore.**
+      The personal queue server fns (`getSaved`, `getLikes`, `getReadingHistory`,
+      `getBookmarkStatus`, `getReadStatus`, `getReadDocuments`, `getFollowStatus`,
+      `getRecommendStatus`) only need the reader's DID for DB queries, but called
+      `getAtprotoSessionForRequest()` which restores the PDS client
+      (`manager.resume()` — a network round trip to the PDS). Added
+      `getReaderDidForRequest()` (`src/middleware/auth-session.server.ts`): a
+      DB-only session-row lookup with a DID-only token cache, reused across
+      sibling read fns during SSR. `dbMiddleware`'s
+      `resolveTrackReadingHistoryEnabled` also restored the PDS client just to
+      read a boolean — rewritten to read the `user.track_reading_history` column
+      directly from the DB session row. Finally, `getSessionQueryOptions` had
+      `staleTime: 0` (default), so every `ensureQueryData` in the
+      `/saved` `/likes` `/history` `beforeLoad` blocks refetched the session
+      (another `getSession()` server fn → PDS restore + PLC identity lookup)
+      on every navigation, even though root `beforeLoad` already seeds it via
+      `getShellBootstrap()`. Set `staleTime: 5min` to match the root bootstrap.
+      Combined: cold `/saved` load dropped from ~4.4s to ~1.1s; client-side nav
+      from `/likes` → `/saved` dropped from ~7.8s to ~2.1s.
 
 ## 1. Data ingestion — tap → Neon
 

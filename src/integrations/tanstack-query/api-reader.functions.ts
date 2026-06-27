@@ -5,7 +5,10 @@ import {
 } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
+import {
+  getAtprotoSessionForRequest,
+  getReaderDidForRequest,
+} from "#/middleware/auth-session.server";
 import {
   deleteBookmarkRecord,
   deleteReadRecord,
@@ -216,11 +219,11 @@ const getFollowStatus = createServerFn({ method: "GET" })
   .handler(
     observe("reader.getFollowStatus", async ({ data, context }, span) => {
       span.set("publicationUri", data.publicationUri);
-      const session = await getAtprotoSessionForRequest(getRequest());
-      if (!session) {
+      const did = await getReaderDidForRequest(getRequest());
+      if (!did) {
         return { isFollowing: false } satisfies FollowStatus;
       }
-      span.set("did", session.did);
+      span.set("did", did);
 
       const sub = context.schema.subscriptions;
       const [row] = await context.db
@@ -228,7 +231,7 @@ const getFollowStatus = createServerFn({ method: "GET" })
         .from(sub)
         .where(
           and(
-            eq(sub.subscriberDid, session.did),
+            eq(sub.subscriberDid, did),
             eq(sub.publicationUri, data.publicationUri),
             eq(sub.deleted, false),
           ),
@@ -332,11 +335,11 @@ const getRecommendStatus = createServerFn({ method: "GET" })
   .handler(
     observe("reader.getRecommendStatus", async ({ data, context }, span) => {
       span.set("documentUri", data.documentUri);
-      const session = await getAtprotoSessionForRequest(getRequest());
-      if (!session) {
+      const did = await getReaderDidForRequest(getRequest());
+      if (!did) {
         return { isRecommended: false } satisfies RecommendStatus;
       }
-      span.set("did", session.did);
+      span.set("did", did);
 
       const rec = context.schema.recommends;
       const [row] = await context.db
@@ -344,7 +347,7 @@ const getRecommendStatus = createServerFn({ method: "GET" })
         .from(rec)
         .where(
           and(
-            eq(rec.recommenderDid, session.did),
+            eq(rec.recommenderDid, did),
             eq(rec.documentUri, data.documentUri),
             eq(rec.deleted, false),
           ),
@@ -360,11 +363,11 @@ const getLikes = createServerFn({ method: "GET" })
   .inputValidator(readerListInput)
   .handler(
     observe("reader.getLikes", async ({ data, context }, span) => {
-      const session = await getAtprotoSessionForRequest(getRequest());
-      if (!session) {
+      const did = await getReaderDidForRequest(getRequest());
+      if (!did) {
         return buildReaderListPage<LikedArticleItem>([], data.offset, 0);
       }
-      span.set("did", session.did);
+      span.set("did", did);
       span.set("limit", data.limit);
       span.set("offset", data.offset);
 
@@ -373,10 +376,7 @@ const getLikes = createServerFn({ method: "GET" })
       const p = context.schema.publications;
       const pr = context.schema.profiles;
       const cols = articleQueueCardColumns(context.schema);
-      const where = and(
-        eq(rec.recommenderDid, session.did),
-        eq(rec.deleted, false),
-      );
+      const where = and(eq(rec.recommenderDid, did), eq(rec.deleted, false));
 
       const [countRow, rows] = await Promise.all([
         context.db
@@ -467,11 +467,11 @@ const getReadStatus = createServerFn({ method: "GET" })
   .handler(
     observe("reader.getReadStatus", async ({ data, context }, span) => {
       span.set("documentUri", data.documentUri);
-      const session = await getAtprotoSessionForRequest(getRequest());
-      if (!session) {
+      const did = await getReaderDidForRequest(getRequest());
+      if (!did) {
         return { isRead: false } satisfies ReadStatus;
       }
-      span.set("did", session.did);
+      span.set("did", did);
 
       const trackReading = context.trackReadingEnabled;
       if (!trackReading) {
@@ -484,7 +484,7 @@ const getReadStatus = createServerFn({ method: "GET" })
         .from(r)
         .where(
           and(
-            eq(r.ownerDid, session.did),
+            eq(r.ownerDid, did),
             eq(r.documentUri, data.documentUri),
             eq(r.deleted, false),
           ),
@@ -501,11 +501,11 @@ const getReadDocuments = createServerFn({ method: "GET" })
   .inputValidator(documentsInput)
   .handler(
     observe("reader.getReadDocuments", async ({ data, context }, span) => {
-      const session = await getAtprotoSessionForRequest(getRequest());
-      if (!session || data.documentUris.length === 0) {
+      const did = await getReaderDidForRequest(getRequest());
+      if (!did || data.documentUris.length === 0) {
         return [] satisfies Array<string>;
       }
-      span.set("did", session.did);
+      span.set("did", did);
       span.set("requested", data.documentUris.length);
 
       const trackReading = context.trackReadingEnabled;
@@ -519,7 +519,7 @@ const getReadDocuments = createServerFn({ method: "GET" })
         .from(r)
         .where(
           and(
-            eq(r.ownerDid, session.did),
+            eq(r.ownerDid, did),
             inArray(r.documentUri, data.documentUris),
             eq(r.deleted, false),
           ),
@@ -585,11 +585,11 @@ const getReadingHistory = createServerFn({ method: "GET" })
   .inputValidator(readerListInput)
   .handler(
     observe("reader.getReadingHistory", async ({ data, context }, span) => {
-      const session = await getAtprotoSessionForRequest(getRequest());
-      if (!session) {
+      const did = await getReaderDidForRequest(getRequest());
+      if (!did) {
         return buildReaderListPage<ReadHistoryItem>([], data.offset, 0);
       }
-      span.set("did", session.did);
+      span.set("did", did);
       span.set("limit", data.limit);
       span.set("offset", data.offset);
 
@@ -598,7 +598,7 @@ const getReadingHistory = createServerFn({ method: "GET" })
       const p = context.schema.publications;
       const pr = context.schema.profiles;
       const cols = articleQueueCardColumns(context.schema);
-      const where = and(eq(r.ownerDid, session.did), eq(r.deleted, false));
+      const where = and(eq(r.ownerDid, did), eq(r.deleted, false));
 
       const [countRow, rows] = await Promise.all([
         context.db
@@ -645,11 +645,11 @@ const getBookmarkStatus = createServerFn({ method: "GET" })
   .handler(
     observe("reader.getBookmarkStatus", async ({ data, context }, span) => {
       span.set("documentUri", data.documentUri);
-      const session = await getAtprotoSessionForRequest(getRequest());
-      if (!session) {
+      const did = await getReaderDidForRequest(getRequest());
+      if (!did) {
         return { isBookmarked: false } satisfies BookmarkStatus;
       }
-      span.set("did", session.did);
+      span.set("did", did);
 
       const b = context.schema.bookmarks;
       const [row] = await context.db
@@ -657,7 +657,7 @@ const getBookmarkStatus = createServerFn({ method: "GET" })
         .from(b)
         .where(
           and(
-            eq(b.ownerDid, session.did),
+            eq(b.ownerDid, did),
             eq(b.documentUri, data.documentUri),
             eq(b.deleted, false),
           ),
@@ -673,11 +673,11 @@ const getSaved = createServerFn({ method: "GET" })
   .inputValidator(readerListInput)
   .handler(
     observe("reader.getSaved", async ({ data, context }, span) => {
-      const session = await getAtprotoSessionForRequest(getRequest());
-      if (!session) {
+      const did = await getReaderDidForRequest(getRequest());
+      if (!did) {
         return buildReaderListPage<SavedArticleItem>([], data.offset, 0);
       }
-      span.set("did", session.did);
+      span.set("did", did);
       span.set("limit", data.limit);
       span.set("offset", data.offset);
 
@@ -686,7 +686,7 @@ const getSaved = createServerFn({ method: "GET" })
       const p = context.schema.publications;
       const pr = context.schema.profiles;
       const cols = articleQueueCardColumns(context.schema);
-      const where = and(eq(b.ownerDid, session.did), eq(b.deleted, false));
+      const where = and(eq(b.ownerDid, did), eq(b.deleted, false));
 
       const [countRow, rows] = await Promise.all([
         context.db

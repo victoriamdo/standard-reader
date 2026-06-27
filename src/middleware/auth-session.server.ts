@@ -55,6 +55,63 @@ interface SessionCacheEntry {
 
 const sessionTokenCache = new Map<string, SessionCacheEntry>();
 
+/**
+ * Lightweight DID-only cache. Read-only server fns (`getSaved`, `getLikes`,
+ * …) only need the reader's DID for DB queries — restoring the PDS client
+ * (`manager.resume()`) is a wasted network round trip. This cache holds the
+ * DID resolved from the DB session row so sibling read fns during the same
+ * page load share one DB query instead of each re-resolving.
+ */
+interface DidCacheEntry {
+  did: string | undefined;
+  expiresAt: number;
+}
+
+const didTokenCache = new Map<string, DidCacheEntry>();
+
+async function resolveReaderDid(request: Request): Promise<string | undefined> {
+  const sessionToken = readSessionTokenCookie(request.headers.get("cookie"));
+  if (!sessionToken) {
+    return;
+  }
+
+  const cached = didTokenCache.get(sessionToken);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.did;
+  }
+
+  // Reuse the full session cache when a sibling write fn already restored it.
+  const fullSession = sessionTokenCache.get(sessionToken);
+  if (fullSession?.expiresAt && fullSession.expiresAt > Date.now()) {
+    return fullSession.result?.did;
+  }
+
+  const [{ db }, schema] = await Promise.all([
+    import("#/db/index.server"),
+    import("#/db/schema"),
+  ]);
+
+  const sessionRow = await db.query.session.findFirst({
+    where: eq(schema.session.token, sessionToken),
+    with: { user: { columns: { did: true } } },
+  });
+
+  if (!sessionRow || sessionRow.expiresAt.getTime() <= Date.now()) {
+    return;
+  }
+
+  const did = sessionRow.user?.did;
+  if (!did || !isDid(did)) {
+    return;
+  }
+
+  didTokenCache.set(sessionToken, {
+    did,
+    expiresAt: Date.now() + SESSION_CACHE_TTL_MS,
+  });
+  return did;
+}
+
 async function resolveAtprotoSession(
   request: Request,
 ): Promise<AtprotoSessionContext | undefined> {
@@ -107,6 +164,12 @@ async function resolveAtprotoSession(
     result,
     expiresAt: Date.now() + SESSION_CACHE_TTL_MS,
   });
+  // Keep the DID-only cache in sync so read fns that already ran don't
+  // re-query when a later write fn restores the full client.
+  didTokenCache.set(sessionToken, {
+    did,
+    expiresAt: Date.now() + SESSION_CACHE_TTL_MS,
+  });
   return result;
 }
 
@@ -115,9 +178,14 @@ const resolveAtprotoSessionCached = cache(async () =>
   resolveAtprotoSession(getRequest()),
 );
 
+const resolveReaderDidCached = cache(async () =>
+  resolveReaderDid(getRequest()),
+);
+
 /**
  * Session + ATProto `Client` when the request carries a valid app session
- * token AND the user's stored OAuth session is still restorable.
+ * token AND the user's stored OAuth session is still restorable. Use for write
+ * paths that need the PDS `client`.
  */
 export async function getAtprotoSessionForRequest(
   request: Request,
@@ -126,4 +194,19 @@ export async function getAtprotoSessionForRequest(
     return resolveAtprotoSessionCached();
   }
   return resolveAtprotoSession(request);
+}
+
+/**
+ * The signed-in reader's DID — a single DB session-row lookup with no PDS
+ * client restore. Read-only server fns (`getSaved`, `getLikes`, …) only need
+ * the DID for DB queries; use this instead of {@link getAtprotoSessionForRequest}
+ * to avoid the `manager.resume()` network round trip.
+ */
+export async function getReaderDidForRequest(
+  request: Request,
+): Promise<string | undefined> {
+  if (request === getRequest()) {
+    return resolveReaderDidCached();
+  }
+  return resolveReaderDid(request);
 }

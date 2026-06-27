@@ -344,6 +344,11 @@ const getSessionQueryOptions = queryOptions({
   queryFn: async () => {
     return await getSession();
   },
+  // Root beforeLoad seeds this from getShellBootstrap(), which has its own
+  // 5-minute staleTime. Without this, ensureQueryData refetches on every nav
+  // (staleTime defaults to 0), firing a getSession() server fn that restores
+  // the PDS client + does a PLC identity lookup — ~1-4s per navigation.
+  staleTime: 5 * 60_000,
 });
 
 /** Scopes read-personalized query caches to the signed-in reader (or guest). */
