@@ -2070,6 +2070,7 @@ export async function authorLooseDocuments(
 ): Promise<AuthorActivityPage<ArticleCard>> {
   const d = schema.documents;
   const p = schema.publications;
+  const pr = schema.profiles;
   const pa = alias(schema.profiles, "pa");
   const where = and(
     eq(d.did, opts.did),
@@ -2090,6 +2091,11 @@ export async function authorLooseDocuments(
       })
       .from(d)
       .leftJoin(p, eq(p.uri, d.publicationUri))
+      // `pr` (publication owner profile) is always null for loose documents
+      // (publication_uri IS NULL → no `p` row → no `pr` match), but
+      // `articleCardColumns` references `pr.avatarUrl`/`pr.handle`/`pr.bannerUrl`,
+      // so the table must be present in the query or Drizzle throws.
+      .leftJoin(pr, eq(pr.did, p.did))
       .leftJoin(pa, eq(pa.did, d.did))
       .where(where)
       .orderBy(desc(d.publishedAt), desc(d.uri))
