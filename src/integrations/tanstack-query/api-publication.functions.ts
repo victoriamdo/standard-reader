@@ -11,7 +11,10 @@ import { getRequest } from "@tanstack/react-start/server";
 import { publicationLinkParams } from "#/components/reader/format";
 import { parseCollectionManifest } from "#/lib/collections/manifest";
 import { collectionManifestForOwner } from "#/lib/collections/resolve-manifest";
-import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
+import {
+  getAtprotoSessionForRequest,
+  getReaderContextForRequest,
+} from "#/middleware/auth-session.server";
 import { cdnImageUrl } from "#/server/atproto/blob";
 import { authorPds } from "#/server/atproto/identity";
 import { didFromAtUri, parseAtUri } from "#/server/atproto/uri";
@@ -328,7 +331,7 @@ const getArticle = createServerFn({ method: "GET" })
           recommendRows,
           readRows,
           authorProfileRows,
-          session,
+          reader,
         ] = await Promise.all([
           db
             .select({
@@ -413,7 +416,11 @@ const getArticle = createServerFn({ method: "GET" })
                 .where(eq(pr.did, authorDid))
                 .limit(1)
             : Promise.resolve([]),
-          getAtprotoSessionForRequest(getRequest()),
+          // DB-only reader context (DID + user id) — avoids the PDS
+          // `manager.resume()` network round trip on every article view.
+          // The full PDS client is restored below only in the rare case
+          // where the signed-in reader owns this collection document.
+          getReaderContextForRequest(getRequest()),
         ]);
 
         const row = docRows[0];
@@ -425,17 +432,23 @@ const getArticle = createServerFn({ method: "GET" })
 
         let sourceRow = row as ArticleDetailSourceRow;
         const cachedManifest = parseCollectionManifest(row.collectionJson);
-        if (cachedManifest && session?.did === row.did) {
+        if (cachedManifest && reader && reader.did === row.did) {
           const parsed = parseAtUri(row.uri);
           if (parsed) {
-            const freshManifest = await collectionManifestForOwner(
-              session.client,
-              row.did,
-              parsed.rkey,
-              cachedManifest,
-            );
-            if (freshManifest) {
-              sourceRow = { ...sourceRow, collectionJson: freshManifest };
+            // Only now — when the reader owns this collection — do we pay
+            // for the PDS client restore to read the manifest from their
+            // repo so edits show immediately.
+            const session = await getAtprotoSessionForRequest(getRequest());
+            if (session?.client) {
+              const freshManifest = await collectionManifestForOwner(
+                session.client,
+                row.did,
+                parsed.rkey,
+                cachedManifest,
+              );
+              if (freshManifest) {
+                sourceRow = { ...sourceRow, collectionJson: freshManifest };
+              }
             }
           }
         }
@@ -453,7 +466,7 @@ const getArticle = createServerFn({ method: "GET" })
 
         const [authorPdsEndpoint, themeMode] = await Promise.all([
           authorPds(row.did, authorProfile?.pds ?? null),
-          themeModeForRequest(db, schema, session?.session.user.id),
+          themeModeForRequest(db, schema, reader?.userId),
         ]);
 
         return buildArticleDetail(

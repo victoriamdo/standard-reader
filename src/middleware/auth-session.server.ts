@@ -69,6 +69,86 @@ interface DidCacheEntry {
 
 const didTokenCache = new Map<string, DidCacheEntry>();
 
+/** Reader identity from the DB session row — no PDS client restore. */
+export interface ReaderContext {
+  /** Reader's ATProto DID (the repo authority). */
+  did: string;
+  /** Reader's app `user.id` (DB row key, for preferences like themeMode). */
+  userId: string;
+}
+
+/**
+ * The signed-in reader's DID + user ID resolved from the DB session row, with
+ * no PDS client restore. Use this for read paths that only need identity +
+ * preferences (theme mode, etc). When a server fn needs the live PDS `client`
+ * (write paths, reading the reader's own repo), use
+ * {@link getAtprotoSessionForRequest} instead — but only inside the branch
+ * that actually needs it, so the `manager.resume()` network round trip
+ * doesn't land on the critical path of every read.
+ */
+export async function getReaderContextForRequest(
+  request: Request,
+): Promise<ReaderContext | undefined> {
+  const sessionToken = readSessionTokenCookie(request.headers.get("cookie"));
+  if (!sessionToken) {
+    return;
+  }
+
+  const cached = readerContextCache.get(sessionToken);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.ctx;
+  }
+
+  // Reuse the full session cache when a sibling write fn already restored it.
+  const fullSession = sessionTokenCache.get(sessionToken);
+  if (fullSession?.expiresAt && fullSession.expiresAt > Date.now()) {
+    const result = fullSession.result;
+    if (result?.did && result.session.user.id) {
+      return { did: result.did, userId: result.session.user.id };
+    }
+  }
+
+  const [{ db }, schema] = await Promise.all([
+    import("#/db/index.server"),
+    import("#/db/schema"),
+  ]);
+
+  const sessionRow = await db.query.session.findFirst({
+    where: eq(schema.session.token, sessionToken),
+    with: { user: { columns: { id: true, did: true } } },
+  });
+
+  if (!sessionRow || sessionRow.expiresAt.getTime() <= Date.now()) {
+    return;
+  }
+
+  const did = sessionRow.user?.did;
+  const userId = sessionRow.user?.id;
+  if (!did || !isDid(did) || !userId) {
+    return;
+  }
+
+  const ctx = { did, userId };
+  readerContextCache.set(sessionToken, {
+    ctx,
+    expiresAt: Date.now() + SESSION_CACHE_TTL_MS,
+  });
+  // Keep the DID-only cache in sync so sibling read fns that already ran
+  // don't re-query.
+  didTokenCache.set(sessionToken, {
+    did,
+    expiresAt: Date.now() + SESSION_CACHE_TTL_MS,
+  });
+  return ctx;
+}
+
+interface ReaderContextCacheEntry {
+  ctx: ReaderContext | undefined;
+  expiresAt: number;
+}
+
+const readerContextCache = new Map<string, ReaderContextCacheEntry>();
+
 async function resolveReaderDid(request: Request): Promise<string | undefined> {
   const sessionToken = readSessionTokenCookie(request.headers.get("cookie"));
   if (!sessionToken) {
