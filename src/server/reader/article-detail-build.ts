@@ -17,7 +17,6 @@ import { composeCollectionNewsletterContent } from "#/lib/collections/compose-ne
 import { parseCollectionManifest } from "#/lib/collections/manifest";
 import { themeFontsFromJson } from "#/lib/collections/theme";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
-import { GREENGALE_CONTENT_REF } from "#/lib/greengale/types";
 import { leafletBlocks } from "#/lib/leaflet/blocks";
 import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
 import { offprintBlocks } from "#/lib/offprint/blocks";
@@ -26,9 +25,7 @@ import { pcktBlocks, pcktCodeLanguage } from "#/lib/pckt/blocks";
 import { PCKT_CONTENT } from "#/lib/pckt/types";
 import { getPublicUrl } from "#/lib/public-url";
 import { EMPTY_CODE_HIGHLIGHTS } from "#/lib/theme";
-import { resolveGreengaleContent } from "#/server/greengale/resolve";
-import { resolveLeafletContent } from "#/server/leaflet/resolve";
-import { resolvePcktContent } from "#/server/pckt/resolve";
+import { resolveAndPersistContent } from "#/server/content/resolve-and-persist";
 import { countDocumentComments } from "#/server/reader/document-comments";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
 import { highlightLeafletCodeBlocks } from "#/server/shiki/highlighter";
@@ -172,38 +169,19 @@ export async function buildArticleDetail(
   const collection = parseCollectionManifest(row.collectionJson);
 
   const rawContentJson = row.contentJson ?? null;
-  let resolvedContentJson = rawContentJson as JsonValue | null;
-  let resolvedContentFormat = row.contentFormat;
-
-  if (rawContentJson) {
-    if (row.contentFormat === LEAFLET_CONTENT) {
-      resolvedContentJson = (await resolveLeafletContent(
-        rawContentJson,
-        row.did,
-        authorPdsEndpoint,
-      )) as JsonValue;
-    } else if (row.contentFormat === PCKT_CONTENT) {
-      resolvedContentJson = (await resolvePcktContent(
-        rawContentJson,
-        row.did,
-        authorPdsEndpoint,
-      )) as JsonValue;
-    } else if (row.contentFormat === GREENGALE_CONTENT_REF) {
-      resolvedContentJson = (await resolveGreengaleContent(
-        rawContentJson,
-        row.did,
-        authorPdsEndpoint,
-      )) as JsonValue;
-      if (
-        resolvedContentJson &&
-        typeof resolvedContentJson === "object" &&
-        !Array.isArray(resolvedContentJson) &&
-        resolvedContentJson.$type === STANDARD_MARKDOWN_CONTENT
-      ) {
-        resolvedContentFormat = STANDARD_MARKDOWN_CONTENT;
-      }
-    }
-  }
+  const resolved =
+    rawContentJson == null
+      ? { contentJson: null, contentFormat: row.contentFormat }
+      : await resolveAndPersistContent(
+          db,
+          row.uri,
+          row.did,
+          rawContentJson,
+          row.contentFormat,
+          authorPdsEndpoint,
+        );
+  let resolvedContentJson = resolved.contentJson;
+  const resolvedContentFormat = resolved.contentFormat;
 
   if (
     collection &&

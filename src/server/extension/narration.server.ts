@@ -9,16 +9,9 @@ import {
   articleSpeechText,
   speechAuthor,
 } from "#/components/reader/content/extract-text";
-import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
-import { GREENGALE_CONTENT_REF } from "#/lib/greengale/types";
-import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
-import { PCKT_CONTENT } from "#/lib/pckt/types";
 import { getPosts } from "#/server/atproto/bsky-posts";
-import { authorPds } from "#/server/atproto/identity";
 import { didFromAtUri } from "#/server/atproto/uri";
-import { resolveGreengaleContent } from "#/server/greengale/resolve";
-import { resolveLeafletContent } from "#/server/leaflet/resolve";
-import { resolvePcktContent } from "#/server/pckt/resolve";
+import { resolveAndPersistContent } from "#/server/content/resolve-and-persist";
 import { eq } from "drizzle-orm";
 
 export interface ExtensionNarration {
@@ -118,49 +111,17 @@ export async function resolveNarration(
   // Mirror the article view's content resolution: large Leaflet/pckt documents
   // store their body blocks out-of-record (a JSON blob on the authoring PDS)
   // and Greengale stores it behind a content ref. Without this the narration
-  // would cover only the title/dek/byline for those articles.
-  let contentJson = row.contentJson;
-  let contentFormat = row.contentFormat;
-  const needsResolve =
-    contentJson != null &&
-    (contentFormat === LEAFLET_CONTENT ||
-      contentFormat === PCKT_CONTENT ||
-      contentFormat === GREENGALE_CONTENT_REF);
-  if (needsResolve) {
-    try {
-      const pds = await authorPds(row.did, authorProfileRows[0]?.pds ?? null);
-      if (contentFormat === LEAFLET_CONTENT) {
-        contentJson = (await resolveLeafletContent(
-          contentJson,
-          row.did,
-          pds,
-        )) as typeof row.contentJson;
-      } else if (contentFormat === PCKT_CONTENT) {
-        contentJson = (await resolvePcktContent(
-          contentJson,
-          row.did,
-          pds,
-        )) as typeof row.contentJson;
-      } else {
-        const resolved = await resolveGreengaleContent(
-          contentJson,
-          row.did,
-          pds,
-        );
-        if (
-          typeof resolved === "object" &&
-          resolved !== null &&
-          !Array.isArray(resolved) &&
-          (resolved as { $type?: unknown }).$type === STANDARD_MARKDOWN_CONTENT
-        ) {
-          contentJson = resolved as typeof row.contentJson;
-          contentFormat = STANDARD_MARKDOWN_CONTENT;
-        }
-      }
-    } catch {
-      // Fall back to the unresolved record; extraction degrades to textContent.
-    }
-  }
+  // would cover only the title/dek/byline for those articles. The helper skips
+  // the PDS fetch when the row is already inlined, and persists the resolved
+  // form back to `documents` so subsequent reads stay on the DB.
+  const { contentJson, contentFormat } = await resolveAndPersistContent(
+    dbClient,
+    row.uri,
+    row.did,
+    row.contentJson,
+    row.contentFormat,
+    authorProfileRows[0]?.pds ?? null,
+  );
 
   const article: SpeechArticle = {
     title: row.title ?? "",

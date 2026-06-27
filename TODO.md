@@ -56,6 +56,21 @@ Check items off as they land.
       by the tap ingester) and rewrote both reads to hit the DB with a PDS backfill
       on cold start; write fns eagerly set the flag for read-after-write
       consistency (`drizzle/0022_cold_silk_fever.sql`).
+- [x] **Article/narration content resolution → DB-backed.** The article detail and
+      narration read paths re-ran the fetch-backed content resolvers
+      (`resolveLeafletContent` / `resolvePcktContent` / `resolveGreengaleContent` /
+      `resolveFetchedContent`) on every view for Leaflet/pckt/Greengale/standard-markdown/
+      yrriban/markpub documents whose body lives out-of-record. The ingester already
+      inlines these into `documents.content_json` at tap time, but any row that landed
+      un-inlined (transient PDS outage, newly-supported format) triggered a per-request
+      `com.atproto.sync.getBlob` / `getRecord` fetch forever — the result was never
+      written back. Added `resolveAndPersistContent`
+      (`src/server/content/resolve-and-persist.ts`): skips the PDS entirely when the
+      row is already inlined, otherwise resolves once and writes the inlined form +
+      recomputed `text_content` / `has_renderable_body` back to `documents` so
+      subsequent reads stay on the DB (per the "never hit the PDS for a read when
+      data exists in the DB" rule). `buildArticleDetail` and `resolveNarration` both
+      route through it.
 
 ## 1. Data ingestion — tap → Neon
 

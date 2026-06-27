@@ -1,6 +1,5 @@
 import babel from "@rolldown/plugin-babel";
 import stylexPlugin from "@stylexjs/unplugin/vite";
-import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react";
 import browserslist from "browserslist";
@@ -43,7 +42,6 @@ const config = defineConfig({
         targets: browserslistToTargets(browserslist("baseline 2024")),
       },
     }),
-    devtools(),
     nitro(),
     tanstackStart(),
     viteReact(),
