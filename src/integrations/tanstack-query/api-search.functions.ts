@@ -421,12 +421,16 @@ function documentMatchSql(
   if (hints.authorDid) {
     parts.push(eq(d.did, hints.authorDid));
   }
-  // For plain-text queries, also match the author's display name so searching
-  // by a person's name surfaces their documents (incl. loose docs whose author
-  // has no publication). `searchVector` only covers title/description/body.
+  // For plain-text queries, also match the author's handle and display name so
+  // searching by a person's name or partial handle surfaces their documents
+  // (incl. loose docs whose author has no publication). `searchVector` only
+  // covers title/description/body, and `authorHandle` only fires for bare
+  // handle-like inputs (with dots) — this catches partial handles and names.
   const trimmed = q.trim();
   if (trimmed.length > 0 && !hints.authorHandle && !hints.authorDid) {
     const like = `%${trimmed}%`;
+    parts.push(ilike(pr.handle, like));
+    parts.push(ilike(pa.handle, like));
     parts.push(ilike(pr.displayName, like));
     parts.push(ilike(pa.displayName, like));
   }
@@ -674,6 +678,61 @@ const resolvePublicationByHandle = createServerFn({ method: "GET" })
     ),
   );
 
+/**
+ * An account that has loose documents but no publications — surfaced in the
+ * add-publication modal as a disabled row so searchers can see it exists even
+ * though there's nothing to follow yet.
+ */
+export interface LooseDocAccount {
+  did: string;
+  handle: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  documentCount: number;
+}
+
+const looseDocAccountsInput = z.object({
+  q: z.string().trim().min(1).max(512),
+  limit: z.number().int().min(1).max(10).default(5),
+});
+
+/** Profiles with loose documents whose handle/display name partially match `q`. */
+const searchLooseDocAccounts = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(looseDocAccountsInput)
+  .handler(
+    observe("search.looseDocAccounts", async ({ data, context }, span) => {
+      const { db, schema } = context;
+      const pr = schema.profiles;
+      const d = schema.documents;
+      const like = `%${data.q}%`;
+      span.set("q", data.q);
+
+      const rows = await db
+        .select({
+          did: pr.did,
+          handle: pr.handle,
+          displayName: pr.displayName,
+          avatarUrl: pr.avatarUrl,
+          documentCount: sql<number>`count(${d.uri})::int`,
+        })
+        .from(pr)
+        .innerJoin(d, eq(d.did, pr.did))
+        .where(
+          and(
+            eq(d.deleted, false),
+            isNull(d.publicationUri),
+            or(ilike(pr.handle, like), ilike(pr.displayName, like)),
+          ),
+        )
+        .groupBy(pr.did, pr.handle, pr.displayName, pr.avatarUrl)
+        .limit(data.limit);
+
+      span.set("count", rows.length);
+      return rows;
+    }),
+  );
+
 function searchPublicationsQueryOptions({
   q = "",
   limit = 20,
@@ -715,6 +774,19 @@ function resolvePublicationByHandleQueryOptions(handle: string) {
   });
 }
 
+function searchLooseDocAccountsQueryOptions({
+  q = "",
+  limit = 5,
+}: { q?: string; limit?: number } = {}) {
+  const trimmed = q.trim();
+  return queryOptions({
+    queryKey: ["search", "looseDocAccounts", trimmed, limit] as const,
+    queryFn: async () =>
+      searchLooseDocAccounts({ data: { q: trimmed, limit } }),
+    enabled: trimmed.length > 0,
+  });
+}
+
 export const searchApi = {
   searchPublications,
   searchArticles,
@@ -722,4 +794,6 @@ export const searchApi = {
   searchArticlesInfiniteQueryOptions,
   resolvePublicationByHandle,
   resolvePublicationByHandleQueryOptions,
+  searchLooseDocAccounts,
+  searchLooseDocAccountsQueryOptions,
 };

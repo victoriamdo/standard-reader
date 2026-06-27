@@ -191,7 +191,7 @@ export function AddPublicationModal({
       q: debouncedQ,
       limit: SEARCH_PAGE_SIZE,
     }),
-    enabled: open && hasQuery && !handleLike,
+    enabled: open && hasQuery,
   });
 
   const { data: trending, isFetching: trendingFetching } = useQuery({
@@ -201,31 +201,59 @@ export function AddPublicationModal({
     enabled: open && !hasQuery,
   });
 
+  const { data: looseDocAccounts, isFetching: looseAccountsFetching } =
+    useQuery({
+      ...searchApi.searchLooseDocAccountsQueryOptions({
+        q: debouncedQ,
+        limit: 3,
+      }),
+      enabled: open && hasQuery,
+    });
+
+  // For handle-like input, prefer exact-handle resolution but also run the
+  // partial directory search in parallel and merge (deduped by URI) so partial
+  // handle / display-name matches surface even when resolution is pending or
+  // resolves an account with no publications.
+  const resolvedPubs = handleLike ? (resolvedHandle?.publications ?? []) : [];
+  const directoryPubs = hasQuery ? (searchPage?.items ?? []) : [];
+  const seenUris = new Set(resolvedPubs.map((pub) => pub.uri));
+  const extraDirectoryPubs = directoryPubs.filter(
+    (pub) => !seenUris.has(pub.uri),
+  );
   const publications = handleLike
-    ? (resolvedHandle?.publications ?? [])
+    ? [...resolvedPubs, ...extraDirectoryPubs]
     : hasQuery
-      ? (searchPage?.items ?? [])
+      ? directoryPubs
       : (trending ?? []);
+  const accounts = looseDocAccounts ?? [];
   const loading =
     isSearching ||
     (handleLike
-      ? resolveFetching && !resolvedHandle
+      ? resolveFetching && !resolvedHandle && searchFetching && !searchPage
       : hasQuery
-        ? searchFetching && !searchPage
+        ? searchFetching &&
+          !searchPage &&
+          looseAccountsFetching &&
+          !looseDocAccounts
         : trendingFetching && !trending);
 
-  const showDisabledAccount =
+  // Exact-handle resolution surfaced an account with loose docs but no pubs.
+  const showResolvedDisabledAccount =
     handleLike &&
     !loading &&
     publications.length === 0 &&
     Boolean(resolvedHandle?.did && resolvedHandle.hasDocuments);
+
+  // Partial-match directory search surfaced accounts with loose docs but no
+  // pubs. Shown as disabled rows beneath any publication results.
+  const showLooseDocAccounts = !loading && hasQuery && accounts.length > 0;
 
   const handleEmptyNote = (() => {
     if (
       !handleLike ||
       loading ||
       publications.length > 0 ||
-      showDisabledAccount
+      showResolvedDisabledAccount
     ) {
       return null;
     }
@@ -297,11 +325,13 @@ export function AddPublicationModal({
                 key={pub.uri}
                 pub={pub}
                 signedIn={signedIn}
-                isLast={index === publications.length - 1}
+                isLast={
+                  index === publications.length - 1 && !showLooseDocAccounts
+                }
                 onNavigate={closeModal}
               />
             ))
-          ) : showDisabledAccount && resolvedHandle?.did ? (
+          ) : showResolvedDisabledAccount && resolvedHandle?.did ? (
             <div
               {...stylex.props(styles.disabledRow)}
               aria-disabled="true"
@@ -325,11 +355,44 @@ export function AddPublicationModal({
             </div>
           ) : handleEmptyNote ? (
             <p {...stylex.props(styles.emptyNote)}>{handleEmptyNote}</p>
-          ) : hasQuery ? (
+          ) : hasQuery && !showLooseDocAccounts ? (
             <p {...stylex.props(styles.emptyNote)}>
               No matches in the directory.
             </p>
           ) : null}
+          {showLooseDocAccounts
+            ? accounts.map((account) => (
+                <div
+                  key={account.did}
+                  {...stylex.props(styles.disabledRow)}
+                  aria-disabled="true"
+                  title="This account has documents but no publications to follow"
+                >
+                  <Avatar
+                    size="lg"
+                    src={account.avatarUrl ?? undefined}
+                    fallback={initials(
+                      account.displayName ?? account.handle ?? account.did,
+                    )}
+                    alt={account.handle ?? account.did}
+                  />
+                  <Flex direction="column" gap="xs">
+                    <span {...stylex.props(styles.disabledName)}>
+                      {account.displayName ?? account.handle ?? account.did}
+                    </span>
+                    {account.handle ? (
+                      <span {...stylex.props(styles.disabledNote)}>
+                        @{account.handle} · Has documents but no publications
+                      </span>
+                    ) : (
+                      <span {...stylex.props(styles.disabledNote)}>
+                        Has documents but no publications
+                      </span>
+                    )}
+                  </Flex>
+                </div>
+              ))
+            : null}
         </div>
       </div>
     </Dialog>
