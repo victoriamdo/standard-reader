@@ -75,6 +75,10 @@ export interface ReaderContext {
   did: string;
   /** Reader's app `user.id` (DB row key, for preferences like themeMode). */
   userId: string;
+  /** Reader's home feed scope preference (DB column). */
+  homeScope: string | null;
+  /** Reader's reading-history tracking preference (DB column). */
+  trackReadingHistory: boolean | null;
 }
 
 /**
@@ -104,7 +108,12 @@ export async function getReaderContextForRequest(
   if (fullSession?.expiresAt && fullSession.expiresAt > Date.now()) {
     const result = fullSession.result;
     if (result?.did && result.session.user.id) {
-      return { did: result.did, userId: result.session.user.id };
+      return {
+        did: result.did,
+        userId: result.session.user.id,
+        homeScope: result.session.user.homeScope,
+        trackReadingHistory: result.session.user.trackReadingHistory,
+      };
     }
   }
 
@@ -115,7 +124,16 @@ export async function getReaderContextForRequest(
 
   const sessionRow = await db.query.session.findFirst({
     where: eq(schema.session.token, sessionToken),
-    with: { user: { columns: { id: true, did: true } } },
+    with: {
+      user: {
+        columns: {
+          id: true,
+          did: true,
+          homeScope: true,
+          trackReadingHistory: true,
+        },
+      },
+    },
   });
 
   if (!sessionRow || sessionRow.expiresAt.getTime() <= Date.now()) {
@@ -128,7 +146,12 @@ export async function getReaderContextForRequest(
     return;
   }
 
-  const ctx = { did, userId };
+  const ctx = {
+    did,
+    userId,
+    homeScope: sessionRow.user.homeScope,
+    trackReadingHistory: sessionRow.user.trackReadingHistory,
+  };
   readerContextCache.set(sessionToken, {
     ctx,
     expiresAt: Date.now() + SESSION_CACHE_TTL_MS,

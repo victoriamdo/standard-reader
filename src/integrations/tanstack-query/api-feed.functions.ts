@@ -12,7 +12,7 @@ import {
   articleCardsAsAllRead,
   dbValueToTrackReadingHistory,
 } from "#/lib/track-reading-history";
-import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
+import { getReaderContextForRequest } from "#/middleware/auth-session.server";
 import {
   attachSubscribedLabels,
   filterHiddenDocuments,
@@ -448,25 +448,21 @@ const getHomePage = createServerFn({ method: "GET" })
     observe("feed.getHomePage", async ({ data, context }, span) => {
       const { db, schema } = context;
       const did = await attachReaderSpanContext(span, getRequest());
-      const authSession = did
-        ? await getAtprotoSessionForRequest(getRequest())
+      const reader = did
+        ? await getReaderContextForRequest(getRequest())
         : undefined;
 
       let scope: HomeScope;
-      if (authSession?.session.user) {
-        scope =
-          data.scope ??
-          dbValueToHomeScope(authSession.session.user.homeScope ?? null);
+      if (reader) {
+        scope = data.scope ?? dbValueToHomeScope(reader.homeScope ?? null);
       } else {
         scope = data.scope ?? parseHomeScope(getCookie(HOME_SCOPE_COOKIE));
       }
 
       const trackReading =
-        authSession?.session.user == null
+        reader == null
           ? undefined
-          : dbValueToTrackReadingHistory(
-              authSession.session.user.trackReadingHistory ?? null,
-            );
+          : dbValueToTrackReadingHistory(reader.trackReadingHistory ?? null);
 
       const { feed, extras } = await loadHomePagePayload(
         db,
