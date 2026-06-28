@@ -112,6 +112,12 @@ async function loadSessionFromToken(sessionToken: string) {
           readingTypography: true,
           collectionsAuthoringEnabled: true,
         },
+        with: {
+          accounts: {
+            columns: { scope: true, providerId: true },
+            where: eq(schema.account.providerId, "atproto"),
+          },
+        },
       },
     },
   });
@@ -145,6 +151,15 @@ async function loadSessionFromToken(sessionToken: string) {
   // uncached round-trip to public.api.bsky.app on every session restore.
   const handle = profileRow?.handle ?? identity.handle ?? null;
 
+  // Granted OAuth scope snapshotted on the callback (`account.scope`). The
+  // UI gates collections authoring on this — it's the source of truth for
+  // "the reader has actually accepted the collections tier" (the
+  // `collectionsAuthoringEnabled` flag is set optimistically before re-auth).
+  const atprotoAccount = userRow.accounts.find(
+    (a) => a.providerId === "atproto",
+  );
+  const grantedScope = atprotoAccount?.scope ?? null;
+
   return {
     user: {
       id: userRow.id,
@@ -170,6 +185,7 @@ async function loadSessionFromToken(sessionToken: string) {
     openCollectionsInMagazine: userRow.openCollectionsInMagazine,
     readingTypography: userRow.readingTypography,
     collectionsAuthoringEnabled: userRow.collectionsAuthoringEnabled,
+    grantedScope,
     client,
   };
 }
@@ -246,6 +262,12 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
             readingTypography: true,
             collectionsAuthoringEnabled: true,
           },
+          with: {
+            accounts: {
+              columns: { scope: true, providerId: true },
+              where: eq(schema.account.providerId, "atproto"),
+            },
+          },
         },
       },
     });
@@ -305,6 +327,12 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
           expiresAt: sessionRow.expiresAt,
         },
         collectionsAuthoringEnabled: userRow.collectionsAuthoringEnabled,
+        // Granted OAuth scope snapshotted on the callback (`account.scope`).
+        // The UI gates collections authoring on this — it's the source of truth
+        // for "the reader has actually accepted the collections tier".
+        grantedScope:
+          userRow.accounts.find((a) => a.providerId === "atproto")?.scope ??
+          null,
       },
       theme: { mode: dbValueToThemeMode(userRow.themeMode) },
       trackReading: { enabled: trackReading },
@@ -351,6 +379,7 @@ const getSession = createServerFn({ method: "GET" }).handler(async () => {
     user: loaded.user,
     session: loaded.session,
     collectionsAuthoringEnabled: loaded.collectionsAuthoringEnabled,
+    grantedScope: loaded.grantedScope,
   };
 });
 

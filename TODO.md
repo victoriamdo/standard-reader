@@ -245,10 +245,15 @@ stores in `src/integrations/auth/`, session/user server fns in
       persists the collections upgrade so subsequent logins silently request the
       collections tier; `auth.upgradeToCollections` revokes + re-authorizes on
       first opt-in (per [OAuth Patterns](https://atproto.com/guides/oauth-patterns)).
-      Granted scope snapshotted to `account.scope` on every callback. Handle
-      autocomplete switched to [`typeahead.waow.tech`](https://typeahead.waow.tech)
-      so the selected actor's `did` threads through to the authorize flow.
-      See APP_VISION.md §5 "OAuth scopes".
+      Granted scope snapshotted to `account.scope` on every callback and threaded
+      into the session shape (`grantedScope`); the collections gate
+      (`CollectionsUpgradeGate`, used by `/collections/new` + `/collections/edit/$rkey`)
+      checks the **granted scope** via `hasCollectionsScope()` — not the opt-in flag —
+      so readers with collections but a missing/stale grant (consent revoked on the
+      PDS, flag set but re-auth never completed) get re-prompted instead of hitting
+      write failures. Handle autocomplete switched to
+      [`typeahead.waow.tech`](https://typeahead.waow.tech) so the selected actor's
+      `did` threads through to the authorize flow. See APP_VISION.md §5 "OAuth scopes".
 - [ ] **Publish permission-set lexicons** — `pnpm atproto:publish-lexicons`
       for `app.standard-reader.authBasicFeatures` +
       `app.standard-reader.authCollections` when `_lexicon.*` DNS ready (manual,

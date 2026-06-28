@@ -17,7 +17,9 @@ import {
   redirect,
   useNavigate,
 } from "@tanstack/react-router";
+import { CollectionsUpgradeOverlay } from "#/components/reader/collections-upgrade-gate";
 import { IconButtonLink } from "#/components/router-links";
+import { hasCollectionsScope } from "#/integrations/auth/scope";
 import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
@@ -25,7 +27,7 @@ import { getPublicUrlClient } from "#/lib/public-url";
 import { siteSocialMeta } from "#/lib/site-metadata";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
 import { Eye, Layers, Palette, Pencil, Plus, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   CollectionPublicationCreateDialog,
@@ -724,12 +726,23 @@ function CollectionsPage() {
   const { data: publications } = useSuspenseQuery(
     collectionsApi.listCollectionsPublicationsQueryOptions(),
   );
+  const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
 
   const [themePublication, setThemePublication] =
     useState<CollectionsPublicationSummary | null>(null);
   const [editPublication, setEditPublication] =
     useState<CollectionsPublicationSummary | null>(null);
   const [createPubOpen, setCreatePubOpen] = useState(false);
+
+  // Collections-authoring scope gate. The reader may have collections in their
+  // repo from a past session that had the scope, but no longer hold the
+  // collections tier (`account.scope` is the source of truth — see
+  // CollectionsUpgradeGate). On this index page we show the upgrade dialog as a
+  // dismissible overlay so they can still browse their existing collections;
+  // the "New series" / "Add a collection" actions re-open it instead of routing
+  // to a builder whose writes will fail.
+  const hasCollectionsTier = hasCollectionsScope(session?.grantedScope);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const deleteMutation = useMutation(
     collectionsApi.deleteCollectionMutationOptions(),
@@ -748,10 +761,32 @@ function CollectionsPage() {
     });
   };
 
+  // A reader with existing collections but a missing/stale collections-authoring
+  // scope (consent revoked on the PDS, or the flag was set but re-auth never
+  // finished) can't author until they re-upgrade. Surface the upgrade dialog
+  // automatically for them — their collections are visible behind it. Readers
+  // with *no* collections see the empty state instead and only hit the dialog
+  // when they click "New series" (intent to author).
+  const hasExistingCollections =
+    publications.length > 0 || collections.length > 0;
+  useEffect(() => {
+    if (!hasCollectionsTier && hasExistingCollections) setUpgradeOpen(true);
+  }, [hasCollectionsTier, hasExistingCollections]);
+
+  const requireCollectionsScope = (proceed: () => void) => {
+    if (hasCollectionsTier) {
+      proceed();
+    } else {
+      setUpgradeOpen(true);
+    }
+  };
+
   const newCollectionFor = (publicationRkey: string) => {
-    void navigate({
-      to: "/collections/new",
-      search: { publication: publicationRkey },
+    requireCollectionsScope(() => {
+      void navigate({
+        to: "/collections/new",
+        search: { publication: publicationRkey },
+      });
     });
   };
 
@@ -766,7 +801,11 @@ function CollectionsPage() {
               Your profile
             </Kicker>
             {isFullyEmpty ? null : (
-              <NewSeriesButton onPress={() => setCreatePubOpen(true)} />
+              <NewSeriesButton
+                onPress={() =>
+                  requireCollectionsScope(() => setCreatePubOpen(true))
+                }
+              />
             )}
           </div>
 
@@ -781,7 +820,9 @@ function CollectionsPage() {
 
         {isFullyEmpty ? (
           <CollectionsEmptyState
-            onCreateSeries={() => setCreatePubOpen(true)}
+            onCreateSeries={() =>
+              requireCollectionsScope(() => setCreatePubOpen(true))
+            }
           />
         ) : (
           <Flex direction="column" style={styles.seriesStack}>
@@ -862,6 +903,14 @@ function CollectionsPage() {
           isOpen={createPubOpen}
           onOpenChange={setCreatePubOpen}
         />
+
+        {hasCollectionsTier ? null : (
+          <CollectionsUpgradeOverlay
+            redirect={buildAuthRedirectPath("/collections")}
+            isOpen={upgradeOpen}
+            onOpenChange={setUpgradeOpen}
+          />
+        )}
       </div>
     </ReaderContent>
   );

@@ -4,8 +4,8 @@
   "defs": {
     "main": {
       "type": "permission-set",
-      "title": "Standard Reader Collection Publication Permissions",
-      "detail": "Permissions to create and manage Collections within the app. A Collection is a meta publication that composes other documents along with your personal narrative.",
+      "title": "Standard Reader Collection Publications",
+      "detail": "Create and manage Collections within the app. A Collection is a meta publication that composes other documents along with your personal narrative.",
       "permissions": [
         {
           "type": "permission",

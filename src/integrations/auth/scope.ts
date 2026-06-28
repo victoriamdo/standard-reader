@@ -1,4 +1,5 @@
 import { scope as atprotoScope } from "@atcute/oauth-node-client";
+import { APP_NSID, STANDARD_NSID } from "#/lib/atproto/nsids";
 
 /** Required on every ATProto OAuth session (see atproto.com/specs/oauth). */
 export const ATPROTO_BASE_SCOPE = "atproto";
@@ -120,4 +121,69 @@ export function resolveAuthScopeForUser(
  */
 export function resolveAuthScope(intent: AuthScopeIntent | undefined): string {
   return formatOAuthScope(SCOPE_BY_INTENT[intent ?? "basic"]);
+}
+
+/**
+ * The collections-authoring collections — the records a reader can only write
+ * with the collections tier granted. Mirrors `authCollections` plus the
+ * `site.standard` publication/document collections granted by `authFull`.
+ */
+const COLLECTIONS_TIER_COLLECTIONS = [
+  APP_NSID.collection,
+  APP_NSID.collectionsPublication,
+  APP_NSID.publicationTheme,
+  STANDARD_NSID.publication,
+  STANDARD_NSID.document,
+] as const;
+
+/**
+ * Detect whether a granted-scope string (as snapshotted to `account.scope`
+ * from `oauthSession.getTokenInfo().scope` on the OAuth callback) includes the
+ * collections-authoring tier. This is the source of truth for "the reader has
+ * actually accepted the collections scope" — as opposed to the
+ * `user.collectionsAuthoringEnabled` flag, which is set optimistically in
+ * `upgradeToCollections` *before* the re-auth completes and can be stale if the
+ * PDS revoked consent or the re-auth failed.
+ *
+ * The PDS may grant either the `include:` set token (`include:app.standard-reader.authCollections` +
+ * `include:site.standard.authFull`) or the expanded granular `repo?collection=...` tokens
+ * (it expands sets on grant). This helper accepts both forms.
+ */
+export function hasCollectionsScope(
+  grantedScope: string | null | undefined,
+): boolean {
+  if (!grantedScope) return false;
+  const tokens = grantedScope.split(/\s+/);
+  // Fast path: the include: set tokens are present verbatim.
+  if (tokens.includes(AUTH_COLLECTIONS) && tokens.includes(SITE_AUTH_FULL)) {
+    return true;
+  }
+  // Granular path: the PDS expanded the sets into repo?collection=... tokens.
+  // A collections-tier grant covers every collections-authoring collection, so
+  // require all of them to be present (a partial grant isn't the collections tier).
+  return COLLECTIONS_TIER_COLLECTIONS.every((nsid) =>
+    tokens.some((t) => parseRepoScopeCollections(t).has(nsid)),
+  );
+}
+
+/**
+ * Parse a single `repo?collection=A&collection=B` scope token into the set of
+ * collection NSIDs it grants. Returns an empty set for non-repo tokens
+ * (`atproto`, `blob?...`, `include:...`).
+ */
+function parseRepoScopeCollections(token: string): Set<string> {
+  const q = token.indexOf("?");
+  if (q === -1) return new Set();
+  // Only `repo?...` tokens carry collections; `blob?...` doesn't.
+  if (!token.startsWith("repo?")) return new Set();
+  const params = token.slice(q + 1).split("&");
+  const nsids = new Set<string>();
+  for (const p of params) {
+    const eq = p.indexOf("=");
+    if (eq === -1) continue;
+    if (p.slice(0, eq) === "collection") {
+      nsids.add(decodeURIComponent(p.slice(eq + 1)));
+    }
+  }
+  return nsids;
 }

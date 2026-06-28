@@ -291,18 +291,43 @@ upstream `site.standard.auth*` sets (published by standard.site — see
 cannot live inside a permission set. The OAuth client metadata `scope` field declares the
 union of all three tiers so any may be requested at authorize time.
 
-**Progressive scope upgrade:** the collections tier is opt-in. When a reader first opens
-`/collections/new` without the collections scope, an `AlertDialog` prompts them to upgrade.
-`auth.upgradeToCollections` sets `user.collectionsAuthoringEnabled = true`, revokes the
-current OAuth session, and re-authorizes fresh with the collections tier; the callback
-returns to the collections editor. The flag persists the upgrade so **subsequent logins
-silently request the collections tier automatically** (the authorize flow reads the flag by
-DID — threaded from the handle autocomplete result — before building the scope string). Per
-[OAuth Patterns](https://atproto.com/guides/oauth-patterns): BFF scope upgrades revoke +
-re-auth because `prompt: consent` re-consent isn't reliable across PDS providers. The
-granted scope is snapshotted to `account.scope` on every callback so the UI can detect
-missing-scope errors. See `src/integrations/auth/scope.ts` and
-`src/integrations/tanstack-query/api-auth.functions.ts`.
+**Progressive scope upgrade:** the collections tier is opt-in. When a reader opens
+`/collections/new` or `/collections/edit/$rkey` without the collections scope, a shared
+`CollectionsUpgradeGate` (`AlertDialog`) prompts them to upgrade. `auth.upgradeToCollections`
+sets `user.collectionsAuthoringEnabled = true`, revokes the current OAuth session, and
+re-authorizes fresh with the collections tier; the callback returns to the collections editor.
+
+Two signals track the upgrade, with distinct roles:
+
+- **`user.collectionsAuthoringEnabled`** (opt-in flag) — set optimistically in
+  `upgradeToCollections` _before_ the re-auth completes. Persists the upgrade so subsequent
+  logins silently request the collections tier automatically.
+- **`account.scope`** (granted scope, snapshotted on every callback from
+  `oauthSession.getTokenInfo().scope`) — the source of truth for "the reader has actually
+  accepted the collections tier." `hasCollectionsScope()` in
+  `src/integrations/auth/scope.ts` detects the collections tier in either the `include:` set
+  form (`include:app.standard-reader.authCollections` + `include:site.standard.authFull`) or
+  the PDS-expanded granular `repo?collection=...` form.
+
+Both signals drive the **authorize flow**: on re-login the authorize handler resolves the reader's
+DID (from the `did` parameter when threaded from the handle autocomplete, otherwise from the
+indexed `profiles.handle` column — covers the saved-handles flow on `/login`, which only stores
+`handle`) and reads both the flag and `hasCollectionsScope()` on the existing `account.scope`. If
+either is true, the collections tier is requested again so the grant is preserved rather than
+silently downgraded to basic. (Without the granted-scope check, a reader who previously granted
+the collections tier but whose flag was never set — e.g. they granted via an earlier scope set —
+would be downgraded on every re-login.)
+
+The **UI gates** on `account.scope` only (via `hasCollectionsScope()`), not the flag:
+`CollectionsUpgradeGate` blocks `/collections/new` and `/collections/edit/$rkey`, and a
+`CollectionsUpgradeOverlay` on `/collections` auto-opens for readers with existing collections
+but a missing/stale grant (consent revoked on the PDS, flag set but re-auth never completed).
+Readers with no collections see the empty state and only hit the dialog when they click
+"New series" (intent to author).
+
+Per [OAuth Patterns](https://atproto.com/guides/oauth-patterns): BFF scope upgrades revoke +
+re-auth because `prompt: consent` re-consent isn't reliable across PDS providers. See
+`src/integrations/auth/scope.ts` and `src/integrations/tanstack-query/api-auth.functions.ts`.
 
 ### Data shapes (source of truth)
 

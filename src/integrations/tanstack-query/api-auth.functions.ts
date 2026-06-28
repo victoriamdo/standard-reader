@@ -8,7 +8,10 @@ import {
   atprotoOAuth,
   revokeAtprotoSession,
 } from "#/integrations/auth/atproto";
-import { resolveAuthScopeForUser } from "#/integrations/auth/scope";
+import {
+  hasCollectionsScope,
+  resolveAuthScopeForUser,
+} from "#/integrations/auth/scope";
 import { sanitizeAuthRedirectTarget } from "#/utils/auth-redirect";
 import { getSavedHandles } from "#/utils/saved-handles";
 import { eq } from "drizzle-orm";
@@ -26,23 +29,59 @@ const authorizeInputSchema = z.object({
 });
 
 /**
- * Look up a returning user's collections-authoring flag by DID. Best-effort:
- * returns `null` when the DID is missing, malformed, or no user row exists yet
- * (first sign-in). The DB query is a single column lookup.
+ * Resolve whether a returning reader should be requested the collections
+ * authoring scope tier on re-login. Two signals are consulted:
+ *
+ * 1. `user.collectionsAuthoringEnabled` — the opt-in flag, set when the reader
+ *    went through the upgrade flow. Persists the upgrade so subsequent logins
+ *    request the collections tier automatically.
+ * 2. `account.scope` (granted scope, snapshotted on the last OAuth callback) —
+ *    if the reader has *already granted* the collections tier on their PDS,
+ *    we request it again on re-login so the grant is preserved rather than
+ *    silently downgraded to basic.
+ *
+ * The reader is identified by `did` when known (threaded from the handle
+ * autocomplete result). When `did` is absent — e.g. the saved-handles flow on
+ * `/login`, which only stores `handle` — we resolve the DID from the indexed
+ * `profiles.handle` column first. Best-effort: returns `false` when the reader
+ * can't be identified (first sign-in, handle not yet indexed).
  */
-async function lookupCollectionsFlag(
-  did: string | undefined,
-): Promise<boolean | null> {
-  if (!did) return null;
+async function shouldRequestCollectionsScope(args: {
+  did?: string | undefined;
+  handle: string;
+}): Promise<boolean> {
   const [{ db }, schema] = await Promise.all([
     import("#/db/index.server"),
     import("#/db/schema"),
   ]);
+
+  // Resolve the DID: prefer the explicit one, fall back to a profiles lookup
+  // by handle (indexed). Normalise the handle the same way `authorize` does.
+  let did = args.did;
+  if (!did) {
+    const normalizedHandle = args.handle.replace(/^@/, "").trim();
+    const profile = await db.query.profiles.findFirst({
+      where: eq(schema.profiles.handle, normalizedHandle),
+      columns: { did: true },
+    });
+    did = profile?.did;
+  }
+  if (!did) return false;
+
   const row = await db.query.user.findFirst({
     where: eq(schema.user.did, did),
     columns: { collectionsAuthoringEnabled: true },
+    with: {
+      accounts: {
+        columns: { scope: true, providerId: true },
+        where: eq(schema.account.providerId, "atproto"),
+      },
+    },
   });
-  return row?.collectionsAuthoringEnabled ?? null;
+  if (!row) return false;
+  if (row.collectionsAuthoringEnabled === true) return true;
+  const atprotoAccount = row.accounts.find((a) => a.providerId === "atproto");
+  return hasCollectionsScope(atprotoAccount?.scope ?? null);
 }
 
 const authorize = createServerFn({ method: "GET" })
@@ -62,13 +101,18 @@ const authorize = createServerFn({ method: "GET" })
           ? "collections"
           : "basic";
 
-    // Best-effort upgrade: if the user signed in before and opted into
-    // collections authoring, request the collections tier automatically —
-    // even on a fresh sign-in from /login. Falls back to basic when no DID is
-    // known yet (first sign-in) or the flag isn't set.
-    const collectionsFlag = await lookupCollectionsFlag(data.did);
+    // Best-effort upgrade: if the user signed in before and either opted into
+    // collections authoring (flag set) or has already granted the collections
+    // tier on their PDS (`account.scope`), request the collections tier
+    // automatically — even on a fresh sign-in from /login. Falls back to basic
+    // when the reader can't be identified (first sign-in) or neither signal is
+    // present. The DID is resolved from the handle when not threaded in.
+    const requestCollections = await shouldRequestCollectionsScope({
+      did: data.did,
+      handle: data.handle,
+    });
     const scope =
-      scopeIntent === "collections" || collectionsFlag === true
+      scopeIntent === "collections" || requestCollections
         ? resolveAuthScopeForUser(
             { collectionsAuthoringEnabled: true },
             scopeIntent,

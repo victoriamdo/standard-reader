@@ -2,6 +2,7 @@
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { hasCollectionsScope } from "#/integrations/auth/scope";
 import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
@@ -10,6 +11,7 @@ import { buildAuthRedirectPath } from "#/utils/auth-redirect";
 import { Layers } from "lucide-react";
 
 import { CollectionBuilder } from "../components/reader/collection-builder";
+import { CollectionsUpgradeGate } from "../components/reader/collections-upgrade-gate";
 import { Masthead, ReaderContent } from "../components/reader/primitives";
 
 export const Route = createFileRoute("/_layout/collections/edit/$rkey")({
@@ -47,8 +49,20 @@ function EditCollectionPage() {
   const { data: initial } = useSuspenseQuery(
     collectionsApi.getCollectionForEditQueryOptions(rkey),
   );
+  const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
 
   const toCollections = () => void navigate({ to: "/collections" });
+
+  // Gate edits on the granted collections scope too — a reader whose consent
+  // was revoked on the PDS (or who never completed the upgrade) would otherwise
+  // reach the builder and have every save fail. See CollectionsUpgradeGate.
+  if (!hasCollectionsScope(session?.grantedScope)) {
+    return (
+      <CollectionsUpgradeGate
+        redirect={buildAuthRedirectPath(`/collections/edit/${rkey}`)}
+      />
+    );
+  }
 
   if (!initial) {
     return (

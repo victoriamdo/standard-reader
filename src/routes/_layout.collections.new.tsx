@@ -6,7 +6,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { auth } from "#/integrations/tanstack-query/api-auth.functions";
+import { hasCollectionsScope } from "#/integrations/auth/scope";
 import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
@@ -17,15 +17,8 @@ import { useMemo, useState } from "react";
 import { z } from "zod";
 
 import { CollectionBuilder } from "../components/reader/collection-builder";
+import { CollectionsUpgradeGate } from "../components/reader/collections-upgrade-gate";
 import { Masthead, ReaderContent } from "../components/reader/primitives";
-import {
-  AlertDialog,
-  AlertDialogActionButton,
-  AlertDialogCancelButton,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-} from "../design-system/alert-dialog";
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
 import { TextField } from "../design-system/text-field";
@@ -86,22 +79,9 @@ function NewCollectionPage() {
     collectionsApi.ensureCollectionsPublicationMutationOptions(),
   );
 
-  // Progressive scope upgrade: collections authoring needs the collections
-  // OAuth scope tier. If the user hasn't opted in yet (flag falsy on their
-  // `user` row), prompt them before showing the builder. The upgrade fn sets
-  // the flag, revokes the current session, and returns a fresh authorize URL
-  // with the collections tier; the callback returns here.
-  const upgradeMutation = useMutation({
-    mutationFn: async () => {
-      const result = await auth.upgradeToCollections({
-        data: { redirect: buildAuthRedirectPath("/collections/new") },
-      });
-      globalThis.location.href = result.authorizationUrl;
-    },
-  });
-
-  const collectionsAuthoringEnabled =
-    session?.collectionsAuthoringEnabled === true;
+  // Gate collections authoring on the *granted* OAuth scope (`account.scope`),
+  // not the opt-in flag — see `CollectionsUpgradeGate` for the rationale.
+  const hasCollectionsTier = hasCollectionsScope(session?.grantedScope);
 
   const toCollections = () => void navigate({ to: "/collections" });
 
@@ -128,35 +108,11 @@ function NewCollectionPage() {
     return null;
   }
 
-  // Upgrade gate: block the builder until the user has the collections scope.
-  if (!collectionsAuthoringEnabled) {
+  if (!hasCollectionsTier) {
     return (
-      <ReaderContent>
-        <Masthead
-          kicker="Collections"
-          kickerIcon={<Layers size={14} aria-hidden />}
-          title="Upgrade to author Collections"
-          dek="Authoring Collections needs additional permissions to publish collections and documents on your behalf. You can revoke this any time from your account settings."
-        />
-        <AlertDialog trigger={null} isOpen>
-          <AlertDialogHeader>Upgrade permissions</AlertDialogHeader>
-          <AlertDialogDescription>
-            Standard Reader needs write access to your site.standard
-            publications and documents, plus your collection records, to author
-            Collections. You'll be asked to approve this on your PDS login.
-          </AlertDialogDescription>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton>Not now</AlertDialogCancelButton>
-            <AlertDialogActionButton
-              closeOnPress={false}
-              isPending={upgradeMutation.isPending}
-              onPress={() => upgradeMutation.mutate()}
-            >
-              Upgrade permissions
-            </AlertDialogActionButton>
-          </AlertDialogFooter>
-        </AlertDialog>
-      </ReaderContent>
+      <CollectionsUpgradeGate
+        redirect={buildAuthRedirectPath("/collections/new")}
+      />
     );
   }
 
