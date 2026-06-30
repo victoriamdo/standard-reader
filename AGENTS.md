@@ -178,8 +178,9 @@ read when data exists in the DB.**
 3. **`fetchPublicList` / `listCollectionRecords` / `getRecord`** are only
    appropriate for: (a) backfill/fallback when the DB is empty, (b) collections
    that are genuinely not mirrored (none should exist — if you find one, add a
-   table + ingest handler instead), or (c) the public list page OG image route
-   where no auth/DB context exists.
+   table + ingest handler instead), or (c) third-party collections (Margin,
+   Cosmik, Sifa, PCKT, Leaflet, Greengale) read via `fetchRepoRecordWithFallback`
+   that have no DB mirror and never will.
 4. **Delete operations read from the DB, then delete on the PDS.** The read step
    (enumerating what to delete) uses the DB; the actual `deleteRecord` call goes
    to the PDS. The DB row is cleaned up by the tap delete handler afterward.

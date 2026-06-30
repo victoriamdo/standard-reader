@@ -217,8 +217,27 @@ Check items off as they land.
 - [x] **Publisher-repo delete reconcile.** Tap delete events are applied on the hot path, but missed
       deletes (dead-letter cap, stream gaps, out-of-order backfill) are repaired by comparing each
       publisher repo to its PDS: `reconcileRepoFromPds` prunes stale rows in batched deletes.
-      Runs on a 5-minute ingest timer (5 repos/tick), each hourly recompute sweep (50 repos), and
+      Runs on a 30-minute ingest timer (5 repos/tick), each hourly recompute sweep (50 repos), and
       manually via `pnpm backfill:repo-documents` / `POST /api/ingest/reconcile-repo`.
+- [x] **Retire gone repos.** When a PDS responds with a permanent "repo not found" (400/404
+      `InvalidRequest` — the repo was deleted or migrated away from the PDS PLC points at),
+      `reconcileRepoFromPds` returns `gone: true`, `markRepoGone` prunes all read-model rows for
+      the DID and sets `tracked_repos.backfill_state = 'gone'`, and the round-robin query excludes
+      `gone` repos so we stop paying a 400 every tick for repos that will not reappear.
+      `listRepoRecords` (in `src/server/atproto/fetch-record.ts`) is the single repo-record read
+      primitive — it surfaces the host `error`/`message` body in the thrown error instead of just
+      the status code, so transient failures (502, fetch failed, timeout) are self-diagnosing in
+      Honeycomb and stay on the retry path. It also tries Slingshot (a caching proxy aggregating
+      records across PDSes) before hitting the author's PDS directly.
+- [x] **PDS migration retry.** A "repo gone" response can mean the repo was *deleted* or that it
+      *migrated* to a new PDS (PLC directory updated, our cached identity still points at the old
+      one). `listRepoRecords` handles this: on `RepoGoneError` from the PDS, it calls
+      `refreshIdentity(did)` to force a fresh DID-doc fetch (bypassing the identity cache) and
+      retries once against the new PDS before re-throwing. A repo is only marked `gone` when the
+      fresh DID doc points at the same PDS (or can't be resolved). When a migration is recovered,
+      the reconcile result carries `migrated: true` + `migratedFrom`/`migratedTo` for observability
+      (logged as `ingest.repoReconcile { migrated: true }` and surfaced in the manual reconcile
+      API + `pnpm backfill:repo-documents` output).
 
 ## 2. Read-model schema (Drizzle)
 

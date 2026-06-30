@@ -1,30 +1,49 @@
-import { asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, or } from "drizzle-orm";
 
 import type { DocumentRecord, PublicationRecord } from "../atproto/types.ts";
 
 import { db } from "../../db/index.ts";
 import { documents, publications, trackedRepos } from "../../db/schema.ts";
+import { RepoGoneError, listRepoRecords } from "../atproto/fetch-record.ts";
 import { resolveIdentity } from "../atproto/identity.ts";
 import { Collections } from "../atproto/uri.ts";
 import { logEvent } from "../observability/log.ts";
 import { upsertDocument, upsertPublication } from "./handlers.ts";
 
-const LIST_PAGE = 100;
-const FETCH_TIMEOUT_MS = 15_000;
 const DELETE_CHUNK = 500;
 
 /** Publisher repos reconciled per hourly recompute sweep. */
 const RECONCILE_BATCH_DEFAULT = 50;
 /** Publisher repos reconciled on each ingest timer tick. */
 const RECONCILE_TICK_BATCH = 5;
-/** How often the ingest worker runs background PDS reconcile. */
-export const RECONCILE_INTERVAL_MS = 5 * 60_000;
+/**
+ * How often the ingest worker runs background PDS reconcile.
+ *
+ * Delete-gap repair (catching deletes tap missed) doesn't need to be
+ * minute-fresh — a stale-deleted publication lingering in the read-model for
+ * half an hour is low-impact, and the hourly recompute sweep already covers
+ * the full set once an hour. 30 min spreads load without the 288-tick/day
+ * noise of a 5-min interval (and the 400 storm for gone repos that drove
+ * the `gone` state).
+ */
+export const RECONCILE_INTERVAL_MS = 30 * 60_000;
 
-interface ListedRecord {
-  uri: string;
-  cid?: string;
-  value?: Record<string, unknown>;
-}
+/**
+ * `tracked_repos.backfill_state` lifecycle values.
+ *
+ * - `pending`  — discovered, not yet backfilled.
+ * - `complete` — backfill finished; live events keep the read-model fresh.
+ * - `gone`     — the repo no longer exists at its resolved PDS (the PDS returned
+ *   a permanent "repo not found" error during reconcile, and refreshing the
+ *   DID doc didn't surface a new PDS — so the repo is truly deleted, not just
+ *   migrated). Excluded from the round-robin so we stop paying 400s every
+ *   tick; read-model rows for the DID are pruned once when the state is set.
+ */
+export const BACKFILL_STATE = {
+  complete: "complete",
+  gone: "gone",
+  pending: "pending",
+} as const;
 
 export interface RepoReconcileResult {
   did: string;
@@ -34,42 +53,20 @@ export interface RepoReconcileResult {
   prunedPublications: number;
   prunedDocuments: number;
   skipped?: boolean;
+  /** True when the PDS reported the repo is permanently gone (after the
+   * migration retry in `listRepoRecords` already failed to find a new PDS). */
+  gone?: boolean;
+  /** True when the repo migrated to a new PDS during this reconcile — the
+   * cached identity was stale, `listRepoRecords` refreshed the DID doc and
+   * recovered the records from the new PDS. `migratedFrom`/`migratedTo` carry
+   * the old/new PDS hosts for observability. */
+  migrated?: boolean;
+  migratedFrom?: string;
+  migratedTo?: string;
 }
 
 function rkeyOf(uri: string): string {
   return uri.slice(uri.lastIndexOf("/") + 1);
-}
-
-export async function listPdsRecords(
-  pds: string,
-  did: string,
-  collection: string,
-): Promise<Array<ListedRecord>> {
-  const records: Array<ListedRecord> = [];
-  let cursor: string | undefined;
-  do {
-    const url = new URL("/xrpc/com.atproto.repo.listRecords", pds);
-    url.searchParams.set("repo", did);
-    url.searchParams.set("collection", collection);
-    url.searchParams.set("limit", String(LIST_PAGE));
-    if (cursor) {
-      url.searchParams.set("cursor", cursor);
-    }
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-    if (!res.ok) {
-      throw new Error(`listRecords ${collection} failed: ${res.status}`);
-    }
-    const body = (await res.json()) as {
-      cursor?: string;
-      records?: Array<ListedRecord>;
-    };
-    records.push(...(body.records ?? []));
-    cursor =
-      (body.records?.length ?? 0) === LIST_PAGE ? body.cursor : undefined;
-  } while (cursor);
-  return records;
 }
 
 async function deleteInChunks(
@@ -118,10 +115,66 @@ async function pruneStaleRepoRecords(
 }
 
 /**
+ * Hard-delete every read-model row authored by `did` (publications + documents).
+ * Used when the PDS confirms the repo is gone — the repo was deleted or
+ * migrated, so every mirrored row for the DID is an orphan tap missed deleting.
+ * Returns counts for observability; never throws (best-effort cleanup).
+ */
+async function pruneAllRepoRecords(
+  did: string,
+): Promise<{ publications: number; documents: number }> {
+  const dbPubs = await db
+    .select({ uri: publications.uri })
+    .from(publications)
+    .where(eq(publications.did, did));
+  const dbDocs = await db
+    .select({ uri: documents.uri })
+    .from(documents)
+    .where(eq(documents.did, did));
+  await deleteInChunks(
+    publications,
+    dbPubs.map((row) => row.uri),
+  );
+  await deleteInChunks(
+    documents,
+    dbDocs.map((row) => row.uri),
+  );
+  return {
+    documents: dbDocs.length,
+    publications: dbPubs.length,
+  };
+}
+
+/**
+ * Mark a tracked repo `gone`: prune its read-model rows and set
+ * `backfill_state = 'gone'` so the round-robin stops retrying a PDS that has
+ * permanently lost the repo. Idempotent — safe to call repeatedly. Returns the
+ * prune counts for observability.
+ */
+export async function markRepoGone(
+  did: string,
+): Promise<{ publications: number; documents: number }> {
+  const pruned = await pruneAllRepoRecords(did);
+  await db
+    .update(trackedRepos)
+    .set({ backfillState: BACKFILL_STATE.gone, updatedAt: new Date() })
+    .where(eq(trackedRepos.did, did));
+  return pruned;
+}
+
+/**
  * Compare a repo's `site.standard.*` records against its PDS and prune
  * read-model rows that no longer exist on-chain. Optionally upsert live
  * records (manual backfill). The PDS is the source of truth for deletes tap
  * missed (dead-letter cap, stream gaps, out-of-order backfill).
+ *
+ * `listRepoRecords` (in `fetch-record.ts`) handles the Slingshot-first fetch
+ * and the migration retry internally: if the cached PDS reports the repo gone,
+ * it refreshes the DID doc and retries against the fresh PDS before re-throwing
+ * `RepoGoneError`. So a `RepoGoneError` here means the repo is *truly* gone —
+ * not just migrated. The caller is expected to call {@link markRepoGone} to
+ * prune + retire the tracked repo. Transient failures (502, fetch failed,
+ * timeout) still propagate as thrown errors so the round-robin retries them.
  */
 export async function reconcileRepoFromPds(
   did: string,
@@ -143,7 +196,28 @@ export async function reconcileRepoFromPds(
     };
   }
 
-  const pubs = await listPdsRecords(identity.pds, did, Collections.publication);
+  const pubResult = await listRepoRecords(
+    did,
+    Collections.publication,
+    identity.pds,
+  ).catch((error: unknown) => {
+    if (error instanceof RepoGoneError) {
+      return { gone: true as const };
+    }
+    throw error;
+  });
+  if ("gone" in pubResult) {
+    return {
+      did,
+      gone: true,
+      pdsDocuments: 0,
+      pdsPublications: 0,
+      prunedDocuments: 0,
+      prunedPublications: 0,
+      upsertedDocuments: 0,
+    };
+  }
+  const pubs = pubResult.records;
   const livePubUris = new Set(pubs.map((record) => record.uri));
   if (upsert && !dryRun) {
     for (const record of pubs) {
@@ -160,7 +234,28 @@ export async function reconcileRepoFromPds(
     }
   }
 
-  const docs = await listPdsRecords(identity.pds, did, Collections.document);
+  const docResult = await listRepoRecords(
+    did,
+    Collections.document,
+    identity.pds,
+  ).catch((error: unknown) => {
+    if (error instanceof RepoGoneError) {
+      return { gone: true as const };
+    }
+    throw error;
+  });
+  if ("gone" in docResult) {
+    return {
+      did,
+      gone: true,
+      pdsDocuments: 0,
+      pdsPublications: pubs.length,
+      prunedDocuments: 0,
+      prunedPublications: 0,
+      upsertedDocuments: 0,
+    };
+  }
+  const docs = docResult.records;
   const liveDocUris = new Set(docs.map((record) => record.uri));
   let upsertedDocuments = 0;
   if (upsert && !dryRun) {
@@ -192,6 +287,20 @@ export async function reconcileRepoFromPds(
       .where(eq(trackedRepos.did, did));
   }
 
+  // Surface migration if either fetch recovered records from a new PDS.
+  const migrated = pubResult.migrated || docResult.migrated;
+  const migratedFrom = pubResult.migratedFrom ?? docResult.migratedFrom;
+  // `servedBy` is the host that actually served the records. When a migration
+  // happened, that host is the new PDS — pick whichever result differs from
+  // the cached identity's PDS (prefer the publications fetch, then docs).
+  const migratedTo = migrated
+    ? pubResult.servedBy === identity.pds
+      ? docResult.servedBy === identity.pds
+        ? identity.pds
+        : docResult.servedBy
+      : pubResult.servedBy
+    : undefined;
+
   return {
     did,
     pdsDocuments: docs.length,
@@ -199,14 +308,23 @@ export async function reconcileRepoFromPds(
     prunedDocuments: pruned.documents,
     prunedPublications: pruned.publications,
     upsertedDocuments,
+    migrated: migrated || undefined,
+    migratedFrom,
+    migratedTo: migrated ? migratedTo : undefined,
   };
 }
 
-/** Round-robin publisher repos (least recently reconciled first). */
+/** Round-robin publisher repos (least recently reconciled first).
+ *
+ * Repos marked `backfill_state = 'gone'` (PDS confirmed the repo was deleted /
+ * migrated away) are excluded so the round-robin stops paying a 400 every
+ * tick for repos that will not reappear on their resolved PDS. */
 export async function reconcilePublisherReposBatch(
   limit = RECONCILE_BATCH_DEFAULT,
 ): Promise<{
   attempted: number;
+  goneMarked: number;
+  migrated: number;
   prunedDocuments: number;
   prunedPublications: number;
   results: Array<RepoReconcileResult>;
@@ -215,9 +333,12 @@ export async function reconcilePublisherReposBatch(
     .select({ did: trackedRepos.did })
     .from(trackedRepos)
     .where(
-      or(
-        eq(trackedRepos.reason, "publication"),
-        eq(trackedRepos.reason, "document"),
+      and(
+        or(
+          eq(trackedRepos.reason, "publication"),
+          eq(trackedRepos.reason, "document"),
+        ),
+        ne(trackedRepos.backfillState, BACKFILL_STATE.gone),
       ),
     )
     .orderBy(asc(trackedRepos.updatedAt))
@@ -226,14 +347,44 @@ export async function reconcilePublisherReposBatch(
   const results: Array<RepoReconcileResult> = [];
   let prunedDocuments = 0;
   let prunedPublications = 0;
+  let goneMarked = 0;
+  let migrated = 0;
 
   for (const repo of repos) {
     try {
       const result = await reconcileRepoFromPds(repo.did);
-      results.push(result);
-      prunedDocuments += result.prunedDocuments;
-      prunedPublications += result.prunedPublications;
-      if (result.prunedDocuments > 0 || result.prunedPublications > 0) {
+      if (result.gone) {
+        // PDS reports the repo is permanently gone (and the migration retry
+        // in `listRepoRecords` didn't recover a new PDS) — prune its
+        // read-model rows and retire the tracked repo so the round-robin
+        // skips it.
+        const pruned = await markRepoGone(repo.did);
+        goneMarked += 1;
+        prunedDocuments += pruned.documents;
+        prunedPublications += pruned.publications;
+        logEvent("ingest.repoReconcile", {
+          did: repo.did,
+          gone: true,
+          ok: true,
+          prunedDocuments: pruned.documents,
+          prunedPublications: pruned.publications,
+        });
+        continue;
+      }
+      if (result.migrated) {
+        migrated += 1;
+        logEvent("ingest.repoReconcile", {
+          did: repo.did,
+          migrated: true,
+          migratedFrom: result.migratedFrom,
+          migratedTo: result.migratedTo,
+          ok: true,
+          pdsDocuments: result.pdsDocuments,
+          pdsPublications: result.pdsPublications,
+          prunedDocuments: result.prunedDocuments,
+          prunedPublications: result.prunedPublications,
+        });
+      } else if (result.prunedDocuments > 0 || result.prunedPublications > 0) {
         logEvent("ingest.repoReconcile", {
           did: repo.did,
           ok: true,
@@ -242,6 +393,9 @@ export async function reconcilePublisherReposBatch(
           prunedPublications: result.prunedPublications,
         });
       }
+      results.push(result);
+      prunedDocuments += result.prunedDocuments;
+      prunedPublications += result.prunedPublications;
     } catch (error: unknown) {
       logEvent("ingest.repoReconcile", {
         did: repo.did,
@@ -253,6 +407,8 @@ export async function reconcilePublisherReposBatch(
 
   return {
     attempted: repos.length,
+    goneMarked,
+    migrated,
     prunedDocuments,
     prunedPublications,
     results,

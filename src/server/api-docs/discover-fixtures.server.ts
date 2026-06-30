@@ -2,16 +2,15 @@ import type { ApiDocsFixtures } from "#/lib/api-docs/fixture-defaults";
 import type { ApiDocsTagOption } from "#/lib/api-docs/types";
 
 import { db } from "#/db/index.server";
-import { documents, publications } from "#/db/schema";
+import { documents, lists, publications } from "#/db/schema";
 import { APP_NSID } from "#/lib/atproto/nsids";
+import { listRepoRecords } from "#/server/atproto/fetch-record";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { parseAtUri } from "#/server/atproto/uri";
 import { documentPublishedNotInFuture } from "#/server/reader/document-filters";
 import { discoverEligiblePublicationWhere } from "#/server/reader/publication-filters";
 import { discoverPublicationTopics } from "#/server/reader/queries";
 import { and, desc, eq, sql } from "drizzle-orm";
-
-const RECORD_FETCH_TIMEOUT_MS = 8000;
 
 function hostnameFromUrl(url: string): string | null {
   try {
@@ -21,28 +20,29 @@ function hostnameFromUrl(url: string): string | null {
   }
 }
 
-/** Scan a repo for the first public `app.standard-reader.list` record. */
+/** Find the first `app.standard-reader.list` record URI for a reader.
+ *  Tries the DB mirror first (`lists` table); falls back to a PDS probe
+ *  (Slingshot first, migration retry) only when no rows exist yet. */
 export async function discoverApiDocsListUri(
   did: string,
 ): Promise<string | undefined> {
-  const identity = await resolveIdentity(did);
-  if (!identity.pds) {
-    return undefined;
-  }
+  const [row] = await db
+    .select({ uri: lists.uri })
+    .from(lists)
+    .where(and(eq(lists.ownerDid, did), eq(lists.deleted, false)))
+    .limit(1);
+  if (row?.uri) return row.uri;
 
+  // DB miss — probe the repo once and let the backfill tap land it.
+  const identity = await resolveIdentity(did);
   try {
-    const url = new URL("/xrpc/com.atproto.repo.listRecords", identity.pds);
-    url.searchParams.set("repo", did);
-    url.searchParams.set("collection", APP_NSID.list);
-    url.searchParams.set("limit", "1");
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(RECORD_FETCH_TIMEOUT_MS),
-    });
-    if (!res.ok) {
-      return undefined;
-    }
-    const payload = (await res.json()) as { records?: Array<{ uri?: string }> };
-    const uri = payload.records?.[0]?.uri;
+    const { records } = await listRepoRecords(
+      did,
+      APP_NSID.list,
+      identity.pds,
+      1,
+    );
+    const uri = records[0]?.uri;
     return typeof uri === "string" && uri.length > 0 ? uri : undefined;
   } catch {
     return undefined;

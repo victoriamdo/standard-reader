@@ -8,10 +8,7 @@ import {
   trendingArticles,
   trendingPublications,
 } from "#/server/reader/queries";
-import {
-  effectiveFollowUris,
-  fetchPublicList,
-} from "#/server/reader/saved-lists";
+import { effectiveFollowUris, readList } from "#/server/reader/saved-lists";
 
 import type { XrpcRequestContext } from "../types";
 
@@ -151,7 +148,7 @@ export async function handleGetList(ctx: XrpcRequestContext) {
     throw new InvalidRequestError("Invalid list AT-URI");
   }
 
-  const list = await fetchPublicList(parsed.did, parsed.rkey);
+  const list = await readList(ctx.db, parsed.did, parsed.rkey);
   if (!list) {
     throw new InvalidRequestError("List not found");
   }
@@ -182,7 +179,7 @@ export async function handleGetListFeed(ctx: XrpcRequestContext) {
   }
   const { offset, limit } = paginationFromCursor(ctx.params, 20, 50);
 
-  const list = await fetchPublicList(parsed.did, parsed.rkey);
+  const list = await readList(ctx.db, parsed.did, parsed.rkey);
   if (!list || list.publications.length === 0) {
     return { cursor: null, items: [] };
   }

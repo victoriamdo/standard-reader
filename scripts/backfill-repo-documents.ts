@@ -9,7 +9,10 @@ import { recomputePublicationStats } from "../src/server/ingest/recompute.ts";
  *   pnpm backfill:repo-documents --dry-run <did> [<did> ...]
  *   pnpm backfill:repo-documents --prune-only <did> [<did> ...]
  */
-import { reconcileRepoFromPds } from "../src/server/ingest/repo-sync.ts";
+import {
+  markRepoGone,
+  reconcileRepoFromPds,
+} from "../src/server/ingest/repo-sync.ts";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
@@ -32,6 +35,22 @@ for (const did of dids) {
     console.warn(`skipping ${did}: could not resolve PDS`);
     continue;
   }
+  if (result.gone) {
+    if (dryRun) {
+      console.log(
+        `${did}: PDS reports repo gone; would prune all read-model rows and mark tracked_repos.gone`,
+      );
+      continue;
+    }
+    const pruned = await markRepoGone(did);
+    console.log(
+      `${did}: PDS reports repo gone; pruned ${pruned.publications} publications, ${pruned.documents} documents; marked tracked_repos.gone`,
+    );
+    continue;
+  }
+  const migrationNote = result.migrated
+    ? `; migrated ${result.migratedFrom} -> ${result.migratedTo}`
+    : "";
   const upsertLabel = pruneOnly
     ? "skipped upsert (--prune-only)"
     : dryRun
@@ -40,7 +59,7 @@ for (const did of dids) {
   console.log(
     `${did}: pds has ${result.pdsPublications} publications, ${result.pdsDocuments} documents; ` +
       `${upsertLabel} ${pruneOnly || dryRun ? 0 : result.upsertedDocuments} documents; ` +
-      `${dryRun ? "would prune" : "pruned"} ${result.prunedPublications} publications, ${result.prunedDocuments} stale documents`,
+      `${dryRun ? "would prune" : "pruned"} ${result.prunedPublications} publications, ${result.prunedDocuments} stale documents${migrationNote}`,
   );
 }
 

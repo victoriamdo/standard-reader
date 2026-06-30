@@ -143,6 +143,37 @@ export async function resolveIdentity(did: string): Promise<ResolvedIdentity> {
   }
 }
 
+/**
+ * Force a fresh DID-document fetch and update the cache, bypassing the cached
+ * entry. Used when a PDS reports the repo is gone — the repo may have migrated
+ * to a new PDS (PLC directory updated) while our cached identity still points
+ * at the old one. Returns the freshly-resolved identity (which may still be
+ * the same PDS if the repo is truly gone, or `pds: null` if the DID doc is
+ * unreachable).
+ */
+export async function refreshIdentity(did: string): Promise<ResolvedIdentity> {
+  // Cancel any in-flight resolution so our fresh fetch wins.
+  inflight.delete(did);
+  const doc = await fetchDidDoc(did);
+  const prior = cache.get(did);
+  const resolved: CacheEntry = doc
+    ? {
+        did,
+        pds: pdsFromDoc(doc),
+        handle: handleFromDoc(doc) ?? prior?.handle ?? null,
+        resolved: true,
+      }
+    : {
+        did,
+        pds: null,
+        handle: prior?.handle ?? null,
+        resolved: true,
+        retryAfter: Date.now() + NEGATIVE_TTL_MS,
+      };
+  cache.set(did, resolved);
+  return resolved;
+}
+
 /** PDS from the profile row when present; otherwise resolve from the DID doc. */
 export async function authorPds(
   did: string,

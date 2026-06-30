@@ -17,6 +17,7 @@ import { processTapEvent } from "./consumer.ts";
 import { backfillSubscriptionsFromRepo } from "./handlers.ts";
 import { recomputeDerived } from "./recompute.ts";
 import {
+  markRepoGone,
   reconcilePublisherReposBatch,
   reconcileRepoFromPds,
   startPublisherRepoReconcile,
@@ -238,6 +239,8 @@ async function handleRequest(
       const ms = Math.round(performance.now() - startedAt);
       logEvent("ingest.reconcileRepos", {
         attempted: result.attempted,
+        goneMarked: result.goneMarked,
+        migrated: result.migrated,
         ms,
         ok: true,
         prunedDocuments: result.prunedDocuments,
@@ -274,8 +277,22 @@ async function handleRequest(
     const startedAt = performance.now();
     try {
       const result = await reconcileRepoFromPds(body.did, { upsert: true });
+      // If the PDS reports the repo is permanently gone, prune its read-model
+      // rows + retire the tracked repo (same as the batch path). Manual
+      // reconcile otherwise returns gone=true without cleaning up.
+      if (result.gone) {
+        const pruned = await markRepoGone(body.did);
+        Object.assign(result, {
+          prunedDocuments: pruned.documents,
+          prunedPublications: pruned.publications,
+        });
+      }
       const ms = Math.round(performance.now() - startedAt);
       logEvent("ingest.reconcileRepo", {
+        gone: result.gone ?? false,
+        migrated: result.migrated ?? false,
+        migratedFrom: result.migratedFrom,
+        migratedTo: result.migratedTo,
         ms,
         ok: true,
         prunedDocuments: result.prunedDocuments,

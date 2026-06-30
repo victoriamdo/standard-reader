@@ -10,6 +10,7 @@ import { parseInternalRoute } from "#/lib/internal-route";
 import { getPublicUrl } from "#/lib/public-url";
 import { withoutExcludedPublications } from "#/lib/publication/exclusions";
 import { blobCid, cdnImageUrl } from "#/server/atproto/blob";
+import { listRepoRecords } from "#/server/atproto/fetch-record";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
@@ -564,27 +565,39 @@ async function resolveToDid(handle: string): Promise<string | null> {
   }
 }
 
-/** List a repo's `site.standard.publication` records straight from its PDS. */
+/** List a repo's `site.standard.publication` records (Slingshot first, PDS
+ * fallback, migration retry) and map them to preview cards. Caps at 20 —
+ * enough to populate the search dropdown without fanning out unbounded. */
 async function listRepoPublications(
   pds: string,
   did: string,
 ): Promise<Array<PublicationCard>> {
   try {
-    const url = new URL("/xrpc/com.atproto.repo.listRecords", pds);
-    url.searchParams.set("repo", did);
-    url.searchParams.set("collection", STANDARD_NSID.publication);
-    url.searchParams.set("limit", "20");
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(RESOLVE_TIMEOUT_MS),
-    });
-    if (!res.ok) {
-      return [];
-    }
-    const body = (await res.json()) as {
-      records?: Array<{ uri: string; value: PublicationRecord }>;
-    };
-    return (body.records ?? []).map((entry) => {
-      const record = entry.value;
+    const { records } = await listRepoRecords(
+      did,
+      STANDARD_NSID.publication,
+      pds,
+      20,
+    );
+    return records.map((entry) => {
+      const record = entry.value as unknown as PublicationRecord | undefined;
+      if (!record) {
+        return {
+          uri: entry.uri,
+          did,
+          name: "Untitled publication",
+          url: "",
+          description: null,
+          iconUrl: null,
+          ownerAvatarUrl: null,
+          ownerHandle: null,
+          topic: null,
+          verified: false,
+          subscriberCount: 0,
+          documentCount: 0,
+          lastDocumentAt: null,
+        };
+      }
       const cid = blobCid(record.icon);
       return {
         uri: entry.uri,

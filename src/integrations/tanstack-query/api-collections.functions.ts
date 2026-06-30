@@ -1,4 +1,8 @@
 import type { Client } from "@atcute/client";
+import type {
+  CollectionManifest,
+  parseCollectionManifest,
+} from "#/lib/collections/manifest";
 
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -10,11 +14,7 @@ import {
 import { APP_NSID, STANDARD_NSID } from "#/lib/atproto/nsids";
 import { hexToRgb, rgbToHex } from "#/lib/collections/color";
 import { composeCollectionNewsletterContent } from "#/lib/collections/compose-newsletter";
-import {
-  collectionManifestFromSources,
-  type CollectionManifest,
-  parseCollectionManifest,
-} from "#/lib/collections/manifest";
+import { collectionManifestFromSources } from "#/lib/collections/manifest";
 import { getPublicUrl } from "#/lib/public-url";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { blobCid, cdnImageUrl } from "#/server/atproto/blob";
@@ -511,10 +511,29 @@ function themeFromPublicationRow(themeJson: unknown): CollectionsTheme {
 
 async function manifestForCollectionRkey(
   client: RepoClient,
+  db: Db,
+  schema: Schema,
   did: string,
   rkey: string,
   documentValue?: unknown,
 ): Promise<ReturnType<typeof parseCollectionManifest>> {
+  // Try the DB first — `documents.collectionJson` mirrors the
+  // `app.standard-reader.collection` sidecar (tap ingester keeps it in sync).
+  // Falls back to a PDS `getRecord` only when the DB row doesn't exist yet
+  // (first view, pre-sync gap, or edit-right-after-create).
+  const [docRow] = await db
+    .select({ collectionJson: schema.documents.collectionJson })
+    .from(schema.documents)
+    .where(and(eq(schema.documents.did, did), eq(schema.documents.rkey, rkey)))
+    .limit(1);
+  if (docRow?.collectionJson) {
+    const fromSidecar = collectionManifestFromSources({
+      sidecar: docRow.collectionJson,
+    });
+    if (fromSidecar) return fromSidecar;
+  }
+
+  // DB miss or no sidecar — fall back to the PDS.
   const sidecar = await getCollectionRecord(client, did, rkey);
   const fromSidecar = sidecar
     ? collectionManifestFromSources({ sidecar })
@@ -1012,22 +1031,62 @@ const getCollectionForEdit = createServerFn({ method: "GET" })
       span.set("did", session.did);
       span.set("rkey", data.rkey);
 
-      // Read from the repo (no ingest lag — edit right after create works).
-      const value = await getDocumentRecord(
-        session.client,
-        session.did,
-        data.rkey,
-      );
-      if (!isRecord(value)) return null;
+      // Try the DB first — the tap ingester mirrors `site.standard.document`
+      // into the `documents` table (title, siteUri, coverImageCid, etc.). Fall
+      // back to an authenticated PDS `getRecord` only when the row doesn't exist
+      // yet (edit-right-after-create — the tap event may not have landed).
+      const { db, schema } = context;
+      const [docRow] = await db
+        .select({
+          title: schema.documents.title,
+          siteUri: schema.documents.siteUri,
+          coverImageCid: schema.documents.coverImageCid,
+          coverImageMime: schema.documents.coverImageMime,
+        })
+        .from(schema.documents)
+        .where(
+          and(
+            eq(schema.documents.did, session.did),
+            eq(schema.documents.rkey, data.rkey),
+          ),
+        )
+        .limit(1);
+
+      let value: Record<string, unknown> | null = null;
+      if (docRow) {
+        value = {
+          title: docRow.title,
+          site: docRow.siteUri,
+          coverImage: docRow.coverImageCid
+            ? {
+                $type: "blob",
+                ref: { $link: docRow.coverImageCid },
+                mimeType: docRow.coverImageMime ?? "image/png",
+                size: 0,
+              }
+            : undefined,
+        };
+      } else {
+        // DB miss — read from the repo (no ingest lag — edit right after
+        // create works).
+        const pdsValue = await getDocumentRecord(
+          session.client,
+          session.did,
+          data.rkey,
+        );
+        value = isRecord(pdsValue) ? pdsValue : null;
+      }
+      if (!value) return null;
       const manifest = await manifestForCollectionRkey(
         session.client,
+        db,
+        schema,
         session.did,
         data.rkey,
         value,
       );
       if (!manifest) return null;
 
-      const { db, schema } = context;
       const cards = await selectArticleCardsByUris(
         db,
         schema,

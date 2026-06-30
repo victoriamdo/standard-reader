@@ -7,7 +7,8 @@
  *
  * Stays decoupled like the live path: it lists recent documents from a public
  * AppView (`app.standard-reader.getLatestFeed`) and reads each document's text
- * straight from its author's PDS (`com.atproto.repo.getRecord`) — no shared DB.
+ * through Slingshot (`com.atproto.repo.getRecord` against the caching proxy) —
+ * no shared DB.
  */
 
 import { config } from "../src/config.ts";
@@ -19,6 +20,9 @@ const APPVIEW = (
   process.env.APPVIEW_URL ?? "https://standard-reader.app"
 ).replace(/\/$/, "");
 const LIMIT = Number(process.env.BACKFILL_LIMIT ?? 100);
+const SLINGSHOT = (
+  process.env.SLINGSHOT_URL ?? "https://slingshot.microcosm.blue"
+).replace(/\/+$/, "");
 
 interface FeedItem {
   uri: string;
@@ -61,44 +65,15 @@ async function recentDocuments(n: number): Promise<Array<FeedItem>> {
   return out;
 }
 
-const pdsCache = new Map<string, string | null>();
-
-/** Resolve a DID's PDS service endpoint (did:plc + did:web). */
-async function resolvePds(did: string): Promise<string | null> {
-  if (pdsCache.has(did)) return pdsCache.get(did)!;
-  let docUrl: string | null = null;
-  if (did.startsWith("did:plc:")) docUrl = `https://plc.directory/${did}`;
-  else if (did.startsWith("did:web:")) {
-    const host = decodeURIComponent(did.slice("did:web:".length).split(":")[0]);
-    docUrl = `https://${host}/.well-known/did.json`;
-  }
-  let endpoint: string | null = null;
-  if (docUrl) {
-    const doc = await getJson<{
-      service?: Array<{ id?: string; type?: string; serviceEndpoint?: string }>;
-    }>(docUrl);
-    endpoint =
-      doc?.service
-        ?.find(
-          (s) =>
-            s.type === "AtprotoPersonalDataServer" || s.id === "#atproto_pds",
-        )
-        ?.serviceEndpoint?.replace(/\/$/, "") ?? null;
-  }
-  pdsCache.set(did, endpoint);
-  return endpoint;
-}
-
-/** Fetch a document record's text (title + body) and CID from the author's PDS. */
+/** Fetch a document record's text (title + body) and CID through Slingshot,
+ * a caching proxy that aggregates repo records across PDSes. */
 async function documentText(
   uri: string,
   did: string,
 ): Promise<{ text: string; cid?: string } | null> {
   const rkey = uri.split("/").pop();
   if (!rkey) return null;
-  const pds = await resolvePds(did);
-  if (!pds) return null;
-  const url = new URL(`${pds}/xrpc/com.atproto.repo.getRecord`);
+  const url = new URL("/xrpc/com.atproto.repo.getRecord", SLINGSHOT);
   url.searchParams.set("repo", did);
   url.searchParams.set("collection", config.documentCollection);
   url.searchParams.set("rkey", rkey);

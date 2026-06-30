@@ -128,7 +128,11 @@ the orphan set. (Could be folded into the primary tap later by switching its
 - Deletes that never land (dead-letter retry cap, stream gaps) are repaired by
   periodic PDS reconcile in the ingest worker (`repo-sync.ts`): list live
   `site.standard.*` records from the author's PDS and prune stale read-model
-  rows in batched deletes.
+  rows in batched deletes. When the PDS reports the repo is permanently gone
+  (400/404 `InvalidRequest` — deleted or migrated away from the PDS PLC points
+  at), the reconcile marks `tracked_repos.backfill_state = 'gone'`, prunes all
+  read-model rows for the DID, and excludes the repo from future round-robins
+  so it stops paying a 400 every tick.
 - tap owns the firehose cursor + per-repo backfill state (in its own
   SQLite/Postgres store). The app's `ingest_state` table is a high-water mark
   for observability only.

@@ -5,13 +5,23 @@
  * Self-labels live in the profile record's `labels` field as a
  * `com.atproto.label.defs#selfLabels` object (`{ values: [{ val: "bot" }] }`).
  * That's the only on-network way an account *declares itself* automated — there
- * is no boolean flag on the profile. We read the record straight from the
- * author's PDS and cache the verdict per DID.
+ * is no boolean flag on the profile. We read the record through Slingshot
+ * (a caching proxy that aggregates repo records across PDSes) so we don't have
+ * to resolve each author's PDS, and we cache the verdict per DID.
  */
 
 const PROFILE_COLLECTION = "app.bsky.actor.profile";
+const PROFILE_RKEY = "self";
 const VERDICT_TTL_MS = 30 * 60_000;
-const PDS_TTL_MS = 60 * 60_000;
+const DEFAULT_SLINGSHOT_URL = "https://slingshot.microcosm.blue";
+
+/** Slingshot is a caching proxy over repo records; faster and more reliable
+ * than resolving + hitting each author's PDS directly. */
+function slingshotBaseUrl(): string {
+  const configured = process.env.SLINGSHOT_URL?.trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  return DEFAULT_SLINGSHOT_URL;
+}
 
 interface SelfLabels {
   values?: Array<{ val?: string }>;
@@ -43,36 +53,6 @@ async function fetchJson<T>(url: string, ms = 4000): Promise<T | null> {
   }
 }
 
-const pdsCache = new Map<string, { at: number; endpoint: string | null }>();
-
-async function resolvePds(did: string): Promise<string | null> {
-  const cached = pdsCache.get(did);
-  if (cached && Date.now() - cached.at < PDS_TTL_MS) return cached.endpoint;
-
-  let docUrl: string | null = null;
-  if (did.startsWith("did:plc:")) docUrl = `https://plc.directory/${did}`;
-  else if (did.startsWith("did:web:")) {
-    const host = decodeURIComponent(did.slice("did:web:".length).split(":")[0]);
-    docUrl = `https://${host}/.well-known/did.json`;
-  }
-
-  let endpoint: string | null = null;
-  if (docUrl) {
-    const doc = await fetchJson<{
-      service?: Array<{ id?: string; type?: string; serviceEndpoint?: string }>;
-    }>(docUrl);
-    endpoint =
-      doc?.service
-        ?.find(
-          (s) =>
-            s.type === "AtprotoPersonalDataServer" || s.id === "#atproto_pds",
-        )
-        ?.serviceEndpoint?.replace(/\/$/, "") ?? null;
-  }
-  pdsCache.set(did, { at: Date.now(), endpoint });
-  return endpoint;
-}
-
 const verdictCache = new Map<string, { at: number; bot: boolean }>();
 
 /** Whether `did` has self-declared as a bot (cached). */
@@ -81,15 +61,12 @@ export async function isDeclaredBot(did: string): Promise<boolean> {
   if (cached && Date.now() - cached.at < VERDICT_TTL_MS) return cached.bot;
 
   let bot = false;
-  const pds = await resolvePds(did);
-  if (pds) {
-    const url = new URL(`${pds}/xrpc/com.atproto.repo.getRecord`);
-    url.searchParams.set("repo", did);
-    url.searchParams.set("collection", PROFILE_COLLECTION);
-    url.searchParams.set("rkey", "self");
-    const res = await fetchJson<{ value?: ProfileRecord }>(url.toString());
-    bot = hasBotSelfLabel(res?.value);
-  }
+  const url = new URL("/xrpc/com.atproto.repo.getRecord", slingshotBaseUrl());
+  url.searchParams.set("repo", did);
+  url.searchParams.set("collection", PROFILE_COLLECTION);
+  url.searchParams.set("rkey", PROFILE_RKEY);
+  const res = await fetchJson<{ value?: ProfileRecord }>(url.toString());
+  bot = hasBotSelfLabel(res?.value);
   verdictCache.set(did, { at: Date.now(), bot });
   return bot;
 }

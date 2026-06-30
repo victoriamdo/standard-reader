@@ -2,36 +2,22 @@ import { eq, sql } from "drizzle-orm";
 
 import { db } from "../src/db/index.ts";
 import { documents } from "../src/db/schema.ts";
+import { listRepoRecords } from "../src/server/atproto/fetch-record.ts";
 import { authorPds } from "../src/server/atproto/identity.ts";
 
 const DID = "did:plc:tnliqml7jfchh6dltyi2senj";
 
 async function listPdsDocuments(pds: string) {
-  const all: Array<{
-    uri: string;
-    value: {
+  const { records } = await listRepoRecords(DID, "site.standard.document", pds);
+  return records.map((record) => ({
+    uri: record.uri,
+    value: record.value as {
       title?: string;
       publishedAt?: string;
       path?: string;
       updatedAt?: string;
-    };
-  }> = [];
-  let cursor: string | undefined;
-  do {
-    const url = new URL("/xrpc/com.atproto.repo.listRecords", pds);
-    url.searchParams.set("repo", DID);
-    url.searchParams.set("collection", "site.standard.document");
-    url.searchParams.set("limit", "100");
-    if (cursor) url.searchParams.set("cursor", cursor);
-    const res = await fetch(url);
-    const body = (await res.json()) as {
-      records?: typeof all;
-      cursor?: string;
-    };
-    all.push(...(body.records ?? []));
-    cursor = body.records?.length === 100 ? body.cursor : undefined;
-  } while (cursor);
-  return all;
+    },
+  }));
 }
 
 async function main() {

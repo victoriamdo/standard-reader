@@ -48,6 +48,7 @@ import {
   subscriptions,
 } from "../../db/schema.ts";
 import { blobCid, bskyImageUrl, getBlobUrl } from "../atproto/blob.ts";
+import { listRepoRecords } from "../atproto/fetch-record.ts";
 import {
   authorPds,
   getCachedIdentity,
@@ -1020,13 +1021,13 @@ export async function deleteRecord(
   }
 }
 
-const SUBSCRIPTION_LIST_PAGE = 100;
-const SUBSCRIPTION_FETCH_TIMEOUT_MS = 8000;
-
 /**
  * Pull a reader repo's subscription records straight from its PDS into Neon.
  * Used when tap backfill lags behind a follow, or to hydrate repos that were
  * tracked before tap registration succeeded.
+ *
+ * Routes through `listRepoRecords` (Slingshot first, PDS fallback, migration
+ * retry) so a PDS migration doesn't silently drop the reader's subscriptions.
  */
 export async function backfillSubscriptionsFromRepo(
   did: string,
@@ -1036,60 +1037,32 @@ export async function backfillSubscriptionsFromRepo(
     return 0;
   }
 
-  let count = 0;
-  let cursor: string | undefined;
-
   try {
-    do {
-      const url = new URL("/xrpc/com.atproto.repo.listRecords", identity.pds);
-      url.searchParams.set("repo", did);
-      url.searchParams.set("collection", Collections.subscription);
-      url.searchParams.set("limit", String(SUBSCRIPTION_LIST_PAGE));
-      if (cursor) {
-        url.searchParams.set("cursor", cursor);
+    const { records } = await listRepoRecords(
+      did,
+      Collections.subscription,
+      identity.pds,
+    );
+    let count = 0;
+    for (const record of records) {
+      const rkey = record.uri.slice(record.uri.lastIndexOf("/") + 1);
+      if (!record.value) {
+        continue;
       }
-
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(SUBSCRIPTION_FETCH_TIMEOUT_MS),
-      });
-      if (!res.ok) {
-        break;
-      }
-
-      const body = (await res.json()) as {
-        cursor?: string;
-        records?: Array<{
-          cid?: string;
-          uri: string;
-          value?: SubscriptionRecord;
-        }>;
-      };
-
-      for (const record of body.records ?? []) {
-        const rkey = record.uri.slice(record.uri.lastIndexOf("/") + 1);
-        if (!record.value) {
-          continue;
-        }
-        await upsertSubscription(
-          record.uri,
-          did,
-          rkey,
-          record.cid,
-          record.value,
-        );
-        count += 1;
-      }
-
-      cursor =
-        (body.records?.length ?? 0) === SUBSCRIPTION_LIST_PAGE
-          ? body.cursor
-          : undefined;
-    } while (cursor);
+      await upsertSubscription(
+        record.uri,
+        did,
+        rkey,
+        record.cid,
+        record.value as unknown as SubscriptionRecord,
+      );
+      count += 1;
+    }
+    return count;
   } catch (error: unknown) {
     console.warn(`[ingest] subscription backfill failed for ${did}`, error);
+    return 0;
   }
-
-  return count;
 }
 
 /**
@@ -1097,6 +1070,9 @@ export async function backfillSubscriptionsFromRepo(
  * records from their PDS into the read-model. Called when the shell snapshot
  * finds no rows for a reader (first visit, or a gap from before the sync was
  * wired up).
+ *
+ * Routes through `listRepoRecords` (Slingshot first, PDS fallback, migration
+ * retry) so a PDS migration doesn't silently drop the reader's lists.
  */
 export async function backfillListsFromRepo(
   did: string,
@@ -1116,46 +1092,26 @@ export async function backfillListsFromRepo(
       record: T,
     ) => Promise<void>,
   ): Promise<number> {
-    const pds = identity.pds;
-    if (!pds) return 0;
-    let count = 0;
-    let cursor: string | undefined;
     try {
-      do {
-        const url = new URL("/xrpc/com.atproto.repo.listRecords", pds);
-        url.searchParams.set("repo", did);
-        url.searchParams.set("collection", collection);
-        url.searchParams.set("limit", String(SUBSCRIPTION_LIST_PAGE));
-        if (cursor) {
-          url.searchParams.set("cursor", cursor);
-        }
-
-        const res = await fetch(url, {
-          signal: AbortSignal.timeout(SUBSCRIPTION_FETCH_TIMEOUT_MS),
-        });
-        if (!res.ok) break;
-
-        const body = (await res.json()) as {
-          cursor?: string;
-          records?: Array<{ cid?: string; uri: string; value?: T }>;
-        };
-
-        for (const record of body.records ?? []) {
-          const rkey = record.uri.slice(record.uri.lastIndexOf("/") + 1);
-          if (!record.value) continue;
-          await upsert(record.uri, did, rkey, record.cid, record.value);
-          count += 1;
-        }
-
-        cursor =
-          (body.records?.length ?? 0) === SUBSCRIPTION_LIST_PAGE
-            ? body.cursor
-            : undefined;
-      } while (cursor);
+      const { records } = await listRepoRecords(did, collection, identity.pds);
+      let count = 0;
+      for (const record of records) {
+        const rkey = record.uri.slice(record.uri.lastIndexOf("/") + 1);
+        if (!record.value) continue;
+        await upsert(
+          record.uri,
+          did,
+          rkey,
+          record.cid,
+          record.value as unknown as T,
+        );
+        count += 1;
+      }
+      return count;
     } catch (error: unknown) {
       console.warn(`[ingest] ${collection} backfill failed for ${did}`, error);
+      return 0;
     }
-    return count;
   }
 
   const [listCount, listSaveCount] = await Promise.all([

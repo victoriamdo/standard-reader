@@ -6,7 +6,7 @@ import * as schema from "#/db/schema";
 import { cdnImageUrl } from "#/server/atproto/blob";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { renderListOgImage } from "#/server/og/list-card";
-import { fetchPublicList } from "#/server/reader/saved-lists";
+import { readList } from "#/server/reader/saved-lists";
 import { and, eq, inArray } from "drizzle-orm";
 
 /** Lists are editable, so cache more briefly than article/publication cards. */
@@ -75,7 +75,7 @@ export const Route = createFileRoute("/api/og/list")({
         }
 
         try {
-          const list = await fetchPublicList(did, rkey);
+          const list = await readList(db, did, rkey);
           if (!list) {
             return new Response("Not Found", { status: 404 });
           }
