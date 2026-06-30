@@ -21,12 +21,25 @@ const config = defineConfig({
     exclude: ["@resvg/resvg-js", "kokoro-js", "@huggingface/transformers"],
   },
   ssr: { external: ["@resvg/resvg-js"] },
+  // Vite 8 defaults to lightningcss for CSS minification, which doesn't yet
+  // recognize the `::highlight()` Custom Highlight API pseudo-element (fix
+  // merged upstream but unreleased in 1.32.0). `errorRecovery` downgrades the
+  // parse error to a warning and preserves the rule verbatim in the output.
+  css: {
+    lightningcss: { errorRecovery: true },
+  },
   // StyleX emits one shared virtual stylesheet imported across the whole module
   // graph. With Vite 8 / Rolldown CSS code-splitting, that shared CSS gets
   // hoisted into a single route chunk (e.g. the article route) instead of being
   // linked globally, so most pages render unstyled on first paint. Emitting a
   // single stylesheet keeps the StyleX output linked on every route.
-  build: { cssCodeSplit: false },
+  build: {
+    cssCodeSplit: false,
+    // Shiki language packs, kokoro-js (TTS), and @huggingface/transformers are
+    // inherently large and already lazy-loaded via dynamic import(). Raise the
+    // limit so their expected size doesn't surface as a build warning.
+    chunkSizeWarningLimit: 2500,
+  },
   oxc: {
     exclude: ["src/design-system/**"],
   },
