@@ -136,6 +136,38 @@ Check items off as they land.
       `getShellBootstrap()`. Set `staleTime: 5min` to match the root bootstrap.
       Combined: cold `/saved` load dropped from ~4.4s to ~1.1s; client-side nav
       from `/likes` → `/saved` dropped from ~7.8s to ~2.1s.
+- [x] **Collection magazine load → no PDS restore for span labeling + parallel SQL.**
+      `attachReaderSpanContext` (`src/server/observability/span-context.ts`)
+      called `getAtprotoSessionForRequest()` purely to label the Honeycomb span
+      with the reader's DID — restoring the full PDS client (`manager.resume()`)
+      on every read endpoint, including `getCollection`. Switched it to the
+      DB-only `getReaderDidForRequest()`; handlers that actually need the PDS
+      client (e.g. collection owners reading a fresh manifest) restore it
+      explicitly. Also parallelized `loadCollectionMagazine`
+      (`src/server/reader/collection-magazine.ts`): the bundle SQL and the
+      reader-context lookup now run concurrently via `Promise.all` instead of
+      sequentially, so the session-row lookup overlaps with the query.
+- [x] **Collection owner reads → pure DB, no PDS round trip.** The write path
+      (`putCollection` / `deleteCollection` in `api-collections.functions.ts`)
+      wrote the manifest to the PDS but never mirrored it into the DB, relying
+      on the async tap firehose (`upsertCollectionSidecar`) to land the row.
+      To paper over that ingest lag for the owner viewing their own just-edited
+      collection, `loadCollectionMagazine` and `getArticle` restored the PDS
+      client and re-read the manifest from the owner's repo (up to two
+      `com.atproto.repo.getRecord` calls) on every owner view — a read-side
+      band-aid for a write-side omission, and a violation of the "never hit the
+      PDS for reads when data exists in the DB" rule. Fixed at the source:
+      `putCollection` now eagerly mirrors the manifest into
+      `documents.collectionJson` after the PDS write succeeds (the manifest is
+      already in memory — one cheap DB `UPDATE`, no round trip; the firehose
+      event lands idempotently), and `deleteCollection` eagerly clears it. The
+      owner-PDS-read blocks were then deleted from both read paths, and the now-
+      dead `src/lib/collections/resolve-manifest.ts` was removed. Measured
+      (owner viewing their own collection, signed in, A/B vs. baseline HEAD):
+      mean SSR latency dropped from ~800ms to ~700ms (~12–17% faster, ~100–135ms
+      saved per view), p95 dropped ~150–170ms. The create-collection case still
+      has a pre-existing gap (the document row doesn't exist in the DB until the
+      firehose lands), but the removed PDS read never solved that either.
 
 ## 1. Data ingestion — tap → Neon
 

@@ -8,13 +8,8 @@ import type { ThemeMode } from "#/lib/theme";
 import type { ArticleDetailSourceRow } from "#/server/reader/article-detail-build";
 
 import { publicationLinkParams } from "#/components/reader/format";
-import { collectionManifestForOwner } from "#/lib/collections/resolve-manifest";
 import { MAX_MAGAZINE_FEATURES } from "#/magazine/constants";
-import {
-  getAtprotoSessionForRequest,
-  getReaderContextForRequest,
-} from "#/middleware/auth-session.server";
-import { parseAtUri } from "#/server/atproto/uri";
+import { getReaderContextForRequest } from "#/middleware/auth-session.server";
 import {
   buildArticleDetail,
   manifestFromCollectionRow,
@@ -316,42 +311,18 @@ export async function loadCollectionMagazine(
   request: Request,
   maxFeatures: number = MAX_MAGAZINE_FEATURES,
 ): Promise<CollectionMagazineData | null> {
-  const rows = await fetchCollectionMagazineRows(
-    db,
-    collectionUri,
-    maxFeatures,
-  );
+  // The bundle SQL and the reader-context lookup are independent — run them
+  // concurrently so the PDS/DB session round trip overlaps with the query.
+  const [rows, reader] = await Promise.all([
+    fetchCollectionMagazineRows(db, collectionUri, maxFeatures),
+    getReaderContextForRequest(request),
+  ]);
   const grouped = groupBundleRows(rows);
   const collectionEntry = grouped.find((doc) => doc.kind === "collection");
   if (!collectionEntry) return null;
 
-  const reader = await getReaderContextForRequest(request);
-  let manifest = manifestFromCollectionRow(collectionEntry.row);
+  const manifest = manifestFromCollectionRow(collectionEntry.row);
   if (!manifest) return null;
-
-  if (reader && reader.did === collectionEntry.row.did) {
-    const parsed = parseAtUri(collectionEntry.row.uri);
-    if (parsed) {
-      // Only now — when the reader owns this collection — do we pay for
-      // the PDS client restore to read the manifest from their repo.
-      const session = await getAtprotoSessionForRequest(request);
-      if (session?.client) {
-        const freshManifest = await collectionManifestForOwner(
-          session.client,
-          collectionEntry.row.did,
-          parsed.rkey,
-          manifest,
-        );
-        if (freshManifest) {
-          manifest = freshManifest;
-          collectionEntry.row = {
-            ...collectionEntry.row,
-            collectionJson: freshManifest,
-          };
-        }
-      }
-    }
-  }
 
   const themeMode: ThemeMode = await themeModeForRequest(
     db,

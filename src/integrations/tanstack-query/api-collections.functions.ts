@@ -1,14 +1,20 @@
 import type { Client } from "@atcute/client";
-import type { parseCollectionManifest } from "#/lib/collections/manifest";
 
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { collectionsPublicationUri } from "#/lib/atproto/collection-uris";
+import {
+  collectionDocumentUri,
+  collectionsPublicationUri,
+} from "#/lib/atproto/collection-uris";
 import { APP_NSID, STANDARD_NSID } from "#/lib/atproto/nsids";
 import { hexToRgb, rgbToHex } from "#/lib/collections/color";
 import { composeCollectionNewsletterContent } from "#/lib/collections/compose-newsletter";
-import { collectionManifestFromSources } from "#/lib/collections/manifest";
+import {
+  collectionManifestFromSources,
+  type CollectionManifest,
+  parseCollectionManifest,
+} from "#/lib/collections/manifest";
 import { getPublicUrl } from "#/lib/public-url";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { blobCid, cdnImageUrl } from "#/server/atproto/blob";
@@ -22,10 +28,10 @@ import { parseAtUri } from "#/server/atproto/uri";
 import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import type { ArticleCard } from "./api-shapes";
+import type { ArticleCard, Db, Schema } from "./api-shapes";
 
 import { dbMiddleware } from "./db-middleware";
 
@@ -35,6 +41,48 @@ async function repoRecords() {
 }
 
 type RepoClient = Client;
+
+/**
+ * Eagerly mirror a just-written collection manifest into the read-model so the
+ * owner sees their edit on the next read without a PDS round trip. The tap
+ * firehose upserts the same row idempotently when the event lands. Mirrors the
+ * `upsertCollectionSidecar` ingest handler but runs from the write path.
+ */
+async function mirrorCollectionManifest(
+  db: Db,
+  schema: Schema,
+  did: string,
+  rkey: string,
+  manifest: CollectionManifest,
+  documentUri: string,
+): Promise<void> {
+  await db
+    .update(schema.documents)
+    .set({
+      collectionJson: manifest,
+      hasRenderableBody: true,
+      updatedAt: sql`now()`,
+    })
+    .where(
+      or(
+        eq(schema.documents.uri, documentUri),
+        and(eq(schema.documents.did, did), eq(schema.documents.rkey, rkey)),
+      ),
+    );
+}
+
+/** Eagerly clear the manifest on delete; the tap firehose lands the same update. */
+async function clearCollectionManifest(
+  db: Db,
+  schema: Schema,
+  did: string,
+  rkey: string,
+): Promise<void> {
+  await db
+    .update(schema.documents)
+    .set({ collectionJson: null, updatedAt: sql`now()` })
+    .where(and(eq(schema.documents.did, did), eq(schema.documents.rkey, rkey)));
+}
 
 /**
  * Collections — curated, magazine-rendered editions. A collection is a
@@ -1085,6 +1133,18 @@ const putCollection = createServerFn({ method: "POST" })
           updatedAt: data.rkey ? now : undefined,
         },
       });
+      // Eagerly mirror the manifest into the read-model so the owner sees
+      // their edit immediately without a read-side PDS round trip. The tap
+      // firehose upserts the same row idempotently when the event lands.
+      const documentUri = collectionDocumentUri(session.did, rkey);
+      await mirrorCollectionManifest(
+        db,
+        schema,
+        session.did,
+        rkey,
+        manifest,
+        documentUri,
+      );
       await ensureCollectionsPublicationSidecarForUri(
         session.client,
         session.did,
@@ -1096,9 +1156,10 @@ const putCollection = createServerFn({ method: "POST" })
   );
 
 const deleteCollection = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
   .inputValidator(rkeyInput)
   .handler(
-    observe("collections.deleteCollection", async ({ data }, span) => {
+    observe("collections.deleteCollection", async ({ data, context }, span) => {
       const session = await getAtprotoSessionForRequest(getRequest());
       if (!session) throw new Error("Sign in to manage collections.");
       span.set("did", session.did);
@@ -1107,6 +1168,14 @@ const deleteCollection = createServerFn({ method: "POST" })
       const { deleteCollectionDocumentPair } = await repoRecords();
       await deleteCollectionDocumentPair(
         session.client,
+        session.did,
+        data.rkey,
+      );
+      // Eagerly clear the manifest so the owner sees the deletion immediately;
+      // the tap firehose lands the same update idempotently.
+      await clearCollectionManifest(
+        context.db,
+        context.schema,
         session.did,
         data.rkey,
       );

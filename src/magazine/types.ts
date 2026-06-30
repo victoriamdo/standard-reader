@@ -27,6 +27,8 @@ export interface MagMeta {
   coverImageUrl: string | null;
   /** True when `coverImageUrl` was promoted from the article's first image block. */
   leadImageFromFirstBlock?: boolean;
+  /** Canonical/publication URL of the original post, for the header link. */
+  externalUrl: string | null;
 }
 
 /** A composed feature: opener metadata + the full article record to render. */

@@ -121,8 +121,8 @@ function isEdgeTap(clientX: number, edgeWidth: number) {
 /** Ignore synthetic mouse events fired after touch (edge tap, swipe). */
 const POST_TOUCH_MOUSE_MS = 500;
 
-/** Matches `.mag-flow.animate { transition: transform 0.46s ... }`. */
-const PAGE_TURN_MS = 460;
+/** Matches `.mag-flow.animate { transition: transform 0.32s ... }`. */
+const PAGE_TURN_MS = 320;
 
 function imgOpenerColForSlide(
   slide: number,
@@ -275,7 +275,7 @@ export function Magazine({
     if (!onDarkChange) {
       setDarkInternal(readMagazineDark(issue.theme));
     }
-    const t = setTimeout(() => setAnimate(true), 80);
+    const t = setTimeout(() => setAnimate(true), 60);
     return () => {
       if (!embedded && prevHtml !== null && prevBody !== null) {
         html.style.overflow = prevHtml;

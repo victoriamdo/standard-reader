@@ -1,6 +1,7 @@
 "use client";
 
 import { ArticleContent } from "#/components/reader/content/article-content";
+import { ExternalLink } from "lucide-react";
 import { forwardRef } from "react";
 
 import type { MagFeature, MagIssue, MagMeta } from "./types";
@@ -53,6 +54,17 @@ function Byline({ meta }: { meta: MagMeta }) {
       <span className="by">{meta.author}</span>
       {meta.date ? <span className="mono">{meta.date}</span> : null}
       <span className="mono">{meta.minutes} min read</span>
+      {meta.externalUrl ? (
+        <a
+          className="byline-original"
+          href={meta.externalUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <span>Original</span>
+          <ExternalLink size={12} aria-hidden />
+        </a>
+      ) : null}
     </div>
   );
 }

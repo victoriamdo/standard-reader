@@ -9,15 +9,11 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { publicationLinkParams } from "#/components/reader/format";
-import { parseCollectionManifest } from "#/lib/collections/manifest";
-import { collectionManifestForOwner } from "#/lib/collections/resolve-manifest";
 import {
-  getAtprotoSessionForRequest,
   getReaderContextForRequest,
   getReaderDidForRequest,
 } from "#/middleware/auth-session.server";
 import { cdnImageUrl } from "#/server/atproto/blob";
-import { parseAtUri } from "#/server/atproto/uri";
 import { buildCanonicalUrl } from "#/server/ingest/mappers";
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
@@ -420,29 +416,7 @@ const getArticle = createServerFn({ method: "GET" })
         }
         span.set("found", true);
 
-        let sourceRow = row as ArticleDetailSourceRow;
-        const cachedManifest = parseCollectionManifest(row.collectionJson);
-        if (cachedManifest && reader && reader.did === row.did) {
-          const parsed = parseAtUri(row.uri);
-          if (parsed) {
-            // Only now — when the reader owns this collection — do we pay
-            // for the PDS client restore to read the manifest from their
-            // repo so edits show immediately.
-            const session = await getAtprotoSessionForRequest(getRequest());
-            if (session?.client) {
-              const freshManifest = await collectionManifestForOwner(
-                session.client,
-                row.did,
-                parsed.rkey,
-                cachedManifest,
-              );
-              if (freshManifest) {
-                sourceRow = { ...sourceRow, collectionJson: freshManifest };
-              }
-            }
-          }
-        }
-
+        const sourceRow = row as ArticleDetailSourceRow;
         const contributors: Array<ArticleContributor> = contributorRows.map(
           (c) => ({
             did: c.did,

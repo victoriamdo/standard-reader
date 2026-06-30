@@ -5,6 +5,7 @@ import type {
 } from "#/lib/collections/manifest";
 import type { CollectionTheme } from "#/lib/collections/theme";
 
+import { articlePublicationUrl } from "#/components/reader/format";
 import { parseArticleBlocks } from "#/lib/document/blocks";
 import { resolveArticleHeroImage } from "#/lib/document/lead-image";
 
@@ -68,6 +69,7 @@ export function articleMeta(article: ArticleDetail): MagMeta {
     topic: article.publication?.topic ?? article.tags?.[0] ?? "Feature",
     coverImageUrl: hero?.url ?? null,
     leadImageFromFirstBlock: hero?.fromFirstBlock ?? false,
+    externalUrl: articlePublicationUrl(article),
   };
 }
 
