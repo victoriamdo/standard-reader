@@ -4,7 +4,7 @@ import {
   GREENGALE_DOCUMENT,
 } from "#/lib/greengale/types";
 
-import { fetchRepoRecord } from "../atproto/fetch-record";
+import { fetchRepoRecordWithFallback } from "../atproto/fetch-record";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -26,7 +26,8 @@ export async function resolveGreengaleContent(
   const uri = typeof content.uri === "string" ? content.uri : null;
   if (!uri || !pds) return content;
 
-  const record = await fetchRepoRecord(pds, uri);
+  const result = await fetchRepoRecordWithFallback(uri, pds);
+  const record = result?.value ?? null;
   if (!isRecord(record) || record.$type !== GREENGALE_DOCUMENT) {
     return content;
   }

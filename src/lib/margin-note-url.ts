@@ -1,4 +1,4 @@
-import { parseAtUri } from "#/server/atproto/fetch-record";
+import { parseAtUri } from "#/server/atproto/uri";
 
 const MARGIN_WEB_ORIGIN = "https://margin.at";
 

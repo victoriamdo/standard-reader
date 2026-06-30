@@ -9,7 +9,7 @@ import {
   getCitationBacklinksForTarget,
   getCosmikConnectionBacklinksForUrl,
 } from "#/server/atproto/constellation";
-import { fetchRepoRecord } from "#/server/atproto/fetch-record";
+import { fetchRepoRecordWithFallback } from "#/server/atproto/fetch-record";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
 import { and, eq, inArray } from "drizzle-orm";
@@ -125,9 +125,12 @@ async function loadCosmikConnection(
   if (record.collection !== COSMIK_CONNECTION_COLLECTION) return null;
 
   const identity = await resolveIdentity(record.did);
-  if (!identity.pds) return null;
 
-  const value = await fetchRepoRecord(identity.pds, recordUri(record));
+  const result = await fetchRepoRecordWithFallback(
+    recordUri(record),
+    identity.pds,
+  );
+  const value = result?.value ?? null;
   if (!isRecord(value)) return null;
 
   const sourceUrl = typeof value.source === "string" ? value.source.trim() : "";

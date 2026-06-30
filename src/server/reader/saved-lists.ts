@@ -17,6 +17,7 @@ import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 
 import { listSaves, lists } from "#/db/schema";
 import { APP_NSID } from "#/lib/atproto/nsids";
+import { fetchRepoRecordWithFallback } from "#/server/atproto/fetch-record";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { selectFollowUris } from "#/server/reader/queries";
 import { and, eq } from "drizzle-orm";
@@ -85,25 +86,13 @@ export async function fetchPublicList(
   rkey: string,
 ): Promise<SubscriptionList | null> {
   const identity = await resolveIdentity(did);
-  if (!identity.pds) {
-    return null;
-  }
-  try {
-    const url = new URL("/xrpc/com.atproto.repo.getRecord", identity.pds);
-    url.searchParams.set("repo", did);
-    url.searchParams.set("collection", APP_NSID.list);
-    url.searchParams.set("rkey", rkey);
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(RECORD_FETCH_TIMEOUT_MS),
-    });
-    if (!res.ok) {
-      return null;
-    }
-    const body = (await res.json()) as { value?: unknown };
-    return toSubscriptionList(listUriFromParams(did, rkey), rkey, body.value);
-  } catch {
-    return null;
-  }
+  const result = await fetchRepoRecordWithFallback(
+    listUriFromParams(did, rkey),
+    identity.pds,
+    RECORD_FETCH_TIMEOUT_MS,
+  );
+  if (!result) return null;
+  return toSubscriptionList(listUriFromParams(did, rkey), rkey, result.value);
 }
 
 /**

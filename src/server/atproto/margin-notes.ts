@@ -15,7 +15,7 @@ import {
   getMarginNoteBacklinksForTarget,
   getMarginReplyCountForNote,
 } from "#/server/atproto/constellation";
-import { fetchRepoRecord } from "#/server/atproto/fetch-record";
+import { fetchRepoRecordWithFallback } from "#/server/atproto/fetch-record";
 import { resolveIdentity } from "#/server/atproto/identity";
 
 const MARGIN_AVATAR_ORIGIN = "https://margin.at";
@@ -235,8 +235,11 @@ async function fetchCosmikCardValue(
   record: ConstellationBacklinkRecord,
 ): Promise<unknown | null> {
   const identity = await resolveIdentity(record.did);
-  if (!identity.pds) return null;
-  return fetchRepoRecord(identity.pds, noteUriFromRecord(record));
+  const result = await fetchRepoRecordWithFallback(
+    noteUriFromRecord(record),
+    identity.pds,
+  );
+  return result?.value ?? null;
 }
 
 async function isCosmikDiscussionCard(
@@ -277,9 +280,11 @@ async function loadMarginNote(
   }
 
   const identity = await resolveIdentity(record.did);
-  if (!identity.pds) return null;
-
-  const value = await fetchRepoRecord(identity.pds, noteUriFromRecord(record));
+  const result = await fetchRepoRecordWithFallback(
+    noteUriFromRecord(record),
+    identity.pds,
+  );
+  const value = result?.value ?? null;
   return parseDiscussionMarginRecord(record, value);
 }
 

@@ -11,22 +11,14 @@
  * Sifa profile, so the negative result is cached and reused.
  */
 
-import { fetchRepoRecord } from "#/server/atproto/fetch-record";
+import { fetchRepoRecordWithFallback } from "#/server/atproto/fetch-record";
 import { resolveIdentity } from "#/server/atproto/identity";
 
 const SIFA_WEB_ORIGIN = "https://sifa.id";
 const SIFA_PROFILE_SELF_COLLECTION = "id.sifa.profile.self";
 const SIFA_PROFILE_SELF_RKEY = "self";
-const DEFAULT_SLINGSHOT_URL = "https://slingshot.microcosm.blue";
-const FETCH_TIMEOUT_MS = 8000;
 /** How long a cached result (positive or negative) is reused. */
 const CACHE_TTL_MS = 10 * 60_000;
-
-function slingshotBaseUrl(): string {
-  const configured = process.env.SLINGSHOT_URL?.trim();
-  if (configured) return configured.replace(/\/+$/, "");
-  return DEFAULT_SLINGSHOT_URL;
-}
 
 function sifaProfileSelfUri(did: string): string {
   return `at://${did}/${SIFA_PROFILE_SELF_COLLECTION}/${SIFA_PROFILE_SELF_RKEY}`;
@@ -51,36 +43,14 @@ async function hasSifaProfileSelfRecord(did: string): Promise<boolean> {
     return cached.hasProfile;
   }
 
-  let hasProfile = false;
-
-  // Try Slingshot first — it's a caching proxy that aggregates repo records,
-  // so it's typically faster and more reliable than hitting the author's PDS
-  // directly (which may be slow or unreachable).
-  try {
-    const params = new URLSearchParams({
-      repo: did,
-      collection: SIFA_PROFILE_SELF_COLLECTION,
-      rkey: SIFA_PROFILE_SELF_RKEY,
-    });
-    const url = `${slingshotBaseUrl()}/xrpc/com.atproto.repo.getRecord?${params}`;
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      headers: { Accept: "application/json" },
-    });
-    hasProfile = response.ok;
-  } catch {
-    hasProfile = false;
-  }
-
-  // Fall back to the author's PDS when Slingshot doesn't have the record.
-  if (!hasProfile) {
-    const uri = sifaProfileSelfUri(did);
-    const identity = await resolveIdentity(did);
-    if (identity.pds) {
-      const record = await fetchRepoRecord(identity.pds, uri);
-      if (record) hasProfile = true;
-    }
-  }
+  // Resolve the PDS up front so it's available as a fallback; Slingshot is
+  // tried first by fetchRepoRecordWithFallback (caching proxy, faster).
+  const identity = await resolveIdentity(did);
+  const record = await fetchRepoRecordWithFallback(
+    sifaProfileSelfUri(did),
+    identity.pds,
+  );
+  const hasProfile = record !== null;
 
   sifaCache.set(did, {
     hasProfile,
