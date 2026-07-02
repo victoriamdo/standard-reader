@@ -14,12 +14,14 @@ function safeEqual(a: string, b: string): boolean {
 /**
  * Verify an incoming ingestion request against the shared secret. Accepts the
  * HTTP Basic credential tap sends (`admin:<password>`) or a `Bearer <secret>`
- * token. When no secret is configured (local dev), requests are allowed.
+ * token. When no secret is configured, requests are allowed only in non-prod
+ * (local dev convenience); in production the gate fails closed.
  */
 export function verifyIngestAuth(request: Request): boolean {
   const secret = ingestConfig.webhookSecret;
   if (!secret) {
-    return true;
+    // Fail closed in production: a missing secret must never disable auth.
+    return process.env.NODE_ENV !== "production";
   }
   const header = request.headers.get("authorization");
   if (!header) {

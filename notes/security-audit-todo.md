@@ -37,7 +37,7 @@
   - **Fix:** Add SSRF guard rejecting private IP ranges (RFC 1918, link-local, loopback) in `fetchDiscoveryHintsFromPageUrl`. Consider restricting to publication URLs already in DB.
   - **Done:** Applied `assertSafeFetchUrl(url, { requireHttps: false })` in `fetchDiscoveryHintsFromPageUrl()` (`resolve-page-url.server.ts`) after the existing protocol check. Uses `requireHttps: false` because this path legitimately fetches HTTP publication URLs; the guard blocks private/loopback/link-local IPs and internal hostnames. Unsafe URLs return empty hints (matching existing error handling).
 
-- [ ] [H4 — Ingest webhook auth fails OPEN when secret unset](./security-audit.md#h4-ingest-webhook-auth-fails-open-when-secret-is-unset)
+- [x] [H4 — Ingest webhook auth fails OPEN when secret unset](./security-audit.md#h4-ingest-webhook-auth-fails-open-when-secret-is-unset)
   - **File:** `src/server/ingest/auth.ts:19-23`
   - **Fix:** Fail closed in production: `if (!secret) { return process.env.NODE_ENV !== "production"; }`. Log loud warning on startup with no secret in prod.
 

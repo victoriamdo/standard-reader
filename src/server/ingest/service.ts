@@ -585,6 +585,19 @@ const server = createServer((req, res) => {
 // over Railway's IPv6-only private network (`*.railway.internal`).
 server.listen(port(), "::", () => {
   console.info(`[ingest] listening on [::]:${port()}`);
+  if (!ingestConfig.webhookSecret) {
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "[ingest] FATAL: no INGEST_WEBHOOK_SECRET/TAP_ADMIN_PASSWORD set in production — " +
+          "ingest auth is disabled and all requests are rejected.",
+      );
+    } else {
+      console.warn(
+        "[ingest] WARNING: no INGEST_WEBHOOK_SECRET/TAP_ADMIN_PASSWORD set — " +
+          "ingest auth is disabled (dev-only).",
+      );
+    }
+  }
 });
 
 // Primary signal (publishers) + an optional second tap instance signaled on
