@@ -15,6 +15,7 @@ function openExternal(url: string) {
 
 export function LinkShareMenu({
   getLinkUrl,
+  ensureLinkUrl,
   trigger,
   onShare,
   isOpen,
@@ -22,6 +23,8 @@ export function LinkShareMenu({
   children,
 }: {
   getLinkUrl: () => string | null;
+  /** Lazily create the link URL on demand when a share action is taken. */
+  ensureLinkUrl?: () => Promise<string | null>;
   trigger: React.ReactNode;
   onShare?: () => void;
   isOpen?: boolean;
@@ -31,8 +34,13 @@ export function LinkShareMenu({
   const nativeShareAvailable = useNativeShareAvailable();
   const resolveLinkUrl = () => getLinkUrl();
 
-  const openShareUrl = (buildUrl: (linkUrl: string) => string) => {
-    const linkUrl = resolveLinkUrl();
+  // When ensureLinkUrl is provided, items are always enabled — the URL is
+  // created on press, not beforehand. Otherwise items disable until a URL is
+  // available.
+  const canShare = Boolean(ensureLinkUrl) || Boolean(resolveLinkUrl());
+
+  const openShareUrl = async (buildUrl: (linkUrl: string) => string) => {
+    const linkUrl = ensureLinkUrl ? await ensureLinkUrl() : resolveLinkUrl();
     if (!linkUrl) return;
     openExternal(buildUrl(linkUrl));
     onShare?.();
@@ -41,28 +49,25 @@ export function LinkShareMenu({
   return (
     <Menu trigger={trigger} isOpen={isOpen} onOpenChange={onOpenChange}>
       <MenuItem
-        isDisabled={!resolveLinkUrl()}
+        isDisabled={!canShare}
         onPress={() => {
-          openShareUrl(buildBlueskyComposeUrl);
+          void openShareUrl(buildBlueskyComposeUrl);
         }}
       >
         Share to Bluesky
       </MenuItem>
       <SubMenu
         trigger={
-          <MenuItem isDisabled={!resolveLinkUrl()}>
-            Share to Alternate Client
-          </MenuItem>
+          <MenuItem isDisabled={!canShare}>Share to Alternate Client</MenuItem>
         }
       >
         {AT_PROTO_COMPOSE_CLIENTS.map((client) => (
           <MenuItem
             key={client.id}
             onPress={() => {
-              const linkUrl = resolveLinkUrl();
-              if (!linkUrl) return;
-              openExternal(buildAtprotoComposeUrl(client.origin, linkUrl));
-              onShare?.();
+              void openShareUrl((linkUrl) =>
+                buildAtprotoComposeUrl(client.origin, linkUrl),
+              );
             }}
           >
             {client.label}
@@ -71,9 +76,9 @@ export function LinkShareMenu({
       </SubMenu>
       <MenuSeparator />
       <MenuItem
-        isDisabled={!resolveLinkUrl()}
+        isDisabled={!canShare}
         onPress={() => {
-          openShareUrl(buildDisperseShareUrl);
+          void openShareUrl(buildDisperseShareUrl);
         }}
       >
         Send to Disperse
@@ -82,13 +87,16 @@ export function LinkShareMenu({
         <>
           <MenuSeparator />
           <MenuItem
-            isDisabled={!resolveLinkUrl()}
+            isDisabled={!canShare}
             onPress={() => {
-              const linkUrl = resolveLinkUrl();
-              if (!linkUrl) return;
-              void shareLinkUrl(linkUrl).then((shared) => {
+              void (async () => {
+                const linkUrl = ensureLinkUrl
+                  ? await ensureLinkUrl()
+                  : resolveLinkUrl();
+                if (!linkUrl) return;
+                const shared = await shareLinkUrl(linkUrl);
                 if (shared) onShare?.();
-              });
+              })();
             }}
           >
             Share elsewhere

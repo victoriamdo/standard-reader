@@ -111,6 +111,7 @@ export function TextSelectionToolbar({
   );
   const [toolbar, setToolbar] = useState<ToolbarState | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [sharePending, setSharePending] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const { playFromSelection } = usePageReader();
 
@@ -161,24 +162,37 @@ export function TextSelectionToolbar({
     }, SYNC_SELECTION_DELAY_MS);
   }, [syncToolbarToSelection]);
 
+  // Clear the share URL when the selection changes so a fresh one is created
+  // only on the next explicit share action (not automatically on selection).
   useEffect(() => {
-    if (!toolbar) return;
+    setShareUrl(null);
+    setSharePending(false);
+  }, [toolbar]);
 
-    let cancelled = false;
-    void quoteShareApi
-      .createQuoteShare({ data: { documentUri, quote: toolbar.text } })
-      .then(({ id }) => {
-        if (cancelled) return;
-        setShareUrl(buildQuoteShareUrl(did, rkey, id));
-      })
-      .catch(() => {
-        if (!cancelled) setShareUrl(null);
+  const ensureShareUrl = useCallback(async (): Promise<string | null> => {
+    if (!toolbar) return null;
+    if (shareUrl) return shareUrl;
+    setSharePending(true);
+    try {
+      const { id } = await quoteShareApi.createQuoteShare({
+        data: { documentUri, quote: toolbar.text },
       });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [did, documentUri, rkey, toolbar]);
+      const url = buildQuoteShareUrl(did, rkey, id);
+      setShareUrl(url);
+      return url;
+    } catch {
+      toasts.add(
+        {
+          title: "Couldn't create share link",
+          variant: "critical",
+        },
+        { timeout: 3000 },
+      );
+      return null;
+    } finally {
+      setSharePending(false);
+    }
+  }, [did, documentUri, rkey, shareUrl, toolbar]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -255,9 +269,10 @@ export function TextSelectionToolbar({
     };
   }, [hideToolbar, shareMenuOpen, toolbar]);
 
-  const onCopyLinkPress = useCallback(() => {
-    if (!shareUrl) return;
-    void navigator.clipboard.writeText(shareUrl).then(() => {
+  const onCopyLinkPress = useCallback(async () => {
+    const url = await ensureShareUrl();
+    if (!url) return;
+    void navigator.clipboard.writeText(url).then(() => {
       toasts.add(
         {
           title: "Link copied",
@@ -268,7 +283,7 @@ export function TextSelectionToolbar({
         },
       );
     });
-  }, [shareUrl]);
+  }, [ensureShareUrl]);
 
   const dismissAfterShare = useCallback(() => {
     hideToolbar();
@@ -309,23 +324,19 @@ export function TextSelectionToolbar({
             variant="tertiary"
             size="lg"
             label="Copy link"
-            isDisabled={!shareUrl}
+            isDisabled={sharePending}
             onPress={onCopyLinkPress}
           >
             <LinkIcon size={18} />
           </IconButton>
           <LinkShareMenu
             getLinkUrl={() => shareUrl}
+            ensureLinkUrl={ensureShareUrl}
             isOpen={shareMenuOpen}
             onOpenChange={setShareMenuOpen}
             onShare={dismissAfterShare}
             trigger={
-              <IconButton
-                variant="tertiary"
-                size="lg"
-                label="Share"
-                isDisabled={!shareUrl}
-              >
+              <IconButton variant="tertiary" size="lg" label="Share">
                 <Share2 size={18} />
               </IconButton>
             }

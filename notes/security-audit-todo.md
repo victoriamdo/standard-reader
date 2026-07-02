@@ -45,9 +45,10 @@
 
 ## Medium
 
-- [ ] [M1 — `createQuoteShare` unauthenticated write to global table](./security-audit.md#m1-unauthenticated-write-to-global-quote_shares-table-no-auth-no-owner-no-rate-limit)
+- [x] [M1 — `createQuoteShare` unauthenticated write to global table](./security-audit.md#m1-unauthenticated-write-to-global-quote_shares-table-no-auth-no-owner-no-rate-limit)
   - **Files:** `src/integrations/tanstack-query/api-quote-share.functions.ts:13-15`, `src/server/reader/quote-shares.ts:16-50`
   - **Fix:** Add `requireAuthMiddleware`. Add per-reader/per-document rate limit. Consider scoping to owner DID.
+  - **Done:** Rate-limited per signed-in DID (10/min) and per unsigned-out IP (3/min) via in-memory `src/server/rate-limit.ts`. Quote-share URL creation moved from automatic-on-selection to explicit-share action only (`TextSelectionToolbar`). Authenticated via `getReaderDidForRequest` (lightweight DID lookup).
 
 - [ ] [M2 — No lexicon validation of firehose records before DB upsert](./security-audit.md#m2-no-lexicon-validation-of-firehose-records-before-db-upsert)
   - **Files:** `src/server/ingest/consumer.ts:68-195`, `src/server/ingest/handlers.ts:194-269`
