@@ -1,6 +1,7 @@
 /**
  * Dev/perf-only AT Proto sessions via Bluesky app password (`PasswordSession`).
- * Gated by `PERF_TEST_APP_PASSWORD` on the server — never set in production.
+ * Gated by `PERF_TEST_APP_PASSWORD` AND `NODE_ENV !== "production"` — the env
+ * var alone can never enable this path in a production deploy.
  */
 import type { Did } from "@atcute/lexicons";
 import type { PasswordSessionData } from "@atcute/password-session";
@@ -22,7 +23,10 @@ function storeIdentifier(did: Did): string {
 }
 
 export function isAppPasswordAuthEnabled(): boolean {
-  return Boolean(process.env.PERF_TEST_APP_PASSWORD?.trim());
+  return (
+    process.env.NODE_ENV !== "production" &&
+    Boolean(process.env.PERF_TEST_APP_PASSWORD?.trim())
+  );
 }
 
 function perfPdsService(): string {

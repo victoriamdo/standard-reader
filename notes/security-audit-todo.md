@@ -54,7 +54,7 @@
   - **File:** `src/db/index.ts:46`
   - **Fix:** Use `sslmode=verify-full` in connection string or set `ssl: { rejectUnauthorized: true }`.
 
-- [ ] [M5 — App-password auth backdoor enabled by single env var](./security-audit.md#m5-app-password-auth-backdoor-enabled-by-a-single-env-var)
+- [x] [M5 — App-password auth backdoor enabled by single env var](./security-audit.md#m5-app-password-auth-backdoor-enabled-by-a-single-env-var)
   - **Files:** `src/integrations/auth/app-password-session.server.ts:24-26`, `src/integrations/auth/restore-client.server.ts:78-84`
   - **Fix:** Hard-gate on `NODE_ENV !== "production"`. Remove dead "last resort" fallback at `restore-client.server.ts:91-98`.
 

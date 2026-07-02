@@ -88,14 +88,5 @@ async function restoreUncached(did: Did): Promise<Client | null> {
     return new Client({ handler: oauthSession });
   }
 
-  // Last resort: app-password when not already tried above.
-  if (!isAppPasswordAuthEnabled()) {
-    const appPasswordClient = await restoreAppPasswordClient(did);
-    if (!appPasswordClient) {
-      return null;
-    }
-    return new Client({ handler: appPasswordClient });
-  }
-
   return null;
 }
