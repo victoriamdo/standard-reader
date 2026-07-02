@@ -34,8 +34,9 @@ function isNeonConnection(connectionString: string): boolean {
  * long-running ingest worker via `DB_DRIVER=pg`). The worker processes events
  * concurrently, so size the pool for that; Neon's pooler (pgbouncer) endpoint
  * multiplexes these onto far fewer Postgres backends. Loopback connections run
- * without TLS; everything else (Neon) needs SSL — `require`-style (encrypt but
- * don't verify the chain), matching the verified connection string.
+ * without TLS; everything else (Neon) uses SSL with full certificate
+ * verification (`rejectUnauthorized: true`). Neon's certificates are signed
+ * by DigiCert, which is in Node's default trust store.
  */
 function createPgPool(connectionString: string): Pool {
   const isLocal = /@(localhost|127\.0\.0\.1|::1)[:/]/.test(connectionString);
@@ -43,7 +44,7 @@ function createPgPool(connectionString: string): Pool {
   return new Pool({
     connectionString,
     max: Number.isFinite(max) && max > 0 ? max : 16,
-    ssl: isLocal ? undefined : { rejectUnauthorized: false },
+    ssl: isLocal ? undefined : { rejectUnauthorized: true },
   });
 }
 

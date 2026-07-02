@@ -50,15 +50,7 @@
   - **Fix:** Add `requireAuthMiddleware`. Add per-reader/per-document rate limit. Consider scoping to owner DID.
   - **Done:** Rate-limited per signed-in DID (10/min) and per unsigned-out IP (3/min) via in-memory `src/server/rate-limit.ts`. Quote-share URL creation moved from automatic-on-selection to explicit-share action only (`TextSelectionToolbar`). Authenticated via `getReaderDidForRequest` (lightweight DID lookup).
 
-- [ ] [M2 — No lexicon validation of firehose records before DB upsert](./security-audit.md#m2-no-lexicon-validation-of-firehose-records-before-db-upsert)
-  - **Files:** `src/server/ingest/consumer.ts:68-195`, `src/server/ingest/handlers.ts:194-269`
-  - **Fix:** Max byte size check on serialized record (reject > 1MB). Array length caps (`.slice(0, 50)`). Field-level length truncation. Consider `assertValidRecord` for app-owned lexicons.
-
-- [ ] [M3 — Backfill/reconcile loops are unbounded](./security-audit.md#m3-backfillreconcile-loops-are-unbounded)
-  - **Files:** `src/server/atproto/fetch-record.ts:191-238`, `src/server/ingest/repo-sync.ts:199-275`, `src/server/ingest/service.ts:93-145`
-  - **Fix:** Add `MAX_BACKFILL_RECORDS` cap (e.g., 1000). Cap repos per `reconcileTrackedWithBackfill` run (`LIMIT 50`). Log when caps are hit.
-
-- [ ] [M4 — DB SSL certificate validation disabled](./security-audit.md#m4-db-ssl-certificate-validation-disabled)
+- [x] [M4 — DB SSL certificate validation disabled](./security-audit.md#m4-db-ssl-certificate-validation-disabled)
   - **File:** `src/db/index.ts:46`
   - **Fix:** Use `sslmode=verify-full` in connection string or set `ssl: { rejectUnauthorized: true }`.
 
@@ -74,10 +66,6 @@
   - **File:** `src/server/xrpc/errors.ts:38-45`
   - **Fix:** Return generic `"Internal error"` for non-`XRPCError` exceptions. Log full error server-side with `console.error`.
 
-- [ ] [M8 — Session cache allows revoked sessions for 30s](./security-audit.md#m8-session-cache-allows-revoked-sessions-for-up-to-30-seconds)
-  - **File:** `src/middleware/auth-session.server.ts:50-57, 234-277`
-  - **Fix:** Add `invalidateSessionCache(token)` deleting from all three `Map`s. Call during logout. Alternatively reduce TTL to ~5s.
-
 - [ ] [M9 — OAuth state store TOCTOU (non-atomic read-then-delete)](./security-audit.md#m9-oauth-state-store-toctou--non-atomic-read-then-delete-allows-state-replay)
   - **File:** `src/integrations/auth/atproto.ts:58-94` (`getStoreValue` with `consume: true`)
   - **Fix:** Use atomic delete-and-return: `db.delete(...).where(...).returning({ value, expiresAt })`.
@@ -89,10 +77,6 @@
 - [ ] [M11 — No rate limits on OG image generation, search, shiki](./security-audit.md#m11-no-rate-limits-on-og-image-generation-search-or-shiki-highlighting)
   - **Files:** `src/routes/api/og/article.tsx:45-102`, `src/integrations/tanstack-query/api-search.functions.ts:94-104`
   - **Fix:** Add in-memory token-bucket rate limiter per IP for OG image and search. Consider pre-generating OG images at ingest time.
-
-- [ ] [M12 — `runApiDocsExample` unauthenticated XRPC-execution surface](./security-audit.md#m12-runapidocsexample-exposes-an-unauthenticated-xrpc-execution-surface)
-  - **Files:** `src/integrations/tanstack-query/api-docs.functions.ts:19-27`, `src/server/api-docs/run-example.server.ts:188-257`
-  - **Fix:** Gate behind `requireAuthMiddleware`, or restrict to `NODE_ENV !== "production"`.
 
 ---
 
