@@ -298,9 +298,9 @@ export async function listRepoRecords(
 
   try {
     const records = await listRecordsFromHost(
+      pds,
       did,
       collection,
-      pds,
       false,
       limit,
     );
