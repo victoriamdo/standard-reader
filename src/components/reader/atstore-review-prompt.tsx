@@ -28,8 +28,9 @@ import { hasAtstoreReviewScope } from "../../integrations/auth/scope";
 import { atstoreReviewApi } from "../../integrations/tanstack-query/api-atstore-review.functions";
 import { user } from "../../integrations/tanstack-query/api-user.functions";
 import { buildAuthRedirectPath } from "../../utils/auth-redirect";
+import { Link } from "#/design-system/link";
 
-const RETURNING_READER_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const RETURNING_READER_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const shownPromptToastDids = new Set<string>();
 
 const styles = stylex.create({
@@ -224,8 +225,16 @@ export function AtstoreReviewPrompt() {
       >
         <DialogHeader>Leave a review</DialogHeader>
         <DialogDescription>
-          Sharing a review on the ATStore will help both us and other users see
-          what you think about Standard Reader.
+          Sharing a review on the{" "}
+          <Link
+            href="https://atstore.fyi/products/standard-reader"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            ATStore
+          </Link>{" "}
+          will help both us and other users see what you think about Standard
+          Reader.
         </DialogDescription>
         <Separator />
         <DialogBody style={styles.body}>
