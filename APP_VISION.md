@@ -231,6 +231,24 @@ Single search field with two modes (detected from input):
   preview card(s) → follow (including publications not yet in the index, fetched
   live from the author's PDS).
 
+### ATStore review prompt
+
+- **One-time returning-reader toast** — signed-in readers with an older account see
+  a small CTA toast asking whether they like Standard Reader and want to leave an
+  ATStore review. Clicking **Review** or dismissing the toast records that the
+  prompt was seen so it never shows again for that reader.
+- **Review modal** — captures a 1–5 star rating plus optional review text.
+- **Progressive auth on create** — the ATStore reviewer scope is **not** part of
+  the default Standard Reader login. It is requested only if the reader clicks
+  **Create** without already having the ATStore review permission.
+- **Separate review OAuth client** — the ATStore review upgrade uses its own
+  OAuth client metadata + callback path so the app's default login client
+  metadata remains unchanged while the one-off review flow can still request the
+  extra ATStore scope.
+- **Post-auth completion** — after OAuth returns, the app publishes the ATStore
+  review and redirects to a standalone thank-you page with a button back to the
+  page where the review flow started.
+
 ---
 
 ## 5. State model & data ownership
@@ -274,6 +292,9 @@ source of truth; Neon holds a derived view for speed and cross-network querying.
 - **Routing:** URL-backed routes (TanStack Router) for every view — home / latest / discover /
   search / article / publication — with real back/forward navigation and shareable links.
   _(The original prototype used an in-memory view stack; the port moves to real URLs.)_
+- **ATStore review prompt state:** the one-time toast dismissal lives on
+  `user.atstore_review_prompt_dismissed`, so once a reader dismisses the prompt
+  (or clicks Review) it stays suppressed across devices and sessions.
 
 ### OAuth scopes
 
@@ -293,6 +314,13 @@ upstream `site.standard.auth*` sets (published by standard.site — see
 `blob:*/*` (image upload) is requested as a granular scope alongside the basic tier — it
 cannot live inside a permission set. The OAuth client metadata `scope` field declares the
 union of all three tiers so any may be requested at authorize time.
+
+**ATStore reviews** use a separate, progressive ATStore reviewer authorization flow.
+That external scope is requested only from the review modal's **Create** action and is
+never part of the app's default login UX. The upgrade runs through a dedicated
+review-only OAuth client metadata/callback path rather than widening the default
+client metadata scope. Granted scopes may come back either as `include:` sets or
+expanded `repo:` tokens, so permission checks must accept both formats.
 
 **Progressive scope upgrade:** the collections tier is opt-in. When a reader opens
 `/collections/new` or `/collections/edit/$rkey` without the collections scope, a shared

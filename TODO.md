@@ -420,6 +420,7 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
       external publication URL. The "followed by people you follow" social-proof line is tracked in
       §8 (post-v1 Tier 1).
 - [x] **Add / Follow modal** — Search field + publication rows (no tabs); uses `searchPublications` API; trending suggestions when empty.
+- [x] **ATStore review prompt** — one-time returning-reader toast, review modal (rating + optional body), progressive ATStore reviewer reauth on **Create** only, automatic post-auth review publish, standalone thank-you page with a return button, a dedicated review-only OAuth metadata/callback flow so default login scopes stay untouched, and granted-scope detection that accepts both `include:` and expanded `repo:` scope formats.
 - [x] Global follow toggle reflects everywhere instantly (optimistic).
 - [x] Theme picker (light / dark / system) + editorial dark tokens + Shiki `standard-reader-dark`.
 - [x] Theme tokens / dark mode parity with prototype (remaining hardcoded surfaces).

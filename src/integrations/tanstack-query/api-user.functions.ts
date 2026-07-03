@@ -111,6 +111,7 @@ async function loadSessionFromToken(sessionToken: string) {
           openCollectionsInMagazine: true,
           readingTypography: true,
           collectionsAuthoringEnabled: true,
+          atstoreReviewPromptDismissed: true,
         },
         with: {
           accounts: {
@@ -185,6 +186,7 @@ async function loadSessionFromToken(sessionToken: string) {
     openCollectionsInMagazine: userRow.openCollectionsInMagazine,
     readingTypography: userRow.readingTypography,
     collectionsAuthoringEnabled: userRow.collectionsAuthoringEnabled,
+    atstoreReviewPromptDismissed: userRow.atstoreReviewPromptDismissed,
     grantedScope,
     client,
   };
@@ -261,6 +263,7 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
             openCollectionsInMagazine: true,
             readingTypography: true,
             collectionsAuthoringEnabled: true,
+            atstoreReviewPromptDismissed: true,
           },
           with: {
             accounts: {
@@ -327,6 +330,12 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
           expiresAt: sessionRow.expiresAt,
         },
         collectionsAuthoringEnabled: userRow.collectionsAuthoringEnabled,
+        atstoreReviewPromptDismissed:
+          (
+            userRow as typeof userRow & {
+              atstoreReviewPromptDismissed?: boolean | null;
+            }
+          ).atstoreReviewPromptDismissed === true,
         // Granted OAuth scope snapshotted on the callback (`account.scope`).
         // The UI gates collections authoring on this — it's the source of truth
         // for "the reader has actually accepted the collections tier".
@@ -379,6 +388,7 @@ const getSession = createServerFn({ method: "GET" }).handler(async () => {
     user: loaded.user,
     session: loaded.session,
     collectionsAuthoringEnabled: loaded.collectionsAuthoringEnabled,
+    atstoreReviewPromptDismissed: loaded.atstoreReviewPromptDismissed === true,
     grantedScope: loaded.grantedScope,
   };
 });
@@ -768,6 +778,24 @@ const setHomeScopePreference = createServerFn({ method: "POST" })
     return { scope: data.scope };
   });
 
+const dismissAtstoreReviewPrompt = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
+  .handler(async ({ context }) => {
+    const { getReaderContextForRequest } =
+      await import("#/middleware/auth-session.server");
+    const reader = await getReaderContextForRequest(getRequest());
+    if (!reader) {
+      throw new Error("Unauthorized");
+    }
+
+    await context.db
+      .update(context.schema.user)
+      .set({ atstoreReviewPromptDismissed: true })
+      .where(eq(context.schema.user.id, reader.userId));
+
+    return { dismissed: true };
+  });
+
 const signOut = createServerFn({ method: "POST" })
   .middleware([dbMiddleware])
   .handler(async ({ context }) => {
@@ -835,5 +863,6 @@ export const user = {
   getHomeScopePreference,
   getHomeScopePreferenceQueryOptions,
   setHomeScopePreference,
+  dismissAtstoreReviewPrompt,
   signOut,
 };

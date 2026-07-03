@@ -182,6 +182,9 @@ function ToastItem({ toast }: { toast: QueuedToast<ToastContentType> }) {
           size="sm"
           variant="tertiary"
           slot="close"
+          onPress={() => {
+            toast.content.onClose?.();
+          }}
         >
           <X />
         </IconButton>

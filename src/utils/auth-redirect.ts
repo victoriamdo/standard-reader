@@ -39,7 +39,15 @@ export function sanitizeAuthRedirectTarget(
   candidate: string | undefined,
   requestUrl: string,
 ): string {
-  const origin = new URL(requestUrl).origin;
+  let origin: string;
+  try {
+    origin = new URL(requestUrl).origin;
+  } catch {
+    // requestUrl is a relative path (e.g. from TanStack Router's
+    // location.href in a route loader, which is pathname+search+hash, not
+    // a full URL). Use a dummy origin so we can still parse the candidate.
+    origin = "http://localhost";
+  }
   return toSafePathname(candidate ?? "", origin) ?? DEFAULT_AUTH_REDIRECT;
 }
 

@@ -56,7 +56,7 @@ const styles = stylex.create({
   description: {
     color: uiColor.text1,
     marginBottom: verticalSpace["3xl"],
-    marginTop: verticalSpace["3xl"],
+    marginTop: verticalSpace["2xl"],
     paddingLeft: horizontalSpace["3xl"],
     paddingRight: horizontalSpace["3xl"],
   },
@@ -161,7 +161,7 @@ export const DialogDescription = ({
   style,
 }: DialogDescriptionProps) => {
   return (
-    <div {...stylex.props(styles.description, typeramp.body, style)}>
+    <div {...stylex.props(typeramp.body, styles.description, style)}>
       {children}
     </div>
   );

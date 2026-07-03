@@ -20,7 +20,7 @@ import { db } from "#/db/index.server";
 import * as schema from "#/db/schema";
 import { eq, like } from "drizzle-orm";
 
-import { clientMetadataScope } from "./scope";
+import { atstoreReviewClientMetadataScope, clientMetadataScope } from "./scope";
 
 const OAUTH_STORE_PREFIX = "atproto-oauth";
 const OAUTH_STATE_TTL_MS = 15 * 60_000;
@@ -220,73 +220,105 @@ function isPublicClient(): boolean {
   );
 }
 
-function getRedirectUri(): string {
-  const baseUrl = getBaseUrl();
-  if (isPublicClient()) {
-    return (
-      baseUrl.replace("localhost", "127.0.0.1").replace(/\/$/, "") +
-      "/api/auth/atproto/callback"
-    );
-  }
-  return `${baseUrl}/api/auth/atproto/callback`;
-}
+type AtprotoOAuthClientKind = "default" | "review";
 
 let _atprotoOAuth: InstanceType<typeof OAuthClient> | null = null;
+let _atprotoReviewOAuth: InstanceType<typeof OAuthClient> | null = null;
 
-function getAtprotoOAuth(): InstanceType<typeof OAuthClient> {
-  if (!_atprotoOAuth) {
-    const baseUrl = getBaseUrl();
-    const redirectUri = getRedirectUri();
-    const isPublic = isPublicClient();
+function metadataScopeForKind(kind: AtprotoOAuthClientKind): Array<string> {
+  if (kind === "review") {
+    return atstoreReviewClientMetadataScope;
+  }
+  return clientMetadataScope;
+}
 
-    if (isPublic) {
-      _atprotoOAuth = new OAuthClient({
-        metadata: {
-          redirect_uris: [redirectUri],
-          scope: clientMetadataScope,
-        },
-        stores: persistentOAuthStores,
-        actorResolver: new LocalActorResolver({
-          handleResolver: new CompositeHandleResolver({
-            methods: {
-              dns: new NodeDnsHandleResolver(),
-              http: new WellKnownHandleResolver(),
-            },
-          }),
-          didDocumentResolver: new CompositeDidDocumentResolver({
-            methods: {
-              plc: new PlcDidDocumentResolver(),
-              web: new WebDidDocumentResolver(),
-            },
-          }),
+function routeBaseForKind(kind: AtprotoOAuthClientKind): string {
+  if (kind === "review") {
+    return "/api/auth/atproto/review";
+  }
+  return "/api/auth/atproto";
+}
+
+function getRedirectUri(kind: AtprotoOAuthClientKind = "default"): string {
+  const baseUrl = getBaseUrl();
+  const routeBase = routeBaseForKind(kind);
+  const normalizedBaseUrl = baseUrl
+    .replace("localhost", "127.0.0.1")
+    .replace(/\/$/, "");
+  return `${normalizedBaseUrl}${routeBase}/callback`;
+}
+
+function createOAuthClient(
+  kind: AtprotoOAuthClientKind,
+): InstanceType<typeof OAuthClient> {
+  const baseUrl = getBaseUrl();
+  const redirectUri = getRedirectUri(kind);
+  const isPublic = isPublicClient();
+  const metadataScope = metadataScopeForKind(kind);
+  const routeBase = routeBaseForKind(kind);
+
+  if (isPublic) {
+    return new OAuthClient({
+      metadata: {
+        redirect_uris: [redirectUri],
+        scope: metadataScope,
+      },
+      stores: persistentOAuthStores,
+      actorResolver: new LocalActorResolver({
+        handleResolver: new CompositeHandleResolver({
+          methods: {
+            dns: new NodeDnsHandleResolver(),
+            http: new WellKnownHandleResolver(),
+          },
         }),
-      });
-    } else {
-      _atprotoOAuth = new OAuthClient({
-        metadata: {
-          client_id: `${baseUrl}/api/auth/atproto/metadata.json`,
-          redirect_uris: [redirectUri],
-          scope: clientMetadataScope,
-          jwks_uri: `${baseUrl}/api/auth/atproto/jwks.json`,
-        },
-        keyset: [getPrivateKey()],
-        stores: persistentOAuthStores,
-        actorResolver: new LocalActorResolver({
-          handleResolver: new CompositeHandleResolver({
-            methods: {
-              dns: new NodeDnsHandleResolver(),
-              http: new WellKnownHandleResolver(),
-            },
-          }),
-          didDocumentResolver: new CompositeDidDocumentResolver({
-            methods: {
-              plc: new PlcDidDocumentResolver(),
-              web: new WebDidDocumentResolver(),
-            },
-          }),
+        didDocumentResolver: new CompositeDidDocumentResolver({
+          methods: {
+            plc: new PlcDidDocumentResolver(),
+            web: new WebDidDocumentResolver(),
+          },
         }),
-      });
+      }),
+    });
+  }
+
+  return new OAuthClient({
+    metadata: {
+      client_id: `${baseUrl}${routeBase}/metadata.json`,
+      redirect_uris: [redirectUri],
+      scope: metadataScope,
+      jwks_uri: `${baseUrl}/api/auth/atproto/jwks.json`,
+    },
+    keyset: [getPrivateKey()],
+    stores: persistentOAuthStores,
+    actorResolver: new LocalActorResolver({
+      handleResolver: new CompositeHandleResolver({
+        methods: {
+          dns: new NodeDnsHandleResolver(),
+          http: new WellKnownHandleResolver(),
+        },
+      }),
+      didDocumentResolver: new CompositeDidDocumentResolver({
+        methods: {
+          plc: new PlcDidDocumentResolver(),
+          web: new WebDidDocumentResolver(),
+        },
+      }),
+    }),
+  });
+}
+
+function getAtprotoOAuth(
+  kind: AtprotoOAuthClientKind = "default",
+): InstanceType<typeof OAuthClient> {
+  if (kind === "review") {
+    if (!_atprotoReviewOAuth) {
+      _atprotoReviewOAuth = createOAuthClient("review");
     }
+    return _atprotoReviewOAuth;
+  }
+
+  if (!_atprotoOAuth) {
+    _atprotoOAuth = createOAuthClient("default");
   }
   return _atprotoOAuth;
 }
@@ -297,18 +329,51 @@ export const atprotoOAuth = new Proxy({} as InstanceType<typeof OAuthClient>, {
   },
 });
 
+export const atprotoReviewOAuth = new Proxy(
+  {} as InstanceType<typeof OAuthClient>,
+  {
+    get(_target, prop) {
+      return getAtprotoOAuth("review")[
+        prop as keyof InstanceType<typeof OAuthClient>
+      ];
+    },
+  },
+);
+
 export async function restoreAtprotoSession(
   did: Did,
 ): Promise<Awaited<ReturnType<OAuthClient["restore"]>> | null> {
-  try {
-    const client = getAtprotoOAuth();
-    return await client.restore(did);
-  } catch {
-    return null;
+  for (const kind of ["default", "review"] as const) {
+    try {
+      const client = getAtprotoOAuth(kind);
+      const restored = await client.restore(did);
+      if (restored) {
+        return restored;
+      }
+    } catch {
+      // Try the next client flavor. The review progressive-auth flow uses a
+      // separate OAuth client/metadata endpoint so the default login client
+      // metadata stays unchanged.
+    }
   }
+  return null;
 }
 
 export async function revokeAtprotoSession(did: Did): Promise<void> {
-  const client = getAtprotoOAuth();
-  await client.revoke(did);
+  let revoked = false;
+  let lastError: unknown;
+
+  for (const kind of ["default", "review"] as const) {
+    try {
+      const client = getAtprotoOAuth(kind);
+      await client.revoke(did);
+      revoked = true;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (!revoked && lastError) {
+    throw lastError;
+  }
 }

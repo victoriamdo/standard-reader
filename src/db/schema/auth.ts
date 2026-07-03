@@ -45,6 +45,8 @@ export const user = pgTable("user", {
    * upgrade flow; persists across logins so subsequent authorize requests
    * silently include the expanded scopes. */
   collectionsAuthoringEnabled: boolean("collections_authoring_enabled"),
+  /** `true` stops the one-time ATStore review prompt toast from showing again. */
+  atstoreReviewPromptDismissed: boolean("atstore_review_prompt_dismissed"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

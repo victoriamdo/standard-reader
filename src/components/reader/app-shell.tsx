@@ -65,6 +65,7 @@ import { ToastRegion } from "../../design-system/toast";
 import { NavbarAuth } from "../NavbarAuth";
 import { SiteFooter } from "../site-footer";
 import { AddPublicationModal } from "./add-publication-modal";
+import { AtstoreReviewPrompt } from "./atstore-review-prompt";
 import { BrandWordmark } from "./brand-wordmark";
 import { initials, listLinkParams, publicationLinkParams } from "./format";
 import { ListEditModal } from "./list-edit-modal";
@@ -794,7 +795,9 @@ function BottomNav({
   hasUnread: boolean;
   hasSaved: boolean;
 }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = useRouterState({
+    select: (s: { location: { pathname: string } }) => s.location.pathname,
+  });
   const activeIndex = items.findIndex((item) =>
     navItemActive(pathname, item.to),
   );
@@ -912,7 +915,9 @@ function SubscriptionsSkeleton() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = useRouterState({
+    select: (s: { location: { pathname: string } }) => s.location.pathname,
+  });
   const onAbout = pathname === "/about";
   const onPrivacyExtension = pathname === "/privacy/extension";
   const onPrivacy = pathname === "/privacy" || onPrivacyExtension;
@@ -1128,6 +1133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           list={null}
           following={following}
         />
+        <AtstoreReviewPrompt />
         <ToastRegion />
       </div>
     </PageReaderProvider>

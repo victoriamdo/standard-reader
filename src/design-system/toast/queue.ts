@@ -13,6 +13,7 @@ export interface ToastContentType {
     variant?: ButtonVariant;
     onPress: () => void;
   };
+  onClose?: () => void;
 }
 
 export const toasts = new ToastQueue<ToastContentType>({

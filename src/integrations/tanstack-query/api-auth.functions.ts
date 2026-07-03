@@ -6,9 +6,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import {
   atprotoOAuth,
+  atprotoReviewOAuth,
   revokeAtprotoSession,
 } from "#/integrations/auth/atproto";
 import {
+  ATSTORE_REVIEW_SCOPE,
+  basicScope,
+  collectionsScope,
+  formatOAuthScope,
   hasCollectionsScope,
   resolveAuthScopeForUser,
 } from "#/integrations/auth/scope";
@@ -250,10 +255,76 @@ const upgradeToCollections = createServerFn({ method: "POST" })
     return { authorizationUrl: url.toString() };
   });
 
+const upgradeToAtstoreReview = createServerFn({ method: "POST" })
+  .validator(upgradeToCollectionsInputSchema)
+  .handler(async ({ data }) => {
+    const request = getRequest();
+    const [{ db }, schema, { getReaderContextForRequest }] = await Promise.all([
+      import("#/db/index.server"),
+      import("#/db/schema"),
+      import("#/middleware/auth-session.server"),
+    ]);
+
+    const reader = await getReaderContextForRequest(request);
+    if (!reader) {
+      throw new Error("Unauthorized");
+    }
+
+    const row = await db.query.user.findFirst({
+      where: eq(schema.user.id, reader.userId),
+      columns: { collectionsAuthoringEnabled: true },
+      with: {
+        accounts: {
+          columns: { scope: true, providerId: true },
+          where: eq(schema.account.providerId, "atproto"),
+        },
+      },
+    });
+    const atprotoAccount = row?.accounts.find(
+      (a) => a.providerId === "atproto",
+    );
+    const requestCollections =
+      row?.collectionsAuthoringEnabled === true ||
+      hasCollectionsScope(atprotoAccount?.scope ?? null);
+    const baseScope = requestCollections ? collectionsScope : basicScope;
+
+    try {
+      await revokeAtprotoSession(
+        reader.did as Parameters<typeof revokeAtprotoSession>[0],
+      );
+    } catch (error) {
+      console.warn(
+        "Failed to revoke Atproto session during ATStore review upgrade:",
+        error,
+      );
+    }
+
+    const redirectTarget = sanitizeAuthRedirectTarget(
+      data.redirect,
+      request.url,
+    );
+
+    const { url } = await atprotoReviewOAuth.authorize({
+      target: {
+        type: "account",
+        identifier: reader.did as ActorIdentifier,
+      },
+      scope: formatOAuthScope([
+        ...new Set([...baseScope, ATSTORE_REVIEW_SCOPE]),
+      ]),
+      state: {
+        redirect: redirectTarget,
+      },
+    });
+
+    return { authorizationUrl: url.toString() };
+  });
+
 export const auth = {
   authorize,
   signup,
   upgradeToCollections,
+  upgradeToAtstoreReview,
   getSavedHandles: getSavedHandlesServer,
   getSavedHandlesQueryOptions,
 };

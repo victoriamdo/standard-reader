@@ -31,6 +31,12 @@ const AUTH_BASIC_FEATURES = "include:app.standard-reader.authBasicFeatures";
 const AUTH_COLLECTIONS = "include:app.standard-reader.authCollections";
 const SITE_AUTH_SOCIAL = "include:site.standard.authSocial";
 const SITE_AUTH_FULL = "include:site.standard.authFull";
+/**
+ * ATStore's docs refer to an `authReviewer` bundle, but the published least-
+ * privilege permission set currently discoverable for third-party review
+ * submission is `authThirdPartyReviews`.
+ */
+export const ATSTORE_REVIEW_SCOPE = "include:fyi.atstore.authThirdPartyReviews";
 
 /**
  * Basic sign-in scope — what 95% of readers need. Covers app-owned reader-state
@@ -70,6 +76,15 @@ export const subscribeScope = [ATPROTO_BASE_SCOPE, SITE_AUTH_SOCIAL];
  */
 export const clientMetadataScope = [
   ...new Set([...basicScope, ...collectionsScope, ...subscribeScope]),
+];
+
+/**
+ * Separate client-metadata scope for the ATStore review progressive-auth flow.
+ * This keeps the default login client metadata unchanged while still letting a
+ * dedicated review-only OAuth client request the extra ATStore reviewer scope.
+ */
+export const atstoreReviewClientMetadataScope = [
+  ...new Set([...clientMetadataScope, ATSTORE_REVIEW_SCOPE]),
 ];
 
 export type AuthScopeIntent = "basic" | "collections" | "subscribe";
@@ -167,17 +182,31 @@ export function hasCollectionsScope(
 }
 
 /**
- * Parse a single `repo?collection=A&collection=B` scope token into the set of
- * collection NSIDs it grants. Returns an empty set for non-repo tokens
- * (`atproto`, `blob?...`, `include:...`).
+ * Parse repo scope tokens into the set of collection NSIDs they grant.
+ *
+ * ATProto scope strings appear in two shapes in the wild:
+ * - `repo?collection=A&collection=B&action=create`
+ * - `repo:A?action=create`
+ *
+ * Accept both here so granted-scope checks keep working regardless of which
+ * serialization the auth server returns in `tokenInfo.scope`.
  */
 function parseRepoScopeCollections(token: string): Set<string> {
   const q = token.indexOf("?");
-  if (q === -1) return new Set();
-  // Only `repo?...` tokens carry collections; `blob?...` doesn't.
-  if (!token.startsWith("repo?")) return new Set();
-  const params = token.slice(q + 1).split("&");
   const nsids = new Set<string>();
+
+  if (token.startsWith("repo:")) {
+    const collection = token.slice("repo:".length, q === -1 ? undefined : q);
+    if (collection) {
+      nsids.add(decodeURIComponent(collection));
+    }
+    return nsids;
+  }
+
+  if (q === -1) return nsids;
+  if (!token.startsWith("repo?")) return nsids;
+
+  const params = token.slice(q + 1).split("&");
   for (const p of params) {
     const eq = p.indexOf("=");
     if (eq === -1) continue;
@@ -186,4 +215,59 @@ function parseRepoScopeCollections(token: string): Set<string> {
     }
   }
   return nsids;
+}
+
+function parseRepoScopeActions(token: string): Set<string> {
+  const q = token.indexOf("?");
+  if (q === -1) return new Set();
+  if (!token.startsWith("repo?") && !token.startsWith("repo:")) {
+    return new Set();
+  }
+  const params = token.slice(q + 1).split("&");
+  const actions = new Set<string>();
+  for (const p of params) {
+    const eq = p.indexOf("=");
+    if (eq === -1) continue;
+    if (p.slice(0, eq) === "action") {
+      actions.add(decodeURIComponent(p.slice(eq + 1)));
+    }
+  }
+  return actions;
+}
+
+function repoScopeAllowsCreateForCollection(
+  token: string,
+  collection: string,
+): boolean {
+  const collections = parseRepoScopeCollections(token);
+  if (!collections.has(collection)) return false;
+  const actions = parseRepoScopeActions(token);
+  return actions.size === 0 || actions.has("create");
+}
+
+/**
+ * Detect whether the granted scope includes the ATStore review writer tier.
+ * Accept the published third-party review set, the broader ATStore basic set,
+ * the docs alias (`authReviewer`), or the PDS-expanded granular repo scopes.
+ */
+export function hasAtstoreReviewScope(
+  grantedScope: string | null | undefined,
+): boolean {
+  if (!grantedScope) return false;
+  const tokens = grantedScope.split(/\s+/);
+  if (
+    tokens.includes("include:fyi.atstore.authThirdPartyReviews") ||
+    tokens.includes("include:fyi.atstore.authBasic") ||
+    tokens.includes("include:fyi.atstore.authReviewer")
+  ) {
+    return true;
+  }
+  return (
+    tokens.some((token) =>
+      repoScopeAllowsCreateForCollection(token, "fyi.atstore.profile"),
+    ) &&
+    tokens.some((token) =>
+      repoScopeAllowsCreateForCollection(token, "fyi.atstore.listing.review"),
+    )
+  );
 }
