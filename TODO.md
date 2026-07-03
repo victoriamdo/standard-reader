@@ -520,6 +520,12 @@ Backend/API exists; UI or copy is missing.
 - [x] **Content rendering gaps** — PCKT gallery renderer (`blog.pckt.block.gallery`); prod scan
       found 54 documents — implemented grid/list/carousel/masonry layouts via
       [`pckt-gallery.tsx`](src/components/reader/content/renderers/pckt-gallery.tsx).
+- [x] **Leaflet image galleries + lightbox polish** — added `pub.leaflet.blocks.imageGallery`
+      rendering with grid/carousel layouts, Leaflet-style shared lightbox for galleries + single
+      images, CSS `grid-lanes` with plain CSS Grid fallback, and a shared-element open transition
+      from thumbnail → lightbox in
+      [`leaflet-image-gallery.tsx`](src/components/reader/content/renderers/leaflet-image-gallery.tsx)
+      and [`src/design-system/lightbox/index.tsx`](src/design-system/lightbox/index.tsx).
 - [x] **`at.markpub.markdown`** — full [Markpub.at](https://markpub.at/) support: dedicated
       renderer (`src/lib/markpub/*`, [`markpub-content.tsx`](src/components/reader/content/renderers/markpub-content.tsx)),
       flavor/extensions, facet/lens preprocessing, ingest-time `text.textBlob` fetch

@@ -19,7 +19,6 @@ import {
 import type { StyleXComponentProps } from "../theme/types";
 
 import { IconButton } from "../icon-button";
-import { ProgressCircle } from "../progress-circle";
 import {
   animationDuration,
   animationTimingFunction,
@@ -32,75 +31,33 @@ import {
   size,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import { fontFamily, fontSize } from "../theme/typography.stylex";
 
-const SLIDE_DURATION_MS = 250;
+const ALT_TRANSITION_DURATION_MS = 200;
+const CONTROL_SETTLE_DURATION_MS = 80;
 
-function prefersReducedMotion() {
-  return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+type CaptionPhase = "entering" | "active" | "exiting";
+
+interface CaptionItem {
+  key: number;
+  text: string;
+  phase: CaptionPhase;
 }
 
-function LightboxImage({
-  src,
-  alt,
-  presentation = false,
-}: {
-  src: string;
-  alt: string;
-  presentation?: boolean;
-}) {
-  const [loaded, setLoaded] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
-
-  useEffect(() => {
-    setLoaded(false);
-  }, [src]);
-
-  useLayoutEffect(() => {
-    const img = imgRef.current;
-    if (img?.complete && img.naturalWidth > 0) {
-      setLoaded(true);
-    }
-  }, [src]);
-
-  return (
-    <div
-      {...stylex.props(
-        styles.imageFrame,
-        loaded ? null : styles.imageFrameLoading,
-      )}
-    >
-      {loaded ? null : (
-        <div {...stylex.props(styles.loadingOverlay)}>
-          <ProgressCircle
-            isIndeterminate
-            size="lg"
-            aria-label="Loading image"
-          />
-        </div>
-      )}
-      {/* eslint-disable-next-line jsx-a11y/alt-text -- alt passed via prop; empty when presentation */}
-      <img
-        ref={imgRef}
-        src={src}
-        alt={presentation ? "" : alt}
-        role={presentation ? "presentation" : undefined}
-        onLoad={() => setLoaded(true)}
-        onError={() => setLoaded(true)}
-        {...stylex.props(styles.image, loaded ? null : styles.imageHidden)}
-      />
-    </div>
-  );
+interface PendingCaption {
+  key: number;
+  text: string;
 }
 
 const styles = stylex.create({
   overlay: {
     inset: 0,
-    alignItems: "center",
+    alignItems: "stretch",
     animationDuration: animationDuration.default,
     animationName: animations.fadeIn,
     animationTimingFunction: animationTimingFunction.easeIn,
+    backgroundColor: "light-dark(rgba(4, 1, 1, 0.72), rgba(0, 0, 0, 0.88))",
     display: "flex",
-    justifyContent: "center",
     opacity: {
       default: 1,
       ":is([data-exiting])": 0,
@@ -119,81 +76,18 @@ const styles = stylex.create({
   },
   modal: {
     outline: "none",
-    alignItems: "center",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
     position: "relative",
     zIndex: 1,
-    height: "fit-content",
-    maxHeight: "90vh",
-    maxWidth: "90vw",
-    // Shrink to fit content so backdrop remains clickable around the edges
-    width: "fit-content",
+    height: "100vh",
+    width: "100vw",
   },
   dialog: {
     outline: "none",
-    alignItems: "center",
     display: "flex",
     flexDirection: "column",
-    flexGrow: 1,
-    justifyContent: "center",
-    position: "relative",
-    minHeight: 0,
-  },
-  imageWrapper: {
-    overflow: "hidden",
-    alignItems: "center",
-    display: "flex",
-    flexGrow: 1,
-    justifyContent: "center",
-    position: "relative",
-    maxHeight: "100%",
-    maxWidth: "100%",
-    minWidth: 0,
-  },
-  image: {
-    objectFit: "contain",
-    height: "auto",
-    maxHeight: "90vh",
-    maxWidth: "100%",
-    width: "auto",
-  },
-  imageHidden: {
-    opacity: 0,
-  },
-  imageFrame: {
-    alignItems: "center",
-    display: "flex",
-    justifyContent: "center",
-    position: "relative",
-  },
-  imageFrameLoading: {
-    minHeight: "40vh",
-    minWidth: size["4xl"],
-  },
-  loadingOverlay: {
-    inset: 0,
-    alignItems: "center",
-    display: "flex",
-    justifyContent: "center",
-    position: "absolute",
-    zIndex: 1,
-  },
-  imageLayer: {
-    inset: 0,
-    alignItems: "center",
-    display: "flex",
-    justifyContent: "center",
-    position: "absolute",
     height: "100%",
+    minHeight: 0,
     width: "100%",
-  },
-  imageLayerOutgoing: {
-    zIndex: 2,
-  },
-  imageLayerIncoming: {
-    zIndex: 1,
   },
   closeButton: {
     position: "fixed",
@@ -204,32 +98,127 @@ const styles = stylex.create({
   hiddenTrigger: {
     display: "none",
   },
-  contentRow: {
+  content: {
     gap: gap["2xl"],
     alignItems: "center",
     display: "flex",
+    flexDirection: "column",
     flexGrow: 1,
     justifyContent: "center",
     minHeight: 0,
+    paddingBottom: verticalSpace["3xl"],
+    paddingLeft: horizontalSpace["2xl"],
+    paddingRight: horizontalSpace["2xl"],
+    paddingTop: verticalSpace["6xl"],
+    width: "100%",
   },
-  navButton: {
+  track: {
+    scrollSnapType: "x mandatory",
+    display: "grid",
+    flexGrow: 1,
+    gridAutoColumns: "100%",
+    gridAutoFlow: "column",
+    minHeight: 0,
+    overflowX: "auto",
+    width: "100%",
+  },
+  slide: {
+    alignItems: "center",
+    display: "flex",
+    justifyContent: "center",
+    scrollSnapAlign: "center",
+    scrollSnapStop: "always",
+    minHeight: 0,
+    width: "100%",
+  },
+  slideInner: {
+    alignItems: "center",
+    display: "flex",
+    justifyContent: "center",
+    maxWidth: "100%",
+    minHeight: 0,
+  },
+  slideImageFrame: {
+    alignItems: "center",
+    display: "flex",
+    justifyContent: "center",
+    maxHeight: "72vh",
+    maxWidth: "100%",
+  },
+  slideImage: {
+    objectFit: "contain",
+    height: "auto",
+    maxHeight: "72vh",
+    maxWidth: "100%",
+    width: "auto",
+  },
+  captionRegion: {
+    alignItems: "center",
+    display: "grid",
+    justifyItems: "center",
+    maxWidth: "min(100%, 42rem)",
+    minHeight: "calc(2em * 1.2)",
+    width: "100%",
+  },
+  captionText: {
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.base,
+    gridColumnStart: "1",
+    gridRowStart: "1",
+    lineHeight: 1.2,
+    textAlign: "center",
+    whiteSpace: "pre-wrap",
+    maxWidth: "100%",
+  },
+  captionTextEntering: {
+    animationDuration: animationDuration.slow,
+    animationName: animations.fadeIn,
+    animationTimingFunction: animationTimingFunction.easeOut,
+    opacity: 1,
+  },
+  captionTextExiting: {
+    animationDuration: animationDuration.slow,
+    animationName: animations.fadeOut,
+    animationTimingFunction: animationTimingFunction.easeIn,
+    opacity: 0,
+    pointerEvents: "none",
+  },
+  controls: {
+    gap: gap.lg,
+    alignItems: "center",
+    display: "flex",
     flexShrink: 0,
+    justifyContent: "center",
+  },
+  counter: {
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.sm,
+    textAlign: "center",
+    minWidth: size["4xl"],
   },
 });
 
-export interface LightboxProps extends StyleXComponentProps<object> {
-  /** Whether the lightbox is open */
-  isOpen: boolean;
-  /** Called when the lightbox should close */
-  onOpenChange: (isOpen: boolean) => void;
-  /** Array of image URLs to display */
-  images: Array<string>;
-  /** Initial index when opening (default 0) */
-  initialIndex?: number;
-  /** Alt text for the current image */
+export interface LightboxImage {
+  src: string;
   alt?: string;
-  /** Trigger element to open the lightbox */
+  transitionName?: string;
+}
+
+export interface LightboxProps extends StyleXComponentProps<object> {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  images: Array<LightboxImage>;
+  initialIndex?: number;
+  alt?: string;
   trigger?: React.ReactNode;
+}
+
+function prefersReducedMotion() {
+  return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+}
+
+function getCaptionText(image?: LightboxImage) {
+  return image?.alt?.trim() || "";
 }
 
 export function Lightbox({
@@ -241,264 +230,314 @@ export function Lightbox({
   style,
   trigger,
 }: LightboxProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const settleTimeoutRef = useRef<ReturnType<
+    typeof globalThis.setTimeout
+  > | null>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [previousIndex, setPreviousIndex] = useState<number | null>(null);
-  const [direction, setDirection] = useState<"next" | "prev">("next");
-  const [transitionSize, setTransitionSize] = useState<{
-    width: number;
-    height: number;
-  } | null>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const outgoingRef = useRef<HTMLDivElement>(null);
-  const incomingRef = useRef<HTMLDivElement>(null);
+  const [settledIndex, setSettledIndex] = useState(initialIndex);
+  const [hasSyncedOpenIndex, setHasSyncedOpenIndex] = useState(false);
+  const [captionItem, setCaptionItem] = useState<CaptionItem | null>(null);
+  const [pendingCaption, setPendingCaption] = useState<PendingCaption | null>(
+    null,
+  );
 
-  // Run slide animations via Web Animations API
+  const hasMultiple = images.length > 1;
+  const clampedInitialIndex = Math.min(
+    Math.max(0, initialIndex),
+    Math.max(0, images.length - 1),
+  );
+  const activeIndex =
+    isOpen && !hasSyncedOpenIndex ? clampedInitialIndex : currentIndex;
+  const controlsIndex =
+    isOpen && !hasSyncedOpenIndex ? clampedInitialIndex : settledIndex;
+
+  useEffect(() => {
+    if (isOpen) return;
+    setHasSyncedOpenIndex(false);
+    if (settleTimeoutRef.current !== null) {
+      globalThis.clearTimeout(settleTimeoutRef.current);
+      settleTimeoutRef.current = null;
+    }
+  }, [isOpen]);
+
+  useEffect(
+    () => () => {
+      if (settleTimeoutRef.current !== null) {
+        globalThis.clearTimeout(settleTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
   useLayoutEffect(() => {
-    if (previousIndex === null) return;
-    if (prefersReducedMotion()) {
-      setPreviousIndex(null);
-      setTransitionSize(null);
-      return;
-    }
-    const wrapper = wrapperRef.current;
-    const outgoing = outgoingRef.current;
-    const incoming = incomingRef.current;
-    if (!wrapper || !outgoing || !incoming) return;
-
-    const runAnimation = () => {
-      const viewportWidth =
-        globalThis.visualViewport?.width ?? globalThis.innerWidth;
-      const wrapperWidth = transitionSize
-        ? transitionSize.width
-        : wrapper.offsetWidth || wrapper.getBoundingClientRect().width;
-      const slideDistance = Math.max(viewportWidth, wrapperWidth);
-
-      const isNext = direction === "next";
-      const outKeyframes = isNext
-        ? [
-            { transform: "translateX(0)" },
-            { transform: `translateX(-${String(slideDistance)}px)` },
-          ]
-        : [
-            { transform: "translateX(0)" },
-            { transform: `translateX(${String(slideDistance)}px)` },
-          ];
-      const inKeyframes = isNext
-        ? [
-            { transform: `translateX(${String(slideDistance)}px)` },
-            { transform: "translateX(0)" },
-          ]
-        : [
-            { transform: `translateX(-${String(slideDistance)}px)` },
-            { transform: "translateX(0)" },
-          ];
-
-      outgoing.animate(outKeyframes, {
-        duration: SLIDE_DURATION_MS,
-        easing: "cubic-bezier(0.4, 0, 1, 1)",
-        fill: "forwards",
-      });
-      incoming
-        .animate(inKeyframes, {
-          duration: SLIDE_DURATION_MS,
-          easing: "cubic-bezier(0, 0, 0.2, 1)",
-          fill: "forwards",
-        })
-        .finished.then(() => {
-          setPreviousIndex(null);
-          setTransitionSize(null);
-        })
-        .catch((error: unknown) => {
-          console.error(error);
-        });
-    };
-
+    if (!isOpen) return;
+    setCurrentIndex(clampedInitialIndex);
+    setSettledIndex(clampedInitialIndex);
+    setHasSyncedOpenIndex(true);
+    const scroll = scrollRef.current;
+    if (!scroll) return;
     requestAnimationFrame(() => {
-      requestAnimationFrame(runAnimation);
+      scroll.scrollTo({
+        left: clampedInitialIndex * scroll.clientWidth,
+        behavior: "auto",
+      });
     });
-  }, [previousIndex, direction, transitionSize]);
+  }, [clampedInitialIndex, isOpen]);
 
-  // Sync currentIndex when opening with a new initialIndex; reset transition state
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentIndex(Math.min(Math.max(0, initialIndex), images.length - 1));
-      setPreviousIndex(null);
-      setTransitionSize(null);
-    }
-  }, [isOpen, initialIndex, images.length]);
-
-  const captureAndGoPrev = useCallback(() => {
-    if (previousIndex !== null) return;
-    if (prefersReducedMotion()) {
-      setCurrentIndex((i) => (i <= 0 ? images.length - 1 : i - 1));
-      return;
-    }
-    const wrapper = wrapperRef.current;
-    if (wrapper) {
-      setTransitionSize({
-        width: wrapper.offsetWidth,
-        height: wrapper.offsetHeight,
+  const scrollToIndex = useCallback(
+    (index: number) => {
+      const scroll = scrollRef.current;
+      if (!scroll) return;
+      const nextIndex = Math.max(0, Math.min(images.length - 1, index));
+      setCurrentIndex(nextIndex);
+      if (settleTimeoutRef.current !== null) {
+        globalThis.clearTimeout(settleTimeoutRef.current);
+      }
+      settleTimeoutRef.current = globalThis.setTimeout(
+        () => {
+          setSettledIndex(nextIndex);
+          settleTimeoutRef.current = null;
+        },
+        prefersReducedMotion() ? 0 : CONTROL_SETTLE_DURATION_MS,
+      );
+      scroll.scrollTo({
+        left: nextIndex * scroll.clientWidth,
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
       });
-    }
-    setDirection("prev");
-    setPreviousIndex(currentIndex);
-    setCurrentIndex((i) => (i <= 0 ? images.length - 1 : i - 1));
-  }, [images.length, currentIndex, previousIndex]);
-
-  const captureAndGoNext = useCallback(() => {
-    if (previousIndex !== null) return;
-    if (prefersReducedMotion()) {
-      setCurrentIndex((i) => (i >= images.length - 1 ? 0 : i + 1));
-      return;
-    }
-    const wrapper = wrapperRef.current;
-    if (wrapper) {
-      setTransitionSize({
-        width: wrapper.offsetWidth,
-        height: wrapper.offsetHeight,
-      });
-    }
-    setDirection("next");
-    setPreviousIndex(currentIndex);
-    setCurrentIndex((i) => (i >= images.length - 1 ? 0 : i + 1));
-  }, [images.length, currentIndex, previousIndex]);
+    },
+    [images.length],
+  );
 
   useEffect(() => {
-    if (!isOpen || images.length <= 1) return;
+    if (!isOpen || !hasMultiple) return;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        captureAndGoPrev();
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        captureAndGoNext();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        scrollToIndex(activeIndex - 1);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        scrollToIndex(activeIndex + 1);
       }
     };
 
-    globalThis.addEventListener("keydown", handleKeyDown);
-    return () => globalThis.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, images.length, captureAndGoPrev, captureAndGoNext]);
+    globalThis.addEventListener("keydown", onKeyDown);
+    return () => globalThis.removeEventListener("keydown", onKeyDown);
+  }, [activeIndex, hasMultiple, isOpen, scrollToIndex]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCaptionItem(null);
+      setPendingCaption(null);
+      return;
+    }
+
+    const nextText = getCaptionText(images[activeIndex]);
+    if (prefersReducedMotion()) {
+      setPendingCaption(null);
+      setCaptionItem(
+        nextText ? { key: activeIndex, text: nextText, phase: "active" } : null,
+      );
+      return;
+    }
+
+    if (!nextText) {
+      setPendingCaption(null);
+      setCaptionItem((currentCaption) =>
+        currentCaption ? { ...currentCaption, phase: "exiting" } : null,
+      );
+      return;
+    }
+
+    if (!captionItem) {
+      setPendingCaption(null);
+      setCaptionItem({ key: activeIndex, text: nextText, phase: "entering" });
+      return;
+    }
+
+    if (captionItem.text === nextText) {
+      if (captionItem.key !== activeIndex || captionItem.phase !== "active") {
+        setCaptionItem({ key: activeIndex, text: nextText, phase: "active" });
+      }
+      setPendingCaption(null);
+      return;
+    }
+
+    setPendingCaption({ key: activeIndex, text: nextText });
+    if (captionItem.phase !== "exiting") {
+      setCaptionItem({ ...captionItem, phase: "exiting" });
+    }
+  }, [activeIndex, captionItem, images, isOpen]);
+
+  useEffect(() => {
+    if (captionItem?.phase !== "entering") return;
+
+    const animationFrame = requestAnimationFrame(() => {
+      setCaptionItem((currentCaption) =>
+        currentCaption?.phase === "entering"
+          ? { ...currentCaption, phase: "active" }
+          : currentCaption,
+      );
+    });
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [captionItem]);
+
+  useEffect(() => {
+    if (captionItem?.phase !== "exiting") return;
+
+    const timeoutId = globalThis.setTimeout(() => {
+      if (pendingCaption) {
+        setCaptionItem({ ...pendingCaption, phase: "entering" });
+        setPendingCaption(null);
+        return;
+      }
+      setCaptionItem(null);
+    }, ALT_TRANSITION_DURATION_MS);
+
+    return () => {
+      globalThis.clearTimeout(timeoutId);
+    };
+  }, [captionItem, pendingCaption]);
 
   if (images.length === 0) return null;
-
-  const currentImage = images[currentIndex];
-  const hasMultiple = images.length > 1;
 
   return (
     <DialogTrigger isOpen={isOpen} onOpenChange={onOpenChange}>
       {trigger || <span {...stylex.props(styles.hiddenTrigger)} />}
       <ModalOverlay
         isDismissable
-        {...stylex.props(styles.overlay, ui.overlay, style)}
+        {...stylex.props(ui.overlay, styles.overlay, style)}
       >
         <div
+          aria-hidden
           {...stylex.props(styles.backdrop)}
           onClick={() => onOpenChange(false)}
-          aria-hidden
         />
-        {/* oxlint-disable-next-line jsx_a11y/click-events-have-key-events, jsx_a11y/no-static-element-interactions */}
         <div
+          data-lightbox-chrome=""
+          style={{ viewTransitionName: "none" }}
           {...stylex.props(styles.closeButton)}
-          onClick={(e) => e.stopPropagation()}
         >
-          <IconButton variant="tertiary" size="lg" label="Close" slot="close">
+          <IconButton
+            aria-label="Close"
+            size="lg"
+            slot="close"
+            variant="secondary"
+          >
             <X size={24} />
           </IconButton>
         </div>
-        <Modal
-          {...stylex.props(styles.modal)}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <AriaDialog {...stylex.props(styles.dialog)} aria-label={alt}>
-            {hasMultiple ? (
-              <div {...stylex.props(styles.contentRow)}>
-                <div {...stylex.props(styles.navButton, ui.textContrast)}>
-                  <IconButton
-                    variant="secondary"
-                    size="lg"
-                    label="Previous image"
-                    onPress={captureAndGoPrev}
-                  >
-                    <ChevronLeft size={32} />
-                  </IconButton>
-                </div>
-
-                <div
-                  ref={wrapperRef}
-                  {...stylex.props(styles.imageWrapper)}
-                  style={
-                    transitionSize
-                      ? {
-                          height: transitionSize.height,
-                          width: transitionSize.width,
-                        }
-                      : undefined
-                  }
-                >
-                  {previousIndex === null ? (
-                    <LightboxImage
-                      src={currentImage}
-                      alt={`${alt} ${String(currentIndex + 1)}`}
-                    />
-                  ) : (
-                    <>
-                      <div
-                        ref={outgoingRef}
-                        {...stylex.props(
-                          styles.imageLayer,
-                          styles.imageLayerOutgoing,
-                        )}
-                      >
-                        <LightboxImage
-                          src={images[previousIndex]}
-                          alt=""
-                          presentation
-                        />
-                      </div>
-                      <div
-                        ref={incomingRef}
-                        {...stylex.props(
-                          styles.imageLayer,
-                          styles.imageLayerIncoming,
-                        )}
-                      >
-                        <LightboxImage
-                          src={currentImage}
-                          alt={`${alt} ${String(currentIndex + 1)}`}
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div {...stylex.props(styles.navButton, ui.textContrast)}>
-                  <IconButton
-                    variant="secondary"
-                    size="lg"
-                    label="Next image"
-                    onPress={captureAndGoNext}
-                  >
-                    <ChevronRight size={32} />
-                  </IconButton>
-                </div>
-              </div>
-            ) : (
+        <Modal {...stylex.props(styles.modal)}>
+          <AriaDialog aria-label={alt} {...stylex.props(styles.dialog)}>
+            <div {...stylex.props(styles.content)}>
               <div
-                ref={wrapperRef}
-                {...stylex.props(styles.imageWrapper)}
-                style={
-                  transitionSize
-                    ? {
-                        height: transitionSize.height,
-                        width: transitionSize.width,
-                      }
-                    : undefined
-                }
+                ref={scrollRef}
+                {...stylex.props(styles.track)}
+                onScroll={() => {
+                  const scroll = scrollRef.current;
+                  if (!scroll || scroll.clientWidth === 0) return;
+                  const nextIndex = Math.max(
+                    0,
+                    Math.min(
+                      images.length - 1,
+                      Math.round(scroll.scrollLeft / scroll.clientWidth),
+                    ),
+                  );
+                  setCurrentIndex(nextIndex);
+                  if (settleTimeoutRef.current !== null) {
+                    globalThis.clearTimeout(settleTimeoutRef.current);
+                  }
+                  settleTimeoutRef.current = globalThis.setTimeout(() => {
+                    setSettledIndex(nextIndex);
+                    settleTimeoutRef.current = null;
+                  }, CONTROL_SETTLE_DURATION_MS);
+                }}
               >
-                <LightboxImage src={currentImage} alt={alt} />
+                {images.map((image, index) => {
+                  const imageAlt = image.alt?.trim() || "";
+                  const fallbackAlt = hasMultiple
+                    ? `${alt} ${String(index + 1)}`
+                    : alt;
+                  return (
+                    <div key={index} {...stylex.props(styles.slide)}>
+                      <div
+                        {...stylex.props(styles.slideInner, ui.textContrast)}
+                      >
+                        <div
+                          {...stylex.props(styles.slideImageFrame)}
+                          style={
+                            index === activeIndex && image.transitionName
+                              ? { viewTransitionName: image.transitionName }
+                              : undefined
+                          }
+                        >
+                          <img
+                            alt={imageAlt || fallbackAlt}
+                            referrerPolicy="no-referrer"
+                            src={image.src}
+                            {...stylex.props(styles.slideImage)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
+              {captionItem ? (
+                <div
+                  aria-live="polite"
+                  data-lightbox-chrome=""
+                  style={{ viewTransitionName: "none" }}
+                  {...stylex.props(styles.captionRegion, ui.textContrast)}
+                >
+                  <div
+                    key={captionItem.key}
+                    {...stylex.props(
+                      styles.captionText,
+                      captionItem.phase === "entering"
+                        ? styles.captionTextEntering
+                        : undefined,
+                      captionItem.phase === "exiting"
+                        ? styles.captionTextExiting
+                        : undefined,
+                    )}
+                  >
+                    {captionItem.text}
+                  </div>
+                </div>
+              ) : null}
+              {hasMultiple ? (
+                <div
+                  data-lightbox-chrome=""
+                  style={{ viewTransitionName: "none" }}
+                  {...stylex.props(styles.controls, ui.textContrast)}
+                >
+                  <IconButton
+                    aria-label="Previous image"
+                    size="lg"
+                    variant="secondary"
+                    isDisabled={controlsIndex <= 0}
+                    onPress={() => scrollToIndex(activeIndex - 1)}
+                  >
+                    <ChevronLeft size={24} />
+                  </IconButton>
+                  <div {...stylex.props(styles.counter)}>
+                    {activeIndex + 1} / {images.length}
+                  </div>
+                  <IconButton
+                    aria-label="Next image"
+                    size="lg"
+                    variant="secondary"
+                    isDisabled={controlsIndex >= images.length - 1}
+                    onPress={() => scrollToIndex(activeIndex + 1)}
+                  >
+                    <ChevronRight size={24} />
+                  </IconButton>
+                </div>
+              ) : null}
+            </div>
           </AriaDialog>
         </Modal>
       </ModalOverlay>

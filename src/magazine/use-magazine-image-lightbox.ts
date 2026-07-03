@@ -1,5 +1,6 @@
 "use client";
 
+import type { LightboxImage } from "#/design-system/lightbox";
 import type { RefObject } from "react";
 
 import { useCallback, useEffect, useState } from "react";
@@ -67,15 +68,18 @@ export function useMagazineImageLightbox(
   rootRef: RefObject<HTMLElement | null>,
 ) {
   const [isOpen, setIsOpen] = useState(false);
-  const [images, setImages] = useState<Array<string>>([]);
+  const [images, setImages] = useState<Array<LightboxImage>>([]);
   const [initialIndex, setInitialIndex] = useState(0);
 
-  const openAt = useCallback((nextImages: Array<string>, index: number) => {
-    if (nextImages.length === 0) return;
-    setImages(nextImages);
-    setInitialIndex(index);
-    setIsOpen(true);
-  }, []);
+  const openAt = useCallback(
+    (nextImages: Array<LightboxImage>, index: number) => {
+      if (nextImages.length === 0) return;
+      setImages(nextImages);
+      setInitialIndex(index);
+      setIsOpen(true);
+    },
+    [],
+  );
 
   useEffect(() => {
     const root = rootRef.current;
@@ -102,10 +106,13 @@ export function useMagazineImageLightbox(
           event.stopImmediatePropagation();
           const scope = galleryScopeFor(img);
           const imgs = photoImagesIn(scope, root);
-          const urls = imgs
-            .map((photo) => lightboxImageUrl(photo))
-            .filter((url) => url.length > 0);
-          openAt(urls, Math.max(0, imgs.indexOf(img)));
+          const lightboxImages = imgs
+            .map((photo) => ({
+              src: lightboxImageUrl(photo),
+              alt: photo.alt,
+            }))
+            .filter((image) => image.src.length > 0);
+          openAt(lightboxImages, Math.max(0, imgs.indexOf(img)));
         };
 
         const onKeyDown = (event: KeyboardEvent) => {

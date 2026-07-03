@@ -16,6 +16,7 @@ import type { ContentBlobContext } from "../types";
 
 import { articleBodyStyles } from "../body-styles";
 import { LeafletButtonBlockView } from "./leaflet-button";
+import { LeafletImageGalleryBlockView } from "./leaflet-image-gallery";
 import {
   LeafletOrderedListBlockView,
   LeafletUnorderedListBlockView,
@@ -23,6 +24,7 @@ import {
 import { LeafletMathBlockView } from "./leaflet-math";
 import { LeafletPollBlockView } from "./leaflet-poll";
 import { LeafletSeparatorView } from "./leaflet-separator";
+import { LeafletSignupBlockView } from "./leaflet-signup";
 import { LeafletStandardSitePostBlockView } from "./leaflet-standard-site-post";
 import { BlockquoteBlockView } from "./shared/blockquote-block";
 import { BskyPostEmbedView } from "./shared/bsky-post-embed";
@@ -110,6 +112,7 @@ export function LeafletBlockView({
           alt={normalizeImageAlt(block.block.alt)}
           aspectRatio={leafletImageAspectRatio(block.block)}
           fullBleed={block.block.fullBleed}
+          lightboxEnabled
         />
       );
     }
@@ -155,6 +158,17 @@ export function LeafletBlockView({
     }
     case "standardSitePost": {
       return <LeafletStandardSitePostBlockView block={block.block} />;
+    }
+    case "imageGallery": {
+      return (
+        <LeafletImageGalleryBlockView
+          block={block.block}
+          blobContext={blobContext}
+        />
+      );
+    }
+    case "signup": {
+      return <LeafletSignupBlockView />;
     }
     case "pageEmbed": {
       return (

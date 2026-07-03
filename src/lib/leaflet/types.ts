@@ -26,6 +26,9 @@ export const LEAFLET_BLOCK = {
   page: "pub.leaflet.blocks.page",
   separator: "pub.leaflet.blocks.separator",
   standardSitePost: "pub.leaflet.blocks.standardSitePost",
+  imageGallery: "pub.leaflet.blocks.imageGallery",
+  imageGalleryImage: "pub.leaflet.blocks.imageGallery#image",
+  signup: "pub.leaflet.blocks.signup",
 } as const;
 
 export const LEAFLET_PAGE = {
@@ -135,6 +138,25 @@ export interface LeafletStandardSitePostBlock {
   uri?: string;
 }
 
+/** A single image entry inside a `pub.leaflet.blocks.imageGallery` block. */
+export interface LeafletImageGalleryImage {
+  $type?: string;
+  image?: unknown;
+  alt?: string;
+  aspectRatio?: LeafletImageAspectRatio;
+}
+
+export interface LeafletImageGalleryBlock {
+  $type?: string;
+  images?: Array<LeafletImageGalleryImage>;
+  /** Display format: "grid" (default) or "carousel". */
+  format?: string;
+}
+
+export interface LeafletSignupBlock {
+  $type?: string;
+}
+
 export interface LeafletListItem {
   $type?: string;
   content?: LeafletTextBlock | Record<string, unknown>;
@@ -171,6 +193,8 @@ export type LeafletRenderableBlock =
   | { kind: "poll"; block: LeafletPollBlock }
   | { kind: "separator" }
   | { kind: "standardSitePost"; block: LeafletStandardSitePostBlock }
+  | { kind: "imageGallery"; block: LeafletImageGalleryBlock }
+  | { kind: "signup" }
   | {
       kind: "pageEmbed";
       pageId: string;

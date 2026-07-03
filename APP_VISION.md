@@ -124,7 +124,10 @@ Sections, top to bottom:
   ([Markpub.at](https://markpub.at/)) is fully supported: GFM vs CommonMark flavor,
   declared extensions (LaTeX via KaTeX, YAML front matter), ingest-time `text.textBlob`
   resolution, and facet/lens preprocessing (`baseFormatting` headers/strong/idify,
-  `baseBlocks` front matter and horizontal rules).
+  `baseBlocks` front matter and horizontal rules). Leaflet image galleries use CSS
+  `grid-lanes` where supported with plain CSS Grid fallback elsewhere; Leaflet galleries and
+  single-image blocks share the reader lightbox, with image alt text surfaced inside the
+  lightbox.
 - Sticky top bar: back, byline, follow, like, share; reading-progress bar.
 - **Listen (page reader):** a top-bar "Listen" button reads the article aloud
   using on-device TTS (`kokoro-js`, lazy-loaded on first use). It narrates the

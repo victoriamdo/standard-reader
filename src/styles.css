@@ -92,3 +92,26 @@ html[data-resolved-scheme="dark"] .bsky-react-post-theme {
   margin: 0;
   padding: var(--code-block-padding);
 }
+
+html[data-lightbox-view-transition]::view-transition-old(root),
+html[data-lightbox-view-transition]::view-transition-new(root) {
+  animation: none;
+}
+
+[data-lightbox-chrome] {
+  transition: opacity 120ms ease-out;
+}
+
+html[data-lightbox-view-transition] [data-lightbox-chrome] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+::view-transition-group(lightbox-active-image) {
+  z-index: 250;
+}
+
+::view-transition-old(lightbox-active-image),
+::view-transition-new(lightbox-active-image) {
+  animation-duration: 250ms;
+}

@@ -400,7 +400,8 @@ export const articleBodyStyles = stylex.create({
   imageCaption: {
     color: uiColor.text1,
     fontFamily: fontFamily.sans,
-    fontSize: fontSize.sm,
+    fontSize: fontSize.base,
+    lineHeight: 1.2,
     marginBottom: spacing["0"],
     marginTop: gap.md,
   },

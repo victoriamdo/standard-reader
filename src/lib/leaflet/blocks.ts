@@ -9,6 +9,7 @@ import type {
   LeafletHeaderBlock,
   LeafletIframeBlock,
   LeafletImageBlock,
+  LeafletImageGalleryBlock,
   LeafletMathBlock,
   LeafletOrderedListBlock,
   LeafletPollBlock,
@@ -189,6 +190,17 @@ function asRenderableBlock(value: unknown): LeafletRenderableBlock | null {
       kind: "standardSitePost",
       block: value as unknown as LeafletStandardSitePostBlock,
     };
+  }
+
+  if (value.$type === LEAFLET_BLOCK.imageGallery) {
+    return {
+      kind: "imageGallery",
+      block: value as unknown as LeafletImageGalleryBlock,
+    };
+  }
+
+  if (value.$type === LEAFLET_BLOCK.signup) {
+    return { kind: "signup" };
   }
 
   if (value.$type === LEAFLET_BLOCK.separator) {
@@ -449,6 +461,11 @@ export function plaintextLinesFromBlock(
     case "image": {
       return narrationImageLines(block.block.alt);
     }
+    case "imageGallery": {
+      const images = block.block.images ?? [];
+      return images.flatMap((image) => narrationImageLines(image.alt));
+    }
+    case "signup":
     case "horizontalRule":
     case "separator":
     case "poll":
