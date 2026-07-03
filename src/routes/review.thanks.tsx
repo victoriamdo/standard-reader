@@ -20,6 +20,7 @@ import {
 } from "../design-system/theme/typography.stylex";
 import { atstoreReviewApi } from "../integrations/tanstack-query/api-atstore-review.functions";
 import { sanitizeAuthRedirectTarget } from "../utils/auth-redirect";
+import { Link } from "#/design-system/link";
 
 const searchSchema = z.object({
   rating: z.coerce.number().int().min(1).max(5).optional(),
@@ -111,8 +112,15 @@ function ReviewThanksPage() {
         <Flex direction="column" gap="xxs">
           <h1 {...stylex.props(styles.title)}>Thank you.</h1>
           <p {...stylex.props(styles.body)}>
-            Your review has been posted to ATStore. Thanks for helping more
-            readers discover Standard Reader.
+            Your review has been posted to{" "}
+            <Link
+              href="https://atstore.fyi/products/standard-reader"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              ATStore
+            </Link>
+            . Thanks for helping more readers discover Standard Reader.
           </p>
         </Flex>
         <Flex>
