@@ -76,6 +76,11 @@ export const PAGE_OG_CARDS = {
     tagline:
       "Published app.standard-reader.* record schemas for reader repo state.",
   },
+  docsPublishing: {
+    path: "/docs/publishing",
+    title: "Publishing",
+    tagline: "Wire a personal site's own site.standard.* records by hand.",
+  },
   privacy: {
     path: "/privacy",
     title: "Privacy",

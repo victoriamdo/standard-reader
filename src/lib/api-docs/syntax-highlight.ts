@@ -12,6 +12,13 @@ export type CurlToken = {
   text: string;
 };
 
+export type HtmlTokenType = "tag" | "attr" | "str" | "plain";
+
+export type HtmlToken = {
+  type: HtmlTokenType;
+  text: string;
+};
+
 const JSON_TOKEN =
   /("(?:\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
 
@@ -94,5 +101,37 @@ export function tokenizeCurl(curl: string): Array<CurlToken> {
   }
 
   pushCurlToken(tokens, "plain", rest);
+  return tokens;
+}
+
+const HTML_TOKEN = /(<\/?[a-zA-Z][\w-]*|"(?:[^"\\]|\\.)*"|\b[a-zA-Z-]+(?==))/g;
+
+/** Minimal tokenizer for simple markup — tag names, attribute names, quoted values. */
+export function tokenizeHtml(source: string): Array<HtmlToken> {
+  const tokens: Array<HtmlToken> = [];
+  let last = 0;
+
+  for (const match of source.matchAll(HTML_TOKEN)) {
+    const index = match.index ?? 0;
+    if (index > last) {
+      tokens.push({ type: "plain", text: source.slice(last, index) });
+    }
+
+    const text = match[0];
+    let type: HtmlTokenType = "attr";
+    if (text[0] === "<") {
+      type = "tag";
+    } else if (text[0] === '"') {
+      type = "str";
+    }
+
+    tokens.push({ type, text });
+    last = index + text.length;
+  }
+
+  if (last < source.length) {
+    tokens.push({ type: "plain", text: source.slice(last) });
+  }
+
   return tokens;
 }

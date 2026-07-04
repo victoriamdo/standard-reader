@@ -313,6 +313,9 @@ export const docsStyles = stylex.create({
     fontFamily: fontFamily.mono,
     fontSize: fontSize.sm,
   },
+  refNavLinkNested: {
+    paddingLeft: spacing["5"],
+  },
   refNavLinkActive: {
     backgroundColor: primaryColor.bgSubtle,
     color: primaryColor.text2,
@@ -443,6 +446,19 @@ export const docsStyles = stylex.create({
   h2First: {
     marginTop: spacing["2"],
   },
+  h3: {
+    color: uiColor.text2,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    letterSpacing: "-0.01em",
+    marginBottom: spacing["3"],
+    marginTop: spacing["9"],
+    scrollMarginTop: {
+      [NAV_HIDE]: spacing["32"],
+      default: spacing["20"],
+    },
+  },
   prose: {
     color: uiColor.solid2,
     fontFamily: fontFamily.serif,
@@ -453,7 +469,7 @@ export const docsStyles = stylex.create({
   proseLink: {
     textDecoration: "underline",
     color: primaryColor.text2,
-    textUnderlineOffset: spacing["3"],
+    textUnderlineOffset: spacing["1.5"],
   },
   codeInline: {
     borderColor: uiColor.border1,

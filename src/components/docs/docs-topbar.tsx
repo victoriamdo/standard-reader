@@ -8,6 +8,7 @@ import { docsStyles } from "./docs-page.stylex";
 const NAV_ITEMS = [
   { label: "API", to: "/docs/api" as const },
   { label: "Lexicons", to: "/docs/lexicons" as const },
+  { label: "Publishing", to: "/docs/publishing" as const },
 ] as const;
 
 export function DocsTopbar() {
