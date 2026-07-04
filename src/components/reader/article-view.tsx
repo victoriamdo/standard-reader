@@ -17,6 +17,7 @@ import {
   Heart,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { AppLink } from "#/components/reader/app-link";
 import { AuthorProfileLink } from "#/components/reader/author-profile-link";
@@ -37,6 +38,11 @@ import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
 import { Flex } from "../../design-system/flex";
 import { IconButton } from "../../design-system/icon-button";
+import { Lightbox } from "../../design-system/lightbox";
+import {
+  LIGHTBOX_IMAGE_TRANSITION_NAME,
+  startLightboxViewTransition,
+} from "../../design-system/lightbox/transition";
 import { animationDuration } from "../../design-system/theme/animations.stylex";
 import {
   criticalColor,
@@ -364,6 +370,12 @@ const styles = stylex.create({
     overflow: "hidden",
     aspectRatio: "16 / 9",
     marginBottom: spacing["8"],
+    padding: spacing["0"],
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    cursor: "zoom-in",
+    display: "block",
+    width: "100%",
   },
   heroImg: {
     display: "block",
@@ -750,6 +762,8 @@ function ArticleViewBody({
   const readStats = formatArticleReadStats(article.readCount);
   const hasEngagement = article.recommendCount > 0 || article.commentCount > 0;
   const hero = useMemo(() => resolveArticleHeroImage(article), [article]);
+  const [heroLightboxOpen, setHeroLightboxOpen] = useState(false);
+  const [heroTransitionActive, setHeroTransitionActive] = useState(false);
 
   const queryClient = useQueryClient();
   const { enabled: trackReading } = useTrackReadingHistory();
@@ -968,14 +982,46 @@ function ArticleViewBody({
         ) : null}
 
         {hero ? (
-          <div {...stylex.props(styles.hero)}>
+          <button
+            aria-label="Open image"
+            type="button"
+            onClick={() => {
+              flushSync(() => setHeroTransitionActive(true));
+              startLightboxViewTransition(() => setHeroLightboxOpen(true));
+            }}
+            style={
+              heroTransitionActive && !heroLightboxOpen
+                ? { viewTransitionName: LIGHTBOX_IMAGE_TRANSITION_NAME }
+                : undefined
+            }
+            {...stylex.props(styles.hero)}
+          >
             <img
               src={hero.url}
               alt=""
               referrerPolicy="no-referrer"
               {...stylex.props(styles.heroImg)}
             />
-          </div>
+          </button>
+        ) : null}
+        {hero ? (
+          <Lightbox
+            alt="Article header image"
+            images={[
+              {
+                src: hero.url,
+                alt: "",
+                transitionName: heroTransitionActive
+                  ? LIGHTBOX_IMAGE_TRANSITION_NAME
+                  : undefined,
+              },
+            ]}
+            isOpen={heroLightboxOpen}
+            onOpenChange={(open) => {
+              setHeroLightboxOpen(open);
+              if (!open) setHeroTransitionActive(false);
+            }}
+          />
         ) : null}
 
         <h1 {...stylex.props(styles.title)}>{article.title}</h1>

@@ -69,10 +69,6 @@ const styles = stylex.create({
     transitionTimingFunction: "ease-in-out",
     zIndex: 200,
   },
-  backdrop: {
-    inset: 0,
-    position: "absolute",
-  },
   modal: {
     outline: "none",
     position: "relative",
@@ -409,28 +405,29 @@ export function Lightbox({
         isDismissable
         {...stylex.props(ui.overlay, styles.overlay, style)}
       >
-        <div
-          aria-hidden
-          {...stylex.props(styles.backdrop)}
-          onClick={() => onOpenChange(false)}
-        />
-        <div
-          data-lightbox-chrome=""
-          style={{ viewTransitionName: "none" }}
-          {...stylex.props(styles.closeButton)}
-        >
-          <IconButton
-            aria-label="Close"
-            size="lg"
-            slot="close"
-            variant="secondary"
-          >
-            <X size={24} />
-          </IconButton>
-        </div>
         <Modal {...stylex.props(styles.modal)}>
           <AriaDialog aria-label={alt} {...stylex.props(styles.dialog)}>
-            <div {...stylex.props(styles.content)}>
+            <div
+              data-lightbox-chrome=""
+              style={{ viewTransitionName: "none" }}
+              {...stylex.props(styles.closeButton)}
+            >
+              <IconButton
+                aria-label="Close"
+                size="lg"
+                slot="close"
+                variant="secondary"
+              >
+                <X size={24} />
+              </IconButton>
+            </div>
+            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+            <div
+              {...stylex.props(styles.content)}
+              onClick={(event) => {
+                if (event.target === event.currentTarget) onOpenChange(false);
+              }}
+            >
               <div
                 ref={scrollRef}
                 {...stylex.props(styles.track)}
@@ -460,7 +457,16 @@ export function Lightbox({
                     ? `${alt} ${String(index + 1)}`
                     : alt;
                   return (
-                    <div key={index} {...stylex.props(styles.slide)}>
+                    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                    <div
+                      key={index}
+                      {...stylex.props(styles.slide)}
+                      onClick={(event) => {
+                        if (event.target === event.currentTarget) {
+                          onOpenChange(false);
+                        }
+                      }}
+                    >
                       <div
                         {...stylex.props(styles.slideInner, ui.textContrast)}
                       >
