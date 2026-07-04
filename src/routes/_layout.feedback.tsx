@@ -936,10 +936,12 @@ function FeedbackPage() {
   if (allDiscussions.length === 0) {
     body = (
       <Message>
-        No feedback yet.{" "}
-        <span {...stylex.props(styles.messageEm)}>
-          Be the first to share a bug, idea, or question.
-        </span>
+        <Flex direction="column" gap="md">
+          <span>No feedback yet.</span>
+          <span {...stylex.props(styles.messageEm)}>
+            Be the first to share a bug, idea, or question.
+          </span>
+        </Flex>
       </Message>
     );
   } else if (discussions.length === 0) {
