@@ -686,14 +686,6 @@ export const articleBodyStyles = stylex.create({
     flexShrink: 1,
     minWidth: 0,
   },
-  markdownImage: {
-    borderRadius: radius.sm,
-    display: "block",
-    height: "auto",
-    marginBottom: spacing["6"],
-    marginTop: spacing["0"],
-    maxWidth: "100%",
-  },
   bodyFontSizeSmall: {
     fontSize: { default: "1rem", "@media (min-width: 40rem)": "1.0625rem" },
   },

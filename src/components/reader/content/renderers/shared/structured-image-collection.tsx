@@ -65,7 +65,12 @@ function StructuredGridImageView({
   if (!src) return null;
 
   return (
-    <ImageFigureView src={src} alt={image.alt} aspectRatio={aspectRatio} />
+    <ImageFigureView
+      src={src}
+      alt={image.alt}
+      aspectRatio={aspectRatio}
+      lightboxEnabled
+    />
   );
 }
 

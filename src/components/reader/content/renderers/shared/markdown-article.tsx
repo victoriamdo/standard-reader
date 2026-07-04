@@ -2,7 +2,8 @@
 
 import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps } from "react";
-import { createElement, useMemo, useRef } from "react";
+import { createElement, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
@@ -12,6 +13,12 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
 import { AppLink } from "#/components/reader/app-link";
+import { Lightbox } from "#/design-system/lightbox";
+import {
+  LIGHTBOX_IMAGE_TRANSITION_NAME,
+  startLightboxViewTransition,
+} from "#/design-system/lightbox/transition";
+import { radius } from "#/design-system/theme/radius.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex";
 import { stripLeadingMarkupImage } from "#/lib/document/lead-image";
 import { articleMarkdownSanitizeSchema } from "#/lib/markdown/article-sanitize-schema";
@@ -31,7 +38,102 @@ const markdownStyles = stylex.create({
     marginBottom: spacing["6"],
     marginTop: spacing["0"],
   },
+  imageButton: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    cursor: "zoom-in",
+    display: "block",
+    marginBottom: spacing["6"],
+    marginTop: spacing["0"],
+    maxWidth: "100%",
+    padding: spacing["0"],
+  },
+  imageButtonImage: {
+    borderRadius: radius.sm,
+    display: "block",
+    height: "auto",
+    maxWidth: "100%",
+  },
 });
+
+function MarkdownImage({
+  src,
+  alt,
+  className,
+  width,
+  height,
+}: {
+  src?: string;
+  alt?: string;
+  className?: string;
+  width?: string | number;
+  height?: string | number;
+}) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [transitionActive, setTransitionActive] = useState(false);
+
+  if (className === "playlist-song-artwork" && src) {
+    return (
+      <img
+        src={src}
+        alt={alt ?? ""}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        width={width ?? 72}
+        height={height ?? 72}
+        {...stylex.props(articleBodyStyles.playlistSongArtwork)}
+      />
+    );
+  }
+  if (!src) return null;
+
+  const altText = alt ?? "";
+  const transitionName = LIGHTBOX_IMAGE_TRANSITION_NAME;
+
+  return (
+    <>
+      <button
+        aria-label={altText || "Open image"}
+        type="button"
+        onClick={() => {
+          flushSync(() => setTransitionActive(true));
+          startLightboxViewTransition(() => setLightboxOpen(true));
+        }}
+        style={
+          transitionActive && !lightboxOpen
+            ? { viewTransitionName: transitionName }
+            : undefined
+        }
+        {...stylex.props(markdownStyles.imageButton)}
+      >
+        <img
+          src={src}
+          alt={altText}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          width={width}
+          height={height}
+          {...stylex.props(markdownStyles.imageButtonImage)}
+        />
+      </button>
+      <Lightbox
+        alt="Image"
+        images={[
+          {
+            src,
+            alt: altText,
+            transitionName: transitionActive ? transitionName : undefined,
+          },
+        ]}
+        isOpen={lightboxOpen}
+        onOpenChange={(open) => {
+          setLightboxOpen(open);
+          if (!open) setTransitionActive(false);
+        }}
+      />
+    </>
+  );
+}
 
 function useMarkdownComponents(
   codeHighlights: ContentRendererProps["codeHighlights"],
@@ -226,33 +328,7 @@ function useMarkdownComponents(
         }
         return <span className={className}>{children}</span>;
       },
-      img: ({ src, alt, className, width, height }) => {
-        if (className === "playlist-song-artwork" && src) {
-          return (
-            <img
-              src={src}
-              alt={alt ?? ""}
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              width={width ?? 72}
-              height={height ?? 72}
-              {...stylex.props(articleBodyStyles.playlistSongArtwork)}
-            />
-          );
-        }
-        if (!src) return null;
-        return (
-          <img
-            src={src}
-            alt={alt ?? ""}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            width={width}
-            height={height}
-            {...stylex.props(articleBodyStyles.markdownImage)}
-          />
-        );
-      },
+      img: MarkdownImage,
       iframe: ({ src, width, height }) => (
         <MarkdownIframeEmbed src={src} width={width} height={height} />
       ),
