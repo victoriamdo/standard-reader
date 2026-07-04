@@ -111,6 +111,7 @@ export function LeafletBlockView({
           aspectRatio={leafletImageAspectRatio(block.block)}
           fullBleed={block.block.fullBleed}
           lightboxEnabled
+          fit="natural"
         />
       );
     }

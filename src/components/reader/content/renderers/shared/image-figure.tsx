@@ -10,11 +10,16 @@ import {
   LIGHTBOX_IMAGE_TRANSITION_NAME,
   startLightboxViewTransition,
 } from "#/design-system/lightbox/transition";
+import { radius } from "#/design-system/theme/radius.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex";
 import { normalizeImageAlt } from "#/lib/document/structured-content/image";
 import { MagazineColorContext } from "#/magazine/context";
 
 import { articleBodyStyles } from "../../body-styles";
+
+/** Caps how tall a naturally-proportioned image can render, matching the
+ *  lightbox's own image cap so inline and expanded sizing feel consistent. */
+const MAX_NATURAL_IMAGE_HEIGHT = "72vh";
 
 const styles = stylex.create({
   imageButton: {
@@ -26,6 +31,23 @@ const styles = stylex.create({
   imageButtonInteractive: {
     cursor: "zoom-in",
   },
+  naturalWrapper: {
+    display: "flex",
+    justifyContent: "center",
+    width: "100%",
+  },
+  naturalImage: (aspectRatio: number) => ({
+    aspectRatio: `auto ${aspectRatio}`,
+    display: "block",
+    height: "auto",
+    maxHeight: MAX_NATURAL_IMAGE_HEIGHT,
+    maxWidth: "100%",
+    width: "auto",
+  }),
+  naturalImageRounded: {
+    borderRadius: radius.lg,
+    cornerShape: "squircle",
+  },
 });
 
 export function ImageFigureView({
@@ -34,12 +56,17 @@ export function ImageFigureView({
   aspectRatio = 16 / 9,
   fullBleed = false,
   lightboxEnabled = false,
+  fit = "cover",
 }: {
   src: string;
   alt?: string;
   aspectRatio?: number;
   fullBleed?: boolean;
   lightboxEnabled?: boolean;
+  /** "cover" crops to `aspectRatio` (for grids/carousels with a uniform
+   *  layout); "natural" shows the image's real proportions capped by
+   *  `MAX_NATURAL_IMAGE_HEIGHT` instead of forcing a fixed box. */
+  fit?: "cover" | "natural";
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [transitionActive, setTransitionActive] = useState(false);
@@ -47,6 +74,25 @@ export function ImageFigureView({
   const altText = normalizeImageAlt(alt);
   const canOpenLightbox = lightboxEnabled && !magazine;
   const transitionName = LIGHTBOX_IMAGE_TRANSITION_NAME;
+  const natural = fit === "natural" && !magazine;
+
+  const image = natural ? (
+    <div {...stylex.props(styles.naturalWrapper)}>
+      <img
+        alt={altText}
+        referrerPolicy="no-referrer"
+        src={src}
+        {...stylex.props(
+          styles.naturalImage(aspectRatio),
+          !fullBleed && styles.naturalImageRounded,
+        )}
+      />
+    </div>
+  ) : (
+    <AspectRatio aspectRatio={aspectRatio} rounded={!fullBleed}>
+      <AspectRatioImage alt={altText} referrerPolicy="no-referrer" src={src} />
+    </AspectRatio>
+  );
 
   return (
     <figure
@@ -78,22 +124,10 @@ export function ImageFigureView({
           }
           {...stylex.props(styles.imageButton, styles.imageButtonInteractive)}
         >
-          <AspectRatio aspectRatio={aspectRatio} rounded={!fullBleed}>
-            <AspectRatioImage
-              alt={altText}
-              referrerPolicy="no-referrer"
-              src={src}
-            />
-          </AspectRatio>
+          {image}
         </button>
       ) : (
-        <AspectRatio aspectRatio={aspectRatio} rounded={!fullBleed}>
-          <AspectRatioImage
-            alt={altText}
-            referrerPolicy="no-referrer"
-            src={src}
-          />
-        </AspectRatio>
+        image
       )}
       {altText ? (
         <figcaption

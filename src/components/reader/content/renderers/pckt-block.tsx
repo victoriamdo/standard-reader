@@ -95,6 +95,7 @@ export function PcktBlockView({
           alt={pcktImageAlt(block.block)}
           aspectRatio={pcktImageAspectRatio(block.block)}
           lightboxEnabled
+          fit="natural"
         />
       );
     }

@@ -136,6 +136,7 @@ export function StructuredBlockView({
           alt={normalizeImageAlt(block.alt)}
           aspectRatio={structuredImageAspectRatio(block)}
           lightboxEnabled
+          fit="natural"
         />
       );
     }

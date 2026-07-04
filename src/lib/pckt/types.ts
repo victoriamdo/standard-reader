@@ -75,6 +75,9 @@ export interface PcktImageAttrs {
   align?: "left" | "center" | "right";
   title?: string;
   aspectRatio?: { width?: number; height?: number };
+  /** Fallback dimensions some publishers store instead of `aspectRatio`. */
+  naturalWidth?: number;
+  naturalHeight?: number;
 }
 
 export interface PcktImageBlock {

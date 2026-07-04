@@ -40,8 +40,8 @@ export function pcktImageUrl(
 /** Width ÷ height for layout; falls back to 16∶9 when missing or invalid. */
 export function pcktImageAspectRatio(block: PcktImageBlock): number {
   const ratio = block.attrs?.aspectRatio;
-  const width = ratio?.width;
-  const height = ratio?.height;
+  const width = ratio?.width ?? block.attrs?.naturalWidth;
+  const height = ratio?.height ?? block.attrs?.naturalHeight;
   if (
     typeof width === "number" &&
     typeof height === "number" &&
