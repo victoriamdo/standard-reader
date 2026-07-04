@@ -12,7 +12,14 @@ import {
   newListRkey,
   putListRecord,
   putListSaveRecord,
+  subjectRkey,
 } from "#/server/atproto/repo-records";
+import { Collections, buildAtUri } from "#/server/atproto/uri";
+import {
+  deleteRecord,
+  upsertList,
+  upsertListSave,
+} from "#/server/ingest/handlers";
 import { observe } from "#/server/observability/log";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
 import {
@@ -192,11 +199,25 @@ const putList = createServerFn({ method: "POST" })
 
       const rkey = data.rkey ?? newListRkey();
       span.set("rkey", rkey);
-      await putListRecord(session.client, session.did, rkey, {
+      const createdAt = data.createdAt ?? new Date().toISOString();
+      const { uri, cid } = await putListRecord(
+        session.client,
+        session.did,
+        rkey,
+        {
+          name: data.name,
+          description: data.description || undefined,
+          publications: data.publications,
+          createdAt,
+        },
+      );
+      // Write through to the DB mirror so the read path sees the change
+      // immediately, without waiting for the tap to deliver the event.
+      await upsertList(uri, session.did, rkey, cid, {
         name: data.name,
         description: data.description || undefined,
         publications: data.publications,
-        createdAt: data.createdAt ?? new Date().toISOString(),
+        createdAt,
       });
       return { ok: true as const, rkey };
     }),
@@ -214,6 +235,12 @@ const deleteList = createServerFn({ method: "POST" })
       span.set("rkey", data.rkey);
 
       await deleteListRecord(session.client, session.did, data.rkey);
+      // Write through: remove from the DB mirror so the read path sees the
+      // deletion immediately, without waiting for the tap.
+      await deleteRecord(
+        buildAtUri(session.did, Collections.list, data.rkey),
+        Collections.list,
+      );
       return { ok: true as const };
     }),
   );
@@ -239,6 +266,15 @@ const deleteAllLists = createServerFn({ method: "POST" }).handler(
     await Promise.all(
       rows.map((row) =>
         deleteListRecord(session.client, session.did, row.rkey),
+      ),
+    );
+    // Write through: remove all of the reader's list rows from the DB mirror.
+    await Promise.all(
+      rows.map((row) =>
+        deleteRecord(
+          buildAtUri(session.did, Collections.list, row.rkey),
+          Collections.list,
+        ),
       ),
     );
     invalidateSavedLists(session.did);
@@ -376,12 +412,17 @@ const saveList = createServerFn({ method: "POST" })
       }
       span.set("did", session.did);
 
-      await putListSaveRecord(
+      const createdAt = new Date().toISOString();
+      const { uri, cid } = await putListSaveRecord(
         session.client,
         session.did,
         data.listUri,
-        new Date().toISOString(),
+        createdAt,
       );
+      await upsertListSave(uri, session.did, subjectRkey(data.listUri), cid, {
+        list: data.listUri,
+        createdAt,
+      });
       invalidateSavedLists(session.did);
       return { ok: true as const };
     }),
@@ -399,6 +440,14 @@ const unsaveList = createServerFn({ method: "POST" })
       span.set("did", session.did);
 
       await deleteListSaveRecord(session.client, session.did, data.listUri);
+      await deleteRecord(
+        buildAtUri(
+          session.did,
+          Collections.listSave,
+          subjectRkey(data.listUri),
+        ),
+        Collections.listSave,
+      );
       invalidateSavedLists(session.did);
       return { ok: true as const };
     }),
