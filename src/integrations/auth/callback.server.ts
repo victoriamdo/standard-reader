@@ -29,6 +29,15 @@ export async function handleAtprotoOAuthCallback(args: {
     );
 
     const did = oauthSession.did;
+    // Evict any cached client for this DID so the request that follows this
+    // redirect (e.g. the return leg of an upgrade flow) picks up the session
+    // just established here rather than a stale one cached moments earlier —
+    // see restore-client.server.ts.
+    const { invalidateAuthenticatedClientCache } = await import(
+      "./restore-client.server"
+    );
+    invalidateAuthenticatedClientCache(did);
+
     const stateData = state as
       | { redirect?: string; returnTo?: string; handle?: string }
       | undefined;

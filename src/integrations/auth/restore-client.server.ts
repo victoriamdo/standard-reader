@@ -25,6 +25,20 @@ interface CacheEntry {
 const clientCache = new Map<Did, Promise<CacheEntry>>();
 
 /**
+ * Evict a DID's cached client. Callers that revoke a session and immediately
+ * establish a new one (the collections/userinput/review upgrade flows all
+ * revoke + re-authorize on the same DID) must call this — otherwise a request
+ * within {@link CLIENT_CACHE_TTL_MS} of the revoke gets back the stale client,
+ * still bound to the old session's DPoP key, while the DB now holds a token
+ * issued under a *different* key from the fresh authorize. Signing with the
+ * stale key against the new token fails PDS-side with "Invalid DPoP key
+ * binding" — see the `upgradeToUserinputFeedback` incident this was added for.
+ */
+export function invalidateAuthenticatedClientCache(did: Did): void {
+  clientCache.delete(did);
+}
+
+/**
  * Restore an authenticated AT Proto client for the given DID.
  *
  * In dev/perf (app-password mode), the OAuth session restore always fails for

@@ -40,32 +40,18 @@ const SITE_AUTH_FULL = "include:site.standard.authFull";
 export const ATSTORE_REVIEW_SCOPE = "include:fyi.atstore.authThirdPartyReviews";
 
 /**
- * Granular repo scope granting `create` on `app.userinput.discussion` records
- * (the userinput.app feedback collection). We author this directly rather than
- * publishing an `include:` permission-set lexicon — userinput.app does not
- * publish one, and the granular form is consent-screen friendly enough for the
- * volume of feedback we expect.
+ * Permission-set scope published by userinput.app covering `create` on both
+ * `app.userinput.discussion` (posting feedback) and `app.userinput.upvote`
+ * (voting on a discussion). Previously we authored these as two granular
+ * `repo` scopes ourselves since userinput.app didn't publish a set; now that
+ * it publishes `authBasic`, we reference it via `include:` like the other
+ * upstream permission sets.
  *
  * Persisted via the `user.userinputFeedbackEnabled` flag so the scope is
  * silently re-requested on every future login once granted (the user only sees
  * the consent screen once).
  */
-export const USERINPUT_DISCUSSION_SCOPE = atprotoScope.repo({
-  collection: ["app.userinput.discussion"],
-});
-
-/**
- * Granular repo scope granting writes on `app.userinput.upvote` records (voting
- * on a discussion). The upvote lexicon uses `key: "any"` — written at the SAME
- * rkey as its subject, so a reader holds at most one upvote per discussion. We
- * author the scope without an `action=` constraint (the default `create` action
- * covers the put-or-replace write). Bundled into the same `userinputFeedbackEnabled`
- * flag as the discussion scope so a single consent screen grants both
- * permissions: posting feedback AND upvoting.
- */
-export const USERINPUT_UPVOTE_SCOPE = atprotoScope.repo({
-  collection: ["app.userinput.upvote"],
-});
+export const USERINPUT_BASIC_SCOPE = "include:app.userinput.authBasic";
 
 /**
  * Basic sign-in scope — what 95% of readers need. Covers app-owned reader-state
@@ -103,8 +89,8 @@ export const subscribeScope = [ATPROTO_BASE_SCOPE, SITE_AUTH_SOCIAL];
  * scope is not treated as a subset of a multi-collection one; the same applies
  * to `include:` set scopes).
  *
- * Includes the userinput discussion + upvote scopes so the default login client
- * can request them on re-login once the user has opted in (via
+ * Includes the userinput basic scope so the default login client can request
+ * it on re-login once the user has opted in (via
  * `user.userinputFeedbackEnabled`).
  */
 export const clientMetadataScope = [
@@ -112,8 +98,7 @@ export const clientMetadataScope = [
     ...basicScope,
     ...collectionsScope,
     ...subscribeScope,
-    USERINPUT_DISCUSSION_SCOPE,
-    USERINPUT_UPVOTE_SCOPE,
+    USERINPUT_BASIC_SCOPE,
   ]),
 ];
 
@@ -159,9 +144,9 @@ export interface ScopeUserLookup {
  * flow itself) and `intent: "subscribe"` (the subscribe embed) override the
  * flag.
  *
- * The userinput feedback scope (`USERINPUT_DISCUSSION_SCOPE`) is appended
- * when `user.userinputFeedbackEnabled` is set OR when `requestUserinputScope`
- * is explicitly `true` (the signal computed in `api-auth.functions.ts` from
+ * The userinput basic scope (`USERINPUT_BASIC_SCOPE`) is appended when
+ * `user.userinputFeedbackEnabled` is set OR when `requestUserinputScope` is
+ * explicitly `true` (the signal computed in `api-auth.functions.ts` from
  * `user.userinputFeedbackEnabled` OR an already-granted `account.scope`).
  */
 export function resolveAuthScopeForUser(
@@ -178,7 +163,7 @@ export function resolveAuthScopeForUser(
       : SCOPE_BY_INTENT.basic;
   if (requestUserinputScope || user?.userinputFeedbackEnabled === true) {
     return formatOAuthScope([
-      ...new Set([...base, USERINPUT_DISCUSSION_SCOPE, USERINPUT_UPVOTE_SCOPE]),
+      ...new Set([...base, USERINPUT_BASIC_SCOPE]),
     ]);
   }
   return formatOAuthScope(base);
@@ -302,8 +287,10 @@ export function repoScopeAllowsCreateForCollection(
 
 /**
  * Detect whether the granted scope includes the userinput feedback writer
- * tier. Accepts either a granular `repo?collection=app.userinput.discussion`
- * token (with or without `action=create`) or the action-less `repo:` form.
+ * tier. Accepts the `include:app.userinput.authBasic` set token verbatim, or
+ * (if the PDS expanded the set) a granular
+ * `repo?collection=app.userinput.discussion` token — with or without
+ * `action=create` — or the action-less `repo:` form.
  *
  * The source of truth for "the reader has actually accepted the feedback
  * scope" — as opposed to `user.userinputFeedbackEnabled`, which is set
@@ -315,6 +302,7 @@ export function hasUserinputFeedbackScope(
 ): boolean {
   if (!grantedScope) return false;
   const tokens = grantedScope.split(/\s+/);
+  if (tokens.includes(USERINPUT_BASIC_SCOPE)) return true;
   return tokens.some((token) =>
     repoScopeAllowsCreateForCollection(token, "app.userinput.discussion"),
   );
@@ -322,18 +310,20 @@ export function hasUserinputFeedbackScope(
 
 /**
  * Detect whether the granted scope includes the userinput upvote writer tier.
- * Accepts either a granular `repo?collection=app.userinput.upvote` token (with
- * or without `action=`) or the action-less `repo:` form.
+ * Accepts the `include:app.userinput.authBasic` set token verbatim, or (if the
+ * PDS expanded the set) a granular `repo?collection=app.userinput.upvote`
+ * token — with or without `action=` — or the action-less `repo:` form.
  *
  * Upvotes share the `userinputFeedbackEnabled` opt-in flag with discussions
- * (the two scopes are requested together), so this helper exists only so the
- * upvote write path can detect a missing upvote grant specifically.
+ * (both are covered by the same `authBasic` set), so this helper exists only
+ * so the upvote write path can detect a missing upvote grant specifically.
  */
 export function hasUserinputUpvoteScope(
   grantedScope: string | null | undefined,
 ): boolean {
   if (!grantedScope) return false;
   const tokens = grantedScope.split(/\s+/);
+  if (tokens.includes(USERINPUT_BASIC_SCOPE)) return true;
   return tokens.some((token) =>
     repoScopeAllowsCreateForCollection(token, "app.userinput.upvote"),
   );

@@ -13,8 +13,7 @@ import {
 import type { AuthScopeIntent } from "#/integrations/auth/scope";
 import {
   ATSTORE_REVIEW_SCOPE,
-  USERINPUT_DISCUSSION_SCOPE,
-  USERINPUT_UPVOTE_SCOPE,
+  USERINPUT_BASIC_SCOPE,
   basicScope,
   collectionsScope,
   formatOAuthScope,
@@ -382,7 +381,7 @@ const upgradeToAtstoreReview = createServerFn({ method: "POST" })
  * logins silently include the expanded scope — see `shouldRequestUserinputScope`),
  * revokes the current OAuth session, and initiates a fresh authorize flow on
  * the *default* client (no separate OAuth client flavor) with the
- * `USERINPUT_DISCUSSION_SCOPE` addendum. The client navigates to the returned
+ * `USERINPUT_BASIC_SCOPE` addendum. The client navigates to the returned
  * URL; the callback returns to `redirect`.
  *
  * Same revoke + re-auth shape as `upgradeToCollections` per
@@ -460,11 +459,7 @@ const upgradeToUserinputFeedback = createServerFn({ method: "POST" })
         identifier: reader.did as ActorIdentifier,
       },
       scope: formatOAuthScope([
-        ...new Set([
-          ...baseScope,
-          USERINPUT_DISCUSSION_SCOPE,
-          USERINPUT_UPVOTE_SCOPE,
-        ]),
+        ...new Set([...baseScope, USERINPUT_BASIC_SCOPE]),
       ]),
       state: {
         redirect: redirectTarget,

@@ -1,7 +1,7 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Button } from "#/design-system/button";
@@ -24,6 +24,13 @@ import { userinputApi } from "#/integrations/tanstack-query/api-userinput.functi
 const searchSchema = z.object({
   draft: z.string().min(1).optional(),
   upvote: z.string().min(1).optional(),
+  // Outcome of a consumed draft/upvote, re-encoded onto a clean URL (see the
+  // loader) so a second loader invocation (client-side revalidation after
+  // SSR, back/forward navigation, etc.) re-renders the same result instead of
+  // re-consuming already-deleted draft state.
+  result: z.enum(["success", "upvoted", "expired", "error"]).optional(),
+  uri: z.string().optional(),
+  message: z.string().optional(),
   // OAuth callback appends these; we don't use them but accept them so the
   // route doesn't 400 on the post-callback URL.
   loginSuccess: z.union([z.string(), z.boolean()]).optional(),
@@ -37,11 +44,28 @@ type ReturnOutcome =
   | { kind: "expired" }
   | { kind: "error"; message: string };
 
+/**
+ * Both `feedback_draft` and `upvote_draft` rows are single-use — consuming
+ * one atomically deletes it (see `consumeFeedbackDraft`/`consumeUpvoteDraft`).
+ * A route loader isn't guaranteed to run exactly once for a given URL (the
+ * client can revalidate after SSR hydration, navigate back/forward, etc.), so
+ * consuming the draft directly in the loader and returning the outcome makes
+ * a second invocation see the draft already gone and report `expired` —
+ * clobbering the real result the reader already saw.
+ *
+ * Mirrors `/review/thanks`: process the one-time `draft`/`upvote` param once,
+ * then `redirect` to a clean URL that carries only the display-safe outcome
+ * (`result`/`uri`/`message`). Re-running the loader against that URL is a
+ * pure read of search params — no server mutation, so it's safe to repeat.
+ */
 export const Route = createFileRoute("/_layout/feedback/return")({
   validateSearch: searchSchema,
   loaderDeps: ({ search }) => ({
     draft: search.draft,
     upvote: search.upvote,
+    result: search.result,
+    uri: search.uri,
+    message: search.message,
   }),
   loader: async ({ deps }): Promise<ReturnOutcome> => {
     // Upvote draft path: stashed before the OAuth round-trip when the reader
@@ -52,51 +76,88 @@ export const Route = createFileRoute("/_layout/feedback/return")({
           data: { draftId: deps.upvote },
         });
         if (!draft) {
-          return { kind: "expired" };
+          throw redirect({
+            to: "/feedback/return",
+            search: { result: "expired" },
+          });
         }
         const result = await userinputApi.createUserinputUpvote({
           data: { subjectUri: draft.subjectUri },
         });
-        return { kind: "upvoted", uri: result.uri };
+        throw redirect({
+          to: "/feedback/return",
+          search: { result: "upvoted", uri: result.uri },
+        });
       } catch (error) {
-        return {
-          kind: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Something went wrong while upvoting.",
-        };
+        if (isRedirect(error)) throw error;
+        throw redirect({
+          to: "/feedback/return",
+          search: {
+            result: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Something went wrong while upvoting.",
+          },
+        });
       }
     }
 
     // Discussion draft path: stashed before the OAuth round-trip when the
     // reader submitted the feedback dialog without the discussion scope.
-    if (!deps.draft) {
-      return { kind: "expired" };
+    if (deps.draft) {
+      try {
+        const draft = await userinputApi.consumeFeedbackDraft({
+          data: { draftId: deps.draft },
+        });
+        if (!draft) {
+          throw redirect({
+            to: "/feedback/return",
+            search: { result: "expired" },
+          });
+        }
+        const result = await userinputApi.createUserinputDiscussion({
+          data: {
+            title: draft.title,
+            ...(draft.body ? { body: draft.body } : {}),
+            tag: draft.tag as "bug" | "feature" | "question",
+          },
+        });
+        throw redirect({
+          to: "/feedback/return",
+          search: { result: "success", uri: result.uri },
+        });
+      } catch (error) {
+        if (isRedirect(error)) throw error;
+        throw redirect({
+          to: "/feedback/return",
+          search: {
+            result: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Something went wrong while submitting your feedback.",
+          },
+        });
+      }
     }
-    try {
-      const draft = await userinputApi.consumeFeedbackDraft({
-        data: { draftId: deps.draft },
-      });
-      if (!draft) {
+
+    switch (deps.result) {
+      case "success": {
+        return { kind: "success", uri: deps.uri ?? "" };
+      }
+      case "upvoted": {
+        return { kind: "upvoted", uri: deps.uri ?? "" };
+      }
+      case "error": {
+        return {
+          kind: "error",
+          message: deps.message ?? "Something went wrong.",
+        };
+      }
+      default: {
         return { kind: "expired" };
       }
-      const result = await userinputApi.createUserinputDiscussion({
-        data: {
-          title: draft.title,
-          ...(draft.body ? { body: draft.body } : {}),
-          tag: draft.tag as "bug" | "feature" | "question",
-        },
-      });
-      return { kind: "success", uri: result.uri };
-    } catch (error) {
-      return {
-        kind: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Something went wrong while submitting your feedback.",
-      };
     }
   },
   head: () => ({

@@ -17,7 +17,7 @@ import {
   Lightbulb,
   MessageSquarePlus,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { FeedbackDialog } from "#/components/feedback/feedback-dialog";
 import { formatRelativeTime, initials } from "#/components/reader/format";
@@ -64,22 +64,20 @@ import type { FeedbackTag } from "#/lib/userinput/space";
 import { STANDARD_READER_FEEDBACK_TAGS } from "#/lib/userinput/space";
 import { parseAtUri } from "#/server/atproto/uri";
 
-export const Route = createFileRoute("/_layout/feedback")({
-  loader: async ({ context, preload }) => {
-    const options = userinputApi.getFeedbackDiscussionsQueryOptions({
-      limit: 50,
-    });
-    if (preload) {
-      void context.queryClient.prefetchQuery(options);
-      return;
-    }
-    await context.queryClient.ensureQueryData(options);
+export const Route = createFileRoute("/_layout/feedback/")({
+  // Non-blocking: prefetch so the masthead below can render immediately (see
+  // FeedbackPage) instead of the whole page waiting on this data. The
+  // discussions list suspends on its own (see FeedbackDiscussions), showing
+  // `DiscussionListSkeleton` while the prefetch is still in flight.
+  loader: ({ context }) => {
+    void context.queryClient.prefetchQuery(
+      userinputApi.getFeedbackDiscussionsQueryOptions({ limit: 50 }),
+    );
   },
   head: () => ({
     meta: pageSocialMeta("feedback", getPublicUrlClient()),
   }),
   component: FeedbackPage,
-  pendingComponent: DiscussionListSkeleton,
   errorComponent: ({ error }) => (
     <Message>
       Could not load feedback{" "}
@@ -756,17 +754,17 @@ const TAG_FILTER_OPTIONS: Array<{ id: TagFilter; label: string }> = [
   { id: "question", label: "Questions" },
 ];
 
-function FeedbackPage() {
-  const [dialogOpen, setDialogOpen] = useState(false);
+/**
+ * Everything the masthead doesn't need — the discussions query, filters, and
+ * upvote logic. Split out so `FeedbackPage`'s header + submit button render
+ * unconditionally instead of waiting on this data (see the route's
+ * non-blocking loader).
+ */
+function FeedbackDiscussions({ signedIn }: { signedIn: boolean }) {
   const [tagFilter, setTagFilter] = useState<TagFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("top");
   const [search, setSearch] = useState("");
-  const { data: session } = useQuery(user.getSessionQueryOptions);
-  const signedIn = Boolean(session?.user);
   const queryClient = useQueryClient();
-  // Loader seeds the cache via `ensureQueryData`; `useSuspenseQuery` reads it
-  // without a pending flash. If the fetch errored in the loader, the route's
-  // error boundary handles it instead of an inline error state.
   const { data } = useSuspenseQuery(
     userinputApi.getFeedbackDiscussionsQueryOptions({ limit: 50 }),
   );
@@ -1001,11 +999,72 @@ function FeedbackPage() {
   }
 
   return (
+    <>
+      {allDiscussions.length === 0 ? null : (
+        <div {...stylex.props(styles.toolbar)}>
+          <SearchField
+            aria-label="Search feedback"
+            placeholder="Search feedback..."
+            size="lg"
+            variant="secondary"
+            style={styles.toolbarSearch}
+            value={search}
+            onChange={setSearch}
+          />
+          <Select
+            aria-label="Filter by tag"
+            size="lg"
+            variant="secondary"
+            selectedKey={tagFilter}
+            style={styles.toolbarSelect}
+            onSelectionChange={(key) => {
+              if (key == null) return;
+              setTagFilter(String(key) as TagFilter);
+            }}
+          >
+            {TAG_FILTER_OPTIONS.map((opt) => (
+              <SelectItem key={opt.id} id={opt.id} textValue={opt.label}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </Select>
+          <SegmentedControl
+            aria-label="Sort by"
+            size="lg"
+            style={styles.toolbarSort}
+            selectedKeys={new Set([sortMode])}
+            onSelectionChange={(keys) => {
+              const next = [...keys][0];
+              if (typeof next === "string") {
+                setSortMode(next as SortMode);
+              }
+            }}
+          >
+            <SegmentedControlItem key="top" id="top">
+              <ArrowUp size={13} strokeWidth={2} /> Top
+            </SegmentedControlItem>
+            <SegmentedControlItem key="new" id="new">
+              New
+            </SegmentedControlItem>
+          </SegmentedControl>
+        </div>
+      )}
+
+      {body}
+    </>
+  );
+}
+
+function FeedbackPage() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { data: session } = useQuery(user.getSessionQueryOptions);
+  const signedIn = Boolean(session?.user);
+
+  return (
     <ReaderContent>
       <div {...stylex.props(styles.page)}>
         <header {...stylex.props(styles.masthead)}>
           <div>
-            <div {...stylex.props(styles.eyebrow)}>Standard Reader</div>
             <h1 {...stylex.props(styles.title)}>Feedback</h1>
             <p {...stylex.props(styles.dek)}>
               Bug reports, feature requests, and questions for Standard Reader.
@@ -1035,57 +1094,9 @@ function FeedbackPage() {
           ) : null}
         </header>
 
-        {allDiscussions.length === 0 ? null : (
-          <div {...stylex.props(styles.toolbar)}>
-            <SearchField
-              aria-label="Search feedback"
-              placeholder="Search feedback..."
-              size="lg"
-              variant="secondary"
-              style={styles.toolbarSearch}
-              value={search}
-              onChange={setSearch}
-            />
-            <Select
-              aria-label="Filter by tag"
-              size="lg"
-              variant="secondary"
-              selectedKey={tagFilter}
-              style={styles.toolbarSelect}
-              onSelectionChange={(key) => {
-                if (key == null) return;
-                setTagFilter(String(key) as TagFilter);
-              }}
-            >
-              {TAG_FILTER_OPTIONS.map((opt) => (
-                <SelectItem key={opt.id} id={opt.id} textValue={opt.label}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </Select>
-            <SegmentedControl
-              aria-label="Sort by"
-              size="lg"
-              style={styles.toolbarSort}
-              selectedKeys={new Set([sortMode])}
-              onSelectionChange={(keys) => {
-                const next = [...keys][0];
-                if (typeof next === "string") {
-                  setSortMode(next as SortMode);
-                }
-              }}
-            >
-              <SegmentedControlItem key="top" id="top">
-                <ArrowUp size={13} strokeWidth={2} /> Top
-              </SegmentedControlItem>
-              <SegmentedControlItem key="new" id="new">
-                New
-              </SegmentedControlItem>
-            </SegmentedControl>
-          </div>
-        )}
-
-        {body}
+        <Suspense fallback={<DiscussionListSkeleton />}>
+          <FeedbackDiscussions signedIn={signedIn} />
+        </Suspense>
       </div>
 
       {signedIn ? (

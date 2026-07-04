@@ -1,7 +1,8 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { useMutation } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { Button } from "#/design-system/button";
@@ -63,6 +64,43 @@ export interface FeedbackDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const FEEDBACK_LIST_LIMIT = 50;
+const DISCUSSION_POLL_INTERVAL_MS = 600;
+const DISCUSSION_POLL_MAX_ATTEMPTS = 8;
+
+/**
+ * The feedback list is read from a constellation backlinks index that
+ * observes writes via the AT Proto firehose — a discussion just written to
+ * the reader's own repo doesn't show up there instantly. Poll briefly for it
+ * to appear and seed the query cache with the confirming response, so the
+ * `/feedback` list already reflects the new post once this resolves instead
+ * of requiring a manual refresh. Best-effort: gives up silently if the
+ * indexer is still catching up after the poll window — the list's normal
+ * `staleTime` expiry picks it up eventually either way.
+ */
+async function waitForDiscussionToAppear(
+  queryClient: QueryClient,
+  uri: string,
+): Promise<void> {
+  const listOptions = userinputApi.getFeedbackDiscussionsQueryOptions({
+    limit: FEEDBACK_LIST_LIMIT,
+  });
+  for (let attempt = 0; attempt < DISCUSSION_POLL_MAX_ATTEMPTS; attempt++) {
+    const result = await userinputApi.listFeedbackDiscussions({
+      data: { limit: FEEDBACK_LIST_LIMIT },
+    });
+    if (result.discussions.some((d) => d.uri === uri)) {
+      queryClient.setQueryData(listOptions.queryKey, result);
+      return;
+    }
+    if (attempt < DISCUSSION_POLL_MAX_ATTEMPTS - 1) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, DISCUSSION_POLL_INTERVAL_MS),
+      );
+    }
+  }
+}
+
 /**
  * Submit-feedback dialog. Renders a tag chooser (bug / feature / question),
  * a required title, and an optional body. On Create:
@@ -82,6 +120,7 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
   const [tag, setTag] = useState<FeedbackTag>("bug");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const queryClient = useQueryClient();
 
   // Reset the form whenever the dialog is closed so a reopen is clean.
   useEffect(() => {
@@ -103,13 +142,15 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
       const trimmedBody = body.trim();
 
       try {
-        return await userinputApi.createUserinputDiscussion({
+        const result = await userinputApi.createUserinputDiscussion({
           data: {
             title: trimmedTitle,
             ...(trimmedBody ? { body: trimmedBody } : {}),
             tag,
           },
         });
+        await waitForDiscussionToAppear(queryClient, result.uri);
+        return result;
       } catch (error) {
         if (!isAtprotoScopeMissingError(error, "app.userinput.discussion")) {
           throw error;
