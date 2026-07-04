@@ -1085,15 +1085,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Plus size={16} /> Add publication
             </Button>
-            {signedIn ? (
-              <Button
-                variant="secondary"
-                style={styles.feedbackTrigger}
-                onPress={() => setFeedbackOpen(true)}
-              >
-                <MessageSquarePlus size={16} /> Submit feedback
-              </Button>
-            ) : null}
           </Flex>
         </aside>
 
