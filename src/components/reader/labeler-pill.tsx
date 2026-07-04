@@ -3,6 +3,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+
 import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
 import {
   labelValueDescription,

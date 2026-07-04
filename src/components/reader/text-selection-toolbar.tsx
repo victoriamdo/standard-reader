@@ -1,8 +1,10 @@
 "use client";
 
-import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
-
 import * as stylex from "@stylexjs/stylex";
+import { Link as LinkIcon, Play, Share2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
 import { IconButton } from "#/design-system/icon-button";
 import { animationDuration } from "#/design-system/theme/animations.stylex";
 import { uiColor } from "#/design-system/theme/color.stylex";
@@ -14,12 +16,10 @@ import {
 import { shadow } from "#/design-system/theme/shadow.stylex";
 import { toasts } from "#/design-system/toast";
 import { Toolbar, ToolbarGroup } from "#/design-system/toolbar";
+import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import { quoteShareApi } from "#/integrations/tanstack-query/api-quote-share.functions";
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
 import { buildQuoteShareUrl, normalizeQuoteText } from "#/lib/quote-share";
-import { Link as LinkIcon, Play, Share2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 
 import { LinkShareMenu } from "./link-share-menu";
 

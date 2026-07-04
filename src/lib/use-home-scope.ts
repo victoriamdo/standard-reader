@@ -1,8 +1,8 @@
-import type { HomeScope } from "#/integrations/tanstack-query/api-feed.functions";
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { useCallback } from "react";
+
+import type { HomeScope } from "#/integrations/tanstack-query/api-feed.functions";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
 
 import { DEFAULT_HOME_SCOPE } from "./home-scope";
 

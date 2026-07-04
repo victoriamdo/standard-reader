@@ -1,26 +1,24 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
+import { use, useEffect, useRef, useState } from "react";
 import type {
   AutocompleteProps as AriaAutocompleteProps,
   ListBoxProps,
   ValidationResult,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { use, useEffect, useRef, useState } from "react";
 import { Autocomplete as AriaAutocomplete } from "react-aria-components";
 
+import { SizeContext } from "../context";
+import { ListBox } from "../listbox";
+import { TextField } from "../text-field";
+import { verticalSpace } from "../theme/semantic-spacing.stylex";
 import type {
   InputValidationState,
   InputVariant,
   Size,
   StyleXComponentProps,
 } from "../theme/types";
-
-import { SizeContext } from "../context";
-import { ListBox } from "../listbox";
-import { TextField } from "../text-field";
-import { verticalSpace } from "../theme/semantic-spacing.stylex";
 import { usePopoverStyles } from "../theme/usePopoverStyles";
 
 const styles = stylex.create({

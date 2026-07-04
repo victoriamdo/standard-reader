@@ -1,16 +1,16 @@
 "use client";
 
-import { ArticleContent } from "#/components/reader/content/article-content";
 import { ExternalLink } from "lucide-react";
 import { forwardRef } from "react";
 
-import type { MagFeature, MagIssue, MagMeta } from "./types";
+import { ArticleContent } from "#/components/reader/content/article-content";
 
 import { MagHoverButton } from "./mag-hover-button";
 import { MagazineEndLike } from "./magazine-end-like";
 import { MagazineEndSubscribe } from "./magazine-end-subscribe";
 import { MagazineFeatureEnd } from "./magazine-feature-end";
 import { MagMarkdown } from "./MagMarkdown";
+import type { MagFeature, MagIssue, MagMeta } from "./types";
 
 /**
  * Collection editorial intro — a full spread after the cover, rendered only when

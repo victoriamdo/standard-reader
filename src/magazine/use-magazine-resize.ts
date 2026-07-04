@@ -1,5 +1,4 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
-
 import {
   useCallback,
   useEffect,
@@ -11,7 +10,6 @@ import { flushSync } from "react-dom";
 
 import type { Geom } from "./magazine-geom";
 import type { FlowMeasure, ResizeAnchor } from "./magazine-measure";
-
 import {
   captureResizeAnchor,
   featureIndexAtColumn,

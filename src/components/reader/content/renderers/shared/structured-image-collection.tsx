@@ -1,20 +1,19 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
+import { useState } from "react";
+
+import {
+  structuredImageAspectRatio,
+  structuredImageUrl,
+} from "#/lib/document/structured-content/image";
 import type {
   StructuredGridImage,
   StructuredRenderableBlock,
 } from "#/lib/document/structured-content/types";
 
-import * as stylex from "@stylexjs/stylex";
-import {
-  structuredImageAspectRatio,
-  structuredImageUrl,
-} from "#/lib/document/structured-content/image";
-import { useState } from "react";
-
-import type { ContentBlobContext } from "../../types";
-
 import { articleBodyStyles } from "../../body-styles";
+import type { ContentBlobContext } from "../../types";
 import { ImageFigureView } from "./image-figure";
 
 function blockAlignmentStyle(alignment?: string) {

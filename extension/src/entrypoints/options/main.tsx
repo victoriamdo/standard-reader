@@ -1,4 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
+import { Sparkles } from "lucide-react";
+import { StrictMode, useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+
 import { Button } from "#/design-system/button";
 import { Checkbox } from "#/design-system/checkbox";
 import { Flex } from "#/design-system/flex";
@@ -11,17 +15,13 @@ import {
   DEFAULT_READER_VOICE_PREFERENCE,
   isReaderVoicePreference,
 } from "#/lib/reader-voice";
-import { Sparkles } from "lucide-react";
-import { StrictMode, useEffect, useState } from "react";
-import { createRoot } from "react-dom/client";
-
-import type { ExtensionThemeMode } from "../../lib/extension-theme";
-import type { ExtensionSettings } from "../../lib/types";
 
 import { ExtensionTheme } from "../../components/ExtensionTheme";
 import { DEFAULT_SETTINGS } from "../../lib/config";
+import type { ExtensionThemeMode } from "../../lib/extension-theme";
 import { useExtensionTheme } from "../../lib/extension-theme-context";
 import { sendMessage } from "../../lib/messaging";
+import type { ExtensionSettings } from "../../lib/types";
 
 const COLOR_SCHEME_OPTIONS = [
   { id: "light" as const, label: "Light" },

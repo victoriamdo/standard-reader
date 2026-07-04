@@ -10,11 +10,10 @@ import {
 } from "#/server/reader/queries";
 import { effectiveFollowUris, readList } from "#/server/reader/saved-lists";
 
-import type { XrpcRequestContext } from "../types";
-
 import { nextCursor } from "../db";
 import { InvalidRequestError } from "../errors";
 import { intParam, optionalParam, requireParam } from "../params";
+import type { XrpcRequestContext } from "../types";
 import { toDocumentView, toPublicationView } from "../views";
 import {
   enrichDocuments,

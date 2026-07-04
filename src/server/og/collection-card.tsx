@@ -1,22 +1,22 @@
-import type { CollectionOgFontRoles } from "#/server/og/collection-fonts";
-import type {
-  PublicationThemeInput,
-  QuoteOgColors,
-} from "#/server/og/theme-colors";
 import type { Font } from "satori";
+import satori from "satori";
 
 import { initials } from "#/components/reader/format";
 import {
   collectionFeatureLabel,
   plainTextFromMarkdown,
 } from "#/lib/collections/og-meta";
+import type { CollectionOgFontRoles } from "#/server/og/collection-fonts";
 import { loadCollectionOgFonts } from "#/server/og/collection-fonts";
 import { loadOgImage, loadPublicationIcon } from "#/server/og/load-image";
 import { OG_HEIGHT, OG_WIDTH, renderOgPng } from "#/server/og/render-png";
 import { ogSatoriOptions } from "#/server/og/satori-options";
 import { truncateAtWord } from "#/server/og/text";
+import type {
+  PublicationThemeInput,
+  QuoteOgColors,
+} from "#/server/og/theme-colors";
 import { resolveQuoteOgColors } from "#/server/og/theme-colors";
-import satori from "satori";
 
 const ICON_SIZE = 64;
 

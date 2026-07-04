@@ -1,19 +1,3 @@
-/**
- * Central dispatch for third-party document content formats beyond the four
- * first-class families (leaflet / pckt / offprint / standard markdown).
- *
- * Three categories, each consumed by rendering, search-text extraction, and
- * the renderable-body check:
- *  - markdown-in-record  → `altMarkdownText` (alt-markdown.ts)
- *  - HTML-in-record      → `htmlContentBody` / `htmlContentPlaintext` (html.ts)
- *  - block-based         → `structuredFormatBlocks` (parsers below)
- *
- * `pub.leaflet.document` is special-cased: it's a full Leaflet document whose
- * `pages` match `pub.leaflet.content`, so it adapts onto the existing leaflet
- * pipeline via `leafletDocumentContent`.
- */
-import type { StructuredRenderableBlock } from "./structured-content/types";
-
 import { LEAFLET_CONTENT } from "../leaflet/types";
 import {
   BLOCKNOTE_CONTENT,
@@ -29,6 +13,21 @@ import {
   PROSEMIRROR_CONTENT,
   prosemirrorBlocks,
 } from "./structured-content/prosemirror";
+/**
+ * Central dispatch for third-party document content formats beyond the four
+ * first-class families (leaflet / pckt / offprint / standard markdown).
+ *
+ * Three categories, each consumed by rendering, search-text extraction, and
+ * the renderable-body check:
+ *  - markdown-in-record  → `altMarkdownText` (alt-markdown.ts)
+ *  - HTML-in-record      → `htmlContentBody` / `htmlContentPlaintext` (html.ts)
+ *  - block-based         → `structuredFormatBlocks` (parsers below)
+ *
+ * `pub.leaflet.document` is special-cased: it's a full Leaflet document whose
+ * `pages` match `pub.leaflet.content`, so it adapts onto the existing leaflet
+ * pipeline via `leafletDocumentContent`.
+ */
+import type { StructuredRenderableBlock } from "./structured-content/types";
 
 export {
   ALT_MARKDOWN_FORMATS,

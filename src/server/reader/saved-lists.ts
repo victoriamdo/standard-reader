@@ -13,15 +13,15 @@
  * reader saves/unsaves a list.
  */
 
-import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
+import { and, eq } from "drizzle-orm";
+import { cache as reactCache } from "react";
 
 import { listSaves, lists } from "#/db/schema";
+import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 import { APP_NSID } from "#/lib/atproto/nsids";
 import { fetchRepoRecordWithFallback } from "#/server/atproto/fetch-record";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { selectFollowUris } from "#/server/reader/queries";
-import { and, eq } from "drizzle-orm";
-import { cache as reactCache } from "react";
 
 const RECORD_FETCH_TIMEOUT_MS = 8000;
 /** How long a reader's resolved saved lists are reused across feed queries. */

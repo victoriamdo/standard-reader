@@ -1,10 +1,5 @@
 "use client";
 
-import type {
-  CollectionCard,
-  CollectionsPublicationSummary,
-} from "#/integrations/tanstack-query/api-collections.functions";
-
 import * as stylex from "@stylexjs/stylex";
 import {
   useMutation,
@@ -17,17 +12,22 @@ import {
   redirect,
   useNavigate,
 } from "@tanstack/react-router";
+import { Eye, Layers, Palette, Pencil, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
 import { CollectionsUpgradeOverlay } from "#/components/reader/collections-upgrade-gate";
 import { IconButtonLink } from "#/components/router-links";
 import { hasCollectionsScope } from "#/integrations/auth/scope";
+import type {
+  CollectionCard,
+  CollectionsPublicationSummary,
+} from "#/integrations/tanstack-query/api-collections.functions";
 import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { siteSocialMeta } from "#/lib/site-metadata";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
-import { Eye, Layers, Palette, Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
 
 import {
   CollectionPublicationCreateDialog,

@@ -1,5 +1,4 @@
 import "dotenv/config";
-
 import { hasPerfSignedInCredentials } from "./lib/auth.ts";
 import { bootstrapPerfAuth } from "./lib/bootstrap-session.ts";
 

@@ -1,18 +1,22 @@
+import * as stylex from "@stylexjs/stylex";
+import { Eye, EyeOff } from "lucide-react";
+import { use, useRef, useState } from "react";
 import type {
   TextFieldProps as AriaTextFieldProps,
   InputProps,
   ValidationResult,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { Eye, EyeOff } from "lucide-react";
-import { use, useRef, useState } from "react";
 import {
   TextField as AriaTextField,
   Input,
   InputContext,
 } from "react-aria-components";
 
+import { SizeContext } from "../context";
+import { Flex } from "../flex";
+import { IconButton } from "../icon-button";
+import { Description, FieldErrorMessage, Label } from "../label";
+import { SuffixIcon } from "../suffix-icon";
 import type {
   InputValidationState,
   InputVariant,
@@ -20,12 +24,6 @@ import type {
   Size,
   StyleXComponentProps,
 } from "../theme/types";
-
-import { SizeContext } from "../context";
-import { Flex } from "../flex";
-import { IconButton } from "../icon-button";
-import { Description, FieldErrorMessage, Label } from "../label";
-import { SuffixIcon } from "../suffix-icon";
 import { useInputStyles } from "../theme/useInputStyles";
 
 function PasswordToggle({

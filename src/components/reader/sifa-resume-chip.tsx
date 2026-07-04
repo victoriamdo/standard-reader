@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
+
 import { Badge } from "#/design-system/badge";
 import { authorApi } from "#/integrations/tanstack-query/api-author.functions";
 

@@ -1,10 +1,11 @@
 "use client";
 
+import { useLayoutEffect } from "react";
+
 import {
   googleFontsPreviewStylesheetUrl,
   googleFontsStylesheetUrl,
 } from "#/lib/google-fonts";
-import { useLayoutEffect } from "react";
 
 function linkIdForFamily(family: string, variant: "full" | "preview"): string {
   const slug = family.trim().toLowerCase().replaceAll(/\s+/g, "-");

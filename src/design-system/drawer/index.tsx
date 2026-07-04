@@ -1,9 +1,8 @@
 "use client";
 
-import type { DialogTriggerProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import { X } from "lucide-react";
+import type { DialogTriggerProps } from "react-aria-components";
 import {
   Dialog as AriaDialog,
   DialogTrigger,
@@ -11,8 +10,6 @@ import {
   Modal,
   ModalOverlay,
 } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { useHaptics } from "../haptics";
 import { IconButton } from "../icon-button";
@@ -30,6 +27,7 @@ import {
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
 import { spacing } from "../theme/spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { typeramp } from "../theme/typography.stylex";
 import { useDialogStyles } from "../theme/useDialogStyles";
 import { NonModalDrawer } from "./NonModalDrawer";

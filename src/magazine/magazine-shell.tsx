@@ -1,12 +1,12 @@
-import type { CollectionTheme } from "#/lib/collections/theme";
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 
 import {
   buildMagazinePalette,
   magazinePaletteCss,
   magazinePaletteInlineStyle,
 } from "#/lib/collections/radix-theme";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import type { CollectionTheme } from "#/lib/collections/theme";
 
 import { readMagazineDark } from "./dark-mode";
 import { pinElementToVisualViewport } from "./pin-visual-viewport";

@@ -3,7 +3,6 @@
 import { htmlContentBody } from "#/lib/document/structured-content/html";
 
 import type { ContentRendererProps } from "../types";
-
 import { MarkdownArticle } from "./shared/markdown-article";
 
 /**

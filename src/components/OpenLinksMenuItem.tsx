@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+
 import { MenuItem } from "#/design-system/menu";
 import { uiColor } from "#/design-system/theme/color.stylex";
 import { useOpenLinks } from "#/lib/use-open-links";

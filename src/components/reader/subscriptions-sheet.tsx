@@ -2,12 +2,11 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { AuthorProfileLink } from "#/components/reader/author-profile-link";
-import { formatSidebarUnreadCount } from "#/lib/format-count";
 import { ChevronRight, Compass, FolderPlus, Plus } from "lucide-react";
 import { Button as AriaButton } from "react-aria-components";
 
-import type { FollowingPublication } from "../../integrations/tanstack-query/api-feed.functions";
+import { AuthorProfileLink } from "#/components/reader/author-profile-link";
+import { formatSidebarUnreadCount } from "#/lib/format-count";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
@@ -38,6 +37,7 @@ import {
   fontWeight,
   tracking,
 } from "../../design-system/theme/typography.stylex";
+import type { FollowingPublication } from "../../integrations/tanstack-query/api-feed.functions";
 import { parseInternalRoute } from "../../lib/internal-route";
 import { initials, listLinkParams, publicationLinkParams } from "./format";
 import { Handle } from "./primitives";

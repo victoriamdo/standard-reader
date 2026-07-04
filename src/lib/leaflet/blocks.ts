@@ -19,7 +19,6 @@ import type {
   LeafletUnorderedListBlock,
   LeafletWebsiteBlock,
 } from "./types";
-
 import { LEAFLET_BLOCK, LEAFLET_CONTENT, LEAFLET_PAGE } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {

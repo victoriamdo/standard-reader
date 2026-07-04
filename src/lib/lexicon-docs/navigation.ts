@@ -1,5 +1,4 @@
 import type { LexiconDocsEntry } from "./types";
-
 import { LEXICON_DOCS_SECTIONS } from "./types";
 
 export const LEXICON_DOCS_INTRO_IDS = {

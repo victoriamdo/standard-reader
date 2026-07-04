@@ -1,5 +1,4 @@
 import type { Options as SanitizeSchema } from "rehype-sanitize";
-
 import { defaultSchema } from "rehype-sanitize";
 
 /** Allow Standard markdown HTML used by publishers (e.g. Wade Minter playlist cards). */

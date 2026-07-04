@@ -3,7 +3,6 @@
 import { leafletDocumentContent } from "#/lib/document/content-formats";
 
 import type { ContentRendererProps } from "../types";
-
 import { LeafletContentRenderer } from "./leaflet-content";
 
 /**

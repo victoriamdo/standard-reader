@@ -1,13 +1,12 @@
+import {
+  normalizeImageAlt,
+  parseStructuredGridImage,
+} from "#/lib/document/structured-content/image";
 import type {
   StructuredGridImage,
   StructuredRenderableBlock,
   StructuredText,
 } from "#/lib/document/structured-content/types";
-
-import {
-  normalizeImageAlt,
-  parseStructuredGridImage,
-} from "#/lib/document/structured-content/image";
 
 import { OFFPRINT_BLOCK, OFFPRINT_CONTENT } from "./types";
 

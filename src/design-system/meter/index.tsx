@@ -1,10 +1,7 @@
-import type { MeterProps as AriaMeterProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import { use } from "react";
+import type { MeterProps as AriaMeterProps } from "react-aria-components";
 import { Meter as AriaMeter } from "react-aria-components";
-
-import type { MeterVariant, Size, StyleXComponentProps } from "../theme/types";
 
 import { SizeContext } from "../context";
 import { Label } from "../label";
@@ -18,6 +15,7 @@ import {
 } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { MeterVariant, Size, StyleXComponentProps } from "../theme/types";
 import { fontSize, lineHeight } from "../theme/typography.stylex";
 
 const styles = stylex.create({

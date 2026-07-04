@@ -1,6 +1,9 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+import { use, useState } from "react";
+import { flushSync } from "react-dom";
+
 import { AspectRatio, AspectRatioImage } from "#/design-system/aspect-ratio";
 import { Lightbox } from "#/design-system/lightbox";
 import {
@@ -10,8 +13,6 @@ import {
 import { spacing } from "#/design-system/theme/spacing.stylex";
 import { normalizeImageAlt } from "#/lib/document/structured-content/image";
 import { MagazineColorContext } from "#/magazine/context";
-import { use, useState } from "react";
-import { flushSync } from "react-dom";
 
 import { articleBodyStyles } from "../../body-styles";
 

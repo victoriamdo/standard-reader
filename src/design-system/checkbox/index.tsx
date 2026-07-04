@@ -1,18 +1,15 @@
+import * as stylex from "@stylexjs/stylex";
+import { Check, Minus } from "lucide-react";
+import { use } from "react";
 import type {
   CheckboxGroupProps as AriaCheckboxGroupProps,
   CheckboxProps as AriaCheckboxProps,
   ValidationResult,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { Check, Minus } from "lucide-react";
-import { use } from "react";
 import {
   Checkbox as AriaCheckbox,
   CheckboxGroup as AriaCheckboxGroup,
 } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { SizeContext } from "../context";
 import { Flex } from "../flex";
@@ -20,6 +17,7 @@ import { Description, FieldErrorMessage, Label } from "../label";
 import { radius } from "../theme/radius.stylex";
 import { primary, ui } from "../theme/semantic-color.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { fontFamily, fontSize, lineHeight } from "../theme/typography.stylex";
 
 const styles = stylex.create({

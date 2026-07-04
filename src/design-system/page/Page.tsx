@@ -1,15 +1,13 @@
 "use client";
 
-/* oxlint-disable perfectionist/sort-imports -- @stylexjs vs @tanstack ordering conflicts */
-import type { ComponentProps, ReactNode } from "react";
-
 import * as stylex from "@stylexjs/stylex";
 import type { LinkProps } from "@tanstack/react-router";
-import { IconButtonLink } from "#/components/router-links";
 import { ArrowLeft } from "lucide-react";
+/* oxlint-disable perfectionist/sort-imports -- @stylexjs vs @tanstack ordering conflicts */
+import type { ComponentProps, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
-import type { StyleXComponentProps } from "../theme/types";
+import { IconButtonLink } from "#/components/router-links";
 
 import { Flex } from "../flex";
 import type { IconButton } from "../icon-button";
@@ -26,6 +24,7 @@ import {
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
 import { shadow } from "../theme/shadow.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { fontFamily } from "../theme/typography.stylex";
 import { Text } from "../typography/text";
 import { PageContext, usePageContext } from "./context";

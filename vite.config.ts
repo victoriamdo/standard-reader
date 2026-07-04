@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import babel from "@rolldown/plugin-babel";
 import stylexPlugin from "@stylexjs/unplugin/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -5,7 +7,6 @@ import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react";
 import browserslist from "browserslist";
 import { browserslistToTargets } from "lightningcss";
 import { nitro } from "nitro/vite";
-import path from "node:path";
 import { defineConfig } from "vite";
 
 const config = defineConfig({

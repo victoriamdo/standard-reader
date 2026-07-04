@@ -6,9 +6,8 @@
  * (`null` = auto).
  */
 
-import type { ReaderVoice } from "#/lib/page-reader/voice-catalog";
-
 import { nameVoice } from "#/lib/page-reader/voice";
+import type { ReaderVoice } from "#/lib/page-reader/voice-catalog";
 import {
   AMERICAN_ENGLISH_VOICE_IDS,
   readerVoiceLabel,

@@ -1,14 +1,14 @@
 "use client";
 
-import type { LexiconDocsEntry } from "#/lib/lexicon-docs/types";
-
 import * as stylex from "@stylexjs/stylex";
+
 import {
   LEXICON_DOCS_INTRO_IDS,
   lexiconDocsEntryId,
   lexiconDocsNsidLeaf,
   lexiconDocsSectionCount,
 } from "#/lib/lexicon-docs/navigation";
+import type { LexiconDocsEntry } from "#/lib/lexicon-docs/types";
 import { LEXICON_DOCS_SECTIONS } from "#/lib/lexicon-docs/types";
 
 import { docsStyles } from "./docs-page.stylex";

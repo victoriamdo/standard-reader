@@ -1,11 +1,11 @@
+import { eq } from "drizzle-orm";
+
 import type { db } from "#/db/index.server";
 import type * as schema from "#/db/schema";
 import type {
   ArticleCard,
   JsonValue,
 } from "#/integrations/tanstack-query/api-shapes";
-import type { BskyPostView } from "#/server/atproto/bsky-posts";
-
 import { bskyPostUrl } from "#/lib/leaflet/bsky";
 import { shiftFacets } from "#/lib/leaflet/facets";
 import { utf8ByteLength } from "#/lib/leaflet/utf8";
@@ -15,6 +15,7 @@ import {
   buildQuoteShareUrl,
   normalizeQuoteText,
 } from "#/lib/quote-share";
+import type { BskyPostView } from "#/server/atproto/bsky-posts";
 import {
   getDirectRepliesToPost,
   getPosts,
@@ -30,7 +31,6 @@ import {
 } from "#/server/atproto/margin-notes";
 import { buildCanonicalUrl } from "#/server/ingest/mappers";
 import { listQuoteSharesForDocument } from "#/server/reader/quote-shares";
-import { eq } from "drizzle-orm";
 
 export interface DocumentCommentAuthor {
   did: string;

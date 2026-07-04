@@ -12,14 +12,30 @@
  * rails stay distinct.
  */
 
+import type { SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+
 import type {
   ArticleCard,
   Db,
   PublicationCard,
   Schema,
 } from "#/integrations/tanstack-query/api-shapes";
-import type { SQL } from "drizzle-orm";
-
 import {
   articleCardColumns,
   articleQueueCardColumns,
@@ -41,22 +57,6 @@ import {
   applyTrendingDiversityCaps,
   trendingFetchPoolSize,
 } from "#/server/reader/trending-scoring";
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  exists,
-  ilike,
-  inArray,
-  isNotNull,
-  isNull,
-  ne,
-  notInArray,
-  or,
-  sql,
-} from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
 
 /** Blend weights for personalized publication ranking (tunable). */
 const RECOMMENDATION_BLEND = {

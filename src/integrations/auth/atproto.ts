@@ -1,11 +1,3 @@
-import type { Did } from "@atcute/lexicons";
-import type {
-  ClientAssertionPrivateJwk,
-  OAuthClientStores,
-  StoredSession,
-  StoredState,
-} from "@atcute/oauth-node-client";
-
 import {
   CompositeDidDocumentResolver,
   CompositeHandleResolver,
@@ -15,10 +7,18 @@ import {
   WellKnownHandleResolver,
 } from "@atcute/identity-resolver";
 import { NodeDnsHandleResolver } from "@atcute/identity-resolver-node";
+import type { Did } from "@atcute/lexicons";
+import type {
+  ClientAssertionPrivateJwk,
+  OAuthClientStores,
+  StoredSession,
+  StoredState,
+} from "@atcute/oauth-node-client";
 import { OAuthClient } from "@atcute/oauth-node-client";
+import { eq, like } from "drizzle-orm";
+
 import { db } from "#/db/index.server";
 import * as schema from "#/db/schema";
-import { eq, like } from "drizzle-orm";
 
 import { atstoreReviewClientMetadataScope, clientMetadataScope } from "./scope";
 

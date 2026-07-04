@@ -1,21 +1,20 @@
 "use client";
 
-import type { DocumentComment } from "#/integrations/tanstack-query/api-comments.functions";
-import type { JsonValue } from "#/integrations/tanstack-query/api-shapes";
-
 import * as stylex from "@stylexjs/stylex";
+import { MessageCircle } from "lucide-react";
+import { Fragment } from "react";
+
 import { AppLink } from "#/components/reader/app-link";
 import { AuthorProfileLink } from "#/components/reader/author-profile-link";
 import { Avatar } from "#/design-system/avatar";
 import { Flex } from "#/design-system/flex";
+import type { DocumentComment } from "#/integrations/tanstack-query/api-comments.functions";
+import type { JsonValue } from "#/integrations/tanstack-query/api-shapes";
 import { authorProfilePath } from "#/lib/author-profile";
 import { segmentFacetedText, shiftFacets } from "#/lib/leaflet/facets";
 import { utf8ByteLength } from "#/lib/leaflet/utf8";
-import { MessageCircle } from "lucide-react";
-import { Fragment } from "react";
 
 import type { FacetFeature } from "../content/renderers/shared/facets";
-
 import {
   findFacetFeature,
   hasFacetKind,

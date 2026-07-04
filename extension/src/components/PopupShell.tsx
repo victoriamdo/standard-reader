@@ -1,4 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
+import { Settings, X } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { BrandWordmark } from "#/components/reader/brand-wordmark";
 import { Button } from "#/design-system/button";
 import { Flex } from "#/design-system/flex";
@@ -10,19 +13,16 @@ import {
   verticalSpace,
 } from "#/design-system/theme/semantic-spacing.stylex";
 import { Text } from "#/design-system/typography/text";
-import { Settings, X } from "lucide-react";
-import { useEffect, useState } from "react";
-
-import type { PopupStateResponse } from "../lib/popup-state";
-import type { ExtensionResolveResult } from "../lib/types";
-import type { PopupReaderArticle } from "./PopupReaderBar";
 
 import { sendMessage } from "../lib/messaging";
 import { setPopupDimensions } from "../lib/popup-dimensions";
+import type { PopupStateResponse } from "../lib/popup-state";
+import type { ExtensionResolveResult } from "../lib/types";
 import { useReaderSnapshot } from "../lib/use-reader-snapshot";
 import { ExtensionTheme } from "./ExtensionTheme";
 import { PopupArticle } from "./PopupArticle";
 import { PopupPublication } from "./PopupPublication";
+import type { PopupReaderArticle } from "./PopupReaderBar";
 import { PopupReaderBar } from "./PopupReaderBar";
 import { PopupSignedInFooter } from "./PopupSignedInFooter";
 import { PopupSignIn } from "./PopupSignIn";

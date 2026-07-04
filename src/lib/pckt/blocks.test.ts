@@ -1,5 +1,6 @@
-import { PCKT_BLOCK, PCKT_CONTENT } from "#/lib/pckt/types";
 import { describe, expect, it } from "vitest";
+
+import { PCKT_BLOCK, PCKT_CONTENT } from "#/lib/pckt/types";
 
 import { asTextBlock, pcktBlocks } from "./blocks";
 

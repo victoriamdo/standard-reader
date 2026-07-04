@@ -1,10 +1,11 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { z } from "zod";
+
 import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
-import { z } from "zod";
 
 import { LabelerDetailView } from "../components/labeler-detail-view";
 

@@ -1,11 +1,11 @@
 "use client";
 
-import type { LeafletFacet } from "#/lib/leaflet/types";
-
 import * as stylex from "@stylexjs/stylex";
+import { createElement } from "react";
+
 import { HighlightedPlaintext } from "#/components/reader/quote-highlight-context";
 import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-tracker";
-import { createElement } from "react";
+import type { LeafletFacet } from "#/lib/leaflet/types";
 
 import { articleBodyStyles } from "../../body-styles";
 import { HighlightedFacetedPlaintext } from "./faceted-text";

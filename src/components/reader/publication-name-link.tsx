@@ -2,6 +2,7 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { useNavigate } from "@tanstack/react-router";
+
 import { AppLink } from "#/components/reader/app-link";
 import { publicationLinkParams } from "#/components/reader/format";
 import { parseInternalRoute } from "#/lib/internal-route";

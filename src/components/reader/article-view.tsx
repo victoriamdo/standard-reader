@@ -1,7 +1,5 @@
 "use client";
 
-import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
-
 import * as stylex from "@stylexjs/stylex";
 import {
   useMutation,
@@ -10,18 +8,6 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
-import { AppLink } from "#/components/reader/app-link";
-import { AuthorProfileLink } from "#/components/reader/author-profile-link";
-import { PublicationNameLink } from "#/components/reader/publication-name-link";
-import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
-import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { resolveArticleHeroImage } from "#/lib/document/lead-image";
-import { usePageReader } from "#/lib/page-reader/page-reader-context";
-import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
-import { useReadingTypography } from "#/lib/use-reading-typography";
-import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
-import { prefetchCollectionMagazine } from "#/magazine/load-magazine-data";
 import {
   ArrowLeft,
   BookOpen,
@@ -31,6 +17,20 @@ import {
   Heart,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+
+import { AppLink } from "#/components/reader/app-link";
+import { AuthorProfileLink } from "#/components/reader/author-profile-link";
+import { PublicationNameLink } from "#/components/reader/publication-name-link";
+import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
+import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
+import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { resolveArticleHeroImage } from "#/lib/document/lead-image";
+import { usePageReader } from "#/lib/page-reader/page-reader-context";
+import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
+import { useReadingTypography } from "#/lib/use-reading-typography";
+import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
+import { prefetchCollectionMagazine } from "#/magazine/load-magazine-data";
 
 import { Alert } from "../../design-system/alert";
 import { Avatar } from "../../design-system/avatar";

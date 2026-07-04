@@ -2,12 +2,13 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
+import { Plus, Search as SearchIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { discoverApi } from "#/integrations/tanstack-query/api-discover.functions";
 import { searchApi } from "#/integrations/tanstack-query/api-search.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { isHandleLikeInput } from "#/lib/publication/handle-input";
-import { Plus, Search as SearchIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";

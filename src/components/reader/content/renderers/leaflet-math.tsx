@@ -1,10 +1,11 @@
 "use client";
 
-import type { LeafletMathBlock } from "#/lib/leaflet/types";
-
 import * as stylex from "@stylexjs/stylex";
 import { renderToString } from "katex";
 import { useMemo } from "react";
+
+import type { LeafletMathBlock } from "#/lib/leaflet/types";
+
 import "katex/dist/katex.min.css";
 
 import { articleBodyStyles } from "../body-styles";

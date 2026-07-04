@@ -1,4 +1,15 @@
 import * as stylex from "@stylexjs/stylex";
+import {
+  ArrowRight,
+  Bookmark,
+  Check,
+  Headphones,
+  Heart,
+  MessageCircle,
+  UserPlus,
+  Users,
+} from "lucide-react";
+
 import { formatReaders, initials } from "#/components/reader/format";
 import { ArticleEngagement } from "#/components/reader/primitives";
 import { Avatar } from "#/design-system/avatar";
@@ -24,19 +35,8 @@ import {
 } from "#/design-system/theme/typography.stylex";
 import { Tooltip } from "#/design-system/tooltip";
 import { Text } from "#/design-system/typography/text";
-import {
-  ArrowRight,
-  Bookmark,
-  Check,
-  Headphones,
-  Heart,
-  MessageCircle,
-  UserPlus,
-  Users,
-} from "lucide-react";
 
 import type { ExtensionResolveArticle } from "../lib/types";
-
 import { PopupArticleDiscussion } from "./PopupArticleDiscussion";
 
 const READER_UNAVAILABLE_TOOLTIP =

@@ -1,8 +1,5 @@
 "use client";
 
-import type { CollectionMagazineData } from "#/integrations/tanstack-query/api-publication.functions";
-import type { Dispatch, ReactNode, SetStateAction } from "react";
-
 import { useQuery } from "@tanstack/react-query";
 import {
   createFileRoute,
@@ -10,6 +7,11 @@ import {
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { z } from "zod";
+
+import type { CollectionMagazineData } from "#/integrations/tanstack-query/api-publication.functions";
 import { collectionOgDescription } from "#/lib/collections/og-meta";
 import { exitMagazineViewer } from "#/lib/exit-magazine-viewer";
 import { collectionReaderViewSearch } from "#/lib/open-collections-in-magazine";
@@ -20,10 +22,6 @@ import {
   siteSocialMeta,
 } from "#/lib/site-metadata";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
-import { useCallback, useMemo, useState } from "react";
-import { z } from "zod";
-
-import type { MagazineShellData } from "../magazine/types";
 
 import { documentUriFromParams } from "../components/reader/format";
 import { publicationApi } from "../integrations/tanstack-query/api-publication.functions";
@@ -44,6 +42,8 @@ import {
   MagazineShell,
   magazineRouteBackdropStyle,
 } from "../magazine/magazine-shell";
+import type { MagazineShellData } from "../magazine/types";
+
 import "../magazine/magazine.css";
 
 const collectionSearchSchema = z.object({

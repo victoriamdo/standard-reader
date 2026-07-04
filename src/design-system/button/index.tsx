@@ -1,16 +1,14 @@
 "use client";
 
-import type { ButtonProps as AriaButtonProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
+import type { ButtonProps as AriaButtonProps } from "react-aria-components";
 import { Button as AriaButton, Link } from "react-aria-components";
-
-import type { ButtonVariant, Size, StyleXComponentProps } from "../theme/types";
 
 import { useHaptics } from "../haptics";
 import { ProgressCircle } from "../progress-circle";
 import { animationDuration } from "../theme/animations.stylex";
 import { gap } from "../theme/semantic-spacing.stylex";
+import type { ButtonVariant, Size, StyleXComponentProps } from "../theme/types";
 import { useButtonStyles } from "../theme/useButtonStyles";
 
 const styles = stylex.create({

@@ -1,14 +1,13 @@
 import { STANDARD_NSID } from "#/lib/atproto/nsids";
 import { resolveQuoteOgColors } from "#/lib/publication-theme";
 
+import { appHosts, bskyHosts } from "./manifest-hosts";
+import { sendMessage } from "./messaging";
 import type {
   ExtensionPublicationTheme,
   ExtensionResolveArticle,
   ExtensionResolveResult,
 } from "./types";
-
-import { appHosts, bskyHosts } from "./manifest-hosts";
-import { sendMessage } from "./messaging";
 
 const BUTTON_ATTR = "data-sr-bsky-bookmark";
 const ICON_ATTR = "data-sr-bsky-bookmark-icon";

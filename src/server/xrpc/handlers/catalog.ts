@@ -1,3 +1,5 @@
+import { and, eq } from "drizzle-orm";
+
 import { searchApi } from "#/integrations/tanstack-query/api-search.functions";
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import { resolveIdentity } from "#/server/atproto/identity";
@@ -11,13 +13,11 @@ import {
   discoverDirectoryPublications,
   selectArticleCardsByUris,
 } from "#/server/reader/queries";
-import { and, eq } from "drizzle-orm";
-
-import type { XrpcRequestContext } from "../types";
 
 import { encodeCursor } from "../db";
 import { InvalidRequestError } from "../errors";
 import { optionalParam, requireParam } from "../params";
+import type { XrpcRequestContext } from "../types";
 import { toDocumentView, toProfileView, toPublicationView } from "../views";
 import {
   authSessionFromContext,

@@ -1,9 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { TagPublicationCard } from "#/server/reader/queries";
-
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { z } from "zod";
+
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import {
   putSubscriptionRecord,
@@ -15,6 +15,7 @@ import { attachSubscribedLabels } from "#/server/labeler/labels.server";
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
+import type { TagPublicationCard } from "#/server/reader/queries";
 import {
   countTagArticles,
   countTagPublications,
@@ -24,10 +25,8 @@ import {
   selectTagPublicationUris,
   tagDirectoryPublications,
 } from "#/server/reader/queries";
-import { z } from "zod";
 
 import type { ArticleCard, PublicationCard } from "./api-shapes";
-
 import { dbMiddleware } from "./db-middleware";
 
 export type { TagPublicationCard };

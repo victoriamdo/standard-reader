@@ -1,9 +1,10 @@
 "use client";
 
-import type { LeafletImageGalleryBlock } from "#/lib/leaflet/types";
-import type { CSSProperties } from "react";
-
 import * as stylex from "@stylexjs/stylex";
+import type { CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+
 import { AspectRatio, AspectRatioImage } from "#/design-system/aspect-ratio";
 import { Lightbox } from "#/design-system/lightbox";
 import {
@@ -14,12 +15,10 @@ import { gap } from "#/design-system/theme/semantic-spacing.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex";
 import { normalizeImageAlt } from "#/lib/document/structured-content/image";
 import { leafletImageAspectRatio, leafletImageUrl } from "#/lib/leaflet/image";
-import { useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
-
-import type { ContentBlobContext } from "../types";
+import type { LeafletImageGalleryBlock } from "#/lib/leaflet/types";
 
 import { articleBodyStyles } from "../body-styles";
+import type { ContentBlobContext } from "../types";
 
 const GRID_LANES_COLUMNS = "repeat(auto-fit, minmax(min(100%, 18rem), 1fr))";
 const GRID_LANES_MIN_COLUMN_PX = 288;

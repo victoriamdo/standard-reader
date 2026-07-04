@@ -1,6 +1,5 @@
-import type { QueryClient } from "@tanstack/react-query";
-
 import * as stylex from "@stylexjs/stylex";
+import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import {
   HeadContent,
@@ -28,8 +27,9 @@ import {
 import { getPublicUrlClient } from "../lib/public-url";
 import { siteOgImageUrl, siteSocialMeta } from "../lib/site-metadata";
 import { DEFAULT_THEME_MODE, RESOLVED_SCHEME_SCRIPT } from "../lib/theme";
-import appCss from "../styles.css?url";
 import { saveHandle } from "../utils/saved-handles";
+
+import appCss from "../styles.css?url";
 
 if (import.meta.env.DEV) {
   void import("virtual:stylex:runtime");

@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { auth } from "#/integrations/tanstack-query/api-auth.functions";
 import { z } from "zod";
+
+import { auth } from "#/integrations/tanstack-query/api-auth.functions";
 
 const searchSchema = z.object({
   redirect: z.string().optional(),

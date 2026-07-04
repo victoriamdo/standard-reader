@@ -1,5 +1,4 @@
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
-
 import {
   LEAFLET_DOCUMENT_FORMAT,
   leafletDocumentContent,

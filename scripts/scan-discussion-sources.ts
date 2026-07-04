@@ -7,10 +7,9 @@
  */
 import { and, eq, isNotNull } from "drizzle-orm";
 
-import type { ConstellationLinkSourceSummary } from "../src/server/atproto/constellation.ts";
-
 import { db } from "../src/db/index.ts";
 import { documents, publications } from "../src/db/schema.ts";
+import type { ConstellationLinkSourceSummary } from "../src/server/atproto/constellation.ts";
 import {
   CITATION_LINK_SOURCES,
   COSMIK_CONNECTION_LINK_SOURCES,

@@ -1,3 +1,5 @@
+import { and, asc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
+
 import { hasRenderableArticleBody } from "#/lib/document/renderable";
 import {
   documentExtractedText,
@@ -14,7 +16,6 @@ import {
   PUBLICATION_RECENT_WINDOW_DAYS,
   TRENDING_MAX_AGE_DAYS,
 } from "#/server/reader/trending-scoring";
-import { and, asc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
 
 import { db } from "../../db/index.ts";
 import { documents, publications } from "../../db/schema.ts";

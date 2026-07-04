@@ -1,19 +1,17 @@
+import * as stylex from "@stylexjs/stylex";
+import { use } from "react";
 import type {
   LabelProps as AriaLabelProps,
   FieldErrorProps,
   TextProps,
   ValidationResult,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { use } from "react";
 import { Label as AriaLabel, FieldError, Text } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { SizeContext } from "../context";
 import { uiColor } from "../theme/color.stylex";
 import { critical, ui } from "../theme/semantic-color.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import {
   fontFamily,
   fontSize,

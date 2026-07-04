@@ -1,12 +1,11 @@
+import * as stylex from "@stylexjs/stylex";
+import { ChevronRight, GripVertical } from "lucide-react";
+import { use } from "react";
 import type {
   TreeItemContentProps as AriaTreeItemContentProps,
   TreeItemProps as AriaTreeItemProps,
   TreeProps as AriaTreeProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { ChevronRight, GripVertical } from "lucide-react";
-import { use } from "react";
 import {
   Tree as AriaTree,
   TreeItem as AriaTreeItem,
@@ -15,8 +14,6 @@ import {
   ListLayout,
   Virtualizer,
 } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { Checkbox } from "../checkbox";
 import { SizeContext } from "../context";
@@ -31,6 +28,7 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import {
   estimatedRowHeights,
   useListBoxItemStyles,

@@ -1,6 +1,6 @@
-import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
-
 import * as stylex from "@stylexjs/stylex";
+
+import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
 
 import { articleBodyStyles } from "./content/body-styles";
 import {

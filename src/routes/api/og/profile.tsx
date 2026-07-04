@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { eq } from "drizzle-orm";
+
 import { db } from "#/db/index.server";
 import * as schema from "#/db/schema";
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { renderProfileOgImage } from "#/server/og/profile-card";
 import { authorProfileStats } from "#/server/reader/queries";
-import { eq } from "drizzle-orm";
 
 const CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
 

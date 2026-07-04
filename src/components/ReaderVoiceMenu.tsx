@@ -1,15 +1,15 @@
-import type { ReaderVoicePreference } from "#/lib/reader-voice";
-
 import * as stylex from "@stylexjs/stylex";
+import { Sparkles } from "lucide-react";
+
 import { MenuItem, SubMenu } from "#/design-system/menu";
 import { uiColor } from "#/design-system/theme/color.stylex";
 import { AMERICAN_ENGLISH_VOICES } from "#/lib/page-reader/voice-catalog";
+import type { ReaderVoicePreference } from "#/lib/reader-voice";
 import {
   isReaderVoicePreference,
   readerVoicePreferenceLabel,
 } from "#/lib/reader-voice";
 import { useReaderVoice } from "#/lib/use-reader-voice";
-import { Sparkles } from "lucide-react";
 
 const styles = stylex.create({
   currentPreference: {

@@ -1,7 +1,6 @@
-import type { ExtensionResolveResult } from "./types";
-
 import { fetchResolve, fetchResolveBatch } from "./api";
 import { clearTabSnapshots } from "./popup-state";
+import type { ExtensionResolveResult } from "./types";
 
 const CACHE_KEY = "resolveCache";
 const TTL_MS = 5 * 60 * 1000;

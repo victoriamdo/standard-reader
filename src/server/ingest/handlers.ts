@@ -1,3 +1,5 @@
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+
 import {
   collectionManifestFromSources,
   parseCollectionManifest,
@@ -12,25 +14,6 @@ import {
 import { resolveLeafletContent } from "#/server/leaflet/resolve";
 import { resolvePcktContent } from "#/server/pckt/resolve";
 import { assertSafeFetchUrl } from "#/server/security/ssrf-guard";
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
-
-import type {
-  BookmarkRecord,
-  BskyProfileRecord,
-  CollectionSidecarRecord,
-  CollectionsPublicationRecord,
-  DocumentRecord,
-  LabelerServiceRecord,
-  LabelerSubscriptionRecord,
-  ListRecord,
-  ListSaveRecord,
-  PublicationRecord,
-  PublicationThemeRecord,
-  ReadRecord,
-  RecommendRecord,
-  SubscriptionRecord,
-  TapIdentityPayload,
-} from "../atproto/types.ts";
 
 import { db } from "../../db/index.ts";
 import {
@@ -56,6 +39,23 @@ import {
   primeIdentityHandle,
   resolveIdentity,
 } from "../atproto/identity.ts";
+import type {
+  BookmarkRecord,
+  BskyProfileRecord,
+  CollectionSidecarRecord,
+  CollectionsPublicationRecord,
+  DocumentRecord,
+  LabelerServiceRecord,
+  LabelerSubscriptionRecord,
+  ListRecord,
+  ListSaveRecord,
+  PublicationRecord,
+  PublicationThemeRecord,
+  ReadRecord,
+  RecommendRecord,
+  SubscriptionRecord,
+  TapIdentityPayload,
+} from "../atproto/types.ts";
 import {
   Collections,
   buildAtUri,

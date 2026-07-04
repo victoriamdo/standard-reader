@@ -1,10 +1,9 @@
-import type { ApiDocsCatalogEntry } from "./catalog";
-import type { ApiDocsFixtures } from "./fixture-defaults";
-
 import {
   resolveApiDocsExampleBody,
   resolveApiDocsExampleParams,
 } from "./build-curl";
+import type { ApiDocsCatalogEntry } from "./catalog";
+import type { ApiDocsFixtures } from "./fixture-defaults";
 
 export function mergeApiDocsExampleParams(
   entry: ApiDocsCatalogEntry,

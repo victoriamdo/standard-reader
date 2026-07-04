@@ -5,8 +5,6 @@
  */
 import { isNotNull } from "drizzle-orm";
 
-import type { StructuredRenderableBlock } from "../src/lib/document/structured-content/types.ts";
-
 import { db } from "../src/db/index.ts";
 import { documents } from "../src/db/schema.ts";
 import {
@@ -24,6 +22,7 @@ import {
   structuredImageHasSource,
 } from "../src/lib/document/structured-content/image.ts";
 import { markdownPlaintext } from "../src/lib/document/structured-content/markdown.ts";
+import type { StructuredRenderableBlock } from "../src/lib/document/structured-content/types.ts";
 import { STANDARD_MARKDOWN_CONTENT } from "../src/lib/document/structured-content/types.ts";
 import { leafletBlocks } from "../src/lib/leaflet/blocks.ts";
 import { leafletImageCid } from "../src/lib/leaflet/image.ts";

@@ -1,11 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import {
   horizontalSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { lineHeight } from "../theme/typography.stylex";
 
 const styles = stylex.create({

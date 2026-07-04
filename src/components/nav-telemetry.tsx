@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouterState } from "@tanstack/react-router";
-import { telemetryApi } from "#/integrations/tanstack-query/api-telemetry.functions";
 import { useEffect, useRef } from "react";
+
+import { telemetryApi } from "#/integrations/tanstack-query/api-telemetry.functions";
 
 /**
  * Emits client-side navigation timing to Honeycomb (via `recordClientEvent`).

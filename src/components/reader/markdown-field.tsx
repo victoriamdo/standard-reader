@@ -1,14 +1,11 @@
 "use client";
 
-import type { Components } from "react-markdown";
-
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
+import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
-
-import type { InputVariant, Size } from "../../design-system/theme/types";
 
 import { Flex } from "../../design-system/flex";
 import { Label } from "../../design-system/label";
@@ -23,6 +20,7 @@ import {
   horizontalSpace,
   verticalSpace,
 } from "../../design-system/theme/semantic-spacing.stylex";
+import type { InputVariant, Size } from "../../design-system/theme/types";
 import {
   fontFamily,
   fontSize,

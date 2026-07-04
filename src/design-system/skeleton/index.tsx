@@ -2,13 +2,12 @@
 
 import * as stylex from "@stylexjs/stylex";
 
-import type { Size, StyleXComponentProps } from "../theme/types";
-
 import { uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { size as sizeSpace } from "../theme/semantic-spacing.stylex";
 import { shadow } from "../theme/shadow.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 
 const shimmer = stylex.keyframes({
   "0%": {

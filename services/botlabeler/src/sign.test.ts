@@ -2,7 +2,6 @@ import { Secp256k1Keypair } from "@atproto/crypto";
 import { describe, expect, it } from "vitest";
 
 import type { UnsignedLabel } from "./db.ts";
-
 import { keypairDidKey, signLabel, verifyLabel } from "./sign.ts";
 
 const unsigned: UnsignedLabel = {

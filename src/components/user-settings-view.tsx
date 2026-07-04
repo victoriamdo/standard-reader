@@ -1,11 +1,11 @@
 "use client";
 
-import type { ReadingTypographyPreference } from "#/lib/reading-typography";
-import type { ThemeMode } from "#/lib/theme";
-
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { ChevronRight, Monitor, Moon, Sparkles, Sun } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { invalidateReadQueries } from "#/components/reader/read-optimistic";
 import { ButtonLink } from "#/components/router-links";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
@@ -15,6 +15,7 @@ import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { DEFAULT_CUSTOM_GOOGLE_FONT } from "#/lib/google-fonts";
 import { AMERICAN_ENGLISH_VOICES } from "#/lib/page-reader/voice-catalog";
 import { isReaderVoicePreference } from "#/lib/reader-voice";
+import type { ReadingTypographyPreference } from "#/lib/reading-typography";
 import {
   READING_BODY_FONTS,
   READING_FONT_SIZES,
@@ -23,6 +24,7 @@ import {
   readingFontSizeLabel,
   readingMeasureLabel,
 } from "#/lib/reading-typography";
+import type { ThemeMode } from "#/lib/theme";
 import { isThemeMode } from "#/lib/theme";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { useOpenLinks } from "#/lib/use-open-links";
@@ -30,8 +32,6 @@ import { useReaderVoice } from "#/lib/use-reader-voice";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 import { useTheme } from "#/lib/use-theme";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
-import { ChevronRight, Monitor, Moon, Sparkles, Sun } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   AlertDialog,

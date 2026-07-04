@@ -1,11 +1,9 @@
 "use client";
 
+import { leafletBlocks } from "#/lib/leaflet/blocks";
 import type { LeafletContent } from "#/lib/leaflet/types";
 
-import { leafletBlocks } from "#/lib/leaflet/blocks";
-
 import type { ContentRendererProps } from "../types";
-
 import { LeafletBlockView } from "./leaflet-block";
 import { ArticleBody } from "./shared/article-body";
 

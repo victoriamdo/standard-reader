@@ -1,11 +1,10 @@
 "use client";
 
-import type { Size } from "#/design-system/theme/types";
-import type { PublicationEmbedMeta } from "#/integrations/tanstack-query/api-publication.functions";
-import type { SubscribeEmbedTab } from "#/lib/publication-embed";
+import * as stylex from "@stylexjs/stylex";
+import { Code, Link as LinkIcon, Share2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { Key } from "react-aria-components";
 
-import * as stylex from "@stylexjs/stylex";
 import { Button } from "#/design-system/button";
 import {
   Dialog,
@@ -26,6 +25,7 @@ import {
   gap,
   verticalSpace,
 } from "#/design-system/theme/semantic-spacing.stylex";
+import type { Size } from "#/design-system/theme/types";
 import {
   fontFamily,
   fontSize,
@@ -33,16 +33,16 @@ import {
   tracking,
 } from "#/design-system/theme/typography.stylex";
 import { SmallBody } from "#/design-system/typography";
+import type { PublicationEmbedMeta } from "#/integrations/tanstack-query/api-publication.functions";
 import { shareLinkUrl, useNativeShareAvailable } from "#/lib/native-share";
 import { getPublicUrlClient } from "#/lib/public-url";
+import type { SubscribeEmbedTab } from "#/lib/publication-embed";
 import {
   buildSubscribeAnchorSnippet,
   buildSubscribeEmbedSnippet,
   subscribePageUrl,
 } from "#/lib/publication-embed";
 import { buildBlueskyComposeUrl } from "#/lib/quote-share";
-import { Code, Link as LinkIcon, Share2 } from "lucide-react";
-import { useMemo, useState } from "react";
 
 import { SubscribeEmbedPreview } from "./subscribe-embed-preview";
 

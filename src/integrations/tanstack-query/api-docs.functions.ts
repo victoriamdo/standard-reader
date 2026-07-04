@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
 import {
   loadApiDocsFixturesAsync,
   loadApiDocsPageData,
@@ -7,7 +9,6 @@ import {
   runApiDocsExamples,
   runXrpcExample,
 } from "#/server/api-docs/run-example.server";
-import { z } from "zod";
 
 const runExampleInput = z.object({
   nsid: z.string().min(1),

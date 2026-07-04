@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { useCallback } from "react";
 
-import type { ReaderVoicePreference } from "./reader-voice";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
 
+import type { ReaderVoicePreference } from "./reader-voice";
 import { DEFAULT_READER_VOICE_PREFERENCE } from "./reader-voice";
 
 export interface ReaderVoiceContextValue {

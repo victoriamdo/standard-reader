@@ -1,9 +1,10 @@
+import { and, eq, inArray } from "drizzle-orm";
+
 import type { db } from "#/db/index.server";
 import type * as schema from "#/db/schema";
 import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
-import type { ConstellationBacklinkRecord } from "#/server/atproto/constellation";
-
 import { linkTargetVariants } from "#/lib/link-target-variants";
+import type { ConstellationBacklinkRecord } from "#/server/atproto/constellation";
 import {
   COSMIK_CONNECTION_COLLECTION,
   getCitationBacklinksForTarget,
@@ -12,7 +13,6 @@ import {
 import { fetchRepoRecordWithFallback } from "#/server/atproto/fetch-record";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
-import { and, eq, inArray } from "drizzle-orm";
 
 export interface MarginConnectionItem {
   article: ArticleCard;

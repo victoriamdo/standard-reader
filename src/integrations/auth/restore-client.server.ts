@@ -1,6 +1,6 @@
+import { Client } from "@atcute/client";
 import type { Did } from "@atcute/lexicons";
 
-import { Client } from "@atcute/client";
 import {
   isAppPasswordAuthEnabled,
   restoreAppPasswordClient,

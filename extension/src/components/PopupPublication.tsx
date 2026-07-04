@@ -1,4 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
+import { ArrowRight, Check, UserPlus } from "lucide-react";
+
 import { initials } from "#/components/reader/format";
 import { Avatar } from "#/design-system/avatar";
 import { Button } from "#/design-system/button";
@@ -17,7 +19,6 @@ import {
   lineHeight,
   tracking,
 } from "#/design-system/theme/typography.stylex";
-import { ArrowRight, Check, UserPlus } from "lucide-react";
 
 import type { ExtensionResolvePublication } from "../lib/types";
 

@@ -1,18 +1,15 @@
+import * as stylex from "@stylexjs/stylex";
+import { use } from "react";
 import type {
   RadioGroupProps as AriaRadioGroupProps,
   RadioProps as AriaRadioProps,
   ValidationResult,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { use } from "react";
 import {
   Radio as AriaRadio,
   RadioGroup as AriaRadioGroup,
   SelectionIndicator,
 } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { SizeContext } from "../context";
 import { Flex } from "../flex";
@@ -25,6 +22,7 @@ import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { primary, ui } from "../theme/semantic-color.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { fontFamily, fontSize, lineHeight } from "../theme/typography.stylex";
 
 const scaleIn = stylex.keyframes({

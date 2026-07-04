@@ -1,19 +1,19 @@
 "use client";
 
-import type { CollectionsTheme } from "#/integrations/tanstack-query/api-collections.functions";
-import type { CollectionTheme } from "#/lib/collections/theme";
-
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Check } from "lucide-react";
+import { useState } from "react";
+
+import type { CollectionsTheme } from "#/integrations/tanstack-query/api-collections.functions";
 import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
 import { contrastRatio } from "#/lib/collections/color";
 import {
   buildMagazinePalette,
   themePrefersDark,
 } from "#/lib/collections/radix-theme";
+import type { CollectionTheme } from "#/lib/collections/theme";
 import { googleFontsHref } from "#/magazine/theme-vars";
-import { AlertTriangle, Check } from "lucide-react";
-import { useState } from "react";
 
 import { Button } from "../../design-system/button";
 import {

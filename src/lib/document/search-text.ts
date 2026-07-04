@@ -1,5 +1,4 @@
 import type { JsonValue } from "#/integrations/tanstack-query/api-shapes";
-
 import {
   LEAFLET_DOCUMENT_FORMAT,
   altMarkdownText,

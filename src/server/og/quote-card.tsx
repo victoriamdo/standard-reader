@@ -1,8 +1,5 @@
-import type {
-  PublicationThemeInput,
-  QuoteOgColors,
-} from "#/server/og/theme-colors";
 import type { Font } from "satori";
+import satori from "satori";
 
 import { initials } from "#/components/reader/format";
 import { truncateQuoteForDisplay } from "#/lib/quote-share";
@@ -10,8 +7,11 @@ import { loadOgFonts } from "#/server/og/fonts";
 import { loadPublicationIcon } from "#/server/og/load-image";
 import { renderOgPng } from "#/server/og/render-png";
 import { ogSatoriOptions } from "#/server/og/satori-options";
+import type {
+  PublicationThemeInput,
+  QuoteOgColors,
+} from "#/server/og/theme-colors";
 import { resolveQuoteOgColors } from "#/server/og/theme-colors";
-import satori from "satori";
 
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;

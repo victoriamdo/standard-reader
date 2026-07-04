@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type {
   ComAtprotoRepoDeleteRecord,
   ComAtprotoRepoGetRecord,
@@ -5,11 +7,10 @@ import type {
   ComAtprotoRepoPutRecord,
 } from "@atcute/atproto";
 import type { Client } from "@atcute/client";
-import type { InferInput } from "@atcute/lexicons/validations";
-import type { CollectionManifest } from "#/lib/collections/manifest";
-
 import { ok } from "@atcute/client";
+import type { InferInput } from "@atcute/lexicons/validations";
 import { now as tidNow } from "@atcute/tid";
+
 import {
   collectionDocumentLink,
   collectionDocumentUri,
@@ -17,8 +18,8 @@ import {
   collectionsPublicationUri,
 } from "#/lib/atproto/collection-uris.ts";
 import { COLLECTION } from "#/lib/atproto/nsids";
+import type { CollectionManifest } from "#/lib/collections/manifest";
 import { serializeCollectionManifestForRepo } from "#/lib/markpub/collection-fields.ts";
-import { createHash } from "node:crypto";
 
 export {
   collectionDocumentUri,
@@ -886,6 +887,108 @@ export async function deleteDocumentRecord(
   return repoDeleteRecord(client, {
     repo,
     collection: COLLECTION.document,
+    rkey,
+  });
+}
+
+/**
+ * Create an `app.userinput.discussion` record (a userinput.app feedback post)
+ * in the author's repo. Discussions use `key: tid`, so each new post gets a
+ * fresh TID rkey (no idempotent upsert). The `space` strongRef pins the post
+ * to Standard Reader's feedback space.
+ *
+ * The body is omitted when empty so the lexicon's optional field stays unset.
+ * PDS validation is optimistic: app.userinput.* is a third-party namespace the
+ * PDS may not have loaded, and `repoPutRecord` skips `validate:true` to allow
+ * that (matching the rest of this module).
+ */
+export async function createUserinputDiscussionRecord(
+  client: Client,
+  repo: string,
+  input: {
+    spaceUri: string;
+    spaceCid: string;
+    title: string;
+    body?: string | null;
+    tags: Array<string>;
+    createdAt: string;
+  },
+): Promise<{ uri: string; cid: string }> {
+  const record: Record<string, unknown> = {
+    $type: "app.userinput.discussion",
+    space: {
+      $type: "com.atproto.repo.strongRef",
+      uri: input.spaceUri,
+      cid: input.spaceCid,
+    },
+    title: input.title,
+    tags: input.tags,
+    createdAt: input.createdAt,
+  };
+  const trimmedBody = input.body?.trim();
+  if (trimmedBody) {
+    record.body = trimmedBody;
+  }
+  return repoPutRecord(client, {
+    repo,
+    collection: "app.userinput.discussion",
+    rkey: tidNow().toString(),
+    record,
+  });
+}
+
+/**
+ * Create an `app.userinput.upvote` record (an upvote on a discussion or reply)
+ * in the voter's repo. The upvote lexicon uses `key: "any"` and is "written at
+ * the SAME record key as its subject, so a user holds at most one per subject" —
+ * so the rkey is the *subject's* rkey (parsed from the subject AT-URI), not a
+ * fresh TID. This makes upvoting idempotent: re-upvoting the same discussion
+ * just replaces the existing upvote record instead of creating a duplicate.
+ *
+ * The `subject` is a strongRef (uri + cid) to the discussion being voted on.
+ * PDS validation is optimistic (see {@link createUserinputDiscussionRecord}).
+ */
+export async function createUserinputUpvoteRecord(
+  client: Client,
+  repo: string,
+  input: {
+    subjectUri: string;
+    subjectCid: string;
+    subjectRkey: string;
+    createdAt: string;
+  },
+): Promise<{ uri: string; cid: string }> {
+  const record: Record<string, unknown> = {
+    $type: "app.userinput.upvote",
+    subject: {
+      $type: "com.atproto.repo.strongRef",
+      uri: input.subjectUri,
+      cid: input.subjectCid,
+    },
+    createdAt: input.createdAt,
+  };
+  return repoPutRecord(client, {
+    repo,
+    collection: "app.userinput.upvote",
+    rkey: input.subjectRkey,
+    record,
+  });
+}
+
+/**
+ * Delete the viewer's `app.userinput.upvote` record for a discussion. The
+ * upvote lexicon writes at the SAME rkey as its subject (the discussion's
+ * rkey), so the delete targets `app.userinput.upvote/<subjectRkey>`. No-op if
+ * the viewer hasn't upvoted (delete on a missing rkey is idempotent).
+ */
+export async function deleteUserinputUpvoteRecord(
+  client: Client,
+  repo: string,
+  rkey: string,
+): Promise<void> {
+  return repoDeleteRecord(client, {
+    repo,
+    collection: "app.userinput.upvote",
     rkey,
   });
 }

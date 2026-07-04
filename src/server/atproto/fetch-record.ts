@@ -38,6 +38,10 @@ export interface RecordResponse {
   /** The base URL that served the record — useful for callers (e.g. gallery)
    * that need to know which host the blob URLs should target. */
   base: string;
+  /** The record's CID (`payload.cid`); undefined when the host omitted it or the
+   * record couldn't be fetched. Needed to build strongRefs for writes (e.g.
+   * upvote subjects). */
+  cid?: string;
 }
 
 async function getRecordFromBase(
@@ -61,7 +65,8 @@ async function getRecordFromBase(
     if (!response.ok) return null;
     const payload: unknown = await response.json();
     if (!isRecord(payload) || !isRecord(payload.value)) return null;
-    return { value: payload.value, base: cleanBase };
+    const cid = typeof payload.cid === "string" ? payload.cid : undefined;
+    return { value: payload.value, base: cleanBase, ...(cid ? { cid } : {}) };
   } catch {
     return null;
   }

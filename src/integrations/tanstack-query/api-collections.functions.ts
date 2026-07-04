@@ -1,12 +1,10 @@
 import type { Client } from "@atcute/client";
-import type {
-  CollectionManifest,
-  parseCollectionManifest,
-} from "#/lib/collections/manifest";
-
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { z } from "zod";
+
 import {
   collectionDocumentUri,
   collectionsPublicationUri,
@@ -14,6 +12,10 @@ import {
 import { APP_NSID, STANDARD_NSID } from "#/lib/atproto/nsids";
 import { hexToRgb, rgbToHex } from "#/lib/collections/color";
 import { composeCollectionNewsletterContent } from "#/lib/collections/compose-newsletter";
+import type {
+  CollectionManifest,
+  parseCollectionManifest,
+} from "#/lib/collections/manifest";
 import { collectionManifestFromSources } from "#/lib/collections/manifest";
 import { getPublicUrl } from "#/lib/public-url";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
@@ -28,11 +30,8 @@ import { parseAtUri } from "#/server/atproto/uri";
 import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
-import { and, eq, inArray, or, sql } from "drizzle-orm";
-import { z } from "zod";
 
 import type { ArticleCard, Db, Schema } from "./api-shapes";
-
 import { dbMiddleware } from "./db-middleware";
 
 /** Server-only repo writers — dynamic import keeps `node:crypto` out of the client bundle. */

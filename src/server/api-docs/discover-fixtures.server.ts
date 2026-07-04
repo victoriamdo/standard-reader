@@ -1,8 +1,9 @@
-import type { ApiDocsFixtures } from "#/lib/api-docs/fixture-defaults";
-import type { ApiDocsTagOption } from "#/lib/api-docs/types";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "#/db/index.server";
 import { documents, lists, publications } from "#/db/schema";
+import type { ApiDocsFixtures } from "#/lib/api-docs/fixture-defaults";
+import type { ApiDocsTagOption } from "#/lib/api-docs/types";
 import { APP_NSID } from "#/lib/atproto/nsids";
 import { listRepoRecords } from "#/server/atproto/fetch-record";
 import { resolveIdentity } from "#/server/atproto/identity";
@@ -10,7 +11,6 @@ import { parseAtUri } from "#/server/atproto/uri";
 import { documentPublishedNotInFuture } from "#/server/reader/document-filters";
 import { discoverEligiblePublicationWhere } from "#/server/reader/publication-filters";
 import { discoverPublicationTopics } from "#/server/reader/queries";
-import { and, desc, eq, sql } from "drizzle-orm";
 
 function hostnameFromUrl(url: string): string | null {
   try {

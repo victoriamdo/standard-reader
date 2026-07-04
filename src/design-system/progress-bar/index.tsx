@@ -1,10 +1,7 @@
-import type { ProgressBarProps as AriaProgresBarProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import { use } from "react";
+import type { ProgressBarProps as AriaProgresBarProps } from "react-aria-components";
 import { ProgressBar as AriaProgressBar } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { SizeContext } from "../context";
 import { Label } from "../label";
@@ -13,6 +10,7 @@ import { primaryColor, uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { fontSize, lineHeight } from "../theme/typography.stylex";
 
 const IndeterminateAnimation = stylex.keyframes({

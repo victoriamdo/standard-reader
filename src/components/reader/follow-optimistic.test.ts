@@ -1,8 +1,8 @@
-import type { SidebarData } from "#/integrations/tanstack-query/api-feed.functions";
-import type { PublicationCard } from "#/integrations/tanstack-query/api-shapes";
-
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
+
+import type { SidebarData } from "#/integrations/tanstack-query/api-feed.functions";
+import type { PublicationCard } from "#/integrations/tanstack-query/api-shapes";
 
 import {
   applyFollowOptimisticUpdate,

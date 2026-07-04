@@ -3,14 +3,13 @@
 import * as stylex from "@stylexjs/stylex";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { searchApi } from "#/integrations/tanstack-query/api-search.functions";
-import { getPublicUrlClient } from "#/lib/public-url";
-import { pageSocialMeta } from "#/lib/site-metadata";
 import { Search as SearchIcon, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
-import type { PublicationCard } from "../integrations/tanstack-query/api-shapes";
+import { searchApi } from "#/integrations/tanstack-query/api-search.functions";
+import { getPublicUrlClient } from "#/lib/public-url";
+import { pageSocialMeta } from "#/lib/site-metadata";
 
 import {
   ArticleRow,
@@ -34,6 +33,7 @@ import {
   fontSize,
   tracking,
 } from "../design-system/theme/typography.stylex";
+import type { PublicationCard } from "../integrations/tanstack-query/api-shapes";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_PAGE_SIZE = 20;

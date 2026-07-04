@@ -1,11 +1,10 @@
-import type { XrpcRegistryEntry } from "./types";
-
 import * as catalog from "./handlers/catalog";
 import * as feeds from "./handlers/feeds";
 import * as labels from "./handlers/labels";
 import * as reader from "./handlers/reader";
 import * as writes from "./handlers/writes";
 import { XRPC_WRITE_SCOPES } from "./scopes";
+import type { XrpcRegistryEntry } from "./types";
 
 export const XRPC_REGISTRY = new Map<string, XrpcRegistryEntry>([
   // Public catalog — resolve, search, profiles

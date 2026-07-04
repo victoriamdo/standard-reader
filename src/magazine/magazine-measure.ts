@@ -1,6 +1,5 @@
-import type { Geom } from "./magazine-geom";
-
 import { applyForcedColumnBreaks } from "./feature-layout";
+import type { Geom } from "./magazine-geom";
 
 export interface FlowMeasure {
   columns: number;

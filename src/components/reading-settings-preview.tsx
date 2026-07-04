@@ -1,9 +1,15 @@
 "use client";
 
-import type { ReaderVoice } from "#/lib/page-reader/voice-catalog";
-import type { ReaderVoicePreference } from "#/lib/reader-voice";
-
 import * as stylex from "@stylexjs/stylex";
+import { Pause, Play } from "lucide-react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
 import {
   articleBodyStyles,
   articleMeasureStyle,
@@ -13,16 +19,10 @@ import {
 import { ReadingCustomFontLoader } from "#/components/reading-custom-font-loader";
 import { loadKokoro } from "#/lib/page-reader/kokoro-loader";
 import { nameVoice } from "#/lib/page-reader/voice";
+import type { ReaderVoice } from "#/lib/page-reader/voice-catalog";
+import type { ReaderVoicePreference } from "#/lib/reader-voice";
 import { readingCustomFontFamily } from "#/lib/reading-typography";
 import { useReadingTypography } from "#/lib/use-reading-typography";
-import { Pause, Play } from "lucide-react";
-import {
-  startTransition,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
 
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";

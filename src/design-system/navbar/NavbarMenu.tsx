@@ -6,8 +6,6 @@ import { mergeProps, useHover, usePress } from "react-aria";
 import { Button, Disclosure, DisclosurePanel } from "react-aria-components";
 
 import type { HoverCardProps } from "../hover-card";
-import type { StyleXComponentProps } from "../theme/types";
-
 import { HoverCard } from "../hover-card";
 import { animationDuration } from "../theme/animations.stylex";
 import { primaryColor, uiColor } from "../theme/color.stylex";
@@ -19,6 +17,7 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { fontFamily, fontSize, fontWeight } from "../theme/typography.stylex";
 
 const styles = stylex.create({

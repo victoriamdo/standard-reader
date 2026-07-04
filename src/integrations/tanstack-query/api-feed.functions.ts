@@ -1,8 +1,8 @@
-import type { Span } from "#/server/observability/log";
-
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, getRequest } from "@tanstack/react-start/server";
+import { z } from "zod";
+
 import {
   HOME_SCOPE_COOKIE,
   dbValueToHomeScope,
@@ -18,6 +18,7 @@ import {
   filterHiddenDocuments,
   hiddenDocumentUris,
 } from "#/server/labeler/labels.server";
+import type { Span } from "#/server/observability/log";
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
@@ -33,10 +34,8 @@ import {
 } from "#/server/reader/queries";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
 import { loadSidebarData } from "#/server/reader/shell-snapshot.server";
-import { z } from "zod";
 
 import type { ArticleCard, Db, PublicationCard, Schema } from "./api-shapes";
-
 import { dbMiddleware } from "./db-middleware";
 
 /**

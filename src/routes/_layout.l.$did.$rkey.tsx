@@ -1,10 +1,5 @@
 "use client";
 
-import type {
-  ArticleCard,
-  PublicationCard,
-} from "#/integrations/tanstack-query/api-shapes";
-
 import * as stylex from "@stylexjs/stylex";
 import {
   useMutation,
@@ -13,12 +8,6 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
-import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { getPublicUrlClient } from "#/lib/public-url";
-import { listOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
-import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import {
   BookOpen,
   BookmarkCheck,
@@ -28,6 +17,17 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
+
+import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
+import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
+import type {
+  ArticleCard,
+  PublicationCard,
+} from "#/integrations/tanstack-query/api-shapes";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { getPublicUrlClient } from "#/lib/public-url";
+import { listOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
+import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
 import { ListEditModal } from "../components/reader/list-edit-modal";

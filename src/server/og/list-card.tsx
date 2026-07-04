@@ -1,4 +1,5 @@
 import type { Font } from "satori";
+import satori from "satori";
 
 import { initials } from "#/components/reader/format";
 import { SITE_NAME } from "#/lib/site-metadata";
@@ -7,7 +8,6 @@ import { loadPublicationIcon } from "#/server/og/load-image";
 import { renderOgPng } from "#/server/og/render-png";
 import { ogSatoriOptions } from "#/server/og/satori-options";
 import { truncateAtWord } from "#/server/og/text";
-import satori from "satori";
 
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;

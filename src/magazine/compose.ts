@@ -1,11 +1,10 @@
+import { articlePublicationUrl } from "#/components/reader/format";
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import type {
   CollectionColophon,
   CollectionEditorial,
 } from "#/lib/collections/manifest";
 import type { CollectionTheme } from "#/lib/collections/theme";
-
-import { articlePublicationUrl } from "#/components/reader/format";
 import { parseArticleBlocks } from "#/lib/document/blocks";
 import { resolveArticleHeroImage } from "#/lib/document/lead-image";
 

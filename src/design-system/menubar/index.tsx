@@ -1,11 +1,10 @@
 "use client";
 
-import type { ButtonProps } from "react-aria-components";
-
 import { useControlledState } from "@react-stately/utils";
 import * as stylex from "@stylexjs/stylex";
 import { createContext, use, useId, useRef, useState } from "react";
 import { mergeProps, useHover, useKeyboard } from "react-aria";
+import type { ButtonProps } from "react-aria-components";
 import {
   Button as AriaButton,
   Menu as AriaMenu,
@@ -13,8 +12,6 @@ import {
   Popover,
   Toolbar,
 } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { SizeContext } from "../context";
 import { Flex } from "../flex";
@@ -26,6 +23,7 @@ import {
   horizontalSpace,
   size as sizeSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { fontSize } from "../theme/typography.stylex";
 import { usePopoverStyles } from "../theme/usePopoverStyles";
 

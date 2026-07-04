@@ -6,6 +6,9 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { ExternalLink } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { authorApi } from "#/integrations/tanstack-query/api-author.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
@@ -13,10 +16,6 @@ import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { publicationOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
-import { ExternalLink } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import type { ArticleCard } from "../integrations/tanstack-query/api-shapes";
 
 import { AddToListButton } from "../components/reader/add-to-list-modal";
 import {
@@ -62,6 +61,7 @@ import {
   lineHeight,
   tracking,
 } from "../design-system/theme/typography.stylex";
+import type { ArticleCard } from "../integrations/tanstack-query/api-shapes";
 
 /** Documents loaded with the profile (page 0) before infinite scroll kicks in. */
 const PUBLICATION_RECENT_LIMIT = 12;

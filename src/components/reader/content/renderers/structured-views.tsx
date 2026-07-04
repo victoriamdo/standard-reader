@@ -1,13 +1,13 @@
 "use client";
 
-import type { StructuredText } from "#/lib/document/structured-content/types";
-import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
-
 import * as stylex from "@stylexjs/stylex";
+import { ExternalLink } from "lucide-react";
+
 import { HighlightedPlaintext } from "#/components/reader/quote-highlight-context";
 import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-tracker";
 import { normalizeImageAlt } from "#/lib/document/structured-content/image";
-import { ExternalLink } from "lucide-react";
+import type { StructuredText } from "#/lib/document/structured-content/types";
+import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
 
 import { articleBodyStyles } from "../body-styles";
 import { HighlightedFacetedPlaintext } from "./shared/faceted-text";

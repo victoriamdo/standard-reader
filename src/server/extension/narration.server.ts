@@ -1,18 +1,18 @@
-import type { SpeechArticle } from "#/components/reader/content/extract-text";
-import type { db } from "#/db/index.server";
-import type * as schema from "#/db/schema";
-import type { JsonValue } from "#/integrations/tanstack-query/api-shapes";
+import { eq } from "drizzle-orm";
 
+import type { SpeechArticle } from "#/components/reader/content/extract-text";
 import {
   articleBskyPostUris,
   articleReadingText,
   articleSpeechText,
   speechAuthor,
 } from "#/components/reader/content/extract-text";
+import type { db } from "#/db/index.server";
+import type * as schema from "#/db/schema";
+import type { JsonValue } from "#/integrations/tanstack-query/api-shapes";
 import { getPosts } from "#/server/atproto/bsky-posts";
 import { didFromAtUri } from "#/server/atproto/uri";
 import { resolveAndPersistContent } from "#/server/content/resolve-and-persist";
-import { eq } from "drizzle-orm";
 
 export interface ExtensionNarration {
   documentUri: string;

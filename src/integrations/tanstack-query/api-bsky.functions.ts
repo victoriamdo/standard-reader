@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getPosts } from "#/server/atproto/bsky-posts";
 import { z } from "zod";
+
+import { getPosts } from "#/server/atproto/bsky-posts";
 
 const getEmbedPostsInput = z.object({
   uris: z.array(z.string().min(1)).min(1).max(25),

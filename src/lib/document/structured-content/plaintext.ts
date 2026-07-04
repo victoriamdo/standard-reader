@@ -1,6 +1,5 @@
-import type { StructuredRenderableBlock } from "./types";
-
 import { narrationImageLines } from "./image";
+import type { StructuredRenderableBlock } from "./types";
 
 function textLines(text: { plaintext: string }): Array<string> {
   const trimmed = text.plaintext.trim();

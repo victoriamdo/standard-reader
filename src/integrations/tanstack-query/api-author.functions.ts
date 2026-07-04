@@ -1,5 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { resolveAuthorDid } from "#/server/atproto/resolve-author-ref";
@@ -12,15 +15,12 @@ import {
   authorRecommendations,
   authorSubscriptions,
 } from "#/server/reader/queries";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
 
 import type {
   ArticleCard,
   ProfileSummary,
   PublicationCard,
 } from "./api-shapes";
-
 import { dbMiddleware } from "./db-middleware";
 
 /**

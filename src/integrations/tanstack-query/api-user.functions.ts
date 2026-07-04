@@ -1,10 +1,11 @@
 import type { Did } from "@atcute/lexicons";
-import type { ThemeMode } from "#/lib/theme";
-
 import { isDid } from "@atcute/lexicons/syntax";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, getRequest, setCookie } from "@tanstack/react-start/server";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
 import { revokeAtprotoSession } from "#/integrations/auth/atproto";
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
 import {
@@ -49,6 +50,7 @@ import {
   readingTypographyToCookieValue,
   readingTypographyToDbValue,
 } from "#/lib/reading-typography";
+import type { ThemeMode } from "#/lib/theme";
 import {
   THEME_COOKIE,
   THEME_COOKIE_MAX_AGE_SECONDS,
@@ -69,11 +71,8 @@ import { maybeAuthMiddleware } from "#/middleware/auth";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { observe } from "#/server/observability/log";
 import { loadShellSnapshot } from "#/server/reader/shell-snapshot.server";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
 
 import type { HomeScope } from "./api-feed.functions";
-
 import { dbMiddleware } from "./db-middleware";
 
 function parseCookies(cookieHeader: string | null): Record<string, string> {
@@ -112,6 +111,7 @@ async function loadSessionFromToken(sessionToken: string) {
           readingTypography: true,
           collectionsAuthoringEnabled: true,
           atstoreReviewPromptDismissed: true,
+          userinputFeedbackEnabled: true,
         },
         with: {
           accounts: {
@@ -187,6 +187,7 @@ async function loadSessionFromToken(sessionToken: string) {
     readingTypography: userRow.readingTypography,
     collectionsAuthoringEnabled: userRow.collectionsAuthoringEnabled,
     atstoreReviewPromptDismissed: userRow.atstoreReviewPromptDismissed,
+    userinputFeedbackEnabled: userRow.userinputFeedbackEnabled,
     grantedScope,
     client,
   };
@@ -264,6 +265,7 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
             readingTypography: true,
             collectionsAuthoringEnabled: true,
             atstoreReviewPromptDismissed: true,
+            userinputFeedbackEnabled: true,
           },
           with: {
             accounts: {
@@ -336,6 +338,12 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
               atstoreReviewPromptDismissed?: boolean | null;
             }
           ).atstoreReviewPromptDismissed === true,
+        userinputFeedbackEnabled:
+          (
+            userRow as typeof userRow & {
+              userinputFeedbackEnabled?: boolean | null;
+            }
+          ).userinputFeedbackEnabled === true,
         // Granted OAuth scope snapshotted on the callback (`account.scope`).
         // The UI gates collections authoring on this — it's the source of truth
         // for "the reader has actually accepted the collections tier".
@@ -389,6 +397,7 @@ const getSession = createServerFn({ method: "GET" }).handler(async () => {
     session: loaded.session,
     collectionsAuthoringEnabled: loaded.collectionsAuthoringEnabled,
     atstoreReviewPromptDismissed: loaded.atstoreReviewPromptDismissed === true,
+    userinputFeedbackEnabled: loaded.userinputFeedbackEnabled === true,
     grantedScope: loaded.grantedScope,
   };
 });

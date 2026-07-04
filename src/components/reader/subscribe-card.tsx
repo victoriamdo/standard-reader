@@ -1,12 +1,10 @@
 "use client";
 
-import type { PublicationEmbedMeta } from "#/integrations/tanstack-query/api-publication.functions";
-import type { SubscribeEmbedLayout } from "#/lib/publication-embed";
-import type { QuoteOgColors } from "#/lib/publication-theme";
-import type { ReactNode } from "react";
-
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
+import { Check, Plus } from "lucide-react";
+import type { ReactNode } from "react";
+
 import { AuthorProfileLink } from "#/components/reader/author-profile-link";
 import { PublicationNameLink } from "#/components/reader/publication-name-link";
 import { ButtonLink } from "#/components/router-links";
@@ -28,7 +26,9 @@ import {
   lineHeight,
   tracking,
 } from "#/design-system/theme/typography.stylex";
-import { Check, Plus } from "lucide-react";
+import type { PublicationEmbedMeta } from "#/integrations/tanstack-query/api-publication.functions";
+import type { SubscribeEmbedLayout } from "#/lib/publication-embed";
+import type { QuoteOgColors } from "#/lib/publication-theme";
 
 import { PublicationAvatar } from "./primitives";
 import {

@@ -1,4 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
+import { MessageCircle, X } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { formatRelativeTime, initials } from "#/components/reader/format";
 import { Avatar } from "#/design-system/avatar";
 import { Flex } from "#/design-system/flex";
@@ -19,16 +22,13 @@ import {
   lineHeight,
 } from "#/design-system/theme/typography.stylex";
 import { Text } from "#/design-system/typography/text";
-import { MessageCircle, X } from "lucide-react";
-import { useEffect, useState } from "react";
 
+import { sendMessage } from "../lib/messaging";
 import type {
   ExtensionDiscussionArticle,
   ExtensionDiscussionComment,
   ExtensionDiscussionResponse,
 } from "../lib/types";
-
-import { sendMessage } from "../lib/messaging";
 
 const tabListNoBorder = stylex.create({
   list: {

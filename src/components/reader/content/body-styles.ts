@@ -1,7 +1,6 @@
-import type { ReadingTypographyPreference } from "#/lib/reading-typography";
+import * as stylex from "@stylexjs/stylex";
 import type { CSSProperties } from "react";
 
-import * as stylex from "@stylexjs/stylex";
 import {
   primaryColor,
   uiColor,
@@ -15,6 +14,7 @@ import {
   fontSize,
   fontWeight,
 } from "#/design-system/theme/typography.stylex";
+import type { ReadingTypographyPreference } from "#/lib/reading-typography";
 import { readingCustomFontFamily } from "#/lib/reading-typography";
 
 export const articleBodyStyles = stylex.create({

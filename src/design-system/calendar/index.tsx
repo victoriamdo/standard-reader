@@ -1,14 +1,13 @@
+import * as stylex from "@stylexjs/stylex";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useContext } from "react";
+import { useDateFormatter } from "react-aria";
 import type {
   CalendarProps as AriaCalendarProps,
   CalendarGridProps,
   DateValue,
   Key,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useContext } from "react";
-import { useDateFormatter } from "react-aria";
 import {
   Calendar as AriaCalendarComponent,
   CalendarCell,
@@ -19,13 +18,12 @@ import {
   CalendarStateContext,
 } from "react-aria-components";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { Flex } from "../flex";
 import { IconButton } from "../icon-button";
 import { ErrorMessage } from "../label";
 import { Select, SelectItem } from "../select";
 import { gap } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { useCalendarStyles } from "../theme/useCalendarStyles";
 
 export interface CalendarProps<T extends DateValue>

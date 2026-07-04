@@ -1,15 +1,3 @@
-import type { BgRequest, BgResponse } from "../lib/messaging";
-import type { PopupStateResponse } from "../lib/popup-state";
-import type {
-  ReaderMessageBody,
-  ReaderSentencesResult,
-  ReaderSnapshot,
-} from "../lib/reader-messaging";
-import type {
-  ExtensionResolveResult,
-  ExtensionSessionResponse,
-} from "../lib/types";
-
 import { isActionIconPlaying, setActionIconPlaying } from "../lib/action-icon";
 import {
   fetchBookmark,
@@ -25,6 +13,8 @@ import {
   queuePendingAction,
 } from "../lib/auth";
 import { getEffectiveApiOrigin, loadSettings } from "../lib/config";
+import type { BgRequest, BgResponse } from "../lib/messaging";
+import type { PopupStateResponse } from "../lib/popup-state";
 import {
   findTabIdsByDocumentUri,
   getSessionCached,
@@ -35,6 +25,11 @@ import {
   rememberTabSnapshot,
   seedSessionCache,
 } from "../lib/popup-state";
+import type {
+  ReaderMessageBody,
+  ReaderSentencesResult,
+  ReaderSnapshot,
+} from "../lib/reader-messaging";
 import {
   READER_TAB_STATE,
   READER_TARGET,
@@ -49,6 +44,10 @@ import {
   resolveBatchWithCache,
   resolveWithCache,
 } from "../lib/resolve-cache";
+import type {
+  ExtensionResolveResult,
+  ExtensionSessionResponse,
+} from "../lib/types";
 
 const MENU_SAVE = "sr-save";
 const MENU_OPEN = "sr-open";

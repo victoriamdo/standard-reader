@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { useCallback } from "react";
+
+import { user } from "#/integrations/tanstack-query/api-user.functions";
 
 import { DEFAULT_OPEN_LINKS_EXTERNALLY } from "./open-links";
 

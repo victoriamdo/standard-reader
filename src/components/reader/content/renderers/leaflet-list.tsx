@@ -1,14 +1,14 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
+
+import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-tracker";
+import { asTextBlock } from "#/lib/leaflet/blocks";
 import type {
   LeafletListItem,
   LeafletOrderedListBlock,
   LeafletUnorderedListBlock,
 } from "#/lib/leaflet/types";
-
-import * as stylex from "@stylexjs/stylex";
-import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-tracker";
-import { asTextBlock } from "#/lib/leaflet/blocks";
 import { LEAFLET_BLOCK } from "#/lib/leaflet/types";
 
 import { articleBodyStyles } from "../body-styles";

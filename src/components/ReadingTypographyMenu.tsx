@@ -1,13 +1,13 @@
+import * as stylex from "@stylexjs/stylex";
+
+import { MenuItem, MenuSeparator, SubMenu } from "#/design-system/menu";
+import { uiColor } from "#/design-system/theme/color.stylex";
+import { DEFAULT_CUSTOM_GOOGLE_FONT } from "#/lib/google-fonts";
 import type {
   ReadingBodyFont,
   ReadingFontSize,
   ReadingMeasure,
 } from "#/lib/reading-typography";
-
-import * as stylex from "@stylexjs/stylex";
-import { MenuItem, MenuSeparator, SubMenu } from "#/design-system/menu";
-import { uiColor } from "#/design-system/theme/color.stylex";
-import { DEFAULT_CUSTOM_GOOGLE_FONT } from "#/lib/google-fonts";
 import {
   READING_BODY_FONTS,
   READING_FONT_SIZES,

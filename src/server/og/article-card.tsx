@@ -1,8 +1,5 @@
-import type {
-  PublicationThemeInput,
-  QuoteOgColors,
-} from "#/server/og/theme-colors";
 import type { Font } from "satori";
+import satori from "satori";
 
 import { initials } from "#/components/reader/format";
 import { loadOgFonts } from "#/server/og/fonts";
@@ -10,8 +7,11 @@ import { loadOgImage, loadPublicationIcon } from "#/server/og/load-image";
 import { OG_HEIGHT, OG_WIDTH, renderOgPng } from "#/server/og/render-png";
 import { ogSatoriOptions } from "#/server/og/satori-options";
 import { truncateAtWord } from "#/server/og/text";
+import type {
+  PublicationThemeInput,
+  QuoteOgColors,
+} from "#/server/og/theme-colors";
 import { resolveQuoteOgColors } from "#/server/og/theme-colors";
-import satori from "satori";
 
 /** Width of the cover-image panel when the article has one. */
 const COVER_WIDTH = 420;

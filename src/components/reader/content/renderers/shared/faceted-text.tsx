@@ -1,9 +1,8 @@
 "use client";
 
-import type { LeafletFacet } from "#/lib/leaflet/types";
-import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
-
 import * as stylex from "@stylexjs/stylex";
+import { Fragment } from "react";
+
 import { AppLink } from "#/components/reader/app-link";
 import {
   DropCapChar,
@@ -15,13 +14,13 @@ import {
 } from "#/components/reader/quote-highlight-tracker";
 import { authorProfilePath } from "#/lib/author-profile";
 import { segmentFacetedText, shiftFacets } from "#/lib/leaflet/facets";
+import type { LeafletFacet } from "#/lib/leaflet/types";
 import { utf8ByteLength } from "#/lib/leaflet/utf8";
+import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
 import { useReadingTypography } from "#/lib/use-reading-typography";
-import { Fragment } from "react";
-
-import type { FacetFeature } from "./facets";
 
 import { articleBodyStyles, readingDropCapStyleProps } from "../../body-styles";
+import type { FacetFeature } from "./facets";
 import { findFacetFeature, hasFacetKind } from "./facets";
 
 function FacetSegment({

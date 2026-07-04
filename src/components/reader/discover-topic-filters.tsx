@@ -1,6 +1,10 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+import { X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Button as AriaButton, Heading } from "react-aria-components";
+
 import { IconButton } from "#/design-system/icon-button";
 import { Popover } from "#/design-system/popover";
 import { Tag, TagGroup } from "#/design-system/tag-group";
@@ -20,9 +24,6 @@ import {
   fontWeight,
   typeramp,
 } from "#/design-system/theme/typography.stylex";
-import { X } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Button as AriaButton, Heading } from "react-aria-components";
 
 import type { TopicChipItem } from "./discover-topics";
 

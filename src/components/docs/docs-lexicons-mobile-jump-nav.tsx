@@ -1,13 +1,13 @@
 "use client";
 
-import type { LexiconDocsEntry } from "#/lib/lexicon-docs/types";
-
 import * as stylex from "@stylexjs/stylex";
+import { useCallback, useMemo } from "react";
+
 import {
   lexiconDocsJumpNavGroups,
   lexiconDocsScrollSpyIds,
 } from "#/lib/lexicon-docs/navigation";
-import { useCallback, useMemo } from "react";
+import type { LexiconDocsEntry } from "#/lib/lexicon-docs/types";
 
 import { docsStyles } from "./docs-page.stylex";
 import { useDocsScrollSpyActive } from "./docs-scroll-spy-context";

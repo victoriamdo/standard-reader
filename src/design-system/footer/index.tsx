@@ -1,11 +1,8 @@
 "use client";
 
-import type { LinkProps as AriaLinkProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
+import type { LinkProps as AriaLinkProps } from "react-aria-components";
 import { Link as AriaLink } from "react-aria-components";
-
-import type { StyleXComponentProps } from "../theme/types";
 
 import { Button } from "../button";
 import { TextField } from "../text-field";
@@ -19,6 +16,7 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { fontFamily, fontSize, fontWeight } from "../theme/typography.stylex";
 
 const styles = stylex.create({

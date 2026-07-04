@@ -1,26 +1,29 @@
 import type { ActorIdentifier } from "@atcute/lexicons";
-import type { AuthScopeIntent } from "#/integrations/auth/scope";
-
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
 import {
   atprotoOAuth,
   atprotoReviewOAuth,
   revokeAtprotoSession,
 } from "#/integrations/auth/atproto";
+import type { AuthScopeIntent } from "#/integrations/auth/scope";
 import {
   ATSTORE_REVIEW_SCOPE,
+  USERINPUT_DISCUSSION_SCOPE,
+  USERINPUT_UPVOTE_SCOPE,
   basicScope,
   collectionsScope,
   formatOAuthScope,
   hasCollectionsScope,
+  hasUserinputFeedbackScope,
   resolveAuthScopeForUser,
 } from "#/integrations/auth/scope";
 import { sanitizeAuthRedirectTarget } from "#/utils/auth-redirect";
 import { getSavedHandles } from "#/utils/saved-handles";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
 
 const authorizeInputSchema = z.object({
   handle: z.string().min(1, "Handle is required"),
@@ -89,6 +92,51 @@ async function shouldRequestCollectionsScope(args: {
   return hasCollectionsScope(atprotoAccount?.scope ?? null);
 }
 
+/**
+ * Mirror of {@link shouldRequestCollectionsScope} for the userinput.app feedback
+ * scope tier. Returns `true` when the reader has either opted in
+ * (`user.userinputFeedbackEnabled`) or already granted the scope on their PDS
+ * (`account.scope` includes `repo?collection=app.userinput.discussion`). This
+ * is what makes the feedback grant sticky: every sign-in silently re-requests
+ * the scope once it's been granted once, so the user never sees the consent
+ * screen twice.
+ */
+async function shouldRequestUserinputScope(args: {
+  did?: string | undefined;
+  handle: string;
+}): Promise<boolean> {
+  const [{ db }, schema] = await Promise.all([
+    import("#/db/index.server"),
+    import("#/db/schema"),
+  ]);
+
+  let did = args.did;
+  if (!did) {
+    const normalizedHandle = args.handle.replace(/^@/, "").trim();
+    const profile = await db.query.profiles.findFirst({
+      where: eq(schema.profiles.handle, normalizedHandle),
+      columns: { did: true },
+    });
+    did = profile?.did;
+  }
+  if (!did) return false;
+
+  const row = await db.query.user.findFirst({
+    where: eq(schema.user.did, did),
+    columns: { userinputFeedbackEnabled: true },
+    with: {
+      accounts: {
+        columns: { scope: true, providerId: true },
+        where: eq(schema.account.providerId, "atproto"),
+      },
+    },
+  });
+  if (!row) return false;
+  if (row.userinputFeedbackEnabled === true) return true;
+  const atprotoAccount = row.accounts.find((a) => a.providerId === "atproto");
+  return hasUserinputFeedbackScope(atprotoAccount?.scope ?? null);
+}
+
 const authorize = createServerFn({ method: "GET" })
   .validator(authorizeInputSchema)
   .handler(async ({ data }) => {
@@ -112,19 +160,27 @@ const authorize = createServerFn({ method: "GET" })
     // automatically — even on a fresh sign-in from /login. Falls back to basic
     // when the reader can't be identified (first sign-in) or neither signal is
     // present. The DID is resolved from the handle when not threaded in.
-    const requestCollections = await shouldRequestCollectionsScope({
-      did: data.did,
-      handle: data.handle,
-    });
+    const [requestCollections, requestUserinput] = await Promise.all([
+      shouldRequestCollectionsScope({ did: data.did, handle: data.handle }),
+      shouldRequestUserinputScope({ did: data.did, handle: data.handle }),
+    ]);
     const scope =
       scopeIntent === "collections" || requestCollections
         ? resolveAuthScopeForUser(
-            { collectionsAuthoringEnabled: true },
+            {
+              collectionsAuthoringEnabled: true,
+              userinputFeedbackEnabled: requestUserinput,
+            },
             scopeIntent,
+            requestUserinput,
           )
         : resolveAuthScopeForUser(
-            { collectionsAuthoringEnabled: false },
+            {
+              collectionsAuthoringEnabled: false,
+              userinputFeedbackEnabled: requestUserinput,
+            },
             scopeIntent,
+            requestUserinput,
           );
 
     const { url } = await atprotoOAuth.authorize({
@@ -320,11 +376,110 @@ const upgradeToAtstoreReview = createServerFn({ method: "POST" })
     return { authorizationUrl: url.toString() };
   });
 
+/**
+ * Progressive scope upgrade: opt the signed-in reader into submitting
+ * userinput.app feedback. Sets the `userinputFeedbackEnabled` flag (so future
+ * logins silently include the expanded scope — see `shouldRequestUserinputScope`),
+ * revokes the current OAuth session, and initiates a fresh authorize flow on
+ * the *default* client (no separate OAuth client flavor) with the
+ * `USERINPUT_DISCUSSION_SCOPE` addendum. The client navigates to the returned
+ * URL; the callback returns to `redirect`.
+ *
+ * Same revoke + re-auth shape as `upgradeToCollections` per
+ * atproto.com/guides/oauth-patterns (BFF scope upgrades revoke + re-auth
+ * because `prompt: consent` re-consent isn't reliable across PDS providers).
+ * The user only sees the consent screen once: on every subsequent sign-in the
+ * `authorize` fn silently re-appends the userinput scope via
+ * `shouldRequestUserinputScope`.
+ */
+const upgradeToUserinputFeedback = createServerFn({ method: "POST" })
+  .validator(upgradeToCollectionsInputSchema)
+  .handler(async ({ data }) => {
+    const request = getRequest();
+    const [{ db }, schema, { getReaderContextForRequest }] = await Promise.all([
+      import("#/db/index.server"),
+      import("#/db/schema"),
+      import("#/middleware/auth-session.server"),
+    ]);
+
+    const reader = await getReaderContextForRequest(request);
+    if (!reader) {
+      throw new Error("Unauthorized");
+    }
+
+    // 1. Persist the opt-in flag — future authorize flows read this and
+    //    silently re-request the userinput scope on every login.
+    await db
+      .update(schema.user)
+      .set({ userinputFeedbackEnabled: true })
+      .where(eq(schema.user.id, reader.userId));
+
+    // 2. Revoke the current OAuth session so the next authorize grants the
+    //    expanded scope. App session row cleanup happens on the callback that
+    //    establishes the new session.
+    try {
+      await revokeAtprotoSession(
+        reader.did as Parameters<typeof revokeAtprotoSession>[0],
+      );
+    } catch (error) {
+      console.warn(
+        "Failed to revoke Atproto session during userinput feedback upgrade:",
+        error,
+      );
+    }
+
+    // 3. Kick off a fresh authorize on the DEFAULT client with the userinput
+    //    scope addendum. baseScope is the user's existing tier (collections if
+    //    opted in, otherwise basic) so we don't accidentally downgrade them.
+    const row = await db.query.user.findFirst({
+      where: eq(schema.user.id, reader.userId),
+      columns: { collectionsAuthoringEnabled: true },
+      with: {
+        accounts: {
+          columns: { scope: true, providerId: true },
+          where: eq(schema.account.providerId, "atproto"),
+        },
+      },
+    });
+    const atprotoAccount = row?.accounts.find(
+      (a) => a.providerId === "atproto",
+    );
+    const requestCollections =
+      row?.collectionsAuthoringEnabled === true ||
+      hasCollectionsScope(atprotoAccount?.scope ?? null);
+    const baseScope = requestCollections ? collectionsScope : basicScope;
+
+    const redirectTarget = sanitizeAuthRedirectTarget(
+      data.redirect,
+      request.url,
+    );
+
+    const { url } = await atprotoOAuth.authorize({
+      target: {
+        type: "account",
+        identifier: reader.did as ActorIdentifier,
+      },
+      scope: formatOAuthScope([
+        ...new Set([
+          ...baseScope,
+          USERINPUT_DISCUSSION_SCOPE,
+          USERINPUT_UPVOTE_SCOPE,
+        ]),
+      ]),
+      state: {
+        redirect: redirectTarget,
+      },
+    });
+
+    return { authorizationUrl: url.toString() };
+  });
+
 export const auth = {
   authorize,
   signup,
   upgradeToCollections,
   upgradeToAtstoreReview,
+  upgradeToUserinputFeedback,
   getSavedHandles: getSavedHandlesServer,
   getSavedHandlesQueryOptions,
 };

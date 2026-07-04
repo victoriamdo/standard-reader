@@ -1,19 +1,16 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
+import { use } from "react";
 import type {
   ToggleButtonGroupProps as AriaToggleButtonGroupProps,
   ToggleButtonProps as AriaToggleButtonProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { use } from "react";
 import {
   ToggleButton as AriaToggleButton,
   ToggleButtonGroup as AriaToggleButtonGroup,
   SelectionIndicator,
 } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { SizeContext } from "../context";
 import { useHaptics } from "../haptics";
@@ -28,6 +25,7 @@ import {
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
 import { shadow } from "../theme/shadow.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   group: {

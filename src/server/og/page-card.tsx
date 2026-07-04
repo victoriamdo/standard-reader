@@ -1,10 +1,10 @@
 import type { Font } from "satori";
+import satori from "satori";
 
 import { SITE_NAME } from "#/lib/site-metadata";
 import { loadOgFonts } from "#/server/og/fonts";
 import { renderOgPng } from "#/server/og/render-png";
 import { ogSatoriOptions } from "#/server/og/satori-options";
-import satori from "satori";
 
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;

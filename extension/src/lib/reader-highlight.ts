@@ -1,5 +1,4 @@
 import type { HighlightMap } from "#/lib/page-reader/word-highlight";
-
 import {
   buildHighlightMap,
   clearWordHighlight,
@@ -9,9 +8,8 @@ import {
   setWordHighlight,
 } from "#/lib/page-reader/word-highlight";
 
-import type { ReaderSnapshot } from "./reader-messaging";
-
 import { sendMessage } from "./messaging";
+import type { ReaderSnapshot } from "./reader-messaging";
 import { isReaderTabState } from "./reader-messaging";
 
 /** Throttle for (re)building the DOM↔sentence map while it isn't ready yet. */

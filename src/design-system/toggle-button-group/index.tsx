@@ -1,16 +1,14 @@
 "use client";
 
-import type { ToggleButtonGroupProps as AriaToggleButtonGroupProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import { use, useMemo } from "react";
+import type { ToggleButtonGroupProps as AriaToggleButtonGroupProps } from "react-aria-components";
 import { ToggleButtonGroup as AriaToggleButtonGroup } from "react-aria-components";
-
-import type { StyleXComponentProps } from "../theme/types";
 
 import { ButtonGroupContext } from "../button/context";
 import { useHaptics } from "../haptics";
 import { size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   group: {

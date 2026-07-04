@@ -9,7 +9,6 @@
  */
 
 import type { Secp256k1Keypair } from "@atproto/crypto";
-
 import WebSocket from "ws";
 
 import { config } from "./config.ts";

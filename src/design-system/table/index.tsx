@@ -1,3 +1,7 @@
+import * as stylex from "@stylexjs/stylex";
+import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
+import { use } from "react";
+import { mergeProps, useHover } from "react-aria";
 import type {
   CellProps as AriaCellProps,
   ColumnProps as AriaColumnProps,
@@ -7,11 +11,6 @@ import type {
   TableProps as AriaTableProps,
   DropIndicatorProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
-import { use } from "react";
-import { mergeProps, useHover } from "react-aria";
 import {
   Cell as AriaCell,
   Column as AriaColumn,
@@ -27,8 +26,6 @@ import {
   useTableOptions,
 } from "react-aria-components";
 
-import type { Size, StyleXComponentProps } from "../theme/types";
-
 import { Checkbox } from "../checkbox";
 import { SizeContext } from "../context";
 import { Flex } from "../flex";
@@ -39,6 +36,7 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { LabelText } from "../typography";
 
 const styles = stylex.create({

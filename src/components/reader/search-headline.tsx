@@ -1,10 +1,11 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+import { Fragment } from "react";
+
 import { primaryColor } from "#/design-system/theme/color.stylex";
 import { fontWeight } from "#/design-system/theme/typography.stylex";
 import { sanitizeTsHeadlineHtml } from "#/lib/search-headline";
-import { Fragment } from "react";
 
 import { articleBodyStyles } from "./content/body-styles";
 

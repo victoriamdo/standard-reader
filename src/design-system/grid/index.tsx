@@ -1,9 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 
 import type { Gap } from "../theme/semantic-spacing.stylex";
-import type { StyleXComponentProps } from "../theme/types";
-
 import { gap as gapVars } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   base: { display: "grid" },

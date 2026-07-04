@@ -1,6 +1,7 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+
 import { Skeleton } from "#/design-system/skeleton";
 import { uiColor } from "#/design-system/theme/color.stylex";
 import { radius } from "#/design-system/theme/radius.stylex";

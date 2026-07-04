@@ -1,26 +1,26 @@
 "use client";
 
-import type { ComponentProps } from "react";
-import type { Components } from "react-markdown";
-
 import * as stylex from "@stylexjs/stylex";
-import { AppLink } from "#/components/reader/app-link";
-import { spacing } from "#/design-system/theme/spacing.stylex";
-import { stripLeadingMarkupImage } from "#/lib/document/lead-image";
-import { articleMarkdownSanitizeSchema } from "#/lib/markdown/article-sanitize-schema";
-import { useReadingTypography } from "#/lib/use-reading-typography";
+import type { ComponentProps } from "react";
 import { createElement, useMemo, useRef } from "react";
+import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+
+import { AppLink } from "#/components/reader/app-link";
+import { spacing } from "#/design-system/theme/spacing.stylex";
+import { stripLeadingMarkupImage } from "#/lib/document/lead-image";
+import { articleMarkdownSanitizeSchema } from "#/lib/markdown/article-sanitize-schema";
+import { useReadingTypography } from "#/lib/use-reading-typography";
+
 import "katex/dist/katex.min.css";
 
-import type { ContentRendererProps } from "../../types";
-
 import { articleBodyStyles, readingDropCapStyleProps } from "../../body-styles";
+import type { ContentRendererProps } from "../../types";
 import { ArticleBody } from "./article-body";
 import { CodeBlockView } from "./code-block";
 import { MarkdownIframeEmbed } from "./iframe-embed";

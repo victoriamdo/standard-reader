@@ -2,7 +2,6 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { LoadMeasurement } from "./measure.ts";
-
 import { sharedRouteId } from "./targets.ts";
 
 const RESULTS_DIR = path.join(process.cwd(), "perf", "results");

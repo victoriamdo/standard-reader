@@ -1,16 +1,14 @@
-import type { ColorSwatchProps as AriaColorSwatchProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import { use } from "react";
+import type { ColorSwatchProps as AriaColorSwatchProps } from "react-aria-components";
 import { ColorSwatch as AriaColorSwatch } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { SizeContext } from "../context";
 import { uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   swatch: {

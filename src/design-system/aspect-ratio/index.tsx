@@ -1,8 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { radius } from "../theme/radius.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   aspectRatio: (aspectRatio: number) => ({

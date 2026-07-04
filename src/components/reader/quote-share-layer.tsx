@@ -1,14 +1,14 @@
 "use client";
 
-import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
+import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import {
   applyQuoteHighlightByOffsets,
   applyQuoteHighlightWhenReady,
   scrollQuoteShareMarkIntoView,
 } from "#/lib/quote-highlight";
 import { resolveQuoteHighlightRange } from "#/lib/quote-highlight-text";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 import { documentLinkParams } from "./format";
 import { QuoteHighlightProvider } from "./quote-highlight-context";

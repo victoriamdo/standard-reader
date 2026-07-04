@@ -1,8 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-
 import * as stylex from "@stylexjs/stylex";
+import type { ReactNode } from "react";
 
 import { docsStyles } from "./docs-page.stylex";
 import { DocsScrollSpyProvider } from "./docs-scroll-spy-context";

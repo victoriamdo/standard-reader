@@ -1,10 +1,4 @@
 import type { OverlayTriggerProps } from "@react-types/overlays";
-import type { AriaButtonProps } from "react-aria";
-import type {
-  MenuProps as AriaMenuProps,
-  PopoverProps,
-} from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import {
   Children,
@@ -15,7 +9,12 @@ import {
   useRef,
   useState,
 } from "react";
+import type { AriaButtonProps } from "react-aria";
 import { mergeProps, useMenuTrigger } from "react-aria";
+import type {
+  MenuProps as AriaMenuProps,
+  PopoverProps,
+} from "react-aria-components";
 import {
   Menu as AriaMenu,
   MenuContext,
@@ -27,10 +26,9 @@ import {
 } from "react-aria-components";
 import { useMenuTriggerState } from "react-stately";
 
-import type { Size, StyleXComponentProps } from "../theme/types";
-
 import { SizeContext } from "../context";
 import { verticalSpace } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { usePopoverStyles } from "../theme/usePopoverStyles";
 
 const styles = stylex.create({

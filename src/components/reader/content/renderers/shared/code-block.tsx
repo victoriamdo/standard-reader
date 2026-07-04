@@ -1,17 +1,17 @@
 "use client";
 
-import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
-import type { CodeHighlightsByScheme } from "#/lib/theme";
-
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
+import { memo, useLayoutEffect, useRef } from "react";
+
 import { HighlightedPlaintext } from "#/components/reader/quote-highlight-context";
 import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-tracker";
 import { highlightApi } from "#/integrations/tanstack-query/api-highlight.functions";
 import { codeBlockKey } from "#/lib/code-highlight";
+import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
+import type { CodeHighlightsByScheme } from "#/lib/theme";
 import { EMPTY_CODE_HIGHLIGHTS, pickCodeHighlight } from "#/lib/theme";
 import { useTheme } from "#/lib/use-theme";
-import { memo, useLayoutEffect, useRef } from "react";
 
 import { articleBodyStyles } from "../../body-styles";
 

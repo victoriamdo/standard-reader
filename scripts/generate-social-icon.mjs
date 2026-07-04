@@ -1,3 +1,8 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 /**
  * Regenerate PWA / social icons from the Newsreader "S" glyph.
  *
@@ -16,10 +21,6 @@
  */
 import { Resvg } from "@resvg/resvg-js";
 import * as fontkit from "fontkit";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const BACKGROUND = "#fcfbf6"; // manifest background_color
 const GLYPH_COLOR = "#c2502b"; // manifest theme_color == favicon oklch(0.575 0.155 38)

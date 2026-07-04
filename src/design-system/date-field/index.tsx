@@ -1,17 +1,21 @@
+import * as stylex from "@stylexjs/stylex";
+import { use, useRef } from "react";
 import type {
   DateFieldProps as AriaDateFieldProps,
   DateValue,
   ValidationResult,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { use, useRef } from "react";
 import {
   DateField as AriaDateField,
   DateInput,
   DateSegment,
 } from "react-aria-components";
 
+import { SizeContext } from "../context";
+import { Flex } from "../flex";
+import { Description, FieldErrorMessage, Label } from "../label";
+import { SuffixIcon } from "../suffix-icon";
+import { horizontalSpace } from "../theme/semantic-spacing.stylex";
 import type {
   InputValidationState,
   InputVariant,
@@ -19,12 +23,6 @@ import type {
   Size,
   StyleXComponentProps,
 } from "../theme/types";
-
-import { SizeContext } from "../context";
-import { Flex } from "../flex";
-import { Description, FieldErrorMessage, Label } from "../label";
-import { SuffixIcon } from "../suffix-icon";
-import { horizontalSpace } from "../theme/semantic-spacing.stylex";
 import { useInputStyles } from "../theme/useInputStyles";
 
 const styles = stylex.create({

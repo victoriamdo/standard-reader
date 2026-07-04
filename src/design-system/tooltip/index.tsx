@@ -1,11 +1,10 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import type {
   TooltipProps as AriaTooltipProps,
   TooltipTriggerComponentProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
 import {
   Tooltip as AriaTooltip,
   OverlayArrow,

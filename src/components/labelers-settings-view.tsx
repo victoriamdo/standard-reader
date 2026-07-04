@@ -1,15 +1,15 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+
 import type {
   LabelerCard,
   LabelerListItem,
 } from "#/integrations/tanstack-query/api-labelers.functions";
-
-import * as stylex from "@stylexjs/stylex";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
-import { useMemo, useState } from "react";
 
 import { Avatar } from "../design-system/avatar";
 import { Badge } from "../design-system/badge";

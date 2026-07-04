@@ -1,3 +1,6 @@
+import { sql } from "drizzle-orm";
+
+import { publicationLinkParams } from "#/components/reader/format";
 import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 import type {
   CollectionColophon,
@@ -5,17 +8,14 @@ import type {
 } from "#/lib/collections/manifest";
 import type { CollectionTheme } from "#/lib/collections/theme";
 import type { ThemeMode } from "#/lib/theme";
-import type { ArticleDetailSourceRow } from "#/server/reader/article-detail-build";
-
-import { publicationLinkParams } from "#/components/reader/format";
 import { MAX_MAGAZINE_FEATURES } from "#/magazine/constants";
 import { getReaderContextForRequest } from "#/middleware/auth-session.server";
+import type { ArticleDetailSourceRow } from "#/server/reader/article-detail-build";
 import {
   buildArticleDetail,
   manifestFromCollectionRow,
 } from "#/server/reader/article-detail-build";
 import { themeModeForRequest } from "#/server/theme-preference";
-import { sql } from "drizzle-orm";
 
 type BundleKind = "collection" | "feature";
 

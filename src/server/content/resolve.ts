@@ -16,9 +16,8 @@ import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
 import { resolveGreengaleContent } from "#/server/greengale/resolve";
 import { resolveMarkpubContent } from "#/server/markpub/resolve";
 
-import type { BlobRef } from "../atproto/types.ts";
-
 import { blobCid, getBlobUrl } from "../atproto/blob.ts";
+import type { BlobRef } from "../atproto/types.ts";
 
 export const STANDARD_MARKDOWN_BLOB = "site.standard.markdown";
 export const YRRIBAN_CONTENT = "net.yrriban.content";

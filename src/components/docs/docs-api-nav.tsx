@@ -1,6 +1,7 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+
 import { API_DOCS_CATALOG, API_DOCS_SECTIONS } from "#/lib/api-docs/catalog";
 import {
   API_DOCS_INTRO_IDS,

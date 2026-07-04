@@ -1,10 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import type { PopupStateResponse } from "../../lib/popup-state";
-
 import { PopupShell } from "../../components/PopupShell";
 import { loadInitialPopupState } from "../../lib/popup-load-state";
+import type { PopupStateResponse } from "../../lib/popup-state";
 
 const initialStatePromise = loadInitialPopupState();
 

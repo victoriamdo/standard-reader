@@ -6,15 +6,16 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { Layers } from "lucide-react";
+import { useMemo, useState } from "react";
+import { z } from "zod";
+
 import { hasCollectionsScope } from "#/integrations/auth/scope";
 import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { siteSocialMeta } from "#/lib/site-metadata";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
-import { Layers } from "lucide-react";
-import { useMemo, useState } from "react";
-import { z } from "zod";
 
 import { CollectionBuilder } from "../components/reader/collection-builder";
 import { CollectionsUpgradeGate } from "../components/reader/collections-upgrade-gate";

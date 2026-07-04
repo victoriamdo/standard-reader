@@ -1,13 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ButtonLink } from "#/components/router-links";
-import { DEFAULT_TRACK_READING_HISTORY } from "#/lib/track-reading-history";
 import { ArrowRight, Flame, Sparkles } from "lucide-react";
 import { Suspense, useMemo } from "react";
 import { z } from "zod";
 
-import type { HomeScope } from "../integrations/tanstack-query/api-feed.functions";
+import { ButtonLink } from "#/components/router-links";
+import { DEFAULT_TRACK_READING_HISTORY } from "#/lib/track-reading-history";
 
 import {
   ArticleRow,
@@ -36,6 +35,7 @@ import {
   lineHeight,
   tracking,
 } from "../design-system/theme/typography.stylex";
+import type { HomeScope } from "../integrations/tanstack-query/api-feed.functions";
 import { feedApi } from "../integrations/tanstack-query/api-feed.functions";
 import { user } from "../integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "../lib/public-url";

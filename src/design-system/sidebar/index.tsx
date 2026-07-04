@@ -10,8 +10,6 @@ import {
   Heading,
 } from "react-aria-components";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { Flex } from "../flex";
 import { animationDuration } from "../theme/animations.stylex";
 import { primaryColor, uiColor } from "../theme/color.stylex";
@@ -23,6 +21,7 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { fontFamily, fontSize, fontWeight } from "../theme/typography.stylex";
 import { Text } from "../typography/text";
 

@@ -16,8 +16,6 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { IconButton } from "../icon-button";
 import {
   animationDuration,
@@ -31,6 +29,7 @@ import {
   size,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { fontFamily, fontSize } from "../theme/typography.stylex";
 
 const ALT_TRANSITION_DURATION_MS = 200;

@@ -1,8 +1,7 @@
 "use client";
 
-import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
-
 import * as stylex from "@stylexjs/stylex";
+
 import { Avatar } from "#/design-system/avatar";
 import { Flex } from "#/design-system/flex";
 import { uiColor } from "#/design-system/theme/color.stylex";
@@ -13,6 +12,7 @@ import {
   fontWeight,
   lineHeight,
 } from "#/design-system/theme/typography.stylex";
+import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
 
 import { formatReadingTime, formatRelativeTime, initials } from "./format";
 import { ArticleEngagement } from "./primitives";

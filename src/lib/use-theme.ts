@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { useCallback, useSyncExternalStore } from "react";
 
-import type { ResolvedThemeScheme, ThemeMode } from "./theme";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
 
+import type { ResolvedThemeScheme, ThemeMode } from "./theme";
 import {
   DEFAULT_THEME_MODE,
   resolveSchemeForMode,

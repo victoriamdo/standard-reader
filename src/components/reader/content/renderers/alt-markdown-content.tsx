@@ -3,7 +3,6 @@
 import { altMarkdownText } from "#/lib/document/structured-content/alt-markdown";
 
 import type { ContentRendererProps } from "../types";
-
 import { MarkdownArticle } from "./shared/markdown-article";
 
 /**

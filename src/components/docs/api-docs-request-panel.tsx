@@ -1,11 +1,10 @@
 "use client";
 
-import type { ApiDocsCatalogEntry } from "#/lib/api-docs/catalog";
-import type { ApiDocsFixtures } from "#/lib/api-docs/fixture-defaults";
-import type { ApiDocsExampleResult } from "#/lib/api-docs/types";
-
 import * as stylex from "@stylexjs/stylex";
 import { useMutation } from "@tanstack/react-query";
+import { Play } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+
 import { Select, SelectItem } from "#/design-system/select";
 import { TextField } from "#/design-system/text-field";
 import { runApiDocsExample } from "#/integrations/tanstack-query/api-docs.functions";
@@ -13,15 +12,16 @@ import {
   buildApiDocsCurl,
   resolveApiDocsExampleParams,
 } from "#/lib/api-docs/build-curl";
+import type { ApiDocsCatalogEntry } from "#/lib/api-docs/catalog";
+import type { ApiDocsFixtures } from "#/lib/api-docs/fixture-defaults";
 import { isPlaceholderApiDocsFixture } from "#/lib/api-docs/fixture-defaults";
 import {
   apiDocsParamControls,
   apiDocsUsesSessionAuth,
 } from "#/lib/api-docs/interactive-params";
 import { mergeApiDocsExampleParams } from "#/lib/api-docs/merge-example-params";
+import type { ApiDocsExampleResult } from "#/lib/api-docs/types";
 import { getPublicUrlClient } from "#/lib/public-url";
-import { Play } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useApiDocsPageContext } from "./api-docs-fixtures-context";
 import { HighlightedCurl, HighlightedJson } from "./docs-highlighted-code";

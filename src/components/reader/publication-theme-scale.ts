@@ -1,6 +1,6 @@
-import type { PublicationEmbedMeta } from "#/integrations/tanstack-query/api-publication.functions";
 import type { CSSProperties } from "react";
 
+import type { PublicationEmbedMeta } from "#/integrations/tanstack-query/api-publication.functions";
 import { resolveQuoteOgColors } from "#/lib/publication-theme";
 
 interface Rgb {

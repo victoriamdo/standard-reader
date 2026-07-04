@@ -2,6 +2,7 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { useNavigate } from "@tanstack/react-router";
+
 import { authorProfilePath, normalizeAuthorRef } from "#/lib/author-profile";
 
 const styles = stylex.create({

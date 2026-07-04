@@ -1,8 +1,9 @@
-import type { LabelValueDef } from "#/server/labeler/resolve.server";
-
 import { mutationOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { and, eq, sql } from "drizzle-orm";
+import { z } from "zod";
+
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import {
   deleteLabelerSubscriptionRecord,
@@ -18,17 +19,15 @@ import {
   labelsForDocument,
   subscribedLabelerDids,
 } from "#/server/labeler/labels.server";
+import type { LabelValueDef } from "#/server/labeler/resolve.server";
 import {
   resolveActorDid,
   resolveLabelerView,
 } from "#/server/labeler/resolve.server";
 import { observe } from "#/server/observability/log";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
-import { and, eq, sql } from "drizzle-orm";
-import { z } from "zod";
 
 import type { ArticleCard, Db, Schema } from "./api-shapes";
-
 import { dbMiddleware } from "./db-middleware";
 
 /**

@@ -1,19 +1,17 @@
+import * as stylex from "@stylexjs/stylex";
+import { ChevronRight } from "lucide-react";
 import type {
   BreadcrumbProps as AriaBreadcrumbProps,
   BreadcrumbsProps as AriaBreadcrumbsProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { ChevronRight } from "lucide-react";
 import {
   Breadcrumb as AriaBreadcrumb,
   Breadcrumbs as AriaBreadcrumbs,
 } from "react-aria-components";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { uiColor } from "../theme/color.stylex";
 import { gap } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { fontWeight } from "../theme/typography.stylex";
 
 const styles = stylex.create({

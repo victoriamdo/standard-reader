@@ -1,15 +1,13 @@
 "use client";
 
-import type { DisclosureGroupProps as AriaDisclosureGroupProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import { use } from "react";
+import type { DisclosureGroupProps as AriaDisclosureGroupProps } from "react-aria-components";
 import { DisclosureGroup as AriaDisclosureGroup } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { SizeContext } from "../context";
 import { uiColor } from "../theme/color.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   group: {

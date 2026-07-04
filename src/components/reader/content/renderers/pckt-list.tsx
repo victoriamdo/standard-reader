@@ -1,14 +1,14 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
+
+import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-tracker";
+import { asTextBlock } from "#/lib/pckt/blocks";
 import type {
   PcktListBlock,
   PcktListItemBlock,
   PcktTaskListBlock,
 } from "#/lib/pckt/types";
-
-import * as stylex from "@stylexjs/stylex";
-import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-tracker";
-import { asTextBlock } from "#/lib/pckt/blocks";
 import { PCKT_BLOCK } from "#/lib/pckt/types";
 
 import { articleBodyStyles } from "../body-styles";

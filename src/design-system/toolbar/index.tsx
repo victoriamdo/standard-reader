@@ -1,19 +1,16 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import type {
   SeparatorProps as AriaSeparatorProps,
   ToolbarProps as AriaToolbarProps,
   GroupProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
 import {
   Separator as AriaSeparator,
   Toolbar as AriaToolbar,
   Group,
 } from "react-aria-components";
-
-import type { StyleXComponentProps } from "../theme/types";
 
 import { uiColor } from "../theme/color.stylex";
 import {
@@ -21,6 +18,7 @@ import {
   horizontalSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   toolbar: {

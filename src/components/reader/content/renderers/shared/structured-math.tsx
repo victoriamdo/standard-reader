@@ -3,6 +3,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { renderToString } from "katex";
 import { useMemo } from "react";
+
 import "katex/dist/katex.min.css";
 
 import { articleBodyStyles } from "../../body-styles";

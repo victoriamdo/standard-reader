@@ -45,6 +45,14 @@ export const user = pgTable("user", {
    * upgrade flow; persists across logins so subsequent authorize requests
    * silently include the expanded scopes. */
   collectionsAuthoringEnabled: boolean("collections_authoring_enabled"),
+  /** `true` enables the userinput.app feedback scope tier on the next sign-in
+   * (and persists across logins so subsequent authorize requests silently
+   * include the expanded scope). Set when the user goes through the feedback
+   * upgrade flow; the source of truth for "actually granted" is
+   * `account.scope` (see `hasUserinputFeedbackScope`), but this flag is what
+   * the `authorize` server fn reads to silently re-request the scope on every
+   * login. */
+  userinputFeedbackEnabled: boolean("userinput_feedback_enabled"),
   /** `true` stops the one-time ATStore review prompt toast from showing again. */
   atstoreReviewPromptDismissed: boolean("atstore_review_prompt_dismissed"),
   createdAt: timestamp("created_at", { withTimezone: true })

@@ -1,24 +1,15 @@
+import * as stylex from "@stylexjs/stylex";
+import { use, useCallback, useLayoutEffect, useRef } from "react";
 import type {
   TextAreaProps as AriaTextAreaProps,
   InputProps,
   TextFieldProps,
   ValidationResult,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { use, useCallback, useLayoutEffect, useRef } from "react";
 import {
   TextArea as AriaTextArea,
   TextField as AriaTextField,
 } from "react-aria-components";
-
-import type {
-  InputValidationState,
-  InputVariant,
-  LabelVariant,
-  Size,
-  StyleXComponentProps,
-} from "../theme/types";
 
 import { SizeContext } from "../context";
 import { Description, FieldErrorMessage, Label } from "../label";
@@ -26,6 +17,13 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type {
+  InputValidationState,
+  InputVariant,
+  LabelVariant,
+  Size,
+  StyleXComponentProps,
+} from "../theme/types";
 import { fontFamily, lineHeight } from "../theme/typography.stylex";
 import { useInputStyles } from "../theme/useInputStyles";
 

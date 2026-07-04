@@ -1,10 +1,11 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+import { Fragment } from "react";
+
 import { AppLink } from "#/components/reader/app-link";
 import { primaryColor } from "#/design-system/theme/color.stylex";
 import { authorProfilePath } from "#/lib/author-profile";
-import { Fragment } from "react";
 
 /** Autolink http(s) and www. URLs in plain text (e.g. profile bios). */
 const URL_RE =

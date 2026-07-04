@@ -1,22 +1,22 @@
-import type { AuthorProfile } from "#/integrations/tanstack-query/api-author.functions";
-import type {
-  ArticleCard,
-  PublicationCard,
-} from "#/integrations/tanstack-query/api-shapes";
-import type { RefObject } from "react";
-
 import * as stylex from "@stylexjs/stylex";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { ExternalLink } from "lucide-react";
+import type { RefObject } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
 import { formatReaders, initials } from "#/components/reader/format";
+import type { AuthorProfile } from "#/integrations/tanstack-query/api-author.functions";
 import {
   AUTHOR_ACTIVITY_PAGE_SIZE,
   authorApi,
 } from "#/integrations/tanstack-query/api-author.functions";
+import type {
+  ArticleCard,
+  PublicationCard,
+} from "#/integrations/tanstack-query/api-shapes";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { profileOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
-import { ExternalLink } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
 import { LinkifiedText } from "../components/reader/linkified-text";

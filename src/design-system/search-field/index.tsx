@@ -1,21 +1,12 @@
+import * as stylex from "@stylexjs/stylex";
+import { SearchIcon, X } from "lucide-react";
+import { use, useRef } from "react";
 import type {
   SearchFieldProps as AriaSearchFieldProps,
   InputProps,
   ValidationResult,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { SearchIcon, X } from "lucide-react";
-import { use, useRef } from "react";
 import { SearchField as AriaSearchField, Input } from "react-aria-components";
-
-import type {
-  InputValidationState,
-  InputVariant,
-  LabelVariant,
-  Size,
-  StyleXComponentProps,
-} from "../theme/types";
 
 import { SizeContext } from "../context";
 import { Flex } from "../flex";
@@ -23,6 +14,13 @@ import { IconButton } from "../icon-button";
 import { Description, FieldErrorMessage, Label } from "../label";
 import { SuffixIcon } from "../suffix-icon";
 import { horizontalSpace } from "../theme/semantic-spacing.stylex";
+import type {
+  InputValidationState,
+  InputVariant,
+  LabelVariant,
+  Size,
+  StyleXComponentProps,
+} from "../theme/types";
 import { useInputStyles } from "../theme/useInputStyles";
 
 const styles = stylex.create({

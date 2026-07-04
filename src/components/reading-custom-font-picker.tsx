@@ -2,10 +2,11 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+
 import { GoogleFontMenuLabel } from "#/components/google-font-menu-label";
 import { SizeContext } from "#/design-system/context";
 import { googleFontsApi } from "#/integrations/tanstack-query/api-google-fonts.functions";
-import { useEffect, useMemo, useState } from "react";
 
 import { ComboBox, ComboBoxItem } from "../design-system/combobox";
 import { spacing } from "../design-system/theme/spacing.stylex";

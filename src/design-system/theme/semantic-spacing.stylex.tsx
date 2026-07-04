@@ -1,8 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 
-import type { ThemeKeys } from "./types";
-
 import { spacing } from "./spacing.stylex";
+import type { ThemeKeys } from "./types";
 
 /**
  * Horizontal inset / margin scale (semantic keys only).

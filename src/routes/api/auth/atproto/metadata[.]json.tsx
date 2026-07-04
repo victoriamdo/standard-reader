@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { atprotoOAuth } from "#/integrations/auth/atproto";
 
 export const Route = createFileRoute("/api/auth/atproto/metadata.json")({

@@ -1,7 +1,6 @@
 "use client";
 
 import type { ComponentProps } from "react";
-
 import { mergeProps } from "react-aria";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";

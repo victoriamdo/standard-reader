@@ -1,14 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import { use } from "react";
 
+import { SizeContext } from "../context";
 import type {
   InputValidationState,
   InputVariant,
   LabelVariant,
   Size,
 } from "../theme/types";
-
-import { SizeContext } from "../context";
 import { animationDuration } from "./animations.stylex";
 import {
   criticalColor,

@@ -1,8 +1,5 @@
 "use client";
 
-import type { LeafletRenderableBlock } from "#/lib/leaflet/types";
-import type { CodeHighlightsByScheme } from "#/lib/theme";
-
 import {
   Disclosure,
   DisclosurePanel,
@@ -11,10 +8,11 @@ import {
 import { normalizeImageAlt } from "#/lib/document/structured-content/image";
 import { leafletPageEmbedLabel, leafletWebsiteSrc } from "#/lib/leaflet/blocks";
 import { leafletImageAspectRatio, leafletImageUrl } from "#/lib/leaflet/image";
-
-import type { ContentBlobContext } from "../types";
+import type { LeafletRenderableBlock } from "#/lib/leaflet/types";
+import type { CodeHighlightsByScheme } from "#/lib/theme";
 
 import { articleBodyStyles } from "../body-styles";
+import type { ContentBlobContext } from "../types";
 import { LeafletButtonBlockView } from "./leaflet-button";
 import { LeafletImageGalleryBlockView } from "./leaflet-image-gallery";
 import {

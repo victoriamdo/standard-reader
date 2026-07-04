@@ -1,12 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { z } from "zod";
+
 import { getReaderDidForRequest } from "#/middleware/auth-session.server";
 import { getClientIp, rateLimiter } from "#/server/rate-limit";
 import {
   getQuoteShareForDocument,
   upsertQuoteShare,
 } from "#/server/reader/quote-shares";
-import { z } from "zod";
 
 const createQuoteShareInput = z.object({
   documentUri: z.string().min(1),

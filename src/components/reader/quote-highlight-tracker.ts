@@ -1,6 +1,6 @@
-import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
-
 import { createContext, useContext } from "react";
+
+import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
 
 export function intersectHighlightRange(
   global: QuoteHighlightRange | null,

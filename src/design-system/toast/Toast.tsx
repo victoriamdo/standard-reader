@@ -1,22 +1,18 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
+import { X } from "lucide-react";
+import { useEffect } from "react";
 import type {
   ToastRegionProps as AriaToastRegionProps,
   QueuedToast,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { X } from "lucide-react";
-import { useEffect } from "react";
 import {
   UNSTABLE_ToastRegion as AriaToastRegion,
   Text,
   UNSTABLE_Toast as Toast,
   UNSTABLE_ToastContent as ToastContent,
 } from "react-aria-components";
-
-import type { StyleXComponentProps } from "../theme/types";
-import type { ToastContentType } from "./queue";
 
 import { Button } from "../button";
 import { Flex } from "../flex";
@@ -34,8 +30,10 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { lineHeight, typeramp } from "../theme/typography.stylex";
 import { usePopoverStyles } from "../theme/usePopoverStyles";
+import type { ToastContentType } from "./queue";
 import { toasts } from "./queue";
 
 const styles = stylex.create({

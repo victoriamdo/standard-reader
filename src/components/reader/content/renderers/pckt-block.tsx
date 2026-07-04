@@ -1,8 +1,5 @@
 "use client";
 
-import type { PcktRenderableBlock } from "#/lib/pckt/types";
-import type { CodeHighlightsByScheme } from "#/lib/theme";
-
 import { asTextBlock, pcktCodeLanguage } from "#/lib/pckt/blocks";
 import {
   pcktImageAlt,
@@ -10,9 +7,10 @@ import {
   pcktImageHasSource,
   pcktImageUrl,
 } from "#/lib/pckt/image";
+import type { PcktRenderableBlock } from "#/lib/pckt/types";
+import type { CodeHighlightsByScheme } from "#/lib/theme";
 
 import type { ContentBlobContext } from "../types";
-
 import { PcktGalleryBlockView } from "./pckt-gallery";
 import {
   PcktBulletListBlockView,

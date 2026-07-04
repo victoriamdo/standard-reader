@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 
-import type { ReaderSnapshot } from "./reader-messaging";
-
 import { sendMessage } from "./messaging";
+import type { ReaderSnapshot } from "./reader-messaging";
 import { isReaderStateBroadcast } from "./reader-messaging";
 
 /**

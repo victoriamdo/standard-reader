@@ -1,7 +1,6 @@
 "use client";
 
-import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
-import type { ReaderVoicePreference } from "#/lib/reader-voice";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   articleBskyPostUris,
@@ -10,17 +9,17 @@ import {
 } from "#/components/reader/content/extract-text";
 import { documentLinkParams } from "#/components/reader/format";
 import { bskyApi } from "#/integrations/tanstack-query/api-bsky.functions";
+import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import { normalizeQuoteText } from "#/lib/quote-share";
+import type { ReaderVoicePreference } from "#/lib/reader-voice";
 import { useReaderVoice } from "#/lib/use-reader-voice";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { NowPlaying, PageReaderContextValue } from "./page-reader-context";
-import type { ReaderState } from "./page-reader-engine";
-import type { ReaderVoice } from "./voice";
-
 import { PageReaderContext } from "./page-reader-context";
+import type { ReaderState } from "./page-reader-engine";
 import { PageReaderEngine } from "./page-reader-engine";
 import { useScreenWakeLock } from "./use-screen-wake-lock";
+import type { ReaderVoice } from "./voice";
 import { articleVoice } from "./voice";
 
 const INITIAL_STATE: ReaderState = {

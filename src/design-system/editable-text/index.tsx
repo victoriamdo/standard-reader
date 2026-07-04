@@ -1,20 +1,18 @@
 "use client";
 
-import type { KeyboardEvent } from "react";
-
 import { useControlledState } from "@react-stately/utils";
 import * as stylex from "@stylexjs/stylex";
+import type { KeyboardEvent } from "react";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { mergeProps, useLongPress } from "react-aria";
 import { TextField as AriaTextField, Input } from "react-aria-components";
-
-import type { StyleXComponentProps } from "../theme/types";
 
 import { radius } from "../theme/radius.stylex";
 import {
   horizontalSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 
 const focusClosestFocusableElement = () => {
   const focusableElements = document.activeElement?.parentElement?.closest(

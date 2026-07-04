@@ -1,7 +1,6 @@
 "use client";
 
 import type { ComponentProps } from "react";
-
 import { mergeProps } from "react-aria";
 
 import { useMagHover } from "./use-mag-hover";

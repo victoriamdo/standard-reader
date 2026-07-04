@@ -1,6 +1,5 @@
-import type { SliderProps as AriaSliderProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
+import type { SliderProps as AriaSliderProps } from "react-aria-components";
 import {
   Slider as AriaSlider,
   SliderOutput,
@@ -8,13 +7,12 @@ import {
   SliderTrack,
 } from "react-aria-components";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { Label } from "../label";
 import { primaryColor, uiColor } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
 import { shadow } from "../theme/shadow.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { fontSize, lineHeight } from "../theme/typography.stylex";
 
 const styles = stylex.create({

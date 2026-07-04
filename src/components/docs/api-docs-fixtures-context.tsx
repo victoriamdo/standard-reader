@@ -1,12 +1,12 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { createContext, useContext, useMemo } from "react";
+
+import { user } from "#/integrations/tanstack-query/api-user.functions";
 import type { ApiDocsFixtures } from "#/lib/api-docs/fixture-defaults";
 import type { ApiDocsTagOption } from "#/lib/api-docs/types";
-import type { ReactNode } from "react";
-
-import { useQuery } from "@tanstack/react-query";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { createContext, useContext, useMemo } from "react";
 
 export type ApiDocsPageContextValue = {
   fixtures: ApiDocsFixtures;

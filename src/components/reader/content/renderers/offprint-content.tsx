@@ -3,7 +3,6 @@
 import { offprintBlocks } from "#/lib/offprint/blocks";
 
 import type { ContentRendererProps } from "../types";
-
 import { ArticleBody } from "./shared/article-body";
 import { StructuredBlockView } from "./structured-block-view";
 

@@ -1,20 +1,19 @@
 import type { Client } from "@atcute/client";
 import type { Did } from "@atcute/lexicons";
+
 import type {
   ArticleCard,
   PublicationCard,
 } from "#/integrations/tanstack-query/api-shapes";
-import type { AtprotoSessionContext } from "#/middleware/auth-session.server";
-
 import { articleCardsAsAllRead } from "#/lib/track-reading-history";
+import type { AtprotoSessionContext } from "#/middleware/auth-session.server";
 import { parseAtUri } from "#/server/atproto/uri";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
 
 import type { XrpcAuthContext } from "../auth";
-import type { XrpcRequestContext } from "../types";
-
 import { decodeCursor, nextCursor } from "../db";
 import { AuthRequiredError, InvalidRequestError } from "../errors";
+import type { XrpcRequestContext } from "../types";
 import { toDocumentView, toPublicationView } from "../views";
 
 export function requireAuthClient(

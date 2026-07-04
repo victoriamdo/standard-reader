@@ -1,5 +1,4 @@
 import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
-
 import { resolveTrackReadingHistoryEnabled } from "#/server/reader/track-reading-history.server";
 
 export type XrpcDbContext = {

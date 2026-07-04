@@ -1,13 +1,13 @@
+import { and, eq } from "drizzle-orm";
+
 import { labelsForUris } from "#/server/labeler/labels.server";
 import {
   resolveActorDid,
   resolveLabelerView,
 } from "#/server/labeler/resolve.server";
-import { and, eq } from "drizzle-orm";
-
-import type { XrpcRequestContext } from "../types";
 
 import { requireParam } from "../params";
+import type { XrpcRequestContext } from "../types";
 
 /** The labeler DIDs the caller is subscribed to (empty when signed out). */
 async function subscribedDids(ctx: XrpcRequestContext): Promise<Array<string>> {

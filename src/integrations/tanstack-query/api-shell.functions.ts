@@ -1,11 +1,11 @@
-import type { ShellSnapshot } from "#/server/reader/shell-snapshot.server";
-
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+
 import { dbValueToTrackReadingHistory } from "#/lib/track-reading-history";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { observe } from "#/server/observability/log";
+import type { ShellSnapshot } from "#/server/reader/shell-snapshot.server";
 import { loadShellSnapshot } from "#/server/reader/shell-snapshot.server";
 
 /** Signed-in shell: sidebar + own lists + saved lists in one round trip. */

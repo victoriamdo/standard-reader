@@ -1,3 +1,8 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 /**
  * Regenerate public/banner-bsky.png (+ .svg), a square Bluesky banner.
  *
@@ -12,10 +17,6 @@
  */
 import { Resvg } from "@resvg/resvg-js";
 import * as fontkit from "fontkit";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const SIZE = 1500;
 const CENTER = SIZE / 2;

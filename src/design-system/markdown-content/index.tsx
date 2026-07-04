@@ -1,17 +1,15 @@
 "use client";
 
-import type { Components } from "react-markdown";
-
 import * as stylex from "@stylexjs/stylex";
+import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
 import type { LinkProps } from "../link";
-import type { StyleXComponentProps } from "../theme/types";
-
 import { Link } from "../link";
 import { verticalSpace } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import {
   Blockquote,
   Body,

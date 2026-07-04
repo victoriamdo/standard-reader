@@ -1,12 +1,13 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { bskyPostApiUrl, parseBskyPostRef } from "#/lib/leaflet/bsky";
-import { useTheme } from "#/lib/use-theme";
-import "bsky-react-post/theme.css";
-import { MagazineColorContext } from "#/magazine/context";
 import { Post, PostSkeleton } from "bsky-react-post";
 import { use } from "react";
+
+import "bsky-react-post/theme.css";
+import { bskyPostApiUrl, parseBskyPostRef } from "#/lib/leaflet/bsky";
+import { useTheme } from "#/lib/use-theme";
+import { MagazineColorContext } from "#/magazine/context";
 
 import { articleBodyStyles } from "../../body-styles";
 

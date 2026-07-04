@@ -3,7 +3,6 @@
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
 
 import type { ContentRendererProps } from "../types";
-
 import { MarkdownArticle } from "./shared/markdown-article";
 
 function isRecord(value: unknown): value is Record<string, unknown> {

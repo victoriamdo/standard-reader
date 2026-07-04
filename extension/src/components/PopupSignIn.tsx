@@ -1,4 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
+import { Bookmark } from "lucide-react";
+
 import { Button } from "#/design-system/button";
 import { Flex } from "#/design-system/flex";
 import { radius } from "#/design-system/theme/radius.stylex";
@@ -10,7 +12,6 @@ import {
 } from "#/design-system/theme/semantic-spacing.stylex";
 import { fontFamily } from "#/design-system/theme/typography.stylex";
 import { Body, Heading2 } from "#/design-system/typography";
-import { Bookmark } from "lucide-react";
 
 import type { ExtensionResolveResult } from "../lib/types";
 

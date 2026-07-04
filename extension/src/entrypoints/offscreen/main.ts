@@ -1,7 +1,7 @@
-import type { ReaderVoicePreference } from "#/lib/reader-voice";
-
 import { env } from "@huggingface/transformers";
+
 import { PageReaderEngine } from "#/lib/page-reader/page-reader-engine";
+import type { ReaderVoicePreference } from "#/lib/reader-voice";
 import {
   DEFAULT_READER_VOICE_PREFERENCE,
   parseReaderVoicePreference,
@@ -13,7 +13,6 @@ import type {
   ReaderNowPlaying,
   ReaderSnapshot,
 } from "../../lib/reader-messaging";
-
 import {
   READER_STATE_BROADCAST,
   READER_TARGET,

@@ -1,3 +1,6 @@
+import { eq } from "drizzle-orm";
+
+import { documents } from "#/db/schema";
 /**
  * Read-path content resolution that persists the resolved form back to the DB.
  *
@@ -15,9 +18,6 @@
  * "never hit the PDS for a read when data exists in the DB").
  */
 import type { Db, JsonValue } from "#/integrations/tanstack-query/api-shapes";
-import type { BlobRef } from "#/server/atproto/types";
-
-import { documents } from "#/db/schema";
 import { hasRenderableArticleBody } from "#/lib/document/renderable";
 import { documentSearchText } from "#/lib/document/search-text";
 import { STANDARD_MARKDOWN_CONTENT } from "#/lib/document/structured-content/types";
@@ -27,6 +27,7 @@ import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
 import { PCKT_CONTENT } from "#/lib/pckt/types";
 import { blobCid } from "#/server/atproto/blob";
 import { authorPds } from "#/server/atproto/identity";
+import type { BlobRef } from "#/server/atproto/types";
 import {
   FETCHED_CONTENT_FORMATS,
   STANDARD_MARKDOWN_BLOB,
@@ -37,7 +38,6 @@ import { resolveGreengaleContent } from "#/server/greengale/resolve";
 import { sanitizeJson } from "#/server/ingest/mappers";
 import { resolveLeafletContent } from "#/server/leaflet/resolve";
 import { resolvePcktContent } from "#/server/pckt/resolve";
-import { eq } from "drizzle-orm";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

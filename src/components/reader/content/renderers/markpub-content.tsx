@@ -3,7 +3,6 @@
 import { prepareMarkpubMarkdown } from "#/lib/markpub/markdown";
 
 import type { ContentRendererProps } from "../types";
-
 import { MarkdownArticle } from "./shared/markdown-article";
 
 /** Renders `at.markpub.markdown` with flavor, extensions, facets, and lenses. */

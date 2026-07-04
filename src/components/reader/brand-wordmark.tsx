@@ -1,7 +1,7 @@
-import type { StyleXComponentProps } from "#/design-system/theme/types";
-
 import * as stylex from "@stylexjs/stylex";
+
 import { primaryColor, uiColor } from "#/design-system/theme/color.stylex";
+import type { StyleXComponentProps } from "#/design-system/theme/types";
 import {
   fontFamily,
   fontWeight,

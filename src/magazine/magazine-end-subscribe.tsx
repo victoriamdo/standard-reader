@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+
 import {
   applyFollowOptimisticUpdate,
   invalidateFollowQueries,
@@ -12,9 +13,8 @@ import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { useLoginSearch } from "#/utils/use-login-search";
 
-import type { MagSubscribeTarget } from "./types";
-
 import { MagHoverButton } from "./mag-hover-button";
+import type { MagSubscribeTarget } from "./types";
 import { useMagHover } from "./use-mag-hover";
 
 function LoginLink({

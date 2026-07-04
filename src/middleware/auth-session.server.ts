@@ -1,10 +1,10 @@
 import type { Client } from "@atcute/client";
-
 import { isDid } from "@atcute/lexicons/syntax";
 import { getRequest } from "@tanstack/react-start/server";
-import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
 import { eq } from "drizzle-orm";
 import { cache } from "react";
+
+import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
 
 export type AtprotoSessionContext = {
   did: string;
@@ -21,6 +21,7 @@ export type AtprotoSessionContext = {
       homeScope: string | null;
       trackReadingHistory: boolean | null;
       collectionsAuthoringEnabled: boolean | null;
+      userinputFeedbackEnabled: boolean | null;
     };
   };
 };
@@ -83,6 +84,9 @@ export interface ReaderContext {
   /** Reader's collections-authoring upgrade flag (DB column). `true` means
    * subsequent authorize flows request the collections OAuth scope tier. */
   collectionsAuthoringEnabled: boolean | null;
+  /** Reader's userinput feedback upgrade flag (DB column). `true` means
+   * subsequent authorize flows request the userinput discussion OAuth scope. */
+  userinputFeedbackEnabled: boolean | null;
 }
 
 /**
@@ -119,6 +123,7 @@ export async function getReaderContextForRequest(
         trackReadingHistory: result.session.user.trackReadingHistory,
         collectionsAuthoringEnabled:
           result.session.user.collectionsAuthoringEnabled,
+        userinputFeedbackEnabled: result.session.user.userinputFeedbackEnabled,
       };
     }
   }
@@ -138,6 +143,7 @@ export async function getReaderContextForRequest(
           homeScope: true,
           trackReadingHistory: true,
           collectionsAuthoringEnabled: true,
+          userinputFeedbackEnabled: true,
         },
       },
     },
@@ -159,6 +165,7 @@ export async function getReaderContextForRequest(
     homeScope: sessionRow.user.homeScope,
     trackReadingHistory: sessionRow.user.trackReadingHistory,
     collectionsAuthoringEnabled: sessionRow.user.collectionsAuthoringEnabled,
+    userinputFeedbackEnabled: sessionRow.user.userinputFeedbackEnabled,
   };
   readerContextCache.set(sessionToken, {
     ctx,

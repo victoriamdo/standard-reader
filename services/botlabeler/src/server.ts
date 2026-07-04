@@ -12,17 +12,16 @@
  * shape of a labeler stays legible.
  */
 
-import type { Secp256k1Keypair } from "@atproto/crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { WebSocket } from "ws";
-
-import * as dagCbor from "@ipld/dag-cbor";
 import { createServer } from "node:http";
+
+import type { Secp256k1Keypair } from "@atproto/crypto";
+import * as dagCbor from "@ipld/dag-cbor";
+import type { WebSocket } from "ws";
 import { WebSocketServer } from "ws";
 
-import type { LabelerDb, StoredLabel } from "./db.ts";
-
 import { config } from "./config.ts";
+import type { LabelerDb, StoredLabel } from "./db.ts";
 import { labelsAfter, latestSeq, queryLabels } from "./db.ts";
 import { keypairMultikey } from "./sign.ts";
 

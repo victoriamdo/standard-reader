@@ -1,6 +1,5 @@
-import type { CollectionTheme } from "#/lib/collections/theme";
-
 import { themePrefersDark } from "#/lib/collections/radix-theme";
+import type { CollectionTheme } from "#/lib/collections/theme";
 
 /** Theme default, overridden when the reader explicitly toggled paper mode. */
 export function readMagazineDark(

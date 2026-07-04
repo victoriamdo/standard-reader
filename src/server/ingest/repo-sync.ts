@@ -1,11 +1,10 @@
 import { and, asc, eq, inArray, ne, or } from "drizzle-orm";
 
-import type { DocumentRecord, PublicationRecord } from "../atproto/types.ts";
-
 import { db } from "../../db/index.ts";
 import { documents, publications, trackedRepos } from "../../db/schema.ts";
 import { RepoGoneError, listRepoRecords } from "../atproto/fetch-record.ts";
 import { resolveIdentity } from "../atproto/identity.ts";
+import type { DocumentRecord, PublicationRecord } from "../atproto/types.ts";
 import { Collections } from "../atproto/uri.ts";
 import { logEvent } from "../observability/log.ts";
 import { upsertDocument, upsertPublication } from "./handlers.ts";

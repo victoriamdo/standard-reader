@@ -1,6 +1,6 @@
-import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
-
 import { createContext, use } from "react";
+
+import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 
 import type { ReaderState } from "./page-reader-engine";
 

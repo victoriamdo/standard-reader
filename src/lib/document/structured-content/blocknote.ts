@@ -1,3 +1,6 @@
+import { utf8ByteLength } from "../../leaflet/utf8";
+import { normalizeImageAlt } from "./image";
+import { mergeTextRuns, syntheticFacet } from "./text-runs";
 /**
  * Parser for `org.blocknote.document#content` — BlockNote editor blocks.
  * Inline content is `styledText` runs (with a `styles` object) and `link`
@@ -5,10 +8,6 @@
  * `bulletListItem` / `numberedListItem` blocks are grouped into one list.
  */
 import type { StructuredRenderableBlock, StructuredText } from "./types";
-
-import { utf8ByteLength } from "../../leaflet/utf8";
-import { normalizeImageAlt } from "./image";
-import { mergeTextRuns, syntheticFacet } from "./text-runs";
 
 export const BLOCKNOTE_CONTENT = "org.blocknote.document#content";
 

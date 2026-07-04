@@ -1,9 +1,8 @@
 "use client";
 
-import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
-
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
+
 import { Flex } from "#/design-system/flex";
 import { uiColor } from "#/design-system/theme/color.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex";
@@ -13,6 +12,7 @@ import {
   fontWeight,
   lineHeight,
 } from "#/design-system/theme/typography.stylex";
+import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
 
 import { ArticleRow } from "./cards";
 import { documentLinkParams, formatRelativeTime } from "./format";

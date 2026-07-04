@@ -13,8 +13,11 @@
  * re-running updates the existing record for each labeler (matched by `did`).
  */
 
+import { readFileSync } from "node:fs";
+
 import { Client } from "@atcute/client";
 import { PasswordSession } from "@atcute/password-session";
+
 import { APP_NSID } from "#/lib/atproto/nsids";
 import {
   listCollectionRecords,
@@ -22,7 +25,6 @@ import {
   putLabelerServiceRecord,
   uploadBlob,
 } from "#/server/atproto/repo-records";
-import { readFileSync } from "node:fs";
 
 interface LabelerReg {
   did: string;

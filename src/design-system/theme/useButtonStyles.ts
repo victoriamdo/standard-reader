@@ -3,10 +3,9 @@
 import * as stylex from "@stylexjs/stylex";
 import { use } from "react";
 
-import type { ButtonVariant, Size } from "../theme/types";
-
 import { ButtonGroupContext } from "../button/context";
 import { SizeContext } from "../context";
+import type { ButtonVariant, Size } from "../theme/types";
 import { animationDuration } from "./animations.stylex";
 import { uiColor } from "./color.stylex";
 import { radius } from "./radius.stylex";

@@ -1,8 +1,7 @@
 import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
 
-import type { BlobRef } from "../atproto/types.ts";
-
 import { blobCid, getBlobUrl } from "../atproto/blob.ts";
+import type { BlobRef } from "../atproto/types.ts";
 
 const MAX_BLOB_BYTES = 1_000_000;
 

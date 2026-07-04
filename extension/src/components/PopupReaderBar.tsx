@@ -1,4 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
+import { Headphones, Pause, Play, RotateCcw, SkipBack, X } from "lucide-react";
+
 import { formatTime } from "#/components/reader/format";
 import { SeekTrack } from "#/components/reader/seek-track";
 import { Button } from "#/design-system/button";
@@ -18,14 +20,12 @@ import {
   lineHeight,
   tracking,
 } from "#/design-system/theme/typography.stylex";
-import { Headphones, Pause, Play, RotateCcw, SkipBack, X } from "lucide-react";
 
+import { sendMessage } from "../lib/messaging";
 import type {
   ReaderSnapshot,
   ReaderTransportCommand,
 } from "../lib/reader-messaging";
-
-import { sendMessage } from "../lib/messaging";
 
 const SKIP_SECONDS = 15;
 const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 1.75, 2];

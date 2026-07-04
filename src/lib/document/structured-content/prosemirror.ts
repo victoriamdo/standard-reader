@@ -1,13 +1,12 @@
+import { utf8ByteLength } from "../../leaflet/utf8";
+import { normalizeImageAlt } from "./image";
+import { mergeTextRuns, syntheticFacet } from "./text-runs";
 /**
  * Parser for `com.wss.content.rich-text` — a ProseMirror document under
  * `doc`. Inline marks (bold/italic/code/link) are converted to AT Proto-style
  * byte facets so the shared faceted-text renderer styles them.
  */
 import type { StructuredRenderableBlock, StructuredText } from "./types";
-
-import { utf8ByteLength } from "../../leaflet/utf8";
-import { normalizeImageAlt } from "./image";
-import { mergeTextRuns, syntheticFacet } from "./text-runs";
 
 export const PROSEMIRROR_CONTENT = "com.wss.content.rich-text";
 

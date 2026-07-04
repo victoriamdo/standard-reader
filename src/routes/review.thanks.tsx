@@ -4,6 +4,8 @@ import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { Link } from "#/design-system/link";
+
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
 import { uiColor } from "../design-system/theme/color.stylex";
@@ -20,7 +22,6 @@ import {
 } from "../design-system/theme/typography.stylex";
 import { atstoreReviewApi } from "../integrations/tanstack-query/api-atstore-review.functions";
 import { sanitizeAuthRedirectTarget } from "../utils/auth-redirect";
-import { Link } from "#/design-system/link";
 
 const searchSchema = z.object({
   rating: z.coerce.number().int().min(1).max(5).optional(),

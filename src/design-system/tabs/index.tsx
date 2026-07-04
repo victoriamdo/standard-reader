@@ -1,14 +1,13 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
+import { use } from "react";
 import type {
   TabListProps as AriaTabListProps,
   TabPanelProps as AriaTabPanelProps,
   TabProps as AriaTabProps,
   TabsProps as AriaTabsProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { use } from "react";
 import {
   Tab as AriaTab,
   TabList as AriaTabList,
@@ -17,8 +16,6 @@ import {
   SelectionIndicator,
 } from "react-aria-components";
 
-import type { Size, StyleXComponentProps } from "../theme/types";
-
 import { SizeContext } from "../context";
 import { useHaptics } from "../haptics";
 import { animationDuration } from "../theme/animations.stylex";
@@ -26,6 +23,7 @@ import { primaryColor, uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { fontFamily, fontSize } from "../theme/typography.stylex";
 
 const styles = stylex.create({

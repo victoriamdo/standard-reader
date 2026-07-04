@@ -1,8 +1,8 @@
-import type { ExtensionSessionResponse } from "#/server/extension/types";
-
 import { createFileRoute } from "@tanstack/react-router";
+
 import { resolveIdentity } from "#/server/atproto/identity";
 import { getExtensionSession } from "#/server/extension/auth.server";
+import type { ExtensionSessionResponse } from "#/server/extension/types";
 
 export const Route = createFileRoute("/api/extension/session")({
   server: {

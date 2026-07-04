@@ -1,12 +1,11 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import type {
   PanelGroupProps,
   PanelProps,
   PanelResizerProps,
 } from "@window-splitter/react";
-
-import * as stylex from "@stylexjs/stylex";
 import {
   Panel as BasePanel,
   PanelGroup as BasePanelGroup,
@@ -14,10 +13,9 @@ import {
 } from "@window-splitter/react";
 import { useHover } from "react-aria";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { primaryColor, uiColor } from "../theme/color.stylex";
 import { size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   panel: {

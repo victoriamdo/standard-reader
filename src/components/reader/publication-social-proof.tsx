@@ -1,10 +1,10 @@
 "use client";
 
-import type { PublicationSocialProof } from "#/integrations/tanstack-query/api-publication.functions";
-
 import * as stylex from "@stylexjs/stylex";
-import { AuthorProfileLink } from "#/components/reader/author-profile-link";
 import { Fragment, useState } from "react";
+
+import { AuthorProfileLink } from "#/components/reader/author-profile-link";
+import type { PublicationSocialProof } from "#/integrations/tanstack-query/api-publication.functions";
 
 import { Avatar } from "../../design-system/avatar";
 import { Dialog, DialogBody, DialogHeader } from "../../design-system/dialog";

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { dispatchXrpc } from "#/server/xrpc/dispatch";
 
 export const Route = createFileRoute("/xrpc/$")({

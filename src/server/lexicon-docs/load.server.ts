@@ -1,12 +1,12 @@
-import type { LexiconDocsPageData } from "#/lib/lexicon-docs/types";
+import fs from "node:fs";
+import path from "node:path";
 
 import {
   parseLexiconDocument,
   sortLexiconDocsEntries,
 } from "#/lib/lexicon-docs/parse";
+import type { LexiconDocsPageData } from "#/lib/lexicon-docs/types";
 import { isLexiconDocsListedEntry } from "#/lib/lexicon-docs/types";
-import fs from "node:fs";
-import path from "node:path";
 
 const LEXICON_DIR = path.join(process.cwd(), "lexicons/app/standard-reader");
 

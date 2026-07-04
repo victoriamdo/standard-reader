@@ -1,13 +1,10 @@
-import type { ColorWheelProps as AriaColorWheelProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import { use } from "react";
+import type { ColorWheelProps as AriaColorWheelProps } from "react-aria-components";
 import {
   ColorWheel as AriaColorWheel,
   ColorWheelTrack,
 } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { ColorThumb } from "../color-area";
 import { SizeContext } from "../context";
@@ -15,6 +12,7 @@ import { Flex } from "../flex";
 import { uiColor } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
 import { size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   wrapper: {

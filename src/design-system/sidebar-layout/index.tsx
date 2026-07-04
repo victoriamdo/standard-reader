@@ -3,8 +3,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { ArrowRightFromLineIcon } from "lucide-react";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { Drawer } from "../drawer";
 import { IconButton } from "../icon-button";
 import { uiColor } from "../theme/color.stylex";
@@ -13,6 +11,7 @@ import {
   horizontalSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   wrapper: {

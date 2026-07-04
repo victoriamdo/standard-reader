@@ -1,14 +1,12 @@
 import type { Did } from "@atcute/lexicons";
-import type { ApiDocsCatalogEntry } from "#/lib/api-docs/catalog";
-import type { ApiDocsExampleResult } from "#/lib/api-docs/types";
-import type { XrpcAuthContext } from "#/server/xrpc/auth";
-
 import { getRequest } from "@tanstack/react-start/server";
+
 import { clientMetadataScope } from "#/integrations/auth/scope";
 import {
   buildApiDocsCurl,
   resolveApiDocsExampleParams,
 } from "#/lib/api-docs/build-curl";
+import type { ApiDocsCatalogEntry } from "#/lib/api-docs/catalog";
 import {
   autoRunnableCatalogEntries,
   catalogEntryByNsid,
@@ -16,9 +14,11 @@ import {
 import { isPlaceholderApiDocsFixture } from "#/lib/api-docs/fixture-defaults";
 import { apiDocsUsesSessionAuth } from "#/lib/api-docs/interactive-params";
 import { mergeApiDocsExampleBody } from "#/lib/api-docs/merge-example-params";
+import type { ApiDocsExampleResult } from "#/lib/api-docs/types";
 import { getPublicUrl } from "#/lib/public-url";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { loadApiDocsFixturesAsync } from "#/server/api-docs/fixtures.server";
+import type { XrpcAuthContext } from "#/server/xrpc/auth";
 import { getXrpcDbContext } from "#/server/xrpc/db";
 import { dispatchXrpc } from "#/server/xrpc/dispatch";
 import { handleXrpcError, xrpcJsonResponse } from "#/server/xrpc/errors";

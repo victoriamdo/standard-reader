@@ -1,5 +1,4 @@
 import type { LeafletFacet, LeafletFacetFeature } from "#/lib/leaflet/types";
-
 import { sliceUtf8, utf8ByteLength } from "#/lib/leaflet/utf8";
 
 import type { MarkpubLens } from "./types";

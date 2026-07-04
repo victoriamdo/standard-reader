@@ -1,14 +1,13 @@
-import type {
-  NumberFieldProps as AriaNumberFieldProps,
-  InputProps,
-  ValidationResult,
-} from "react-aria-components";
-
 import { useUNSAFE_PortalContext } from "@react-aria/overlays";
 import * as stylex from "@stylexjs/stylex";
 import { Minus, MoveHorizontal, Plus } from "lucide-react";
 import { use, useRef } from "react";
 import { mergeProps } from "react-aria";
+import type {
+  NumberFieldProps as AriaNumberFieldProps,
+  InputProps,
+  ValidationResult,
+} from "react-aria-components";
 import {
   NumberField as AriaNumberField,
   Button,
@@ -16,14 +15,6 @@ import {
   NumberFieldStateContext,
 } from "react-aria-components";
 import { createPortal } from "react-dom";
-
-import type {
-  InputValidationState,
-  InputVariant,
-  LabelVariant,
-  Size,
-  StyleXComponentProps,
-} from "../theme/types";
 
 import { SizeContext } from "../context";
 import { Flex } from "../flex";
@@ -35,6 +26,13 @@ import {
   horizontalSpace,
   size as sizeSpace,
 } from "../theme/semantic-spacing.stylex";
+import type {
+  InputValidationState,
+  InputVariant,
+  LabelVariant,
+  Size,
+  StyleXComponentProps,
+} from "../theme/types";
 import { useInputStyles } from "../theme/useInputStyles";
 import { usePointerLock } from "./usePointerLock";
 

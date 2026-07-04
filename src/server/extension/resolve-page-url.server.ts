@@ -1,15 +1,14 @@
-import type { db } from "#/db/index.server";
-import type * as schema from "#/db/schema";
-import type { DiscoveryHints } from "#/lib/discovery-hints";
-import type { AtprotoSessionContext } from "#/middleware/auth-session.server";
-import type { ExtensionResolveResult } from "#/server/extension/types";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import {
   documentLinkParams,
   publicationLinkParams,
   readingMinutes,
 } from "#/components/reader/format";
+import type { db } from "#/db/index.server";
+import type * as schema from "#/db/schema";
 import { STANDARD_NSID } from "#/lib/atproto/nsids";
+import type { DiscoveryHints } from "#/lib/discovery-hints";
 import {
   mergeDiscoveryHints,
   parseDiscoveryHintsFromHtml,
@@ -17,10 +16,11 @@ import {
 import { parseInternalRoute } from "#/lib/internal-route";
 import { linkTargetVariants } from "#/lib/link-target-variants";
 import { getPublicUrl } from "#/lib/public-url";
+import type { AtprotoSessionContext } from "#/middleware/auth-session.server";
 import { cdnImageUrl } from "#/server/atproto/blob";
+import type { ExtensionResolveResult } from "#/server/extension/types";
 import { countDocumentComments } from "#/server/reader/document-comments";
 import { assertSafeFetchUrl } from "#/server/security/ssrf-guard";
-import { and, eq, inArray, sql } from "drizzle-orm";
 
 const PAGE_FETCH_TIMEOUT_MS = 8000;
 const PAGE_FETCH_MAX_BYTES = 200_000;

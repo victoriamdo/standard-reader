@@ -249,6 +249,55 @@ Single search field with two modes (detected from input):
   review and redirects to a standalone thank-you page with a button back to the
   page where the review flow started.
 
+### Feedback (userinput.app)
+
+- **Feedback board** — bug reports, feature requests, and questions for Standard
+  Reader are hosted on [userinput.app](https://userinput.app) as
+  `app.userinput.discussion` records in each reader's own AT Protocol repo,
+  pinned to a dedicated Standard Reader feedback space. The `/feedback` route
+  lists all discussions grouped by tag (Bugs / Feature requests / Questions).
+  The read path is two-step: (1) query the constellation AppView
+  (`constellation.microcosm.blue`) via `blue.microcosm.links.getBacklinks` for
+  backlink _references_ to our space record (source =
+  `app.userinput.discussion:space.uri`), then (2) fetch each discussion record
+  via `fetchRepoRecordWithFallback` (Slingshot cache → author PDS). Author
+  profiles are batch-hydrated via `app.bsky.actor.getProfiles` on the public
+  Bluesky API — no local DB mirror (third-party collection, per the read-model
+  rules in `AGENTS.md` §3(c)).
+- **Submit Feedback button** — a header/sidebar button opens a dialog where the
+  reader picks a category (bug / feature / question) and writes a title +
+  optional details. On **Create**, the record is written to the reader's repo.
+- **Progressive granular scope** — `app.userinput.discussion` and
+  `app.userinput.upvote` are **not** part of the default login's permission-set
+  tiers (they're third-party lexicons with no permission-sets of their own).
+  Instead the default OAuth client metadata advertises granular
+  `repo?collection=app.userinput.discussion` and
+  `repo?collection=app.userinput.upvote` scopes, and the first **Create** (or
+  **Upvote**) triggers a progressive upgrade (`upgradeToUserinputFeedback`)
+  that sets `user.userinputFeedbackEnabled = true`, revokes the current
+  session, and re-authorizes on the **default** client with **both** userinput
+  scopes added to the reader's existing base scopes. A server-stashed
+  `feedback_draft` row (or `upvote_draft` row for upvotes) carries the pending
+  intent through the OAuth round-trip; the `/feedback/return` landing page
+  consumes the draft once and auto-creates the record, then shows a
+  thank-you / upvoted / expired / error state.
+- **In-app upvoting** — each discussion card's upvote pill is a real button.
+  Clicking it writes an `app.userinput.upvote` record to the voter's repo at
+  the **same rkey as the subject discussion** (the lexicon uses `key: "any"` so
+  each reader holds at most one upvote per discussion — re-upvoting is an
+  idempotent replace). The subject strongRef's cid is re-resolved server-side
+  at upvote time via Slingshot/PDS so it's fresh. If the reader lacks the
+  upvote scope, the upvote intent is stashed as an `upvote_draft` row and the
+  same `upgradeToUserinputFeedback` flow runs; `/feedback/return?upvote=<id>`
+  consumes it and creates the record. The card optimistically marks the
+  discussion as upvoted (and bumps the count by one) immediately, then
+  reconciles with the network count on settle.
+- **Grant persistence** — mirroring the `collectionsAuthoringEnabled` pattern,
+  the `userinputFeedbackEnabled` flag persists the opt-in so subsequent logins
+  silently request both userinput scopes again (the `authorize` server fn reads
+  both the flag and `hasUserinputFeedbackScope(account.scope)`). Readers only
+  grant once.
+
 ---
 
 ## 5. State model & data ownership
@@ -321,6 +370,17 @@ never part of the app's default login UX. The upgrade runs through a dedicated
 review-only OAuth client metadata/callback path rather than widening the default
 client metadata scope. Granted scopes may come back either as `include:` sets or
 expanded `repo:` tokens, so permission checks must accept both formats.
+
+**userinput.app feedback** takes a different approach: `app.userinput.discussion`
+and `app.userinput.upvote` have no permission-set lexicons, so the default OAuth
+client advertises granular `repo?collection=app.userinput.discussion` and
+`repo?collection=app.userinput.upvote` scopes alongside the permission-set
+tiers. The first **Create** in the feedback dialog (or **Upvote** on a card)
+triggers `upgradeToUserinputFeedback`, which re-authorizes on the default
+client (not a separate flavor) with both granular scopes appended to the
+reader's existing base scopes. The opt-in persists on
+`user.userinputFeedbackEnabled` so future logins silently re-request both —
+readers only grant once.
 
 **Progressive scope upgrade:** the collections tier is opt-in. When a reader opens
 `/collections/new` or `/collections/edit/$rkey` without the collections scope, a shared

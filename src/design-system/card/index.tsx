@@ -1,8 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { use } from "react";
 
-import type { Size, StyleXComponentProps } from "../theme/types";
-
 import { AspectRatio, AspectRatioImage } from "../aspect-ratio";
 import { SizeContext } from "../context";
 import { uiColor } from "../theme/color.stylex";
@@ -14,6 +12,7 @@ import {
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
 import { shadow } from "../theme/shadow.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import {
   fontFamily,
   fontSize,

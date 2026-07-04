@@ -1,8 +1,9 @@
 "use client";
 
-import type { HighlightMap } from "#/lib/page-reader/word-highlight";
+import { useEffect, useRef } from "react";
 
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
+import type { HighlightMap } from "#/lib/page-reader/word-highlight";
 import {
   articleScrollContainers,
   buildHighlightMap,
@@ -12,7 +13,6 @@ import {
   scrollWordIntoView,
   setWordHighlight,
 } from "#/lib/page-reader/word-highlight";
-import { useEffect, useRef } from "react";
 
 /** Throttle for (re)building the DOM↔sentence map while it isn't ready yet. */
 const BUILD_RETRY_MS = 300;

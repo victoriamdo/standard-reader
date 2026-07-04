@@ -1,13 +1,12 @@
+import * as stylex from "@stylexjs/stylex";
+import { Pipette } from "lucide-react";
+import { createContext, use, useMemo } from "react";
 import type {
   ColorPickerProps as AriaColorPickerProps,
   Color,
   ColorSpace,
   PopoverProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { Pipette } from "lucide-react";
-import { createContext, use, useMemo } from "react";
 import {
   ColorPicker as AriaColorPicker,
   Button,
@@ -16,9 +15,6 @@ import {
   DialogTrigger,
   Popover,
 } from "react-aria-components";
-
-import type { FlexProps } from "../flex";
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { ColorArea } from "../color-area";
 import { ColorField } from "../color-field";
@@ -29,6 +25,7 @@ import {
   ColorSwatchPickerItem,
 } from "../color-swatch-picker";
 import { SizeContext } from "../context";
+import type { FlexProps } from "../flex";
 import { Flex } from "../flex";
 import { IconButton } from "../icon-button";
 import { Select, SelectItem } from "../select";
@@ -39,6 +36,7 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { fontSize } from "../theme/typography.stylex";
 import { usePopoverStyles } from "../theme/usePopoverStyles";
 

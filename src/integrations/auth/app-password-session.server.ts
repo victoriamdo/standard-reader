@@ -4,14 +4,14 @@
  * var alone can never enable this path in a production deploy.
  */
 import type { Did } from "@atcute/lexicons";
-import type { PasswordSessionData } from "@atcute/password-session";
-
 import { isDid } from "@atcute/lexicons/syntax";
+import type { PasswordSessionData } from "@atcute/password-session";
 import { PasswordSession } from "@atcute/password-session";
+import { and, eq } from "drizzle-orm";
+
 import { db } from "#/db/index.server";
 import * as schema from "#/db/schema";
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
-import { and, eq } from "drizzle-orm";
 
 const APP_PASSWORD_STORE_PREFIX = "atproto-apppass:session:";
 const DEFAULT_PDS = "https://bsky.social";

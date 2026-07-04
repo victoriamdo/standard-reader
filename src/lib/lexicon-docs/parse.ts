@@ -4,7 +4,6 @@ import type {
   LexiconFieldRow,
   LexiconPrimaryType,
 } from "./types";
-
 import { LEXICON_DOCS_SECTIONS } from "./types";
 
 function sectionForType(

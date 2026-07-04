@@ -1,11 +1,9 @@
 "use client";
 
+import { pcktBlocks } from "#/lib/pckt/blocks";
 import type { PcktContent } from "#/lib/pckt/types";
 
-import { pcktBlocks } from "#/lib/pckt/blocks";
-
 import type { ContentRendererProps } from "../types";
-
 import { PcktBlockView } from "./pckt-block";
 import { ArticleBody } from "./shared/article-body";
 

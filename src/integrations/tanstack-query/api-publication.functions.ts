@@ -1,14 +1,14 @@
-import type { CollectionManifest } from "#/lib/collections/manifest";
-import type { CollectionTheme } from "#/lib/collections/theme";
-import type { CodeHighlightsByScheme } from "#/lib/theme";
-import type { MarginConnectionItem } from "#/server/reader/article-constellation-extras";
-import type { ArticleDetailSourceRow } from "#/server/reader/article-detail-build";
-import type { CollectionMagazineData } from "#/server/reader/collection-magazine";
-
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { and, eq, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { z } from "zod";
+
 import { publicationLinkParams } from "#/components/reader/format";
+import type { CollectionManifest } from "#/lib/collections/manifest";
+import type { CollectionTheme } from "#/lib/collections/theme";
+import type { CodeHighlightsByScheme } from "#/lib/theme";
 import {
   getReaderContextForRequest,
   getReaderDidForRequest,
@@ -17,11 +17,14 @@ import { cdnImageUrl } from "#/server/atproto/blob";
 import { buildCanonicalUrl } from "#/server/ingest/mappers";
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
+import type { MarginConnectionItem } from "#/server/reader/article-constellation-extras";
 import {
   fetchCitedInArticles,
   fetchMarginConnections,
 } from "#/server/reader/article-constellation-extras";
+import type { ArticleDetailSourceRow } from "#/server/reader/article-detail-build";
 import { buildArticleDetail } from "#/server/reader/article-detail-build";
+import type { CollectionMagazineData } from "#/server/reader/collection-magazine";
 import { loadCollectionMagazine } from "#/server/reader/collection-magazine";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
 import { selectPublicationHeader } from "#/server/reader/publication-header";
@@ -33,9 +36,6 @@ import {
   selectPublicationArticleCards,
 } from "#/server/reader/queries";
 import { themeModeForRequest } from "#/server/theme-preference";
-import { and, eq, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
-import { z } from "zod";
 
 import type {
   ArticleCard,
@@ -43,7 +43,6 @@ import type {
   ProfileSummary,
   PublicationCard,
 } from "./api-shapes";
-
 import { dbMiddleware } from "./db-middleware";
 
 export type { CollectionMagazineData } from "#/server/reader/collection-magazine";

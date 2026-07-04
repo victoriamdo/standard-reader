@@ -1,10 +1,11 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { z } from "zod";
+
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import { fetchDocumentComments } from "#/server/reader/document-comments";
-import { z } from "zod";
 
 import { dbMiddleware } from "./db-middleware";
 

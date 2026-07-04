@@ -1,9 +1,9 @@
 "use client";
 
-import type { LeafletFacet } from "#/lib/leaflet/types";
-
 import * as stylex from "@stylexjs/stylex";
+
 import { useQuoteHighlightTracker } from "#/components/reader/quote-highlight-tracker";
+import type { LeafletFacet } from "#/lib/leaflet/types";
 
 import { themedCalloutBackground } from "../../../callout-color";
 import { articleBodyStyles } from "../../body-styles";

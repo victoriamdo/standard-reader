@@ -1,14 +1,20 @@
-import type { PopoverProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import {
+  Heart,
+  History,
+  LogOut,
+  MessageSquareText,
+  Settings,
+} from "lucide-react";
+import type { PopoverProps } from "react-aria-components";
+import { Button as AriaButton } from "react-aria-components";
+
 import { ButtonLink, MenuItemLink } from "#/components/router-links";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
-import { Heart, History, LogOut, Settings } from "lucide-react";
-import { Button as AriaButton } from "react-aria-components";
 
 import { Avatar, AvatarButton } from "../design-system/avatar";
 import { Flex } from "../design-system/flex";
@@ -202,6 +208,9 @@ export function NavbarAuth({
         ) : null}
         <MenuItemLink to="/likes" suffix={<Heart />}>
           Liked articles
+        </MenuItemLink>
+        <MenuItemLink to="/feedback" suffix={<MessageSquareText />}>
+          Feedback
         </MenuItemLink>
         <MenuItemLink to="/settings" suffix={<Settings />}>
           Settings

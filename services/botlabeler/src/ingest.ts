@@ -5,13 +5,11 @@
  */
 
 import type { Secp256k1Keypair } from "@atproto/crypto";
-
 import { WebSocket } from "ws";
-
-import type { LabelerDb } from "./db.ts";
 
 import { isDeclaredBot } from "./bot.ts";
 import { config } from "./config.ts";
+import type { LabelerDb } from "./db.ts";
 import {
   getCursor,
   getScanState,

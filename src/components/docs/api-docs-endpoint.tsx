@@ -1,8 +1,8 @@
 "use client";
 
-import type { ApiDocsCatalogEntry } from "#/lib/api-docs/catalog";
-
 import * as stylex from "@stylexjs/stylex";
+
+import type { ApiDocsCatalogEntry } from "#/lib/api-docs/catalog";
 import {
   apiDocsAuthLabel,
   apiDocsEndpointId,

@@ -1,9 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 
-import type { TextVariant, ThemeKeys } from "../theme/types";
-
 import { criticalColor, uiColor } from "../theme/color.stylex";
 import { breakpoints } from "../theme/media-queries.stylex";
+import type { TextVariant, ThemeKeys } from "../theme/types";
 import {
   fontFamily,
   fontSize,

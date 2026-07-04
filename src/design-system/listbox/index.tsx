@@ -1,13 +1,12 @@
+import * as stylex from "@stylexjs/stylex";
+import { Check } from "lucide-react";
+import { createContext, use, useContext, useRef } from "react";
 import type {
   ListBoxItemProps as AriaListBoxItemProps,
   ListBoxProps as AriaListBoxProps,
   ListBoxSectionProps as AriaListBoxSectionProps,
   SeparatorProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { Check } from "lucide-react";
-import { createContext, use, useContext, useRef } from "react";
 import {
   ListBox as AriaListBox,
   ListBoxItem as AriaListBoxItem,
@@ -19,8 +18,6 @@ import {
 } from "react-aria-components";
 
 import type { CheckboxProps } from "../checkbox";
-import type { Size, StyleXComponentProps } from "../theme/types";
-
 import { Checkbox } from "../checkbox";
 import { SizeContext } from "../context";
 import { useHaptics } from "../haptics";
@@ -31,6 +28,7 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { typeramp } from "../theme/typography.stylex";
 import {
   estimatedRowHeights,

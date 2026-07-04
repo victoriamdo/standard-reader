@@ -1,6 +1,7 @@
 import type { OAuthClient } from "@atcute/oauth-node-client";
-
 import { redirect } from "@tanstack/react-router";
+import { and, eq } from "drizzle-orm";
+
 import { db } from "#/db/index.server";
 import * as schema from "#/db/schema";
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
@@ -9,7 +10,6 @@ import {
   shouldApplyBlueskyAvatarFromPublicUrl,
 } from "#/lib/bluesky-public-profile";
 import { sanitizeAuthRedirectTarget } from "#/utils/auth-redirect";
-import { and, eq } from "drizzle-orm";
 
 export async function handleAtprotoOAuthCallback(args: {
   request: Request;
@@ -35,19 +35,20 @@ export async function handleAtprotoOAuthCallback(args: {
     const requestedReturnTo = stateData?.redirect ?? stateData?.returnTo;
     const returnTo = sanitizeAuthRedirectTarget(requestedReturnTo, request.url);
 
-    const [publicProfile, existingUserByDid, existingAccount] = await Promise.all([
-      fetchBlueskyPublicProfileFields(did),
-      db.query.user.findFirst({
-        where: eq(schema.user.did, did),
-      }),
-      db.query.account.findFirst({
-        where: and(
-          eq(schema.account.accountId, did),
-          eq(schema.account.providerId, "atproto"),
-        ),
-        with: { user: true },
-      }),
-    ]);
+    const [publicProfile, existingUserByDid, existingAccount] =
+      await Promise.all([
+        fetchBlueskyPublicProfileFields(did),
+        db.query.user.findFirst({
+          where: eq(schema.user.did, did),
+        }),
+        db.query.account.findFirst({
+          where: and(
+            eq(schema.account.accountId, did),
+            eq(schema.account.providerId, "atproto"),
+          ),
+          with: { user: true },
+        }),
+      ]);
 
     let grantedScope: string | null = null;
     try {

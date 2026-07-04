@@ -1,12 +1,11 @@
 import type { ApiDocsFixtures } from "#/lib/api-docs/fixture-defaults";
-import type { ApiDocsTagOption } from "#/lib/api-docs/types";
-
 import { getDefaultApiDocsFixtures } from "#/lib/api-docs/fixture-defaults";
 import {
   envDocumentUri,
   envPublicationUri,
   loadApiDocsFixtures,
 } from "#/lib/api-docs/fixtures";
+import type { ApiDocsTagOption } from "#/lib/api-docs/types";
 import {
   discoverApiDocsFixturesFromDb,
   discoverApiDocsTagOptions,

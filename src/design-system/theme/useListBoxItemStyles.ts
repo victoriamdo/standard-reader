@@ -1,8 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { use } from "react";
 
-import type { Size } from "./types";
-
 import { SizeContext } from "../context";
 import { radius } from "../theme/radius.stylex";
 import {
@@ -19,6 +17,7 @@ import {
 } from "../theme/typography.stylex";
 import { animationDuration } from "./animations.stylex";
 import { criticalColor, primaryColor, uiColor } from "./color.stylex";
+import type { Size } from "./types";
 
 const styles = stylex.create({
   item: {

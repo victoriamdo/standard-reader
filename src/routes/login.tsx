@@ -1,5 +1,3 @@
-import type { SavedHandle } from "#/utils/saved-handles";
-
 import * as stylex from "@stylexjs/stylex";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -8,15 +6,17 @@ import {
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
-import { auth } from "#/integrations/tanstack-query/api-auth.functions";
-import { getPublicUrlClient } from "#/lib/public-url";
-import { pageSocialMeta } from "#/lib/site-metadata";
-import { unauthMiddleware } from "#/middleware/auth";
-import { getSavedHandles, saveHandle } from "#/utils/saved-handles";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link as AriaLink } from "react-aria-components";
 import { z } from "zod";
+
+import { auth } from "#/integrations/tanstack-query/api-auth.functions";
+import { getPublicUrlClient } from "#/lib/public-url";
+import { pageSocialMeta } from "#/lib/site-metadata";
+import { unauthMiddleware } from "#/middleware/auth";
+import type { SavedHandle } from "#/utils/saved-handles";
+import { getSavedHandles, saveHandle } from "#/utils/saved-handles";
 
 import { SiteLegalLinks } from "../components/site-legal-links";
 import { UserHandleAutocomplete } from "../components/user-handle-autocomplete";

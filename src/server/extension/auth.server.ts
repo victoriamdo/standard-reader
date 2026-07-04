@@ -1,6 +1,5 @@
-import type { AtprotoSessionContext } from "#/middleware/auth-session.server";
-
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
+import type { AtprotoSessionContext } from "#/middleware/auth-session.server";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 
 export function readSessionTokenFromRequest(

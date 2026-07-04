@@ -12,10 +12,7 @@
  *   pnpm backfill:content-formats
  */
 import type { SQL } from "drizzle-orm";
-
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
-
-import type { BlobRef } from "../src/server/atproto/types.ts";
 
 import { db } from "../src/db/index.ts";
 import { documents } from "../src/db/schema.ts";
@@ -31,6 +28,7 @@ import { GREENGALE_CONTENT_REF } from "../src/lib/greengale/types.ts";
 import { MARKPUB_MARKDOWN } from "../src/lib/markpub/types.ts";
 import { blobCid } from "../src/server/atproto/blob.ts";
 import { authorPds } from "../src/server/atproto/identity.ts";
+import type { BlobRef } from "../src/server/atproto/types.ts";
 import {
   FETCHED_CONTENT_FORMATS,
   STANDARD_MARKDOWN_BLOB,

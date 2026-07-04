@@ -1,12 +1,9 @@
+import * as stylex from "@stylexjs/stylex";
 import type {
   CalendarProps as AriaCalendarProps,
   CalendarGridProps,
   DateValue,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-
-import type { StyleXComponentProps } from "../theme/types";
 
 import { animationDuration } from "../theme/animations.stylex";
 import { primaryColor, uiColor } from "../theme/color.stylex";
@@ -17,6 +14,7 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { fontSize, fontWeight } from "./typography.stylex";
 
 export interface CalendarProps<T extends DateValue>

@@ -421,6 +421,31 @@ Build each on hip-ui components + StyleX tokens (no raw HTML/inline styles).
       §8 (post-v1 Tier 1).
 - [x] **Add / Follow modal** — Search field + publication rows (no tabs); uses `searchPublications` API; trending suggestions when empty.
 - [x] **ATStore review prompt** — one-time returning-reader toast, review modal (rating + optional body), progressive ATStore reviewer reauth on **Create** only, automatic post-auth review publish, standalone thank-you page with a return button, a dedicated review-only OAuth metadata/callback flow so default login scopes stay untouched, and granted-scope detection that accepts both `include:` and expanded `repo:` scope formats.
+- [x] **Feedback (userinput.app)** — bug / feature / question feedback hosted on
+      userinput.app as `app.userinput.discussion` records in the reader's repo,
+      pinned to a Standard Reader feedback space. `/feedback` lists discussions
+      grouped by tag via the constellation AppView (read-only, no DB mirror —
+      third-party collection). Header/sidebar **Submit feedback** button opens a
+      dialog (segmented tag chooser + title + optional body). First **Create**
+      triggers a progressive granular-scope upgrade
+      (`upgradeToUserinputFeedback`: set `user.userinputFeedbackEnabled`,
+      revoke, re-authorize on the default client with
+      `repo?collection=app.userinput.discussion` appended); a server-stashed
+      `feedback_draft` row carries the draft through OAuth, and `/feedback/return`
+      consumes it once and auto-creates the record. The flag + granted-scope
+      check persist the grant so subsequent logins silently re-request the scope
+      (grant once). See APP_VISION.md §4 "Feedback".
+- [x] **In-app upvoting (userinput.app)** — each discussion card's upvote pill
+      is an interactive button that writes an `app.userinput.upvote` record to
+      the voter's repo at the subject's rkey (lexicon `key: "any"`, idempotent
+      replace). Adds `USERINPUT_UPVOTE_SCOPE`
+      (`repo?collection=app.userinput.upvote`) to the client metadata and the
+      `upgradeToUserinputFeedback` flow (both discussion + upvote scopes granted
+      in a single consent). When the reader lacks the upvote scope, the intent
+      is stashed as an `upvote_draft` row and the same OAuth upgrade runs;
+      `/feedback/return?upvote=<id>` consumes it and creates the record. The
+      card optimistically marks upvoted (+1) and reconciles on settle. Subject
+      cid is re-resolved server-side at write time.
 - [x] Global follow toggle reflects everywhere instantly (optimistic).
 - [x] Theme picker (light / dark / system) + editorial dark tokens + Shiki `standard-reader-dark`.
 - [x] Theme tokens / dark mode parity with prototype (remaining hardcoded surfaces).

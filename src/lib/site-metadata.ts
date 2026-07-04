@@ -99,6 +99,12 @@ export const PAGE_OG_CARDS = {
     title: "Sign in",
     tagline: "Use your Atmosphere account to follow writers and save reads.",
   },
+  feedback: {
+    path: "/feedback",
+    title: "Feedback",
+    tagline:
+      "Bug reports, feature requests, and questions for Standard Reader — hosted on userinput.app.",
+  },
 } as const;
 
 export type PageOgSlug = keyof typeof PAGE_OG_CARDS;

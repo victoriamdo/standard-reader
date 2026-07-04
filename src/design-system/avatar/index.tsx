@@ -1,10 +1,7 @@
-import type { ButtonProps as AriaButtonProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import { use, useLayoutEffect, useRef, useState } from "react";
+import type { ButtonProps as AriaButtonProps } from "react-aria-components";
 import { Button as AriaButton } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { SizeContext } from "../context";
 import {
@@ -15,6 +12,7 @@ import { uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import {
   fontFamily,
   fontSize,

@@ -19,7 +19,6 @@ import type {
   PcktTextBlock,
   PcktWebsiteBlock,
 } from "./types";
-
 import { PCKT_BLOCK, PCKT_CONTENT } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -1,9 +1,9 @@
 "use client";
 
-import type { PcktWebsiteBlock } from "#/lib/pckt/types";
-
 import * as stylex from "@stylexjs/stylex";
+
 import { normalizeImageAlt } from "#/lib/document/structured-content/image";
+import type { PcktWebsiteBlock } from "#/lib/pckt/types";
 
 import { articleBodyStyles } from "../body-styles";
 import { WebsiteCardBody } from "./structured-views";

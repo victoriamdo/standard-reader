@@ -1,16 +1,14 @@
 "use client";
 
-import type { ComponentProps } from "react";
-
 import { Cropper as OriginCropper } from "@origin-space/image-cropper";
 import { useEffectEvent } from "@react-aria/utils";
 import * as stylex from "@stylexjs/stylex";
+import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
-
-import type { StyleXComponentProps } from "../theme/types";
 
 import { uiColor } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   root: {

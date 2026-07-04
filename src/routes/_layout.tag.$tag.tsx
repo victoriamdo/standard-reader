@@ -1,12 +1,5 @@
 "use client";
 
-import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
-import type {
-  TagFollowSummary,
-  TagPublicationCard,
-  TagPublicationDirectoryPage,
-} from "#/integrations/tanstack-query/api-tag.functions";
-
 import * as stylex from "@stylexjs/stylex";
 import {
   keepPreviousData,
@@ -20,6 +13,10 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
+import { Check, LayoutGrid, List, Plus, Tag } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
+
 import {
   ArticleRow,
   PubCard,
@@ -66,6 +63,12 @@ import {
   lineHeight,
   tracking,
 } from "#/design-system/theme/typography.stylex";
+import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
+import type {
+  TagFollowSummary,
+  TagPublicationCard,
+  TagPublicationDirectoryPage,
+} from "#/integrations/tanstack-query/api-tag.functions";
 import { tagApi } from "#/integrations/tanstack-query/api-tag.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { formatCount } from "#/lib/format-count";
@@ -74,9 +77,6 @@ import { SITE_NAME, siteSocialMeta } from "#/lib/site-metadata";
 import { useDelayedLoading } from "#/lib/use-delayed-loading";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
-import { Check, LayoutGrid, List, Plus, Tag } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { z } from "zod";
 
 const PAGE_SIZE = 24;
 /** Ask before bulk-follow when a tag has more than this many unfollowed publications. */

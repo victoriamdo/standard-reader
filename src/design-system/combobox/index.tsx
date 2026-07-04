@@ -1,13 +1,12 @@
+import * as stylex from "@stylexjs/stylex";
+import { ChevronDown } from "lucide-react";
+import { use } from "react";
 import type {
   ComboBoxProps as AriaComboBoxProps,
   ListBoxProps,
   PopoverProps,
   ValidationResult,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { ChevronDown } from "lucide-react";
-import { use } from "react";
 import {
   ComboBox as AriaComboBox,
   Button,
@@ -16,14 +15,6 @@ import {
   Popover,
   Virtualizer,
 } from "react-aria-components";
-
-import type {
-  InputValidationState,
-  InputVariant,
-  LabelVariant,
-  Size,
-  StyleXComponentProps,
-} from "../theme/types";
 
 import { SizeContext } from "../context";
 import { Flex } from "../flex";
@@ -34,6 +25,13 @@ import {
   horizontalSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type {
+  InputValidationState,
+  InputVariant,
+  LabelVariant,
+  Size,
+  StyleXComponentProps,
+} from "../theme/types";
 import { useInputStyles } from "../theme/useInputStyles";
 import { estimatedRowHeights } from "../theme/useListBoxItemStyles";
 import { usePopoverStyles } from "../theme/usePopoverStyles";

@@ -1,8 +1,8 @@
 import type { Client } from "@atcute/client";
-import type { Did } from "@atcute/lexicons";
-
 import { Client as AtpClient } from "@atcute/client";
+import type { Did } from "@atcute/lexicons";
 import { verifyJwt } from "@atproto/xrpc-server";
+
 import { resolveIdentity } from "#/server/atproto/identity";
 import { assertSafeFetchUrl } from "#/server/security/ssrf-guard";
 

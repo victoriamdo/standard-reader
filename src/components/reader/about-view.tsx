@@ -3,6 +3,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+
 import { discoverApi } from "#/integrations/tanstack-query/api-discover.functions";
 import { formatCount } from "#/lib/format-count";
 

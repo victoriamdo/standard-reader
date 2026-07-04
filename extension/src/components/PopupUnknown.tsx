@@ -1,4 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
+import { Compass } from "lucide-react";
+
 import { Button } from "#/design-system/button";
 import { Flex } from "#/design-system/flex";
 import { primaryColor } from "#/design-system/theme/color.stylex";
@@ -11,7 +13,6 @@ import {
 } from "#/design-system/theme/semantic-spacing.stylex";
 import { fontFamily } from "#/design-system/theme/typography.stylex";
 import { Body, Heading2, SmallBody } from "#/design-system/typography";
-import { Compass } from "lucide-react";
 
 const styles = stylex.create({
   content: {

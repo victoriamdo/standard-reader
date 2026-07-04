@@ -1,20 +1,17 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import type {
   FileTriggerProps as AriaFileTriggerProps,
   ButtonProps,
   DropItem,
   DropZoneProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
 import {
   FileTrigger as AriaFileTrigger,
   Button,
   DropZone,
 } from "react-aria-components";
-
-import type { StyleXComponentProps } from "../theme/types";
 
 import {
   animationDuration,
@@ -29,6 +26,7 @@ import {
   horizontalSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 
 async function getFiles(items: Array<DropItem>): Promise<Array<File>> {
   return Promise.all(

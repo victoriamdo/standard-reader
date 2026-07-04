@@ -1,8 +1,8 @@
-import type { LogAttrs } from "#/server/observability/log";
-
 import { createServerFn } from "@tanstack/react-start";
-import { logEvent } from "#/server/observability/log";
 import { z } from "zod";
+
+import type { LogAttrs } from "#/server/observability/log";
+import { logEvent } from "#/server/observability/log";
 
 const clientEventInput = z.object({
   name: z.string().min(1).max(120),

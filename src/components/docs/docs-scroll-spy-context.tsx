@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-
 import { createContext, useContext } from "react";
 
 import { useDocsScrollSpy } from "./use-docs-scroll-spy";

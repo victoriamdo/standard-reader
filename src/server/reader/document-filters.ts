@@ -1,7 +1,7 @@
-import type { Schema } from "#/integrations/tanstack-query/api-shapes";
 import type { SQL } from "drizzle-orm";
-
 import { sql } from "drizzle-orm";
+
+import type { Schema } from "#/integrations/tanstack-query/api-shapes";
 
 /**
  * Chronological feeds and recency aggregates must ignore posts whose

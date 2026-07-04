@@ -1,8 +1,9 @@
+import { createRequire } from "node:module";
+import path from "node:path";
+
 import stylexPlugin from "@stylexjs/unplugin/vite";
 import browserslist from "browserslist";
 import { browserslistToTargets } from "lightningcss";
-import { createRequire } from "node:module";
-import path from "node:path";
 import { defineConfig } from "wxt";
 
 import { hostPermissions } from "./src/lib/manifest-hosts.ts";

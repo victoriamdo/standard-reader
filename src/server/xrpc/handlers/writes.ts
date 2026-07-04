@@ -1,4 +1,5 @@
 import type { Client } from "@atcute/client";
+import { and, eq } from "drizzle-orm";
 
 import { APP_NSID } from "#/lib/atproto/nsids";
 import {
@@ -31,9 +32,6 @@ import {
   effectiveFollowUris,
   invalidateSavedLists,
 } from "#/server/reader/saved-lists";
-import { and, eq } from "drizzle-orm";
-
-import type { XrpcRequestContext } from "../types";
 
 import { requireScopes } from "../auth";
 import {
@@ -42,6 +40,7 @@ import {
   requireBodyField,
 } from "../params";
 import { XRPC_WRITE_SCOPES } from "../scopes";
+import type { XrpcRequestContext } from "../types";
 import { requireAuthClient } from "./_helpers";
 
 export async function handleFollowPublication(ctx: XrpcRequestContext) {

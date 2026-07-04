@@ -7,6 +7,7 @@
 import { redirect } from "@tanstack/react-router";
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+
 import {
   DEFAULT_AUTH_REDIRECT,
   sanitizeAuthRedirectTarget,

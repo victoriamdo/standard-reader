@@ -1,7 +1,6 @@
-import type { ExtensionResolveResult, ExtensionSessionResponse } from "./types";
-
 import { getEffectiveApiOrigin } from "./config";
 import { readSessionCookieValue } from "./session-cookie";
+import type { ExtensionResolveResult, ExtensionSessionResponse } from "./types";
 
 export type PopupStateResponse = {
   tabUrl: string | null;

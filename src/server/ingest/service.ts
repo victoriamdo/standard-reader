@@ -1,18 +1,17 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { createServer } from "node:http";
 
 import { Tap } from "@atproto/tap";
 import { and, eq, or, sql } from "drizzle-orm";
-import { createServer } from "node:http";
-
-import type { TapEvent } from "../atproto/types.ts";
-import type { ProcessResult } from "./consumer.ts";
 
 import { db } from "../../db/index.ts";
 import { ingestState, subscriptions, trackedRepos } from "../../db/schema.ts";
+import type { TapEvent } from "../atproto/types.ts";
 import { startLabelSync } from "../labeler/sync.server.ts";
 import { logEvent } from "../observability/log.ts";
 import { verifyIngestAuth } from "./auth.ts";
 import { ingestConfig } from "./config.ts";
+import type { ProcessResult } from "./consumer.ts";
 import { processTapEvent } from "./consumer.ts";
 import { backfillSubscriptionsFromRepo } from "./handlers.ts";
 import { recomputeDerived } from "./recompute.ts";

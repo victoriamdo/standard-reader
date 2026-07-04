@@ -1,8 +1,7 @@
 import Color from "colorjs.io";
 
-import type { CollectionTheme } from "./theme";
-
 import { generateRadixColors } from "./generate-radix-colors";
+import type { CollectionTheme } from "./theme";
 
 /** Lightness check that accepts any CSS color (hex, rgb(), oklch, …). */
 function isLightColor(value: string): boolean {

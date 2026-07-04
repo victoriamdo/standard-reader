@@ -1,5 +1,7 @@
 import { asc, eq, lt, sql } from "drizzle-orm";
 
+import { db } from "../../db/index.ts";
+import { ingestDeadLetter, ingestState } from "../../db/schema.ts";
 import type {
   BookmarkRecord,
   BskyProfileRecord,
@@ -18,9 +20,6 @@ import type {
   TapEvent,
   TapRecordPayload,
 } from "../atproto/types.ts";
-
-import { db } from "../../db/index.ts";
-import { ingestDeadLetter, ingestState } from "../../db/schema.ts";
 import { Collections, buildAtUri } from "../atproto/uri.ts";
 import { logEvent } from "../observability/log.ts";
 import {

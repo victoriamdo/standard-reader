@@ -1,6 +1,7 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+
 import {
   APPVIEW_SERVICE_ID,
   appviewDidClient,

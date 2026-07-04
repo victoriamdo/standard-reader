@@ -3,6 +3,9 @@
 import { useExitAnimation } from "@react-aria/utils";
 import * as stylex from "@stylexjs/stylex";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { LocateFixed, Pause, Play, RotateCcw, SkipBack, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { Button } from "#/design-system/button";
 import { IconButton } from "#/design-system/icon-button";
 import { Menu, MenuItem } from "#/design-system/menu";
@@ -27,8 +30,6 @@ import {
 } from "#/design-system/theme/typography.stylex";
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
 import { articleSharePath } from "#/lib/quote-share";
-import { LocateFixed, Pause, Play, RotateCcw, SkipBack, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 
 import { formatTime } from "./format";
 import { SeekTrack } from "./seek-track";

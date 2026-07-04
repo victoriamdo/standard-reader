@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
+
 import { invalidateReadQueries } from "#/components/reader/read-optimistic";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { useCallback } from "react";
 
 import { DEFAULT_TRACK_READING_HISTORY } from "./track-reading-history";
 

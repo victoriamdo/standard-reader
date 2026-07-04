@@ -1,6 +1,6 @@
-import type { PublicationThemeInput } from "#/lib/publication-theme";
 import type { CSSProperties } from "react";
 
+import type { PublicationThemeInput } from "#/lib/publication-theme";
 import { resolveQuoteOgColors } from "#/lib/publication-theme";
 
 export function pageChipThemeVars(theme: PublicationThemeInput): CSSProperties {

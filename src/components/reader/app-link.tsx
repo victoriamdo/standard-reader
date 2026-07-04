@@ -1,9 +1,9 @@
 "use client";
 
-import type { LinkProps } from "@tanstack/react-router";
-
 import * as stylex from "@stylexjs/stylex";
+import type { LinkProps } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
+
 import { parseInternalRoute } from "#/lib/internal-route";
 
 type AppLinkProps = Omit<React.ComponentProps<"a">, "href"> & {

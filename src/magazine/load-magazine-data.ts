@@ -1,26 +1,25 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type {
-  ArticleDetail,
-  CollectionMagazineData,
-} from "#/integrations/tanstack-query/api-publication.functions";
-import type {
-  CollectionColophon,
-  CollectionEditorial,
-} from "#/lib/collections/manifest";
-
 import { queryOptions } from "@tanstack/react-query";
+
 import {
   documentUriFromParams,
   publicationLinkParams,
 } from "#/components/reader/format";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
+import type {
+  ArticleDetail,
+  CollectionMagazineData,
+} from "#/integrations/tanstack-query/api-publication.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { getQueryClient } from "#/integrations/tanstack-query/query-client";
-
-import type { MagazineShellData } from "./types";
+import type {
+  CollectionColophon,
+  CollectionEditorial,
+} from "#/lib/collections/manifest";
 
 import { MAX_MAGAZINE_FEATURES } from "./constants";
 import { parseIssueIds, pinnedArticleUri } from "./issue-link";
+import type { MagazineShellData } from "./types";
 
 export { MAX_MAGAZINE_FEATURES };
 export type { MagazineShellData };

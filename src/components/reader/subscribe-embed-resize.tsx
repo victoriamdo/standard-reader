@@ -1,7 +1,8 @@
 "use client";
 
-import { SUBSCRIBE_EMBED_RESIZE_MESSAGE } from "#/lib/publication-embed";
 import { useLayoutEffect } from "react";
+
+import { SUBSCRIBE_EMBED_RESIZE_MESSAGE } from "#/lib/publication-embed";
 
 /** Tell the parent page how tall the subscribe embed is (for iframe auto-resize). */
 export function SubscribeEmbedResizeReporter() {

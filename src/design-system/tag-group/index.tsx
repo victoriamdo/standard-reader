@@ -1,19 +1,16 @@
+import * as stylex from "@stylexjs/stylex";
+import { X } from "lucide-react";
 import type {
   TagGroupProps as AriaTagGroupProps,
   TagProps as AriaTagProps,
   TagListProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { X } from "lucide-react";
 import {
   Tag as AriaTag,
   TagGroup as AriaTagGroup,
   Button,
   TagList,
 } from "react-aria-components";
-
-import type { StyleXComponentProps } from "../theme/types";
 
 import { Description, ErrorMessage, Label } from "../label";
 import { animationDuration } from "../theme/animations.stylex";
@@ -26,6 +23,7 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { typeramp } from "../theme/typography.stylex";
 
 const styles = stylex.create({

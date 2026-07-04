@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
+
+import { and, desc, eq } from "drizzle-orm";
+
 import { db } from "#/db/index.server";
 import { quoteShares } from "#/db/schema/quote-shares";
 import { MAX_QUOTE_SHARE_LENGTH, normalizeQuoteText } from "#/lib/quote-share";
-import { and, desc, eq } from "drizzle-orm";
-import { createHash } from "node:crypto";
 
 const QUOTE_SHARE_ID_LENGTH = 10;
 

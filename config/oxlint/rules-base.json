@@ -193,6 +193,6 @@
     "unicorn/text-encoding-identifier-case": "error",
     "unicorn/throw-new-error": "error",
 
-    "perfectionist/sort-imports": ["error", { "type": "alphabetical" }]
+    "perfectionist/sort-imports": "off"
   }
 }

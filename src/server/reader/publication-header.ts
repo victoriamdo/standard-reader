@@ -1,15 +1,15 @@
+import { eq } from "drizzle-orm";
+
 import type {
   Db,
   ProfileSummary,
   PublicationCard,
   Schema,
 } from "#/integrations/tanstack-query/api-shapes";
-
 import {
   publicationCardColumns,
   toPublicationCard,
 } from "#/integrations/tanstack-query/api-shapes";
-import { eq } from "drizzle-orm";
 
 export interface PublicationHeader {
   publication: PublicationCard;

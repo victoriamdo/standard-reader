@@ -1,7 +1,6 @@
-import type { PublicationThemeInput } from "#/lib/publication-theme";
-
 import { subscribeCardBorderRadius } from "#/components/reader/subscribe-card.constants";
 import { getPublicUrlClient } from "#/lib/public-url";
+import type { PublicationThemeInput } from "#/lib/publication-theme";
 import { resolveQuoteOgColors } from "#/lib/publication-theme";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
 

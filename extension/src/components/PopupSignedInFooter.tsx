@@ -1,4 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
+import { ArrowRight } from "lucide-react";
+
 import { Avatar } from "#/design-system/avatar";
 import { Button } from "#/design-system/button";
 import { Flex } from "#/design-system/flex";
@@ -9,7 +11,6 @@ import {
 } from "#/design-system/theme/semantic-spacing.stylex";
 import { SmallBody } from "#/design-system/typography";
 import { Text } from "#/design-system/typography/text";
-import { ArrowRight } from "lucide-react";
 
 import type { ExtensionSessionResponse } from "../lib/types";
 

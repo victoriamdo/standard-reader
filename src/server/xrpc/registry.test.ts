@@ -1,7 +1,9 @@
-import { API_DOCS_CATALOG } from "#/lib/api-docs/catalog";
 import fs from "node:fs";
 import path from "node:path";
+
 import { describe, expect, it } from "vitest";
+
+import { API_DOCS_CATALOG } from "#/lib/api-docs/catalog";
 
 import { XRPC_REGISTRY, parseXrpcNsid } from "./registry";
 

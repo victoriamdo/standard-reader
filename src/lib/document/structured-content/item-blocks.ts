@@ -1,3 +1,5 @@
+import { normalizeImageAlt } from "./image";
+import { mergeTextRuns } from "./text-runs";
 /**
  * Parser for `items[]`-of-typed-blocks content formats that follow the
  * `<ns>.block.*` naming convention — currently `is.logue.content` and
@@ -5,9 +7,6 @@
  * shared faceted-text renderer already understands.
  */
 import type { StructuredRenderableBlock, StructuredText } from "./types";
-
-import { normalizeImageAlt } from "./image";
-import { mergeTextRuns } from "./text-runs";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

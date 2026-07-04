@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { clientMetadataScope } from "#/integrations/auth/scope";
 import { getPublicUrl } from "#/lib/public-url";
 import { appviewAudience } from "#/server/xrpc/config";

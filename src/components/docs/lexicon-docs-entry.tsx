@@ -1,14 +1,14 @@
 "use client";
 
-import type { LexiconDocsEntry } from "#/lib/lexicon-docs/types";
-
 import * as stylex from "@stylexjs/stylex";
+import { useCallback, useState } from "react";
+
 import {
   lexiconDocsEntryId,
   lexiconDocsNsidLeaf,
   lexiconDocsNsidPrefix,
 } from "#/lib/lexicon-docs/navigation";
-import { useCallback, useState } from "react";
+import type { LexiconDocsEntry } from "#/lib/lexicon-docs/types";
 
 import { HighlightedJson } from "./docs-highlighted-code";
 import { docsStyles } from "./docs-page.stylex";

@@ -6,7 +6,6 @@ import type {
 } from "../../integrations/tanstack-query/api-feed.functions";
 import type { FollowStatus } from "../../integrations/tanstack-query/api-reader.functions";
 import type { PublicationCard } from "../../integrations/tanstack-query/api-shapes";
-
 import { sortFollowingPublications } from "../../integrations/tanstack-query/api-shapes";
 
 export interface FollowOptimisticContext {

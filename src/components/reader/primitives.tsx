@@ -1,9 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { Heart, MessageCircle } from "lucide-react";
 
-import type { StyleXComponentProps } from "../../design-system/theme/types";
-import type { PublicationCard } from "../../integrations/tanstack-query/api-shapes";
-
 import { Avatar } from "../../design-system/avatar";
 import { Flex } from "../../design-system/flex";
 import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
@@ -11,6 +8,7 @@ import { radius } from "../../design-system/theme/radius.stylex";
 import { ui } from "../../design-system/theme/semantic-color.stylex";
 import { gap } from "../../design-system/theme/semantic-spacing.stylex";
 import { spacing } from "../../design-system/theme/spacing.stylex";
+import type { StyleXComponentProps } from "../../design-system/theme/types";
 import {
   fontFamily,
   fontSize,
@@ -18,6 +16,7 @@ import {
   lineHeight,
   tracking,
 } from "../../design-system/theme/typography.stylex";
+import type { PublicationCard } from "../../integrations/tanstack-query/api-shapes";
 import { formatReaders, initials } from "./format";
 
 /* ── styles ─────────────────────────────────────────────────────────────── */

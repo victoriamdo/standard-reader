@@ -1,17 +1,15 @@
 "use client";
 
-import type { StructuredRenderableBlock } from "#/lib/document/structured-content/types";
-import type { CodeHighlightsByScheme } from "#/lib/theme";
-
 import {
   normalizeImageAlt,
   structuredImageAspectRatio,
   structuredImageHasSource,
   structuredImageUrl,
 } from "#/lib/document/structured-content/image";
+import type { StructuredRenderableBlock } from "#/lib/document/structured-content/types";
+import type { CodeHighlightsByScheme } from "#/lib/theme";
 
 import type { ContentBlobContext } from "../types";
-
 import { PcktGalleryBlockView } from "./pckt-gallery";
 import { BlockquoteBlockView } from "./shared/blockquote-block";
 import { BskyPostEmbedView } from "./shared/bsky-post-embed";

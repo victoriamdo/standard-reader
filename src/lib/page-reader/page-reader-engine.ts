@@ -1,8 +1,7 @@
 import type { KokoroTTS } from "kokoro-js";
 
-import type { ReaderVoice } from "./voice";
-
 import { loadKokoro, splitSentences } from "./kokoro-loader";
+import type { ReaderVoice } from "./voice";
 
 const STATE_TICK_MS = 200;
 const MIN_RATE = 0.5;

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { renderSiteOgImage } from "#/server/og/site-card";
 
 const CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";

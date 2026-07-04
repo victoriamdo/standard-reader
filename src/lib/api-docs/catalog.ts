@@ -1,6 +1,5 @@
-import type { loadApiDocsFixtures } from "./fixtures";
-
 import { resolveHandleExampleFromFixtures } from "./fixture-defaults";
+import type { loadApiDocsFixtures } from "./fixtures";
 
 export type ApiDocsAuthClass = "none" | "required" | "optional-did";
 

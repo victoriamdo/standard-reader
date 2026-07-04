@@ -1,12 +1,12 @@
 "use client";
 
-import type { CollectionsPublicationSummary } from "#/integrations/tanstack-query/api-collections.functions";
-
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
 import { ImagePlus } from "lucide-react";
 import { useState } from "react";
+
+import type { CollectionsPublicationSummary } from "#/integrations/tanstack-query/api-collections.functions";
+import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
 
 import { Button } from "../../design-system/button";
 import {

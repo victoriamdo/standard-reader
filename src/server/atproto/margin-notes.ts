@@ -1,13 +1,8 @@
 import type { JsonValue } from "#/integrations/tanstack-query/api-shapes";
-import type { ConstellationBacklinkRecord } from "#/server/atproto/constellation";
-import type {
-  DocumentComment,
-  DocumentCommentAuthor,
-} from "#/server/reader/document-comments";
-
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import { marginNoteUrl } from "#/lib/margin-note-url";
 import { semblePageUrl } from "#/lib/semble-page-url";
+import type { ConstellationBacklinkRecord } from "#/server/atproto/constellation";
 import {
   COSMIK_CARD_COLLECTION,
   MARGIN_DISCUSSION_COLLECTIONS,
@@ -17,6 +12,10 @@ import {
 } from "#/server/atproto/constellation";
 import { fetchRepoRecordWithFallback } from "#/server/atproto/fetch-record";
 import { resolveIdentity } from "#/server/atproto/identity";
+import type {
+  DocumentComment,
+  DocumentCommentAuthor,
+} from "#/server/reader/document-comments";
 
 const MARGIN_AVATAR_ORIGIN = "https://margin.at";
 const DISCUSSION_MOTIVATIONS = new Set([

@@ -1,8 +1,7 @@
 "use client";
 
-import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
-
 import * as stylex from "@stylexjs/stylex";
+
 import {
   DropCapChar,
   HighlightedPlaintext,
@@ -11,11 +10,10 @@ import {
   intersectHighlightRange,
   useQuoteHighlightTracker,
 } from "#/components/reader/quote-highlight-tracker";
+import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import { parseArticleBlocks } from "#/lib/document/blocks";
 import { resolveArticleHeroImage } from "#/lib/document/lead-image";
 import { useReadingTypography } from "#/lib/use-reading-typography";
-
-import type { ContentRendererProps } from "./types";
 
 import {
   articleBodyStyles,
@@ -23,6 +21,7 @@ import {
   readingDropCapStyleProps,
 } from "./body-styles";
 import { CONTENT_RENDERERS } from "./renderers";
+import type { ContentRendererProps } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

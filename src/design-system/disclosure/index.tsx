@@ -1,19 +1,16 @@
+import * as stylex from "@stylexjs/stylex";
+import { ChevronDown } from "lucide-react";
+import { use } from "react";
 import type {
   ButtonProps as AriaButtonProps,
   DisclosurePanelProps as AriaDisclosurePanelProps,
   DisclosureProps as AriaDisclosureProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { ChevronDown } from "lucide-react";
-import { use } from "react";
 import {
   Disclosure as AriaDisclosure,
   DisclosurePanel as AriaDisclosurePanel,
   Button,
 } from "react-aria-components";
-
-import type { Size, StyleXComponentProps } from "../theme/types";
 
 import { SizeContext } from "../context";
 import { animationDuration } from "../theme/animations.stylex";
@@ -21,6 +18,7 @@ import { uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { fontFamily, fontSize, fontWeight } from "../theme/typography.stylex";
 
 const styles = stylex.create({

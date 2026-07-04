@@ -1,11 +1,11 @@
 "use client";
 
-import type { Size } from "#/design-system/theme/types";
+import { Share2 } from "lucide-react";
 
 import { IconButton } from "#/design-system/icon-button";
 import { MenuItem, MenuSeparator } from "#/design-system/menu";
+import type { Size } from "#/design-system/theme/types";
 import { buildPdslsRecordUrl } from "#/lib/quote-share";
-import { Share2 } from "lucide-react";
 
 import { LinkShareMenu } from "./link-share-menu";
 

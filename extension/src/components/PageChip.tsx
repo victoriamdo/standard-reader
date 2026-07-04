@@ -1,4 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
+import { ArrowRight, Bookmark, Check, Heart, Plus, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { ArticleEngagement } from "#/components/reader/primitives";
 import {
   animationDuration,
@@ -21,13 +24,10 @@ import {
   tracking,
 } from "#/design-system/theme/typography.stylex";
 import { formatDisplayHandle } from "#/utils/saved-handles";
-import { ArrowRight, Bookmark, Check, Heart, Plus, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import type { ExtensionResolveResult } from "../lib/types";
 
 import { sendMessage } from "../lib/messaging";
 import { pageChipThemeVars } from "../lib/page-chip-theme";
+import type { ExtensionResolveResult } from "../lib/types";
 import { ExtensionTheme } from "./ExtensionTheme";
 
 const chipIn = stylex.keyframes({

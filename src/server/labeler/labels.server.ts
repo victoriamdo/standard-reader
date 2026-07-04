@@ -8,15 +8,15 @@
  * bottom of this file exist solely for that sync.
  */
 
+import { and, eq, inArray } from "drizzle-orm";
+
 import type { LabelPref, LabelVisibility } from "#/db/schema/labels";
 import type {
   ArticleCardLabel,
   Db,
   Schema,
 } from "#/integrations/tanstack-query/api-shapes";
-
 import { assertSafeFetchUrl } from "#/server/security/ssrf-guard";
-import { and, eq, inArray } from "drizzle-orm";
 
 import { resolveLabelerEndpoint } from "./resolve.server.ts";
 

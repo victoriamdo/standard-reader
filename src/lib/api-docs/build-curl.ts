@@ -1,6 +1,5 @@
 import type { ApiDocsCatalogEntry } from "./catalog";
 import type { ApiDocsFixtures } from "./fixture-defaults";
-
 import { getDefaultApiDocsFixtures } from "./fixture-defaults";
 
 export function resolveApiDocsExampleParams(

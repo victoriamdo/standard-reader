@@ -1,8 +1,8 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
 import type { CSSProperties } from "react";
 
-import * as stylex from "@stylexjs/stylex";
 import { googleFontFamilyStyle } from "#/lib/google-fonts";
 
 import { fontSize } from "../design-system/theme/typography.stylex";

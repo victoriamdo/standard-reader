@@ -1,16 +1,16 @@
 "use client";
 
-import type { LeafletStandardSitePostBlock } from "#/lib/leaflet/types";
-
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+
 import {
   articlePublicationUrl,
   documentLinkParams,
 } from "#/components/reader/format";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { normalizeImageAlt } from "#/lib/document/structured-content/image";
+import type { LeafletStandardSitePostBlock } from "#/lib/leaflet/types";
 import { useOpenLinks } from "#/lib/use-open-links";
 
 import { articleBodyStyles } from "../body-styles";

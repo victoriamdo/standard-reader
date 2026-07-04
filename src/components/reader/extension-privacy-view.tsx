@@ -2,6 +2,7 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
+
 import { getPublicUrlClient } from "#/lib/public-url";
 import { SITE_NAME } from "#/lib/site-metadata";
 

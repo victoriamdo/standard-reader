@@ -1,13 +1,13 @@
-import type { SubscribeCardPhase } from "#/components/reader/subscribe-card";
-
 import { useMutation, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+
 import { publicationUriFromParams } from "#/components/reader/format";
+import type { SubscribeCardPhase } from "#/components/reader/subscribe-card";
 import { SubscribeCard } from "#/components/reader/subscribe-card";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/subscribe/$did/$rkey")({
   beforeLoad: async ({ context, params }) => {

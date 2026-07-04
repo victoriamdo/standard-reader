@@ -1,13 +1,8 @@
 "use client";
 
-import type {
-  ArticleDetail,
-  ArticleExtras,
-} from "#/integrations/tanstack-query/api-publication.functions";
-import type { PublicationCard } from "#/integrations/tanstack-query/api-shapes";
-
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
+
 import { PublicationNameLink } from "#/components/reader/publication-name-link";
 import { Flex } from "#/design-system/flex";
 import { uiColor } from "#/design-system/theme/color.stylex";
@@ -19,6 +14,11 @@ import {
   fontWeight,
   lineHeight,
 } from "#/design-system/theme/typography.stylex";
+import type {
+  ArticleDetail,
+  ArticleExtras,
+} from "#/integrations/tanstack-query/api-publication.functions";
+import type { PublicationCard } from "#/integrations/tanstack-query/api-shapes";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { useOpenLinks } from "#/lib/use-open-links";
 import { useReadingTypography } from "#/lib/use-reading-typography";

@@ -1,9 +1,6 @@
-import type { SwitchProps as AriaSwitchProps } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
+import type { SwitchProps as AriaSwitchProps } from "react-aria-components";
 import { Switch as AriaSwitch } from "react-aria-components";
-
-import type { StyleXComponentProps } from "../theme/types";
 
 import { useHaptics } from "../haptics";
 import { animationDuration } from "../theme/animations.stylex";
@@ -16,6 +13,7 @@ import {
   size as sizeSpace,
 } from "../theme/semantic-spacing.stylex";
 import { shadow } from "../theme/shadow.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { typeramp } from "../theme/typography.stylex";
 
 const styles = stylex.create({

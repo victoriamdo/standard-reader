@@ -2,13 +2,14 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { useLoaderData } from "@tanstack/react-router";
+import { useMemo } from "react";
+
 import {
   lexiconDocsScrollSpyIds,
   lexiconDocsSectionCount,
   lexiconDocsSectionId,
 } from "#/lib/lexicon-docs/navigation";
 import { LEXICON_DOCS_SECTIONS } from "#/lib/lexicon-docs/types";
-import { useMemo } from "react";
 
 import { DocsLexiconsMobileJumpNav } from "./docs-lexicons-mobile-jump-nav";
 import { DocsLexiconsNav } from "./docs-lexicons-nav";

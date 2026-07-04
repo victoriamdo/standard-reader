@@ -1,11 +1,11 @@
-import type { ResolvedThemeScheme } from "#/lib/theme";
-
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
 import { codeBlockKey } from "#/lib/code-highlight";
+import type { ResolvedThemeScheme } from "#/lib/theme";
 import { observe } from "#/server/observability/log";
 import { highlightCodeBlock } from "#/server/shiki/highlighter";
-import { z } from "zod";
 
 const highlightInput = z.object({
   language: z.string().optional(),

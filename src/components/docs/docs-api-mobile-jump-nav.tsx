@@ -1,11 +1,12 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+import { useCallback } from "react";
+
 import {
   API_DOCS_SCROLL_SPY_IDS,
   apiDocsJumpNavGroups,
 } from "#/lib/api-docs/navigation";
-import { useCallback } from "react";
 
 import { docsStyles } from "./docs-page.stylex";
 import { useDocsScrollSpyActive } from "./docs-scroll-spy-context";

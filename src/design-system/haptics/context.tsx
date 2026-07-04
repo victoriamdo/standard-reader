@@ -4,7 +4,6 @@ import { createContext, useCallback } from "react";
 import { useWebHaptics } from "web-haptics/react";
 
 import type { HapticIntent } from "./haptics";
-
 import {
   HAPTIC_PRESET_MAP,
   isHapticsEnabled,

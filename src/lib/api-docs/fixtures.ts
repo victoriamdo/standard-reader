@@ -1,6 +1,5 @@
-import type { ApiDocsFixtures } from "./fixture-defaults";
-
 import { loadPerfFixtures } from "../../../perf/lib/fixtures";
+import type { ApiDocsFixtures } from "./fixture-defaults";
 import { getDefaultApiDocsFixtures } from "./fixture-defaults";
 
 function env(name: string): string | undefined {

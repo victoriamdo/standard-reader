@@ -1,5 +1,4 @@
 import type { LeafletFacet, LeafletFacetFeature } from "./types";
-
 import { sliceUtf8, utf8ByteLength } from "./utf8";
 
 export interface FacetSegment {

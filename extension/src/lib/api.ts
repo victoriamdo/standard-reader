@@ -1,12 +1,11 @@
+import { AUTH_SESSION_COOKIE, getEffectiveApiOrigin } from "./config";
+import { readSessionCookieValue } from "./session-cookie";
 import type {
   ExtensionDiscussionResponse,
   ExtensionNarrationResponse,
   ExtensionResolveResult,
   ExtensionSessionResponse,
 } from "./types";
-
-import { AUTH_SESSION_COOKIE, getEffectiveApiOrigin } from "./config";
-import { readSessionCookieValue } from "./session-cookie";
 
 async function apiFetch(
   path: string,

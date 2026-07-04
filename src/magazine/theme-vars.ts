@@ -1,5 +1,6 @@
-import type { CollectionTheme } from "#/lib/collections/theme";
 import type { CSSProperties } from "react";
+
+import type { CollectionTheme } from "#/lib/collections/theme";
 
 /**
  * Inline font overrides for a themed magazine. Colors are handled separately by

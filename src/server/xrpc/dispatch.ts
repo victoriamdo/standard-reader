@@ -1,5 +1,3 @@
-import type { XrpcAuthContext, XrpcRequestContext } from "./types";
-
 import { authenticateRequest, requireScopes } from "./auth";
 import { getXrpcDbContext } from "./db";
 import {
@@ -10,6 +8,7 @@ import {
 } from "./errors";
 import { parseProcedureBody, parseQueryParams } from "./params";
 import { XRPC_REGISTRY, parseXrpcNsid } from "./registry";
+import type { XrpcAuthContext, XrpcRequestContext } from "./types";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",

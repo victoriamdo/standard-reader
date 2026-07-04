@@ -189,7 +189,7 @@
             }
           }
         ],
-        "@stylexjs/sort-keys": ["error", { "allowLineSeparatedGroups": true }],
+        "@stylexjs/sort-keys": "off",
         "@stylexjs/valid-shorthands": "error",
         "@stylexjs/enforce-extension": "error",
         "@stylexjs/no-unused": "error",
@@ -266,7 +266,7 @@
         "no-shadow": "error",
         "no-var": "error",
         "prefer-const": "error",
-        "sort-imports": ["error", { "ignoreDeclarationSort": true }],
+        "sort-imports": "off",
         "@typescript-eslint/array-type": [
           "error",
           { "default": "generic", "readonly": "generic" }

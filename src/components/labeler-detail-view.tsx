@@ -1,15 +1,15 @@
 "use client";
 
-import type { LabelValueDef } from "#/integrations/tanstack-query/api-labelers.functions";
-import type { Key } from "react";
-
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { Check } from "lucide-react";
+import type { Key } from "react";
+
 import { ArticleRow } from "#/components/reader/cards";
+import type { LabelValueDef } from "#/integrations/tanstack-query/api-labelers.functions";
 import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
-import { Check } from "lucide-react";
 
 import { Avatar } from "../design-system/avatar";
 import { Button } from "../design-system/button";

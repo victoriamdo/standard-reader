@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import type { Geom } from "./magazine-geom";
 import type { FlowMeasure, ResizeAnchor } from "./magazine-measure";
-
 import { captureResizeAnchor, slideForAnchor } from "./magazine-measure";
 
 const spreadGeom: Geom = {

@@ -6,11 +6,10 @@ import { useCallback, useRef, useState } from "react";
 import { mergeProps, useKeyboard, usePress } from "react-aria";
 
 import type { FlexProps } from "../flex";
-import type { StyleXComponentProps } from "../theme/types";
-
 import { Flex } from "../flex";
 import { primaryColor, uiColor } from "../theme/color.stylex";
 import { gap } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { Text } from "../typography/text";
 
 const MAX_STARS = 5;

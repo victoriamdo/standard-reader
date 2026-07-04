@@ -1,5 +1,4 @@
 import type { JsonValue } from "#/integrations/tanstack-query/api-shapes";
-
 import { parseArticleBlocks } from "#/lib/document/blocks";
 import {
   LEAFLET_DOCUMENT_FORMAT,

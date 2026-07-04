@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { useCallback } from "react";
 
-import type { ReadingTypographyPreference } from "./reading-typography";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
 
+import type { ReadingTypographyPreference } from "./reading-typography";
 import {
   DEFAULT_READING_TYPOGRAPHY,
   normalizeReadingTypographyPreference,

@@ -1,11 +1,11 @@
 "use client";
 
-import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
-
-import { articlePublicationUrl } from "#/components/reader/format";
-import { buildBlueskyComposeUrl } from "#/lib/quote-share";
 import { ExternalLink, Share2 } from "lucide-react";
 import { mergeProps } from "react-aria";
+
+import { articlePublicationUrl } from "#/components/reader/format";
+import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
+import { buildBlueskyComposeUrl } from "#/lib/quote-share";
 
 import { MagHoverButton } from "./mag-hover-button";
 import { useMagHover } from "./use-mag-hover";

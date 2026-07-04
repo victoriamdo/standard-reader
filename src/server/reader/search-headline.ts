@@ -1,5 +1,4 @@
 import type { Column } from "drizzle-orm";
-
 import { sql } from "drizzle-orm";
 
 /** `ts_headline` config for titles and publication names (short, all hits). */

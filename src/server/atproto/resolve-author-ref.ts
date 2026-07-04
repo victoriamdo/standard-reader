@@ -1,8 +1,8 @@
-import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
-
 import { isDid } from "@atcute/lexicons/syntax";
-import { normalizeAuthorRef } from "#/lib/author-profile";
 import { eq } from "drizzle-orm";
+
+import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
+import { normalizeAuthorRef } from "#/lib/author-profile";
 
 const PUBLIC_APPVIEW = "https://public.api.bsky.app";
 const RESOLVE_TIMEOUT_MS = 8000;

@@ -1,6 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+
 import { publicationUriFromParams } from "#/components/reader/format";
 import { publicationThemeScaleVars } from "#/components/reader/publication-theme-scale";
 import {
@@ -34,7 +36,6 @@ import { publicationApi } from "#/integrations/tanstack-query/api-publication.fu
 import { getPublicUrlClient } from "#/lib/public-url";
 import { unauthMiddleware } from "#/middleware/auth";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
-import { useState } from "react";
 
 const styles = stylex.create({
   shell: {

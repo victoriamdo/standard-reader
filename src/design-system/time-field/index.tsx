@@ -1,17 +1,20 @@
+import * as stylex from "@stylexjs/stylex";
+import { use, useRef } from "react";
 import type {
   TimeFieldProps as AriaTimeFieldProps,
   TimeValue,
   ValidationResult,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { use, useRef } from "react";
 import {
   TimeField as AriaTimeField,
   DateInput,
   DateSegment,
 } from "react-aria-components";
 
+import { SizeContext } from "../context";
+import { Flex } from "../flex";
+import { Description, FieldErrorMessage, Label } from "../label";
+import { SuffixIcon } from "../suffix-icon";
 import type {
   InputValidationState,
   InputVariant,
@@ -19,11 +22,6 @@ import type {
   Size,
   StyleXComponentProps,
 } from "../theme/types";
-
-import { SizeContext } from "../context";
-import { Flex } from "../flex";
-import { Description, FieldErrorMessage, Label } from "../label";
-import { SuffixIcon } from "../suffix-icon";
 import { useInputStyles } from "../theme/useInputStyles";
 
 interface TimeFieldContentProps {

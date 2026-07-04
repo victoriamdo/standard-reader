@@ -1,4 +1,5 @@
 import { scope as atprotoScope } from "@atcute/oauth-node-client";
+
 import { APP_NSID, STANDARD_NSID } from "#/lib/atproto/nsids";
 
 /** OAuth repo scope strings for write procedures (`getSession.scopes`). */

@@ -1,21 +1,21 @@
+import { eq } from "drizzle-orm";
+
+import { documentLinkParams } from "#/components/reader/format";
 import type { db } from "#/db/index.server";
 import type * as schema from "#/db/schema";
 import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
-import type { DocumentComment } from "#/server/reader/document-comments";
-
-import { documentLinkParams } from "#/components/reader/format";
 import { getPublicUrl } from "#/lib/public-url";
 import { buildCanonicalUrl } from "#/server/ingest/mappers";
 import {
   fetchCitedInArticles,
   fetchMarginConnections,
 } from "#/server/reader/article-constellation-extras";
+import type { DocumentComment } from "#/server/reader/document-comments";
 import {
   attachCommentCountsToArticles,
   fetchDocumentComments,
 } from "#/server/reader/document-comments";
 import { relatedArticles, selectArticleCards } from "#/server/reader/queries";
-import { eq } from "drizzle-orm";
 
 import type {
   ExtensionDiscussionArticle,

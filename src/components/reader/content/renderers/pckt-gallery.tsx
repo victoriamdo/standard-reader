@@ -1,9 +1,8 @@
 "use client";
 
-import type { PcktGalleryBlock } from "#/lib/pckt/types";
-
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
+
 import { fetchPcktGallery, pcktImageBlockFromAttrs } from "#/lib/pckt/gallery";
 import {
   pcktImageAlt,
@@ -11,10 +10,10 @@ import {
   pcktImageHasSource,
   pcktImageUrl,
 } from "#/lib/pckt/image";
-
-import type { ContentBlobContext } from "../types";
+import type { PcktGalleryBlock } from "#/lib/pckt/types";
 
 import { articleBodyStyles } from "../body-styles";
+import type { ContentBlobContext } from "../types";
 import { ImageFigureView } from "./shared/image-figure";
 
 function galleryLayoutStyle(layout: string | undefined) {

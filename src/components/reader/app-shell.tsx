@@ -3,15 +3,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
-import {
-  listsQueryOptions,
-  savedListsQueryOptions,
-  sidebarQueryOptions,
-} from "#/integrations/tanstack-query/shell-queries";
-import { formatSidebarUnreadCount } from "#/lib/format-count";
-import { parseInternalRoute } from "#/lib/internal-route";
-import { PageReaderProvider } from "#/lib/page-reader/page-reader-provider";
 import {
   ArrowLeft,
   Bookmark,
@@ -19,6 +10,7 @@ import {
   FolderPlus,
   Home,
   Layers,
+  MessageSquarePlus,
   Newspaper,
   Plus,
   Search,
@@ -31,8 +23,15 @@ import {
   useState,
 } from "react";
 
-import type { FollowingPublication } from "../../integrations/tanstack-query/api-feed.functions";
-import type { SubscriptionListGroup } from "./subscriptions-sheet";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
+import {
+  listsQueryOptions,
+  savedListsQueryOptions,
+  sidebarQueryOptions,
+} from "#/integrations/tanstack-query/shell-queries";
+import { formatSidebarUnreadCount } from "#/lib/format-count";
+import { parseInternalRoute } from "#/lib/internal-route";
+import { PageReaderProvider } from "#/lib/page-reader/page-reader-provider";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
@@ -62,6 +61,8 @@ import {
   tracking,
 } from "../../design-system/theme/typography.stylex";
 import { ToastRegion } from "../../design-system/toast";
+import type { FollowingPublication } from "../../integrations/tanstack-query/api-feed.functions";
+import { FeedbackDialog } from "../feedback/feedback-dialog";
 import { NavbarAuth } from "../NavbarAuth";
 import { SiteFooter } from "../site-footer";
 import { AddPublicationModal } from "./add-publication-modal";
@@ -70,6 +71,7 @@ import { BrandWordmark } from "./brand-wordmark";
 import { initials, listLinkParams, publicationLinkParams } from "./format";
 import { ListEditModal } from "./list-edit-modal";
 import { PageReaderBar } from "./page-reader-bar";
+import type { SubscriptionListGroup } from "./subscriptions-sheet";
 import {
   SubscriptionsSheet,
   SubscriptionsSwitcher,
@@ -528,6 +530,9 @@ const styles = stylex.create({
   addTrigger: {
     width: "100%",
   },
+  feedbackTrigger: {
+    width: "100%",
+  },
 });
 
 interface NavLink {
@@ -947,6 +952,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const primaryNav = navWithSaved(signedIn);
   const [subsSheetOpen, setSubsSheetOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const { data: listsData, isPending: listsPending } = useQuery({
     ...listsQueryOptions(),
@@ -1079,6 +1085,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Plus size={16} /> Add publication
             </Button>
+            {signedIn ? (
+              <Button
+                variant="secondary"
+                style={styles.feedbackTrigger}
+                onPress={() => setFeedbackOpen(true)}
+              >
+                <MessageSquarePlus size={16} /> Submit feedback
+              </Button>
+            ) : null}
           </Flex>
         </aside>
 
@@ -1090,6 +1105,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Flex align="center" justify="between" style={styles.mobileBar}>
                 <Brand />
                 <div {...stylex.props(styles.mobileBarActions)}>
+                  {signedIn ? (
+                    <IconButton
+                      aria-label="Submit feedback"
+                      size="md"
+                      variant="tertiary"
+                      onPress={() => setFeedbackOpen(true)}
+                    >
+                      <MessageSquarePlus size={20} />
+                    </IconButton>
+                  ) : null}
                   <SubscriptionsSwitcher
                     count={following.length}
                     onPress={() => setSubsSheetOpen(true)}
@@ -1134,6 +1159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           following={following}
         />
         <AtstoreReviewPrompt />
+        <FeedbackDialog isOpen={feedbackOpen} onOpenChange={setFeedbackOpen} />
         <ToastRegion />
       </div>
     </PageReaderProvider>

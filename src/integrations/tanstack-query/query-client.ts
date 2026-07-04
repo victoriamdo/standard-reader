@@ -1,4 +1,5 @@
 import { MutationCache, QueryClient, isServer } from "@tanstack/react-query";
+
 import { isAtprotoScopeMissingError } from "#/lib/atproto/scope-error";
 
 const DEFAULT_QUERY_STALE_TIME_MS = 60 * 1000;

@@ -10,8 +10,6 @@ import {
 } from "lucide-react";
 import { use } from "react";
 
-import type { Size, StyleXComponentProps } from "../theme/types";
-
 import { SizeContext } from "../context";
 import { IconButton } from "../icon-button";
 import {
@@ -35,6 +33,7 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { fontFamily } from "../theme/typography.stylex";
 import { Text } from "../typography/text";
 

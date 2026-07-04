@@ -1,8 +1,8 @@
 import type { Root } from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import type { ContentScriptContext } from "wxt/utils/content-script-context";
 
 import { readDiscoveryHintsFromDocument } from "#/lib/discovery-hints";
-import { createRoot } from "react-dom/client";
 
 import { PageChip } from "../../components/PageChip";
 import {

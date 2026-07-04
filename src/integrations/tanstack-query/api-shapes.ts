@@ -1,10 +1,10 @@
-import type * as DbSchema from "#/db/schema";
 import type { SQL } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-
-import { cdnImageUrl } from "#/server/atproto/blob";
 import { sql } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { alias } from "drizzle-orm/pg-core";
+
+import type * as DbSchema from "#/db/schema";
+import { cdnImageUrl } from "#/server/atproto/blob";
 
 /**
  * Shared shapes + helpers for the read-model query layer (`APP_VISION.md` §5).

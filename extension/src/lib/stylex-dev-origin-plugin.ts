@@ -1,7 +1,7 @@
-import type { Plugin, ResolvedConfig } from "vite";
-
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+
+import type { Plugin, ResolvedConfig } from "vite";
 
 const HTML_ENTRYPOINTS = ["popup.html", "options.html"] as const;
 const DEV_CSS_PATH = "/virtual:stylex.css";

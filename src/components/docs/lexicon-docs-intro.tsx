@@ -2,6 +2,7 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
+
 import { LEXICON_DOCS_INTRO_IDS } from "#/lib/lexicon-docs/navigation";
 
 import { docsStyles } from "./docs-page.stylex";

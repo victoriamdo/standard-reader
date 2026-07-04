@@ -2,10 +2,12 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+
+import { Link } from "#/design-system/link";
 import { Separator } from "#/design-system/separator";
 import { toasts } from "#/design-system/toast";
 import { Text } from "#/design-system/typography/text";
-import { useEffect, useState } from "react";
 
 import { Button } from "../../design-system/button";
 import {
@@ -28,7 +30,6 @@ import { hasAtstoreReviewScope } from "../../integrations/auth/scope";
 import { atstoreReviewApi } from "../../integrations/tanstack-query/api-atstore-review.functions";
 import { user } from "../../integrations/tanstack-query/api-user.functions";
 import { buildAuthRedirectPath } from "../../utils/auth-redirect";
-import { Link } from "#/design-system/link";
 
 const RETURNING_READER_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const shownPromptToastDids = new Set<string>();

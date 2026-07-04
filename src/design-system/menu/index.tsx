@@ -1,3 +1,6 @@
+import * as stylex from "@stylexjs/stylex";
+import { Check, ChevronRight } from "lucide-react";
+import { use } from "react";
 import type {
   MenuItemProps as AriaMenuItemProps,
   MenuProps as AriaMenuProps,
@@ -6,10 +9,6 @@ import type {
   PopoverProps,
   SubmenuTriggerProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { Check, ChevronRight } from "lucide-react";
-import { use } from "react";
 import {
   Menu as AriaMenu,
   MenuItem as AriaMenuItem,
@@ -19,8 +18,6 @@ import {
   SubmenuTrigger,
 } from "react-aria-components";
 
-import type { Size, StyleXComponentProps } from "../theme/types";
-
 import { SizeContext } from "../context";
 import { useHaptics } from "../haptics";
 import { ListBoxSeparator } from "../listbox";
@@ -28,6 +25,7 @@ import {
   horizontalSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { Size, StyleXComponentProps } from "../theme/types";
 import { useListBoxItemStyles } from "../theme/useListBoxItemStyles";
 import { usePopoverStyles } from "../theme/usePopoverStyles";
 

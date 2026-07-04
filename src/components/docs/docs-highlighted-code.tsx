@@ -1,13 +1,13 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
+import { useMemo } from "react";
+
 import type {
   CurlTokenType,
   JsonTokenType,
 } from "#/lib/api-docs/syntax-highlight";
-
-import * as stylex from "@stylexjs/stylex";
 import { tokenizeCurl, tokenizeJson } from "#/lib/api-docs/syntax-highlight";
-import { useMemo } from "react";
 
 import { docsStyles } from "./docs-page.stylex";
 

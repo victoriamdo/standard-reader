@@ -1,7 +1,8 @@
+import { and, eq } from "drizzle-orm";
+
 import type { db } from "#/db/index.server";
 import type * as schemaModule from "#/db/schema";
 import type { AtprotoSessionContext } from "#/middleware/auth-session.server";
-
 import {
   deleteBookmarkRecord,
   deleteRecommendRecord,
@@ -14,7 +15,6 @@ import {
 import { Collections, buildAtUri } from "#/server/atproto/uri";
 import { deleteRecord, upsertSubscription } from "#/server/ingest/handlers";
 import { ensureTracked } from "#/server/ingest/tap-client";
-import { and, eq } from "drizzle-orm";
 
 async function trackReaderRepo(did: string): Promise<void> {
   try {

@@ -8,14 +8,6 @@ import {
 } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
-  DISCOVER_TOPICS_LIMIT,
-  discoverApi,
-} from "#/integrations/tanstack-query/api-discover.functions";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { formatCount } from "#/lib/format-count";
-import { getPublicUrlClient } from "#/lib/public-url";
-import { pageSocialMeta } from "#/lib/site-metadata";
-import {
   Compass,
   Flame,
   LayoutGrid,
@@ -33,7 +25,14 @@ import {
 } from "react";
 import { z } from "zod";
 
-import type { PublicationCard } from "../integrations/tanstack-query/api-shapes";
+import {
+  DISCOVER_TOPICS_LIMIT,
+  discoverApi,
+} from "#/integrations/tanstack-query/api-discover.functions";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { formatCount } from "#/lib/format-count";
+import { getPublicUrlClient } from "#/lib/public-url";
+import { pageSocialMeta } from "#/lib/site-metadata";
 
 import {
   PubCard,
@@ -67,6 +66,7 @@ import {
   fontSize,
   lineHeight,
 } from "../design-system/theme/typography.stylex";
+import type { PublicationCard } from "../integrations/tanstack-query/api-shapes";
 
 const DIRECTORY_PAGE_SIZE = 24;
 const DIRECTORY_SEARCH_DEBOUNCE_MS = 300;

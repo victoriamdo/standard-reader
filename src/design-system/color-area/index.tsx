@@ -1,18 +1,16 @@
+import * as stylex from "@stylexjs/stylex";
 import type {
   ColorAreaProps as AriaColorAreaProps,
   ColorThumbProps as AriaColorThumbProps,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
 import {
   ColorArea as AriaColorArea,
   ColorThumb as AriaColorThumb,
 } from "react-aria-components";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { radius } from "../theme/radius.stylex";
 import { size as sizeSpace } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 
 const styles = stylex.create({
   colorArea: {

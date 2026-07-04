@@ -1,12 +1,5 @@
 "use client";
 
-import type {
-  CollectionForEdit,
-  CollectionsPublicationSummary,
-} from "#/integrations/tanstack-query/api-collections.functions";
-import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
-import type { DropTarget, Key } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import {
   useInfiniteQuery,
@@ -14,8 +7,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
-import { searchApi } from "#/integrations/tanstack-query/api-search.functions";
 import {
   ChevronDown,
   ChevronUp,
@@ -26,7 +17,16 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import type { DropTarget, Key } from "react-aria-components";
 import { GridList, GridListItem, useDragAndDrop } from "react-aria-components";
+
+import type {
+  CollectionForEdit,
+  CollectionsPublicationSummary,
+} from "#/integrations/tanstack-query/api-collections.functions";
+import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
+import { searchApi } from "#/integrations/tanstack-query/api-search.functions";
+import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
 
 import { Button } from "../../design-system/button";
 import { Dialog, DialogBody, DialogHeader } from "../../design-system/dialog";

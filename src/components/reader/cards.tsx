@@ -1,16 +1,18 @@
 "use client";
 
-import type { FollowStatus } from "#/integrations/tanstack-query/api-reader.functions";
-
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { ArrowRight, BookOpen, Bookmark, Check, Plus } from "lucide-react";
+import { Fragment, useCallback } from "react";
+
 import { AuthorProfileLink } from "#/components/reader/author-profile-link";
 import { PublicationNameLink } from "#/components/reader/publication-name-link";
 import { SearchHeadline } from "#/components/reader/search-headline";
 import { ButtonLink } from "#/components/router-links";
 import { gap } from "#/design-system/theme/semantic-spacing.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex.tsx";
+import type { FollowStatus } from "#/integrations/tanstack-query/api-reader.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { parseInternalRoute } from "#/lib/internal-route";
@@ -19,13 +21,6 @@ import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-maga
 import { useOpenLinks } from "#/lib/use-open-links";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
-import { ArrowRight, BookOpen, Bookmark, Check, Plus } from "lucide-react";
-import { Fragment, useCallback } from "react";
-
-import type {
-  ArticleCard,
-  PublicationCard,
-} from "../../integrations/tanstack-query/api-shapes";
 
 import {
   AspectRatio,
@@ -47,6 +42,10 @@ import {
   tracking,
 } from "../../design-system/theme/typography.stylex";
 import { Text } from "../../design-system/typography/text";
+import type {
+  ArticleCard,
+  PublicationCard,
+} from "../../integrations/tanstack-query/api-shapes";
 import {
   applyFollowOptimisticUpdate,
   invalidateFollowQueries,

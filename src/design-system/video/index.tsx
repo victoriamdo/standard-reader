@@ -17,8 +17,6 @@ import {
 } from "media-chrome/react";
 import { useEffect, useRef, useState } from "react";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { animationDuration } from "../theme/animations.stylex";
 import { primaryColor, uiColor } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
@@ -28,6 +26,7 @@ import {
   size,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { fontFamily } from "../theme/typography.stylex";
 
 const DEFAULT_SEEK_OFFSET = 10;

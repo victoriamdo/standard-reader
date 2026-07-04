@@ -8,9 +8,10 @@
  * label server itself only answers queryLabels / subscribeLabels.
  */
 
+import { and, eq } from "drizzle-orm";
+
 import { db } from "#/db/index.server";
 import { labelerServices } from "#/db/schema";
-import { and, eq } from "drizzle-orm";
 
 export interface LabelValueDef {
   identifier?: string;

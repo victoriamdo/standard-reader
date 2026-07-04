@@ -1,9 +1,5 @@
 import type { Page } from "@playwright/test";
-
 import { expect, test } from "@playwright/test";
-
-import type { LoadMeasurement } from "./lib/measure.ts";
-import type { PerfTarget } from "./lib/targets.ts";
 
 import {
   applyPerfSessionCookie,
@@ -15,12 +11,14 @@ import {
   perfWarmupPasses,
 } from "./lib/config.ts";
 import { loadPerfFixtures } from "./lib/fixtures.ts";
+import type { LoadMeasurement } from "./lib/measure.ts";
 import { measurePageLoad, warmupTarget } from "./lib/measure.ts";
 import {
   formatMeasurementLine,
   writePerfComparisonReport,
   writePerfReport,
 } from "./lib/report.ts";
+import type { PerfTarget } from "./lib/targets.ts";
 import { guestTargets, signedInTargets } from "./lib/targets.ts";
 
 const guestResults: Array<LoadMeasurement> = [];

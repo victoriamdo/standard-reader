@@ -1,6 +1,5 @@
-import type { LeafletTextBlock } from "./types";
-
 import { leafletBlocks, plaintextLinesFromBlock } from "./blocks";
+import type { LeafletTextBlock } from "./types";
 
 /** Collect every `pub.leaflet.blocks.text` block from leaflet content. */
 export function leafletTextBlocks(content: unknown): Array<LeafletTextBlock> {

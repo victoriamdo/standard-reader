@@ -1,6 +1,5 @@
-import type { PendingAction } from "./messaging";
-
 import { LOGIN_PATH, getEffectiveApiOrigin } from "./config";
+import type { PendingAction } from "./messaging";
 import { readSessionCookieValue } from "./session-cookie";
 
 export async function getSessionCookie(): Promise<string | null> {

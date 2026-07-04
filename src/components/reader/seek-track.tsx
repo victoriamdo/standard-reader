@@ -1,12 +1,13 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+import { useRef } from "react";
+
 import { animationDuration } from "#/design-system/theme/animations.stylex";
 import { primaryColor, uiColor } from "#/design-system/theme/color.stylex";
 import { radius } from "#/design-system/theme/radius.stylex";
 import { verticalSpace } from "#/design-system/theme/semantic-spacing.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex";
-import { useRef } from "react";
 
 import { formatTime } from "./format";
 

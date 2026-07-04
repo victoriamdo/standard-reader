@@ -1,8 +1,7 @@
 import type { StructuredRenderableBlock } from "#/lib/document/structured-content/types";
-import type { PcktRenderableBlock } from "#/lib/pckt/types";
-
 import { asTextBlock } from "#/lib/pckt/blocks";
 import { pcktImageAlt } from "#/lib/pckt/image";
+import type { PcktRenderableBlock } from "#/lib/pckt/types";
 import { PCKT_BLOCK } from "#/lib/pckt/types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {

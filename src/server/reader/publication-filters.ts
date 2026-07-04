@@ -1,8 +1,8 @@
-import type { Schema } from "#/integrations/tanstack-query/api-shapes";
 import type { SQL } from "drizzle-orm";
-
-import { EXCLUDED_PUBLICATION_URL_PATTERN } from "#/lib/publication/exclusions";
 import { and, eq, ilike, isNull, not, or } from "drizzle-orm";
+
+import type { Schema } from "#/integrations/tanstack-query/api-shapes";
+import { EXCLUDED_PUBLICATION_URL_PATTERN } from "#/lib/publication/exclusions";
 
 /** Read-model filter for directory / search / discovery publication queries. */
 export function discoverEligiblePublicationWhere(

@@ -1,9 +1,10 @@
+import { describe, expect, it } from "vitest";
+
 import {
   LEAFLET_BLOCK,
   LEAFLET_CONTENT,
   LEAFLET_PAGE,
 } from "#/lib/leaflet/types";
-import { describe, expect, it } from "vitest";
 
 import { leafletBlocks, leafletWebsiteSrc } from "./blocks";
 

@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+
 import { animationDuration } from "#/design-system/theme/animations.stylex";
 import { primaryColor, uiColor } from "#/design-system/theme/color.stylex";
 import { radius } from "#/design-system/theme/radius.stylex";

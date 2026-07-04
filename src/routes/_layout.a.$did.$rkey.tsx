@@ -1,7 +1,9 @@
-import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
-
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useLayoutEffect } from "react";
+import { z } from "zod";
+
+import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { quoteShareApi } from "#/integrations/tanstack-query/api-quote-share.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
@@ -10,8 +12,6 @@ import { getPublicUrlClient } from "#/lib/public-url";
 import { buildQuoteOgImageUrl, decodeQuoteParam } from "#/lib/quote-share";
 import { articleOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
 import { useOpenLinks } from "#/lib/use-open-links";
-import { useLayoutEffect } from "react";
-import { z } from "zod";
 
 import {
   ArticleNotFound,

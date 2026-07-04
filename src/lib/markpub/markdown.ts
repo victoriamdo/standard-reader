@@ -1,9 +1,8 @@
 import { markdownImageAlts } from "#/lib/document/structured-content/markdown";
 
-import type { MarkpubDocument } from "./types";
-
 import { applyMarkpubFacets, normalizeMarkpubFacets } from "./facets";
 import { parseMarkpubContent } from "./parse";
+import type { MarkpubDocument } from "./types";
 
 const YAML_FRONT_MATTER = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/;
 

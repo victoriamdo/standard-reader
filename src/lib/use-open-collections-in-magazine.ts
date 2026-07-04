@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { useCallback } from "react";
+
+import { user } from "#/integrations/tanstack-query/api-user.functions";
 
 import { DEFAULT_OPEN_COLLECTIONS_IN_MAGAZINE } from "./open-collections-in-magazine";
 

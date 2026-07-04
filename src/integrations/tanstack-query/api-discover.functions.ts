@@ -1,9 +1,10 @@
-import type { Span } from "#/server/observability/log";
-
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { z } from "zod";
+
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
+import type { Span } from "#/server/observability/log";
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
 import {
@@ -17,10 +18,8 @@ import {
   trendingPublications,
 } from "#/server/reader/queries";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
-import { z } from "zod";
 
 import type { Db, PublicationCard, Schema } from "./api-shapes";
-
 import { dbMiddleware } from "./db-middleware";
 
 /**

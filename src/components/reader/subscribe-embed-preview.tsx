@@ -1,16 +1,16 @@
 "use client";
 
+import * as stylex from "@stylexjs/stylex";
+import { useEffect, useState } from "react";
+
 import type { PublicationEmbedMeta } from "#/integrations/tanstack-query/api-publication.functions";
 import type { SubscribeEmbedLayout } from "#/lib/publication-embed";
-
-import * as stylex from "@stylexjs/stylex";
 import {
   SUBSCRIBE_EMBED_RESIZE_MESSAGE,
   estimateSubscribeEmbedHeight,
   subscribeEmbedIframeId,
   subscribeEmbedUrl,
 } from "#/lib/publication-embed";
-import { useEffect, useState } from "react";
 
 import { publicationThemeColors } from "./subscribe-card-theme";
 import { subscribeCardLayout } from "./subscribe-card.stylex";

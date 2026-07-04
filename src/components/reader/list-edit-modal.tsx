@@ -1,16 +1,13 @@
 "use client";
 
-import type { Key } from "react-aria-components";
-
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import { GripVertical, X } from "lucide-react";
 import { useState } from "react";
+import type { Key } from "react-aria-components";
 import { useDragAndDrop, useFilter } from "react-aria-components";
 
-import type { FollowingPublication } from "../../integrations/tanstack-query/api-feed.functions";
-import type { SubscriptionList } from "../../integrations/tanstack-query/api-lists.functions";
+import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
@@ -32,6 +29,8 @@ import {
   fontWeight,
   tracking,
 } from "../../design-system/theme/typography.stylex";
+import type { FollowingPublication } from "../../integrations/tanstack-query/api-feed.functions";
+import type { SubscriptionList } from "../../integrations/tanstack-query/api-lists.functions";
 import { initials } from "./format";
 
 const LISTS_QUERY_KEY = ["reader", "lists"] as const;

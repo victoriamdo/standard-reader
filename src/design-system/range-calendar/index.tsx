@@ -1,11 +1,10 @@
+import * as stylex from "@stylexjs/stylex";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type {
   RangeCalendarProps as AriaRangeCalendarProps,
   CalendarGridProps,
   DateValue,
 } from "react-aria-components";
-
-import * as stylex from "@stylexjs/stylex";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   RangeCalendar as AriaRangeCalendarComponent,
   CalendarCell,
@@ -16,12 +15,11 @@ import {
   Heading,
 } from "react-aria-components";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { Flex } from "../flex";
 import { IconButton } from "../icon-button";
 import { ErrorMessage } from "../label";
 import { gap } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { useCalendarStyles } from "../theme/useCalendarStyles";
 
 export interface RangeCalendarProps<T extends DateValue>

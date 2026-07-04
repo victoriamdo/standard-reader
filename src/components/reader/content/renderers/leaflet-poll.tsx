@@ -1,9 +1,9 @@
 "use client";
 
-import type { LeafletPollBlock } from "#/lib/leaflet/types";
-
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
+
+import type { LeafletPollBlock } from "#/lib/leaflet/types";
 import { fetchRepoRecordWithFallback } from "#/server/atproto/fetch-record";
 
 import { articleBodyStyles } from "../body-styles";

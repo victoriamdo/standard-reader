@@ -1,6 +1,5 @@
-import type { PopupStateResponse, StoredPopupState } from "./popup-state";
-
 import { sendMessage } from "./messaging";
+import type { PopupStateResponse, StoredPopupState } from "./popup-state";
 import { readStoredPopupState } from "./popup-state";
 
 declare global {

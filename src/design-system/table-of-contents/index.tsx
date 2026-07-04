@@ -4,8 +4,6 @@ import * as stylex from "@stylexjs/stylex";
 import { createContext, use, useEffect, useState } from "react";
 import { useHover } from "react-aria";
 
-import type { StyleXComponentProps } from "../theme/types";
-
 import { animationDuration } from "../theme/animations.stylex";
 import { primaryColor, uiColor } from "../theme/color.stylex";
 import {
@@ -14,6 +12,7 @@ import {
   size as sizeSpace,
   verticalSpace,
 } from "../theme/semantic-spacing.stylex";
+import type { StyleXComponentProps } from "../theme/types";
 import { fontSize } from "../theme/typography.stylex";
 
 export interface TocEntry {
