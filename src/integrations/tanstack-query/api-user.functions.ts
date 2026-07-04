@@ -412,6 +412,11 @@ const getSessionQueryOptions = queryOptions({
   // (staleTime defaults to 0), firing a getSession() server fn that restores
   // the PDS client + does a PLC identity lookup — ~1-4s per navigation.
   staleTime: 5 * 60_000,
+  // Same reason: a window-focus refetch after the client has been idle can
+  // legitimately fail the live PDS restore and briefly resolve to "no
+  // session" even though the app session cookie is still valid, flashing the
+  // signed-out UI before a follow-up fetch corrects it.
+  refetchOnWindowFocus: false,
 });
 
 /** Scopes read-personalized query caches to the signed-in reader (or guest). */

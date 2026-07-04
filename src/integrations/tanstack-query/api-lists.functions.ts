@@ -5,7 +5,10 @@ import { inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { articleCardsAsAllRead } from "#/lib/track-reading-history";
-import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
+import {
+  getAtprotoSessionForRequest,
+  getReaderDidForRequest,
+} from "#/middleware/auth-session.server";
 import { resolveIdentity } from "#/server/atproto/identity";
 import {
   deleteListRecord,
@@ -173,13 +176,14 @@ async function hydrateInListOrder(
 
 const getLists = createServerFn({ method: "GET" }).handler(
   observe("lists.getLists", async (_, span) => {
-    const session = await getAtprotoSessionForRequest(getRequest());
-    if (!session) {
+    // DID-only lookup (no PDS client restore) — list membership is DB data.
+    const did = await getReaderDidForRequest(getRequest());
+    if (!did) {
       return [] satisfies Array<SubscriptionList>;
     }
-    span.set("did", session.did);
+    span.set("did", did);
 
-    const lists = await loadOwnSubscriptionLists(session.client, session.did);
+    const lists = await loadOwnSubscriptionLists(null, did);
     span.set("count", lists.length);
     return lists satisfies Array<SubscriptionList>;
   }),
@@ -384,17 +388,18 @@ const getListFeed = createServerFn({ method: "GET" })
 
 const getSavedLists = createServerFn({ method: "GET" }).handler(
   observe("lists.getSavedLists", async (_, span) => {
-    const session = await getAtprotoSessionForRequest(getRequest());
-    if (!session) {
+    // DID-only lookup (no PDS client restore) — list membership is DB data.
+    const did = await getReaderDidForRequest(getRequest());
+    if (!did) {
       return [] satisfies Array<SavedList>;
     }
-    span.set("did", session.did);
+    span.set("did", did);
 
     const [{ db }, schema] = await Promise.all([
       import("#/db/index.server"),
       import("#/db/schema"),
     ]);
-    const savedLists = await loadSavedListsHydrated(db, schema, session.did);
+    const savedLists = await loadSavedListsHydrated(db, schema, did);
     span.set("count", savedLists.length);
     return savedLists satisfies Array<SavedList>;
   }),
@@ -459,6 +464,7 @@ function getListsQueryOptions() {
     queryKey: ["reader", "lists"] as const,
     queryFn: async () => getLists(),
     staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -467,6 +473,7 @@ function getSavedListsQueryOptions() {
     queryKey: ["reader", "savedLists"] as const,
     queryFn: async () => getSavedLists(),
     staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 

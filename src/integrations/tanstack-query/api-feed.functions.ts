@@ -689,6 +689,7 @@ function getSidebarQueryOptions() {
     queryKey: ["feed", "sidebar"] as const,
     queryFn: async () => getSidebar(),
     staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
