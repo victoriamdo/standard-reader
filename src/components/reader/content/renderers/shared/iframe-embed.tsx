@@ -49,11 +49,15 @@ export function IframeEmbedView({
   const hasRatio = ratioWidth != null && ratioHeight != null;
   const fixedHeight = parseDimension(height);
 
-  const aspectRatioCss =
-    fixedHeight == null
-      ? hasRatio
-        ? `${ratioWidth} / ${ratioHeight}`
-        : DEFAULT_ASPECT_RATIO
+  // A declared aspect ratio means the embed should scale with the fluid
+  // column width (e.g. a 16:9 video); a bare height with no ratio means the
+  // embed has its own fixed pixel height regardless of width (e.g. an audio
+  // player widget), so only fall back to a fixed height when no ratio is
+  // available.
+  const aspectRatioCss = hasRatio
+    ? `${ratioWidth} / ${ratioHeight}`
+    : fixedHeight == null
+      ? DEFAULT_ASPECT_RATIO
       : undefined;
 
   return (
@@ -62,7 +66,10 @@ export function IframeEmbedView({
         {...stylex.props(articleBodyStyles.iframeFrame)}
         style={{
           aspectRatio: aspectRatioCss,
-          height: fixedHeight == null ? undefined : `${fixedHeight}px`,
+          height:
+            aspectRatioCss == null && fixedHeight != null
+              ? `${fixedHeight}px`
+              : undefined,
         }}
       >
         <iframe

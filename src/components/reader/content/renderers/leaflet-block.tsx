@@ -127,6 +127,7 @@ export function LeafletBlockView({
       return (
         <IframeEmbedView
           url={block.block.url ?? ""}
+          height={block.block.height}
           aspectRatio={block.block.aspectRatio}
         />
       );
