@@ -204,6 +204,13 @@
       "when": 1783209756154,
       "tag": "0028_lazy_sugar_man",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1783226183614,
+      "tag": "0029_brown_secret_warriors",
+      "breakpoints": true
     }
   ]
 }

@@ -56,6 +56,17 @@ export const trackedRepos = pgTable(
     backfillState: text("backfill_state").notNull().default("pending"),
     /** Last repo rev we've seen for this DID. */
     lastSeenRev: text("last_seen_rev"),
+    /** Consecutive reconcile failures (transient fetch errors, or a PDS that
+     * can't be resolved) since the last success. Drives `reconcileRetryAfter`
+     * backoff; reset to 0 on the next successful reconcile. */
+    reconcileFailCount: integer("reconcile_fail_count").notNull().default(0),
+    /** Earliest time the round-robin reconcile sweep should retry this DID;
+     * null means it's eligible immediately. Set with exponential backoff on
+     * failure so a persistently-broken DID stops being retried (and crowding
+     * out healthy repos) on every tick. Cleared on success. */
+    reconcileRetryAfter: timestamp("reconcile_retry_after", {
+      withTimezone: true,
+    }),
     indexedAt: timestamp("indexed_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

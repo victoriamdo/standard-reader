@@ -63,11 +63,25 @@ function isFresh(entry: CacheEntry): boolean {
   return true;
 }
 
+/** Extract the PDS service endpoint, rejecting anything that isn't a
+ * well-formed absolute http(s) URL. DID documents are attacker/PDS-controlled
+ * data — a malformed `serviceEndpoint` (missing scheme, empty string, etc.)
+ * previously reached `new URL(path, host)` in fetch-record.ts unguarded and
+ * threw an uncaught `TypeError: Invalid URL` that crashed repo reconcile for
+ * that DID on every round-robin tick, forever. */
 function pdsFromDoc(doc: DidDocument): string | null {
   const service = doc.service?.find(
     (s) => s.id === "#atproto_pds" || s.type === "AtprotoPersonalDataServer",
   );
-  return service?.serviceEndpoint ?? null;
+  const endpoint = service?.serviceEndpoint;
+  if (!endpoint) return null;
+  try {
+    const url = new URL(endpoint);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  } catch {
+    return null;
+  }
+  return endpoint;
 }
 
 function handleFromDoc(doc: DidDocument): string | null {

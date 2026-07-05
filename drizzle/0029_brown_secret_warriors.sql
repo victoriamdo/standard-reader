@@ -1,0 +1,2 @@
+ALTER TABLE "tracked_repos" ADD COLUMN "reconcile_fail_count" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "tracked_repos" ADD COLUMN "reconcile_retry_after" timestamp with time zone;

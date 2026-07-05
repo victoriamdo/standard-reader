@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, ne, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 
 import { db } from "../../db/index.ts";
 import { documents, publications, trackedRepos } from "../../db/schema.ts";
@@ -26,6 +26,41 @@ const RECONCILE_TICK_BATCH = 5;
  * the `gone` state).
  */
 export const RECONCILE_INTERVAL_MS = 30 * 60_000;
+
+/**
+ * Backoff after a reconcile failure (transient fetch error, or a PDS that
+ * can't be resolved). Doubles per consecutive failure up to the cap, so a
+ * persistently-broken DID stops being retried every tick — previously a
+ * handful of permanently-failing DIDs could fill the entire
+ * `RECONCILE_TICK_BATCH` every 30 minutes, forever, starving healthy repos
+ * out of the round-robin.
+ */
+const RECONCILE_FAIL_BACKOFF_MS = RECONCILE_INTERVAL_MS;
+const RECONCILE_FAIL_BACKOFF_MAX_MS = 24 * 60 * 60_000;
+
+function nextRetryAfter(failCount: number): Date {
+  const backoffMs = Math.min(
+    RECONCILE_FAIL_BACKOFF_MS * 2 ** (failCount - 1),
+    RECONCILE_FAIL_BACKOFF_MAX_MS,
+  );
+  return new Date(Date.now() + backoffMs);
+}
+
+/** Record a reconcile failure for `did` and schedule its next retry with
+ * exponential backoff. Returns the new consecutive-failure count. */
+async function bumpReconcileFailure(did: string): Promise<number> {
+  const [row] = await db
+    .update(trackedRepos)
+    .set({ reconcileFailCount: sql`${trackedRepos.reconcileFailCount} + 1` })
+    .where(eq(trackedRepos.did, did))
+    .returning({ reconcileFailCount: trackedRepos.reconcileFailCount });
+  const failCount = row?.reconcileFailCount ?? 1;
+  await db
+    .update(trackedRepos)
+    .set({ reconcileRetryAfter: nextRetryAfter(failCount) })
+    .where(eq(trackedRepos.did, did));
+  return failCount;
+}
 
 /**
  * `tracked_repos.backfill_state` lifecycle values.
@@ -282,7 +317,11 @@ export async function reconcileRepoFromPds(
   if (!dryRun) {
     await db
       .update(trackedRepos)
-      .set({ updatedAt: new Date() })
+      .set({
+        reconcileFailCount: 0,
+        reconcileRetryAfter: null,
+        updatedAt: new Date(),
+      })
       .where(eq(trackedRepos.did, did));
   }
 
@@ -338,6 +377,10 @@ export async function reconcilePublisherReposBatch(
           eq(trackedRepos.reason, "document"),
         ),
         ne(trackedRepos.backfillState, BACKFILL_STATE.gone),
+        or(
+          isNull(trackedRepos.reconcileRetryAfter),
+          lte(trackedRepos.reconcileRetryAfter, new Date()),
+        ),
       ),
     )
     .orderBy(asc(trackedRepos.updatedAt))
@@ -370,6 +413,19 @@ export async function reconcilePublisherReposBatch(
         });
         continue;
       }
+      if (result.skipped) {
+        // Identity couldn't be resolved to a usable PDS (unreachable DID doc,
+        // or a malformed/missing service endpoint) — back off like a
+        // transient failure instead of retrying every tick.
+        const failCount = await bumpReconcileFailure(repo.did);
+        logEvent("ingest.repoReconcile", {
+          did: repo.did,
+          failCount,
+          ok: false,
+          reason: "unresolved-pds",
+        });
+        continue;
+      }
       if (result.migrated) {
         migrated += 1;
         logEvent("ingest.repoReconcile", {
@@ -396,9 +452,11 @@ export async function reconcilePublisherReposBatch(
       prunedDocuments += result.prunedDocuments;
       prunedPublications += result.prunedPublications;
     } catch (error: unknown) {
+      const failCount = await bumpReconcileFailure(repo.did);
       logEvent("ingest.repoReconcile", {
         did: repo.did,
         error: error instanceof Error ? error.message : String(error),
+        failCount,
         ok: false,
       });
     }
