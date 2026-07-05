@@ -76,6 +76,80 @@ export const USERINPUT_UPVOTE_SOURCE = "app.userinput.upvote:subject.uri";
 /** PDS endpoint for resolving records in our space's repo. */
 const SPACE_PDS = "https://stropharia.us-west.host.bsky.network";
 
+/**
+ * States a discussion can be assigned via userinput.app's moderator UI. Set
+ * as `app.userinput.status` records in our own org repo (the space owner) —
+ * see {@link fetchStandardReaderDiscussionStatuses}.
+ */
+export type FeedbackStatus =
+  | "open"
+  | "under-review"
+  | "backlog"
+  | "planned"
+  | "in-progress"
+  | "implemented"
+  | "declined"
+  | "duplicate"
+  | "closed";
+
+const STATUS_COLLECTION = "app.userinput.status";
+
+interface StatusRecordValue {
+  state?: FeedbackStatus;
+  subject?: { uri?: string };
+  createdAt?: string;
+}
+
+/**
+ * Fetch the latest status assigned to each discussion in our feedback space,
+ * keyed by discussion AT-URI. Status records are authored directly in our own
+ * org repo via userinput.app's moderator UI (`app.userinput.status`; "latest
+ * `createdAt` wins" per the lexicon, since a discussion can move through
+ * several states over time) — read straight from our own PDS rather than
+ * through constellation, since it's our own repo and there's no indexing lag
+ * to wait out.
+ */
+export async function fetchStandardReaderDiscussionStatuses(): Promise<
+  Map<string, FeedbackStatus>
+> {
+  const latest = new Map<string, { state: FeedbackStatus; createdAt: string }>();
+  try {
+    let cursor: string | undefined;
+    do {
+      const url = new URL(`${SPACE_PDS}/xrpc/com.atproto.repo.listRecords`);
+      url.searchParams.set("repo", SPACE_REPO_DID);
+      url.searchParams.set("collection", STATUS_COLLECTION);
+      url.searchParams.set("limit", "100");
+      if (cursor) url.searchParams.set("cursor", cursor);
+
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(8000),
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) break;
+      const json = (await res.json()) as {
+        records?: Array<{ value: StatusRecordValue }>;
+        cursor?: string;
+      };
+      for (const record of json.records ?? []) {
+        const { subject, state, createdAt } = record.value;
+        if (!subject?.uri || !state || !createdAt) continue;
+        const existing = latest.get(subject.uri);
+        if (!existing || createdAt > existing.createdAt) {
+          latest.set(subject.uri, { state, createdAt });
+        }
+      }
+      cursor = json.cursor;
+    } while (cursor);
+  } catch {
+    // Best-effort — a status fetch failure shouldn't block the discussion list.
+  }
+
+  const out = new Map<string, FeedbackStatus>();
+  for (const [uri, { state }] of latest) out.set(uri, state);
+  return out;
+}
+
 interface StrongRef {
   uri: string;
   cid: string;

@@ -12,6 +12,7 @@ import {
   ArrowBigUp,
   ArrowUp,
   Bug,
+  CheckCircle2,
   ExternalLink,
   HelpCircle,
   Lightbulb,
@@ -37,6 +38,7 @@ import { animationDuration } from "#/design-system/theme/animations.stylex";
 import { primaryColor, uiColor } from "#/design-system/theme/color.stylex";
 import { amber } from "#/design-system/theme/colors/amber.stylex";
 import { blue } from "#/design-system/theme/colors/blue.stylex";
+import { green } from "#/design-system/theme/colors/green.stylex";
 import { red } from "#/design-system/theme/colors/red.stylex";
 import { radius } from "#/design-system/theme/radius.stylex";
 import {
@@ -337,6 +339,9 @@ const styles = stylex.create({
     marginTop: 0,
     minWidth: 0,
   },
+  headBadges: {
+    flexShrink: 0,
+  },
   tagPill: {
     alignItems: "center",
     borderRadius: radius.full,
@@ -364,6 +369,10 @@ const styles = stylex.create({
   tagQuestion: {
     backgroundColor: blue.component1,
     color: blue.text2,
+  },
+  tagImplemented: {
+    backgroundColor: green.component1,
+    color: green.text2,
   },
   cardBody: {
     color: uiColor.text1,
@@ -582,6 +591,16 @@ function tagFor(discussion: UserinputDiscussion): FeedbackTag {
   return (discussion.tags?.[0] ?? "feature") as FeedbackTag;
 }
 
+/**
+ * Label for a discussion the space owner has marked "implemented" on
+ * userinput.app. "Implemented" reads oddly for a question, so questions get
+ * "Answered" instead. Returns `null` for every other status (or none).
+ */
+function implementedLabel(discussion: UserinputDiscussion): string | null {
+  if (discussion.status !== "implemented") return null;
+  return tagFor(discussion) === "question" ? "Answered" : "Implemented";
+}
+
 function DiscussionCard({
   discussion,
   signedIn,
@@ -596,6 +615,7 @@ function DiscussionCard({
   onUpvote: (discussion: UserinputDiscussion) => void;
 }) {
   const tag = tagFor(discussion);
+  const statusLabel = implementedLabel(discussion);
   const author = discussion.author;
   const authorName = author.displayName ?? author.handle ?? "Anonymous";
   const isAnon = authorName === "Anonymous";
@@ -621,10 +641,19 @@ function DiscussionCard({
     <article {...stylex.props(styles.card)}>
       <div {...stylex.props(styles.cardHead)}>
         <h3 {...stylex.props(styles.cardTitle)}>{discussion.title}</h3>
-        <span {...stylex.props(styles.tagPill, TAG_PILL_STYLE[tag])}>
-          {TAG_ICON[tag]}
-          {TAG_LABEL[tag]}
-        </span>
+        <Flex align="center" gap="xs" style={styles.headBadges}>
+          {statusLabel ? (
+            <span {...stylex.props(styles.tagPill, styles.tagImplemented)}>
+              <CheckCircle2 size={13} strokeWidth={2} />
+              {statusLabel}
+            </span>
+          ) : (
+            <span {...stylex.props(styles.tagPill, TAG_PILL_STYLE[tag])}>
+              {TAG_ICON[tag]}
+              {TAG_LABEL[tag]}
+            </span>
+          )}
+        </Flex>
       </div>
       {discussion.body ? (
         <p {...stylex.props(styles.cardBody)}>{discussion.body}</p>

@@ -12,12 +12,14 @@ import {
 import type { FeedbackDraft } from "#/db/schema/feedback-draft";
 import { UPVOTE_DRAFT_TTL_MS, upvoteDraft } from "#/db/schema/upvote-draft";
 import type { UpvoteDraft } from "#/db/schema/upvote-draft";
+import type { FeedbackStatus } from "#/lib/userinput/space";
 import {
   STANDARD_READER_SPACE_URI,
   USERINPUT_APPVIEW_BASE,
   USERINPUT_DISCUSSION_SOURCE,
   USERINPUT_LIST_DISCUSSIONS_METHOD,
   USERINPUT_UPVOTE_SOURCE,
+  fetchStandardReaderDiscussionStatuses,
   resolveStandardReaderSpaceStrongRef,
 } from "#/lib/userinput/space";
 import {
@@ -235,6 +237,7 @@ export interface UserinputDiscussion {
   tags?: Array<string>;
   createdAt: string;
   upvoteCount: number;
+  status?: FeedbackStatus;
 }
 
 /**
@@ -490,18 +493,21 @@ const listFeedbackDiscussions = createServerFn({ method: "GET" })
       ];
       const discussionUris = validRecords.map((r) => r.uri);
 
-      // Hydrate authors + fetch upvote counts + fetch the viewer's upvotes in
-      // parallel (all independent).
-      const [authors, upvoteCounts, viewerUpvotedUris] = await Promise.all([
-        hydrateAuthors(authorDids),
-        fetchUpvoteCounts(discussionUris),
-        session
-          ? fetchViewerUpvotedUris(session.client, session.did)
-          : Promise.resolve(new Set<string>()),
-      ]);
+      // Hydrate authors + fetch upvote counts + fetch the viewer's upvotes +
+      // fetch discussion statuses, all in parallel (all independent).
+      const [authors, upvoteCounts, viewerUpvotedUris, statuses] =
+        await Promise.all([
+          hydrateAuthors(authorDids),
+          fetchUpvoteCounts(discussionUris),
+          session
+            ? fetchViewerUpvotedUris(session.client, session.did)
+            : Promise.resolve(new Set<string>()),
+          fetchStandardReaderDiscussionStatuses(),
+        ]);
 
       const discussions: Array<UserinputDiscussion> = validRecords.map((r) => {
         const did = /^at:\/\/([^/]+)/.exec(r.uri)?.[1] ?? "";
+        const status = statuses.get(r.uri);
         return {
           uri: r.uri,
           ...(r.cid ? { cid: r.cid } : {}),
@@ -511,6 +517,7 @@ const listFeedbackDiscussions = createServerFn({ method: "GET" })
           tags: r.value.tags,
           createdAt: r.value.createdAt,
           upvoteCount: upvoteCounts.get(r.uri) ?? 0,
+          ...(status ? { status } : {}),
         };
       });
 
