@@ -161,6 +161,48 @@ export function profileOgImageUrl(baseUrl: string, did: string): string {
 /** Dynamic OG card for a curated collection (`/collection/$did/$rkey`). */
 export { collectionOgImageUrl } from "#/lib/collections/og-meta";
 
+/** Personalized "your latest" RSS feed (`/feed/latest/$did`) — public, keyed by DID. */
+export function latestFeedUrl(baseUrl: string, did: string): string {
+  return `${baseUrl.replace(/\/$/, "")}/feed/latest/${encodeURIComponent(did)}`;
+}
+
+/** Publication RSS feed (`/feed/p/$did/$rkey`). */
+export function publicationFeedUrl(
+  baseUrl: string,
+  did: string,
+  rkey: string,
+): string {
+  return `${baseUrl.replace(/\/$/, "")}/feed/p/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`;
+}
+
+/** Tag RSS feed (`/feed/tag/$tag`). */
+export function tagFeedUrl(baseUrl: string, tag: string): string {
+  return `${baseUrl.replace(/\/$/, "")}/feed/tag/${encodeURIComponent(tag)}`;
+}
+
+/** Author RSS feed (`/feed/u/$did`). */
+export function authorFeedUrl(baseUrl: string, did: string): string {
+  return `${baseUrl.replace(/\/$/, "")}/feed/u/${encodeURIComponent(did)}`;
+}
+
+/** List RSS feed (`/feed/l/$did/$rkey`). */
+export function listFeedUrl(
+  baseUrl: string,
+  did: string,
+  rkey: string,
+): string {
+  return `${baseUrl.replace(/\/$/, "")}/feed/l/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`;
+}
+
+/** Curated collection RSS feed (`/feed/collection/$did/$rkey`). */
+export function collectionFeedUrl(
+  baseUrl: string,
+  did: string,
+  rkey: string,
+): string {
+  return `${baseUrl.replace(/\/$/, "")}/feed/collection/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`;
+}
+
 /** Full social meta for one of the main routes (title, OG card, URL). */
 export function pageSocialMeta(
   slug: PageOgSlug,

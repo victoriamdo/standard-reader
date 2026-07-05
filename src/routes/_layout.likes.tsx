@@ -164,7 +164,6 @@ function ReaderLikes() {
     <ReaderContent>
       <Masthead
         kicker="Your profile"
-        kickerIcon={<Heart size={14} aria-hidden />}
         title="Liked articles"
         dek="Articles you've liked across the network."
         metaLabel="Likes"

@@ -82,6 +82,8 @@ export interface ArticleCardQuery {
   discoverOnly?: boolean;
   /** Match documents whose `tags` array includes this label (case-insensitive). */
   tag?: string;
+  /** Restrict to documents authored by this DID (loose + publication-bound). */
+  did?: string;
   limit: number;
   offset?: number;
 }
@@ -141,6 +143,9 @@ export async function selectArticleCards(
   }
   if (opts.tag) {
     conds.push(documentCarriesTagWhere(d, opts.tag));
+  }
+  if (opts.did) {
+    conds.push(eq(d.did, opts.did));
   }
 
   const columns = articleCardColumns(schema);
@@ -1914,6 +1919,19 @@ export interface AuthorActivityPage<T> {
   total: number;
 }
 
+export interface AuthorSubscriptionsQueryResult {
+  items: Array<PublicationCard>;
+  total: number;
+  /**
+   * Number of subscription rows consumed by this page (before hydration
+   * drops any publication that's deleted/excluded) — use this, not
+   * `items.length`, to decide whether another page exists. A publication
+   * dropped during hydration would otherwise make `items.length < limit`
+   * mid-list and prematurely look like the end of the list.
+   */
+  fetchedCount: number;
+}
+
 /**
  * Publications this DID subscribes to (`site.standard.graph.subscription`),
  * newest subscription first.
@@ -1922,7 +1940,7 @@ export async function authorSubscriptions(
   db: Db,
   schema: Schema,
   opts: { did: string; limit: number; offset?: number },
-): Promise<AuthorActivityPage<PublicationCard>> {
+): Promise<AuthorSubscriptionsQueryResult> {
   const sub = schema.subscriptions;
   const where = and(eq(sub.subscriberDid, opts.did), eq(sub.deleted, false));
 
@@ -1953,7 +1971,91 @@ export async function authorSubscriptions(
   return {
     items,
     total: countRow[0]?.count ?? 0,
+    fetchedCount: uris.length,
   };
+}
+
+export interface AuthorReader {
+  did: string;
+  handle: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+/**
+ * Distinct readers subscribed to any of this DID's publications
+ * (`site.standard.graph.subscription`), most recently subscribed first.
+ */
+export async function authorReaders(
+  db: Db,
+  schema: Schema,
+  opts: { did: string; limit: number; offset?: number },
+): Promise<AuthorActivityPage<AuthorReader>> {
+  const p = schema.publications;
+  const sub = schema.subscriptions;
+  const pr = schema.profiles;
+
+  const pubRows = await db
+    .select({ uri: p.uri })
+    .from(p)
+    .where(and(eq(p.did, opts.did), eq(p.deleted, false)));
+  const pubUris = pubRows.map((row) => row.uri);
+
+  if (pubUris.length === 0) {
+    return { items: [], total: 0 };
+  }
+
+  const where = and(
+    inArray(sub.publicationUri, pubUris),
+    eq(sub.deleted, false),
+  );
+
+  const [countRow, didRows] = await Promise.all([
+    db
+      .select({
+        count: sql<number>`count(distinct ${sub.subscriberDid})::int`.mapWith(
+          Number,
+        ),
+      })
+      .from(sub)
+      .where(where),
+    db
+      .select({ subscriberDid: sub.subscriberDid })
+      .from(sub)
+      .where(where)
+      .groupBy(sub.subscriberDid)
+      .orderBy(desc(sql`max(${sub.createdAt})`), asc(sub.subscriberDid))
+      .limit(opts.limit)
+      .offset(opts.offset ?? 0),
+  ]);
+
+  const dids = didRows.map((row) => row.subscriberDid);
+  if (dids.length === 0) {
+    return { items: [], total: countRow[0]?.count ?? 0 };
+  }
+
+  const profileRows = await db
+    .select({
+      did: pr.did,
+      handle: pr.handle,
+      displayName: pr.displayName,
+      avatarUrl: pr.avatarUrl,
+    })
+    .from(pr)
+    .where(inArray(pr.did, dids));
+  const byDid = new Map(profileRows.map((row) => [row.did, row]));
+
+  const items = dids.map(
+    (did): AuthorReader =>
+      byDid.get(did) ?? {
+        did,
+        handle: null,
+        displayName: null,
+        avatarUrl: null,
+      },
+  );
+
+  return { items, total: countRow[0]?.count ?? 0 };
 }
 
 /**
@@ -2057,13 +2159,14 @@ export async function authorPublications(
 }
 
 /**
- * Loose documents authored by this DID — `site.standard.document` records
- * whose `site` is an `https://` URL with no matching publication row
- * (`publication_uri IS NULL`). Newest first. Backs the "Documents" section
- * of the author profile so authors who publish off-platform (e.g. Leaflet-
- * hosted) still have their writing listed.
+ * All documents authored by this DID — `site.standard.document` records,
+ * whether attached to one of their own publications or "loose" (an
+ * `https://` `site` with no matching publication row). Newest first. Backs
+ * the "Posts" tab of the author profile, so authors who publish off-platform
+ * (e.g. Leaflet-hosted) still have their writing listed alongside posts that
+ * belong to a publication.
  */
-export async function authorLooseDocuments(
+export async function authorDocuments(
   db: Db,
   schema: Schema,
   opts: { did: string; limit: number; offset?: number },
@@ -2075,7 +2178,6 @@ export async function authorLooseDocuments(
   const where = and(
     eq(d.did, opts.did),
     eq(d.deleted, false),
-    isNull(d.publicationUri),
     documentPublishedNotInFuture(d),
   );
 
@@ -2090,11 +2192,11 @@ export async function authorLooseDocuments(
         isRead: documentReadExistsColumn(schema, opts.did),
       })
       .from(d)
-      .leftJoin(p, eq(p.uri, d.publicationUri))
-      // `pr` (publication owner profile) is always null for loose documents
+      // `pr` (publication owner profile) is null for loose documents
       // (publication_uri IS NULL → no `p` row → no `pr` match), but
       // `articleCardColumns` references `pr.avatarUrl`/`pr.handle`/`pr.bannerUrl`,
       // so the table must be present in the query or Drizzle throws.
+      .leftJoin(p, eq(p.uri, d.publicationUri))
       .leftJoin(pr, eq(pr.did, p.did))
       .leftJoin(pa, eq(pa.did, d.did))
       .where(where)

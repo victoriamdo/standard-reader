@@ -164,7 +164,6 @@ function ReaderHistory() {
     <ReaderContent>
       <Masthead
         kicker="Your profile"
-        kickerIcon={<History size={14} aria-hidden />}
         title="Reading history"
         dek="Articles you've opened — public records in your repo, synced across devices."
         metaLabel="Read"

@@ -77,6 +77,10 @@ const listRefInput = z.object({
   rkey: z.string().min(1),
 });
 
+const authorListsInput = z.object({
+  did: z.string().min(1),
+});
+
 const listFeedInput = listRefInput.extend({
   limit: z.number().int().min(1).max(50).default(20),
   offset: z.number().int().min(0).default(0),
@@ -384,6 +388,21 @@ const getListFeed = createServerFn({ method: "GET" })
     }),
   );
 
+// ── Author's public lists (profile "Lists" tab) ──────────────────────────────
+
+const getAuthorLists = createServerFn({ method: "GET" })
+  .validator(authorListsInput)
+  .handler(
+    observe("lists.getAuthorLists", async ({ data }, span) => {
+      span.set("did", data.did);
+      // Lists are public repo records — no ownership/auth check needed to
+      // view another author's lists, same as their publications or posts.
+      const lists = await loadOwnSubscriptionLists(null, data.did);
+      span.set("count", lists.length);
+      return lists satisfies Array<SubscriptionList>;
+    }),
+  );
+
 // ── Saved lists (other readers' lists added to this app) ────────────────────
 
 const getSavedLists = createServerFn({ method: "GET" }).handler(
@@ -477,6 +496,15 @@ function getSavedListsQueryOptions() {
   });
 }
 
+function getAuthorListsQueryOptions(did: string) {
+  return queryOptions({
+    queryKey: ["author", did, "lists"] as const,
+    queryFn: async () => getAuthorLists({ data: { did } }),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
 function getListQueryOptions(did: string, rkey: string) {
   return queryOptions({
     queryKey: ["list", did, rkey] as const,
@@ -547,6 +575,9 @@ export const listApi = {
   getListQueryOptions,
   getListFeed,
   getListFeedQueryOptions,
+  // author's public lists
+  getAuthorLists,
+  getAuthorListsQueryOptions,
   // saved lists
   getSavedLists,
   getSavedListsQueryOptions,

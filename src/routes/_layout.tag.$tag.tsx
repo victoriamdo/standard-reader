@@ -35,6 +35,7 @@ import {
   ReaderContent,
   SectionHead,
 } from "#/components/reader/primitives";
+import { RssFeedButton } from "#/components/reader/rss-feed-button";
 import { ButtonLink } from "#/components/router-links";
 import {
   AlertDialog,
@@ -73,7 +74,7 @@ import { tagApi } from "#/integrations/tanstack-query/api-tag.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { formatCount } from "#/lib/format-count";
 import { getPublicUrlClient } from "#/lib/public-url";
-import { SITE_NAME, siteSocialMeta } from "#/lib/site-metadata";
+import { SITE_NAME, siteSocialMeta, tagFeedUrl } from "#/lib/site-metadata";
 import { useDelayedLoading } from "#/lib/use-delayed-loading";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
@@ -149,6 +150,14 @@ export const Route = createFileRoute("/_layout/tag/$tag")({
         description,
         url: `${baseUrl.replace(/\/$/, "")}/tag/${encodeURIComponent(tag)}`,
       }),
+      links: [
+        {
+          rel: "alternate",
+          type: "application/rss+xml",
+          title,
+          href: tagFeedUrl(baseUrl, tag),
+        },
+      ],
     };
   },
   component: TagPage,
@@ -1016,11 +1025,16 @@ function TagPage() {
           </div>
         </div>
 
-        {isFeed ? null : (
-          <div {...stylex.props(styles.heroActs)}>
+        <div {...stylex.props(styles.heroActs)}>
+          <RssFeedButton
+            name={displayTag}
+            feedUrl={tagFeedUrl(getPublicUrlClient(), tag)}
+            size="md"
+          />
+          {isFeed ? null : (
             <TagFollowAllButton tag={tag} publicationCount={publicationCount} />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <Tabs

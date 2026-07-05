@@ -164,7 +164,6 @@ function ReaderSaved() {
     <ReaderContent>
       <Masthead
         kicker="Your profile"
-        kickerIcon={<Bookmark size={14} aria-hidden />}
         title="Saved for later"
         dek="Articles you've saved for later — in your repo, synced across devices."
         metaLabel="Saved"

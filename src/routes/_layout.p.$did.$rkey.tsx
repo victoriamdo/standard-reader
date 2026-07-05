@@ -6,7 +6,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ExternalLink } from "lucide-react";
+import { CheckCheck, ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { authorApi } from "#/integrations/tanstack-query/api-author.functions";
@@ -14,7 +14,11 @@ import { publicationApi } from "#/integrations/tanstack-query/api-publication.fu
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
-import { publicationOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
+import {
+  publicationFeedUrl,
+  publicationOgImageUrl,
+  siteSocialMeta,
+} from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 
 import { AddToListButton } from "../components/reader/add-to-list-modal";
@@ -41,9 +45,16 @@ import {
   invalidateReadQueries,
   isArticleUnreadForReader,
 } from "../components/reader/read-optimistic";
+import { RssFeedButton } from "../components/reader/rss-feed-button";
 import { ShareMenu } from "../components/reader/share-menu";
-import { AuthorSifaResumeChip } from "../components/reader/sifa-resume-chip";
-import { Button } from "../design-system/button";
+import {
+  AlertDialog,
+  AlertDialogActionButton,
+  AlertDialogCancelButton,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+} from "../design-system/alert-dialog";
 import { Flex } from "../design-system/flex";
 import { IconButton } from "../design-system/icon-button";
 import { Skeleton } from "../design-system/skeleton";
@@ -162,12 +173,24 @@ export const Route = createFileRoute("/_layout/p/$did/$rkey")({
           rel: "site.standard.publication",
           href: publicationUriFromParams(match.params.did, match.params.rkey),
         },
+        {
+          rel: "alternate",
+          type: "application/rss+xml",
+          title: `${name} · Standard Reader`,
+          href: publicationFeedUrl(
+            baseUrl,
+            match.params.did,
+            match.params.rkey,
+          ),
+        },
       ],
     };
   },
   component: PublicationProfilePage,
   pendingComponent: PublicationPending,
 });
+
+const HERO_DESKTOP = "@media (min-width: 40rem)";
 
 const styles = stylex.create({
   hero: {
@@ -176,11 +199,9 @@ const styles = stylex.create({
     borderBottomWidth: 1,
   },
   heroInner: {
-    alignItems: "flex-start",
     boxSizing: "border-box",
-    columnGap: spacing["5"],
     display: "flex",
-    flexWrap: "wrap",
+    flexDirection: "column",
     rowGap: spacing["4"],
     marginLeft: "auto",
     marginRight: "auto",
@@ -188,14 +209,21 @@ const styles = stylex.create({
     paddingBottom: spacing["6"],
     paddingLeft: {
       default: spacing["5"],
-      "@media (min-width: 40rem)": spacing["10"],
+      [HERO_DESKTOP]: spacing["10"],
     },
     paddingRight: {
       default: spacing["5"],
-      "@media (min-width: 40rem)": spacing["10"],
+      [HERO_DESKTOP]: spacing["10"],
     },
     paddingTop: spacing["6"],
     width: "100%",
+  },
+  heroTop: {
+    alignItems: "flex-start",
+    columnGap: spacing["4"],
+    display: "flex",
+    flexWrap: "wrap",
+    rowGap: spacing["3"],
   },
   avRing: {
     flexShrink: 0,
@@ -208,7 +236,7 @@ const styles = stylex.create({
     flexBasis: "0%",
     flexGrow: 1,
     flexShrink: 1,
-    minWidth: "240px",
+    minWidth: "200px",
     paddingTop: spacing["0.5"],
   },
   heroName: {
@@ -221,13 +249,16 @@ const styles = stylex.create({
     marginBottom: spacing["0"],
     marginTop: spacing["2"],
   },
+  heroHandle: {
+    marginTop: spacing["1"],
+  },
   heroDesc: {
     color: uiColor.text1,
     fontFamily: fontFamily.serif,
     fontSize: fontSize.lg,
     lineHeight: lineHeight.sm,
     marginBottom: spacing["0"],
-    marginTop: spacing["2"],
+    marginTop: spacing["0"],
     maxWidth: "60ch",
   },
   handleLink: {
@@ -236,28 +267,67 @@ const styles = stylex.create({
     textDecorationColor: "currentColor",
     textUnderlineOffset: "2px",
   },
-  stats: {
-    alignItems: "baseline",
+  statStrip: {
+    alignItems: "stretch",
     color: uiColor.text1,
-    columnGap: spacing["6"],
     display: "flex",
     flexWrap: "wrap",
-    fontFamily: fontFamily.sans,
-    fontSize: fontSize.xs,
     rowGap: spacing["2"],
-    marginTop: spacing["4"],
+  },
+  statItem: {
+    borderRightColor: uiColor.border1,
+    borderRightStyle: "solid",
+    borderRightWidth: 1,
+    display: "flex",
+    flexDirection: "column",
+    marginRight: spacing["4"],
+    paddingRight: spacing["4"],
+    rowGap: spacing["0.5"],
+  },
+  statItemLast: {
+    borderRightWidth: 0,
+    marginRight: spacing["0"],
+    paddingRight: spacing["0"],
   },
   statValue: {
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
-    marginRight: spacing["1"],
+    lineHeight: lineHeight.xs,
+  },
+  statLabel: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.sans,
+    fontSize: "0.7rem",
+    fontWeight: fontWeight.medium,
+    letterSpacing: tracking.wide,
+    textTransform: "uppercase",
+  },
+  heroActsMobile: {
+    display: { default: "flex", [HERO_DESKTOP]: "none" },
+    flexDirection: "column",
+    rowGap: spacing["2.5"],
+  },
+  heroActsMobilePrimary: {
+    display: "flex",
+  },
+  heroFollowFull: {
+    flexGrow: 1,
+    width: "100%",
+  },
+  heroActsMobileSecondary: {
+    alignItems: "center",
+    columnGap: spacing["1.5"],
+    display: "flex",
+    flexWrap: "wrap",
+    rowGap: spacing["1.5"],
   },
   heroActs: {
     alignItems: "center",
     columnGap: spacing["1.5"],
-    display: "flex",
+    display: { default: "none", [HERO_DESKTOP]: "flex" },
+    flexShrink: 0,
     flexWrap: "wrap",
     justifyContent: "flex-end",
     rowGap: spacing["2.5"],
@@ -359,12 +429,20 @@ function lastActive(iso: string | null): string {
   return `${Math.floor(days / 365)}y ago`;
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+function Stat({
+  value,
+  label,
+  isLast = false,
+}: {
+  value: string;
+  label: string;
+  isLast?: boolean;
+}) {
   return (
-    <span>
+    <div {...stylex.props(styles.statItem, isLast && styles.statItemLast)}>
       <span {...stylex.props(styles.statValue)}>{value}</span>
-      {label}
-    </span>
+      <span {...stylex.props(styles.statLabel)}>{label}</span>
+    </div>
   );
 }
 
@@ -447,17 +525,17 @@ function PublicationPending() {
     <div aria-busy="true" aria-label="Loading publication">
       <div {...stylex.props(styles.hero)}>
         <div {...stylex.props(styles.heroInner)}>
-          <div {...stylex.props(styles.avRing)}>
-            <Skeleton variant="circle" size="lg" />
+          <div {...stylex.props(styles.heroTop)}>
+            <div {...stylex.props(styles.avRing)}>
+              <Skeleton variant="circle" size="lg" />
+            </div>
+            <div {...stylex.props(styles.heroInfo)}>
+              <Skeleton variant="rectangle" style={styles.heroSkeletonName} />
+            </div>
           </div>
-          <div {...stylex.props(styles.heroInfo)}>
-            <Skeleton variant="rectangle" style={styles.heroSkeletonName} />
-            <Skeleton variant="rectangle" style={styles.heroSkeletonDesc} />
-            <Skeleton variant="rectangle" style={styles.heroSkeletonStats} />
-          </div>
-          <div {...stylex.props(styles.heroActs)}>
-            <Skeleton variant="rectangle" style={styles.heroSkeletonActs} />
-          </div>
+          <Skeleton variant="rectangle" style={styles.heroSkeletonDesc} />
+          <Skeleton variant="rectangle" style={styles.heroSkeletonStats} />
+          <Skeleton variant="rectangle" style={styles.heroSkeletonActs} />
         </div>
       </div>
       <ReaderContent>
@@ -505,72 +583,128 @@ function PublicationProfile() {
     <div>
       <div {...stylex.props(styles.hero)}>
         <div {...stylex.props(styles.heroInner)}>
-          <div {...stylex.props(styles.avRing)}>
-            <PublicationAvatar pub={pub} size="xl" style={styles.avatar} />
-          </div>
+          <div {...stylex.props(styles.heroTop)}>
+            <div {...stylex.props(styles.avRing)}>
+              <PublicationAvatar pub={pub} size="xl" style={styles.avatar} />
+            </div>
 
-          <div {...stylex.props(styles.heroInfo)}>
-            {pub.topic ? (
-              <Kicker>
-                <Topic name={pub.topic} />
-              </Kicker>
-            ) : null}
-            <h1 {...stylex.props(styles.heroName)}>{pub.name}</h1>
-            {pub.description ? (
-              <p {...stylex.props(styles.heroDesc)}>{pub.description}</p>
-            ) : null}
-            <div {...stylex.props(styles.stats)}>
+            <div {...stylex.props(styles.heroInfo)}>
+              {pub.topic ? (
+                <Kicker>
+                  <Topic name={pub.topic} />
+                </Kicker>
+              ) : null}
+              <h1 {...stylex.props(styles.heroName)}>{pub.name}</h1>
               {owner.handle ? (
                 <Link
                   to="/u/$did"
                   params={{ did: owner.did }}
                   {...stylex.props(styles.handleLink)}
                 >
-                  <Handle>@{owner.handle}</Handle>
+                  <Handle style={styles.heroHandle}>@{owner.handle}</Handle>
                 </Link>
               ) : null}
-              <Stat
-                value={formatReaders(pub.subscriberCount)}
-                label="readers"
-              />
-              <Stat value={String(pub.documentCount)} label="posts" />
-              <Stat value={lastActive(pub.lastDocumentAt ?? null)} label="" />
-              <AuthorSifaResumeChip did={owner.did} handle={owner.handle} />
             </div>
-            {signedIn && socialProof && socialProof.total > 0 ? (
-              <PublicationSocialProofLine {...socialProof} />
-            ) : null}
+
+            <div {...stylex.props(styles.heroActs)}>
+              <ShareMenu
+                variant="icon"
+                pageUrl={`${getPublicUrlClient()}/p/${did}/${rkey}`}
+                embed={embedMeta ?? undefined}
+              />
+              <RssFeedButton
+                name={pub.name}
+                feedUrl={publicationFeedUrl(getPublicUrlClient(), did, rkey)}
+                size="md"
+              />
+              {pub.url ? (
+                <IconButton
+                  variant="secondary"
+                  size="md"
+                  label="Open publication"
+                  onPress={() => {
+                    window.open(pub.url, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <ExternalLink size={15} />
+                </IconButton>
+              ) : null}
+              <AddToListButton
+                publicationUri={pub.uri}
+                signedIn={signedIn}
+                size="md"
+              />
+              <FollowButton
+                publicationUri={pub.uri}
+                signedIn={signedIn}
+                size="md"
+                pub={pub}
+              />
+            </div>
           </div>
 
-          <div {...stylex.props(styles.heroActs)}>
-            <ShareMenu
-              variant="icon"
-              pageUrl={`${getPublicUrlClient()}/p/${did}/${rkey}`}
-              embed={embedMeta ?? undefined}
+          {pub.description ? (
+            <p {...stylex.props(styles.heroDesc)}>{pub.description}</p>
+          ) : null}
+
+          <div {...stylex.props(styles.statStrip)}>
+            <Stat
+              value={formatReaders(pub.subscriberCount)}
+              label="Readers"
             />
-            {pub.url ? (
-              <IconButton
-                variant="secondary"
+            <Stat value={String(pub.documentCount)} label="Posts" />
+            <Stat
+              value={lastActive(pub.lastDocumentAt ?? null)}
+              label="Last active"
+              isLast
+            />
+          </div>
+
+          {signedIn && socialProof && socialProof.total > 0 ? (
+            <PublicationSocialProofLine {...socialProof} />
+          ) : null}
+
+          <div {...stylex.props(styles.heroActsMobile)}>
+            <div {...stylex.props(styles.heroActsMobilePrimary)}>
+              <FollowButton
+                publicationUri={pub.uri}
+                signedIn={signedIn}
                 size="md"
-                label="Open publication"
-                onPress={() => {
-                  window.open(pub.url, "_blank", "noopener,noreferrer");
-                }}
-              >
-                <ExternalLink size={15} />
-              </IconButton>
-            ) : null}
-            <AddToListButton
-              publicationUri={pub.uri}
-              signedIn={signedIn}
-              size="md"
-            />
-            <FollowButton
-              publicationUri={pub.uri}
-              signedIn={signedIn}
-              size="md"
-              pub={pub}
-            />
+                pub={pub}
+                responsive={false}
+                style={styles.heroFollowFull}
+              />
+            </div>
+            <div {...stylex.props(styles.heroActsMobileSecondary)}>
+              <AddToListButton
+                publicationUri={pub.uri}
+                signedIn={signedIn}
+                size="md"
+              />
+              <RssFeedButton
+                name={pub.name}
+                feedUrl={publicationFeedUrl(getPublicUrlClient(), did, rkey)}
+                size="md"
+              />
+              <ShareMenu
+                variant="icon"
+                size="md"
+                pageUrl={`${getPublicUrlClient()}/p/${did}/${rkey}`}
+                embed={embedMeta ?? undefined}
+              />
+              {pub.url ? (
+                <IconButton
+                  variant="secondary"
+                  size="md"
+                  label="Open publication"
+                  onPress={() => {
+                    window.open(pub.url, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <ExternalLink size={15} />
+                </IconButton>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
@@ -609,6 +743,7 @@ function PublicationRecentWriting({
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+  const [markAllReadOpen, setMarkAllReadOpen] = useState(false);
 
   useEffect(() => {
     setDocuments(initialPage.items);
@@ -645,6 +780,9 @@ function PublicationRecentWriting({
           unreadDocumentUris.includes(doc.uri) ? { ...doc, isRead: true } : doc,
         ),
       );
+    },
+    onSuccess: () => {
+      setMarkAllReadOpen(false);
     },
     onError: () => {
       invalidateReadQueries(queryClient);
@@ -701,16 +839,38 @@ function PublicationRecentWriting({
       <SectionHead
         kicker="Latest"
         title="Recent writing"
+        stackOnMobile={false}
         action={
           signedIn && unreadDocumentUris.length > 0 ? (
-            <Button
-              variant="tertiary"
-              size="sm"
-              isPending={markingAllRead}
-              onPress={() => markAllRead(uri)}
+            <AlertDialog
+              isOpen={markAllReadOpen}
+              onOpenChange={setMarkAllReadOpen}
+              trigger={
+                <IconButton
+                  variant="secondary"
+                  size="md"
+                  label="Mark all as read"
+                >
+                  <CheckCheck size={18} />
+                </IconButton>
+              }
             >
-              Mark all as read
-            </Button>
+              <AlertDialogHeader>Mark all as read?</AlertDialogHeader>
+              <AlertDialogDescription>
+                Every unread article from this publication will be marked
+                read. This can’t be undone.
+              </AlertDialogDescription>
+              <AlertDialogFooter>
+                <AlertDialogCancelButton isDisabled={markingAllRead} />
+                <AlertDialogActionButton
+                  closeOnPress={false}
+                  isPending={markingAllRead}
+                  onPress={() => markAllRead(uri)}
+                >
+                  Mark all as read
+                </AlertDialogActionButton>
+              </AlertDialogFooter>
+            </AlertDialog>
           ) : undefined
         }
       />

@@ -123,11 +123,6 @@ const EMPTY_STEPS = [
 ] as const;
 
 const styles = stylex.create({
-  page: {
-    marginLeft: "auto",
-    marginRight: "auto",
-    maxWidth: "73.75rem",
-  },
   pageHeader: {
     paddingTop: {
       default: spacing["6"],
@@ -140,10 +135,13 @@ const styles = stylex.create({
     display: "flex",
     justifyContent: "space-between",
     rowGap: gap.md,
-    minHeight: spacing["9"],
   },
   mastheadAfterTopbar: {
-    paddingTop: spacing["4"],
+    paddingTop: spacing["5"],
+  },
+  newSeriesButton: {
+    marginBottom: `calc(-1 * ${spacing["3.5"]})`,
+    marginTop: `calc(-1 * ${spacing["3.5"]})`,
   },
   inkButton: {
     borderColor: {
@@ -674,7 +672,7 @@ function NewSeriesButton({
       variant="primary"
       size={size}
       onPress={onPress}
-      style={[styles.inkButton, primary.textContrast]}
+      style={[styles.inkButton, primary.textContrast, styles.newSeriesButton]}
     >
       <Plus size={15} aria-hidden {...stylex.props(styles.inkButtonIcon)} /> New
       series
@@ -794,12 +792,10 @@ function CollectionsPage() {
 
   return (
     <ReaderContent>
-      <div {...stylex.props(styles.page)}>
+      <div>
         <div {...stylex.props(styles.pageHeader)}>
           <div {...stylex.props(styles.topbar)}>
-            <Kicker icon={<Layers size={14} aria-hidden />}>
-              Your profile
-            </Kicker>
+            <Kicker>Your profile</Kicker>
             {isFullyEmpty ? null : (
               <NewSeriesButton
                 onPress={() =>

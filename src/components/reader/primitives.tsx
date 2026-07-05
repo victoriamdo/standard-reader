@@ -1,6 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { Heart, MessageCircle } from "lucide-react";
 
+import { Text } from "#/design-system/typography/text.tsx";
+
 import { Avatar } from "../../design-system/avatar";
 import { Flex } from "../../design-system/flex";
 import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
@@ -185,6 +187,10 @@ const styles = stylex.create({
     marginBottom: spacing["5"],
     marginTop: spacing["2"],
   },
+  sectionHeadRow: {
+    alignItems: "flex-end",
+    flexDirection: "row",
+  },
   sectionHeadTitle: {
     minWidth: 0,
   },
@@ -195,6 +201,9 @@ const styles = stylex.create({
       default: "100%",
       "@media (min-width: 40rem)": "auto",
     },
+  },
+  sectionHeadActionAuto: {
+    width: "auto",
   },
   metaGroup: {
     alignItems: "center",
@@ -226,18 +235,18 @@ export function Kicker({
   icon?: React.ReactNode;
 }) {
   return (
-    <span
-      {...stylex.props(
+    <Text
+      style={[
         styles.kicker,
         muted && styles.kickerMuted,
         icon != null && styles.kickerRow,
-      )}
+      ]}
     >
       {icon == null ? null : (
         <span {...stylex.props(styles.kickerIcon)}>{icon}</span>
       )}
       {children}
-    </span>
+    </Text>
   );
 }
 
@@ -341,20 +350,32 @@ export function SectionHead({
   title,
   action,
   icon,
+  stackOnMobile = true,
 }: {
   kicker?: React.ReactNode;
   title: React.ReactNode;
   action?: React.ReactNode;
   icon?: React.ReactNode;
+  /** Set false to keep the action inline with the title even on narrow screens (e.g. a compact icon button). */
+  stackOnMobile?: boolean;
 }) {
   return (
-    <div {...stylex.props(styles.sectionHead)}>
+    <div
+      {...stylex.props(styles.sectionHead, !stackOnMobile && styles.sectionHeadRow)}
+    >
       <Flex direction="column" gap="md" style={styles.sectionHeadTitle}>
         {kicker != null && <Kicker icon={icon}>{kicker}</Kicker>}
         <span {...stylex.props(styles.sectionTitle)}>{title}</span>
       </Flex>
       {action == null ? null : (
-        <div {...stylex.props(styles.sectionHeadAction)}>{action}</div>
+        <div
+          {...stylex.props(
+            styles.sectionHeadAction,
+            !stackOnMobile && styles.sectionHeadActionAuto,
+          )}
+        >
+          {action}
+        </div>
       )}
     </div>
   );

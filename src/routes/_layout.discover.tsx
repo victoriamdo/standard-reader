@@ -890,7 +890,6 @@ function Discover() {
     <ReaderContent>
       <Masthead
         kicker="The directory"
-        kickerIcon={<Compass size={13} />}
         title="Discover"
         dek={
           <DiscoverMastheadDek knownPublicationCount={knownPublicationCount} />

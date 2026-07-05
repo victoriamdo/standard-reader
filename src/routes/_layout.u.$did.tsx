@@ -1,12 +1,22 @@
 import * as stylex from "@stylexjs/stylex";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { ExternalLink } from "lucide-react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  createFileRoute,
+  createLink,
+  redirect,
+  useNavigate,
+} from "@tanstack/react-router";
+import { ExternalLink, ListPlus } from "lucide-react";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link as AriaLink } from "react-aria-components";
+import { z } from "zod";
 
 import { formatReaders, initials } from "#/components/reader/format";
-import type { AuthorProfile } from "#/integrations/tanstack-query/api-author.functions";
+import type {
+  AuthorProfile,
+  AuthorReader,
+} from "#/integrations/tanstack-query/api-author.functions";
 import {
   AUTHOR_ACTIVITY_PAGE_SIZE,
   authorApi,
@@ -15,22 +25,28 @@ import type {
   ArticleCard,
   PublicationCard,
 } from "#/integrations/tanstack-query/api-shapes";
+import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
+import type { SubscriptionList } from "#/integrations/tanstack-query/api-lists.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
-import { profileOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
-
-import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
-import { LinkifiedText } from "../components/reader/linkified-text";
 import {
-  Handle,
-  Kicker,
-  ReaderContent,
-  SectionHead,
-} from "../components/reader/primitives";
+  authorFeedUrl,
+  profileOgImageUrl,
+  siteSocialMeta,
+} from "#/lib/site-metadata";
+
+import { AuthorProfileLink } from "../components/reader/author-profile-link";
+import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
+import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
+import { LinkifiedText } from "../components/reader/linkified-text";
+import { RssFeedButton } from "../components/reader/rss-feed-button";
 import { ShareMenu } from "../components/reader/share-menu";
 import { AuthorSifaResumeChip } from "../components/reader/sifa-resume-chip";
 import { Avatar } from "../design-system/avatar";
+import { Badge } from "../design-system/badge";
 import { IconButton } from "../design-system/icon-button";
+import { Tab, TabList, TabPanel, Tabs } from "../design-system/tabs";
 import { uiColor } from "../design-system/theme/color.stylex";
+import { ui } from "../design-system/theme/semantic-color.stylex";
 import { size as boxSize } from "../design-system/theme/semantic-spacing.stylex";
 import { spacing } from "../design-system/theme/spacing.stylex";
 import {
@@ -43,7 +59,17 @@ import {
 
 const AUTHOR_PAGE_SIZE = 24;
 
+const authorSearchSchema = z.object({
+  tab: z
+    .enum(["posts", "publications", "subscriptions", "readers", "lists"])
+    .default("posts"),
+});
+
+type AuthorSearch = z.infer<typeof authorSearchSchema>;
+type AuthorTab = AuthorSearch["tab"];
+
 export const Route = createFileRoute("/_layout/u/$did")({
+  validateSearch: authorSearchSchema,
   loader: async ({ context, params }) => {
     const page = await context.queryClient.ensureQueryData(
       authorApi.getAuthorProfileQueryOptions(params.did, {
@@ -51,6 +77,15 @@ export const Route = createFileRoute("/_layout/u/$did")({
       }),
     );
     const profile = page?.profile;
+    // `$did` accepts a handle too — canonicalize to the resolved DID so
+    // handle-based links (e.g. `@mentions` in a bio) redirect to a stable URL.
+    if (profile?.did && profile.did !== params.did) {
+      throw redirect({
+        to: "/u/$did",
+        params: { did: profile.did },
+        search: (prev) => prev,
+      });
+    }
     if (page) {
       void context.queryClient.prefetchQuery(
         authorApi.getAuthorSifaProfileQueryOptions(
@@ -84,38 +119,52 @@ export const Route = createFileRoute("/_layout/u/$did")({
         url: `${baseUrl}${match.pathname}`,
         ogImage: profileOgImageUrl(baseUrl, match.params.did),
       }),
+      links: [
+        {
+          rel: "alternate",
+          type: "application/rss+xml",
+          title: `${name} · Standard Reader`,
+          href: authorFeedUrl(baseUrl, match.params.did),
+        },
+      ],
     };
   },
   component: AuthorProfilePage,
 });
 
+const HERO_DESKTOP = "@media (min-width: 40rem)";
+
 const styles = stylex.create({
   hero: {
-    borderBottomColor: uiColor.border1,
-    borderBottomStyle: "solid",
-    borderBottomWidth: 1,
+    display: "flex",
+    flexDirection: "column",
   },
   heroInner: {
-    alignItems: "flex-start",
     boxSizing: "border-box",
-    columnGap: spacing["5"],
     display: "flex",
-    flexWrap: "wrap",
+    flexDirection: "column",
     rowGap: spacing["4"],
     marginLeft: "auto",
     marginRight: "auto",
     maxWidth: "1320px",
-    paddingBottom: spacing["6"],
+    paddingBottom: spacing["4"],
     paddingLeft: {
       default: spacing["5"],
-      "@media (min-width: 40rem)": spacing["10"],
+      [HERO_DESKTOP]: spacing["10"],
     },
     paddingRight: {
       default: spacing["5"],
-      "@media (min-width: 40rem)": spacing["10"],
+      [HERO_DESKTOP]: spacing["10"],
     },
     paddingTop: spacing["6"],
     width: "100%",
+  },
+  heroTop: {
+    alignItems: "flex-start",
+    columnGap: spacing["4"],
+    display: "flex",
+    flexWrap: "wrap",
+    rowGap: spacing["3"],
   },
   avatarWrap: {
     flexShrink: 0,
@@ -128,7 +177,7 @@ const styles = stylex.create({
     flexBasis: "0%",
     flexGrow: 1,
     flexShrink: 1,
-    minWidth: "240px",
+    minWidth: "200px",
     paddingTop: spacing["0.5"],
   },
   heroName: {
@@ -141,47 +190,142 @@ const styles = stylex.create({
     marginBottom: spacing["0"],
     marginTop: spacing["2"],
   },
+  heroHandle: {
+    marginTop: spacing["1"],
+  },
   heroDesc: {
     color: uiColor.text1,
     fontFamily: fontFamily.serif,
     fontSize: fontSize.lg,
     lineHeight: lineHeight.sm,
     marginBottom: spacing["0"],
-    marginTop: spacing["2"],
+    marginTop: spacing["0"],
     maxWidth: "60ch",
   },
-  stats: {
-    alignItems: "baseline",
-    color: uiColor.text1,
-    columnGap: spacing["6"],
-    display: "flex",
+  heroActsMobile: {
+    columnGap: spacing["1.5"],
+    display: { default: "flex", [HERO_DESKTOP]: "none" },
     flexWrap: "wrap",
-    fontFamily: fontFamily.sans,
-    fontSize: fontSize.xs,
-    rowGap: spacing["2"],
-    marginTop: spacing["4"],
-  },
-  statValue: {
-    color: uiColor.text2,
-    fontFamily: fontFamily.serif,
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.semibold,
-    marginRight: spacing["1"],
+    rowGap: spacing["1.5"],
   },
   heroActs: {
     alignItems: "center",
     columnGap: spacing["1.5"],
-    display: "flex",
+    display: { default: "none", [HERO_DESKTOP]: "flex" },
+    flexShrink: 0,
     flexWrap: "wrap",
     justifyContent: "flex-end",
     rowGap: spacing["2.5"],
     paddingTop: spacing["1"],
   },
-  section: {
-    marginTop: spacing["8"],
-  },
-  sectionLast: {
+  tabs: {
     paddingBottom: spacing["10"],
+  },
+  tabBar: {
+    width: "100%",
+  },
+  tabBarInner: {
+    boxSizing: "border-box",
+    marginLeft: "auto",
+    marginRight: "auto",
+    maxWidth: "1320px",
+    paddingLeft: {
+      default: spacing["5"],
+      [HERO_DESKTOP]: spacing["10"],
+    },
+    paddingRight: {
+      default: spacing["5"],
+      [HERO_DESKTOP]: spacing["10"],
+    },
+    paddingTop: spacing["2"],
+    width: "100%",
+  },
+  tabList: {
+    borderBottomStyle: "none",
+    borderBottomWidth: 0,
+  },
+  tabCount: {
+    marginLeft: spacing["2"],
+  },
+  tabRule: {
+    borderBottomColor: uiColor.border1,
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    width: "100%",
+  },
+  tabPanel: {
+    paddingLeft: spacing["0"],
+    paddingRight: spacing["0"],
+    paddingTop: spacing["6"],
+  },
+  listRow: {
+    borderRadius: spacing["2"],
+    borderTopColor: uiColor.border1,
+    borderTopStyle: "solid",
+    borderTopWidth: 1,
+    boxSizing: "border-box",
+    display: "flex",
+    flexDirection: "column",
+    paddingBottom: spacing["4"],
+    paddingLeft: spacing["3"],
+    paddingRight: spacing["3"],
+    paddingTop: spacing["4"],
+    rowGap: spacing["1"],
+    textDecoration: "none",
+    width: "100%",
+  },
+  listRowFirst: {
+    borderTopWidth: 0,
+  },
+  listRowLink: {
+    alignItems: "center",
+    color: uiColor.text2,
+    columnGap: spacing["1.5"],
+    display: "inline-flex",
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    width: "fit-content",
+  },
+  listRowDesc: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.sm,
+    lineHeight: lineHeight.sm,
+  },
+  listRowMeta: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.xs,
+  },
+  readerRow: {
+    alignItems: "center",
+    borderTopColor: uiColor.border1,
+    borderTopStyle: "solid",
+    borderTopWidth: 1,
+    columnGap: spacing["3"],
+    display: "flex",
+    paddingBottom: spacing["3"],
+    paddingTop: spacing["3"],
+  },
+  readerRowFirst: {
+    borderTopWidth: 0,
+  },
+  readerAvatar: {
+    flexShrink: 0,
+  },
+  readerLink: {
+    color: "inherit",
+    textDecoration: { default: "none", ":hover": "underline" },
+  },
+  readerName: {
+    color: uiColor.text2,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+  },
+  readerHandle: {
+    marginTop: spacing["0.5"],
   },
   emptyNote: {
     color: uiColor.text1,
@@ -206,15 +350,6 @@ const styles = stylex.create({
     marginTop: spacing["6"],
   },
 });
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <span>
-      <span {...stylex.props(styles.statValue)}>{value}</span>
-      {label}
-    </span>
-  );
-}
 
 function authorDisplayName(profile: {
   displayName: string | null;
@@ -321,120 +456,14 @@ function AuthorProfileContent({
   did: string;
   initialPage: AuthorProfile;
 }) {
-  const [publications, setPublications] = useState<Array<PublicationCard>>(
-    () => initialPage?.publications ?? [],
-  );
-  const [publicationsNextOffset, setPublicationsNextOffset] = useState<
-    number | null
-  >(() => initialPage?.publicationsNextOffset ?? null);
+  const { data: lists } = useQuery(listApi.getAuthorListsQueryOptions(did));
 
-  const [subscriptions, setSubscriptions] = useState<Array<PublicationCard>>(
-    () => initialPage?.subscriptions ?? [],
-  );
-  const [subscriptionsNextOffset, setSubscriptionsNextOffset] = useState<
-    number | null
-  >(() => initialPage?.subscriptionsNextOffset ?? null);
-
-  const [recommendations, setRecommendations] = useState<Array<ArticleCard>>(
-    () => initialPage?.recommendations ?? [],
-  );
-  const [recommendationsNextOffset, setRecommendationsNextOffset] = useState<
-    number | null
-  >(() => initialPage?.recommendationsNextOffset ?? null);
-
-  const [documents, setDocuments] = useState<Array<ArticleCard>>(
-    () => initialPage?.documents ?? [],
-  );
-  const [documentsNextOffset, setDocumentsNextOffset] = useState<number | null>(
-    () => initialPage?.documentsNextOffset ?? null,
-  );
-
-  const loadMorePublications = useCallback(async () => {
-    if (publicationsNextOffset == null) return;
-    const page = await authorApi.getAuthorPublications({
-      data: {
-        did,
-        limit: AUTHOR_PAGE_SIZE,
-        offset: publicationsNextOffset,
-      },
-    });
-    setPublications((prev) => {
-      const seen = new Set(prev.map((pub) => pub.uri));
-      return [...prev, ...page.items.filter((pub) => !seen.has(pub.uri))];
-    });
-    setPublicationsNextOffset(page.nextOffset);
-  }, [did, publicationsNextOffset]);
-
-  const loadMoreSubscriptions = useCallback(async () => {
-    if (subscriptionsNextOffset == null) return;
-    const page = await authorApi.getAuthorSubscriptions({
-      data: {
-        did,
-        limit: AUTHOR_ACTIVITY_PAGE_SIZE,
-        offset: subscriptionsNextOffset,
-      },
-    });
-    setSubscriptions((prev) => {
-      const seen = new Set(prev.map((pub) => pub.uri));
-      return [...prev, ...page.items.filter((pub) => !seen.has(pub.uri))];
-    });
-    setSubscriptionsNextOffset(page.nextOffset);
-  }, [did, subscriptionsNextOffset]);
-
-  const loadMoreRecommendations = useCallback(async () => {
-    if (recommendationsNextOffset == null) return;
-    const page = await authorApi.getAuthorRecommendations({
-      data: {
-        did,
-        limit: AUTHOR_ACTIVITY_PAGE_SIZE,
-        offset: recommendationsNextOffset,
-      },
-    });
-    setRecommendations((prev) => {
-      const seen = new Set(prev.map((article) => article.uri));
-      return [
-        ...prev,
-        ...page.items.filter((article) => !seen.has(article.uri)),
-      ];
-    });
-    setRecommendationsNextOffset(page.nextOffset);
-  }, [did, recommendationsNextOffset]);
-
-  const loadMoreDocuments = useCallback(async () => {
-    if (documentsNextOffset == null) return;
-    const page = await authorApi.getAuthorDocuments({
-      data: {
-        did,
-        limit: AUTHOR_ACTIVITY_PAGE_SIZE,
-        offset: documentsNextOffset,
-      },
-    });
-    setDocuments((prev) => {
-      const seen = new Set(prev.map((article) => article.uri));
-      return [
-        ...prev,
-        ...page.items.filter((article) => !seen.has(article.uri)),
-      ];
-    });
-    setDocumentsNextOffset(page.nextOffset);
-  }, [did, documentsNextOffset]);
-
-  const publicationsScroll = useInfiniteScroll(
-    publicationsNextOffset,
-    loadMorePublications,
-  );
-  const subscriptionsScroll = useInfiniteScroll(
-    subscriptionsNextOffset,
-    loadMoreSubscriptions,
-  );
-  const recommendationsScroll = useInfiniteScroll(
-    recommendationsNextOffset,
-    loadMoreRecommendations,
-  );
-  const documentsScroll = useInfiniteScroll(
-    documentsNextOffset,
-    loadMoreDocuments,
-  );
+  const { tab: requestedTab } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const onTabChange = (key: React.Key) => {
+    const next = key as AuthorTab;
+    void navigate({ search: (prev: AuthorSearch) => ({ ...prev, tab: next }) });
+  };
 
   if (!initialPage) {
     return (
@@ -449,66 +478,81 @@ function AuthorProfileContent({
   const { profile, stats } = initialPage;
   const name = authorDisplayName(profile);
   const pageUrl = `${getPublicUrlClient()}/u/${did}`;
-  const showPublications = stats.publicationCount > 0;
-  const showDocuments = documents.length > 0;
-  const showSubscriptions = stats.subscriptionCount > 0;
-  const showRecommendations = stats.recommendationCount > 0;
+
+  const visibleTabs: Array<AuthorTab> = [
+    stats.documentCount > 0 && ("posts" as const),
+    stats.publicationCount > 0 && ("publications" as const),
+    stats.subscriptionCount > 0 && ("subscriptions" as const),
+    stats.subscriberCount > 0 && ("readers" as const),
+    lists && lists.length > 0 && ("lists" as const),
+  ].filter((id): id is AuthorTab => id !== false);
+  const tab = visibleTabs.includes(requestedTab)
+    ? requestedTab
+    : (visibleTabs[0] ?? requestedTab);
 
   return (
     <div>
       <div {...stylex.props(styles.hero)}>
         <div {...stylex.props(styles.heroInner)}>
-          <div {...stylex.props(styles.avatarWrap)}>
-            <Avatar
-              size="xl"
-              src={profile.avatarUrl ?? undefined}
-              fallback={initials(name)}
-              alt={name}
-              style={styles.avatar}
-            />
-          </div>
+          <div {...stylex.props(styles.heroTop)}>
+            <div {...stylex.props(styles.avatarWrap)}>
+              <Avatar
+                size="xl"
+                src={profile.avatarUrl ?? undefined}
+                fallback={initials(name)}
+                alt={name}
+                style={styles.avatar}
+              />
+            </div>
 
-          <div {...stylex.props(styles.heroInfo)}>
-            <Kicker>Author</Kicker>
-            <h1 {...stylex.props(styles.heroName)}>{name}</h1>
-            {profile.description ? (
-              <p {...stylex.props(styles.heroDesc)}>
-                <LinkifiedText text={profile.description} />
-              </p>
-            ) : null}
-            <div {...stylex.props(styles.stats)}>
-              {profile.handle ? <Handle>@{profile.handle}</Handle> : null}
-              <Stat
-                value={String(stats.publicationCount)}
-                label={
-                  stats.publicationCount === 1 ? "publication" : "publications"
-                }
-              />
-              <Stat value={String(stats.documentCount)} label="posts" />
-              <Stat
-                value={formatReaders(stats.subscriberCount)}
-                label="readers"
-              />
-              {stats.subscriptionCount > 0 ? (
-                <Stat
-                  value={String(stats.subscriptionCount)}
-                  label={
-                    stats.subscriptionCount === 1 ? "following" : "following"
-                  }
-                />
+            <div {...stylex.props(styles.heroInfo)}>
+              <Kicker>Author</Kicker>
+              <h1 {...stylex.props(styles.heroName)}>{name}</h1>
+              {profile.handle ? (
+                <Handle style={styles.heroHandle}>@{profile.handle}</Handle>
               ) : null}
-              {stats.recommendationCount > 0 ? (
-                <Stat
-                  value={String(stats.recommendationCount)}
-                  label={stats.recommendationCount === 1 ? "like" : "likes"}
-                />
+            </div>
+
+            <div {...stylex.props(styles.heroActs)}>
+              <ShareMenu variant="icon" pageUrl={pageUrl} />
+              <RssFeedButton
+                name={name}
+                feedUrl={authorFeedUrl(getPublicUrlClient(), did)}
+                size="md"
+              />
+              {profile.handle ? (
+                <IconButton
+                  variant="secondary"
+                  size="md"
+                  label="View on Bluesky"
+                  onPress={() => {
+                    window.open(
+                      `https://bsky.app/profile/${profile.handle}`,
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  }}
+                >
+                  <ExternalLink size={15} />
+                </IconButton>
               ) : null}
-              <AuthorSifaResumeChip did={did} handle={profile.handle} />
+              <AuthorSifaResumeChip did={did} handle={profile.handle} variant="icon" />
             </div>
           </div>
 
-          <div {...stylex.props(styles.heroActs)}>
-            <ShareMenu variant="icon" pageUrl={pageUrl} />
+          {profile.description ? (
+            <p {...stylex.props(styles.heroDesc)}>
+              <LinkifiedText text={profile.description} />
+            </p>
+          ) : null}
+
+          <div {...stylex.props(styles.heroActsMobile)}>
+            <ShareMenu variant="icon" size="md" pageUrl={pageUrl} />
+            <RssFeedButton
+              name={name}
+              feedUrl={authorFeedUrl(getPublicUrlClient(), did)}
+              size="md"
+            />
             {profile.handle ? (
               <IconButton
                 variant="secondary"
@@ -525,132 +569,388 @@ function AuthorProfileContent({
                 <ExternalLink size={15} />
               </IconButton>
             ) : null}
+            <AuthorSifaResumeChip did={did} handle={profile.handle} variant="icon" />
           </div>
         </div>
       </div>
 
-      <ReaderContent>
-        {showPublications ? (
-          <div
-            {...stylex.props(
-              styles.section,
-              !showDocuments &&
-                !showSubscriptions &&
-                !showRecommendations &&
-                styles.sectionLast,
-            )}
-          >
-            <SectionHead kicker="Publications" title="All publications" />
-            <div>
-              {publications.map((pub, index) => (
-                <PubDirectoryRow
-                  key={pub.uri}
-                  pub={pub}
-                  isFirstInSection={index === 0}
-                  isLast={
-                    index === publications.length - 1 &&
-                    publicationsNextOffset == null
-                  }
-                />
-              ))}
-              <LoadMoreFooter
-                nextOffset={publicationsNextOffset}
-                loadingMore={publicationsScroll.loadingMore}
-                sentinelRef={publicationsScroll.sentinelRef}
+      <Tabs selectedKey={tab} onSelectionChange={onTabChange} style={styles.tabs}>
+        <div {...stylex.props(styles.tabBar)}>
+          <div {...stylex.props(styles.tabBarInner)}>
+            <TabList aria-label="Author sections" style={styles.tabList}>
+              {visibleTabs.includes("posts") ? (
+                <Tab id="posts">
+                  Posts
+                  <Badge size="sm" style={styles.tabCount}>
+                    {stats.documentCount}
+                  </Badge>
+                </Tab>
+              ) : null}
+              {visibleTabs.includes("publications") ? (
+                <Tab id="publications">
+                  Publications
+                  <Badge size="sm" style={styles.tabCount}>
+                    {stats.publicationCount}
+                  </Badge>
+                </Tab>
+              ) : null}
+              {visibleTabs.includes("subscriptions") ? (
+                <Tab id="subscriptions">
+                  Subscriptions
+                  <Badge size="sm" style={styles.tabCount}>
+                    {stats.subscriptionCount}
+                  </Badge>
+                </Tab>
+              ) : null}
+              {visibleTabs.includes("readers") ? (
+                <Tab id="readers">
+                  Readers
+                  <Badge size="sm" style={styles.tabCount}>
+                    {formatReaders(stats.subscriberCount)}
+                  </Badge>
+                </Tab>
+              ) : null}
+              {visibleTabs.includes("lists") && lists ? (
+                <Tab id="lists">
+                  Lists
+                  <Badge size="sm" style={styles.tabCount}>
+                    {lists.length}
+                  </Badge>
+                </Tab>
+              ) : null}
+            </TabList>
+          </div>
+          <div {...stylex.props(styles.tabRule)} aria-hidden />
+        </div>
+
+        <ReaderContent>
+          {visibleTabs.includes("posts") ? (
+            <TabPanel id="posts" style={styles.tabPanel}>
+              <AuthorPostsPanel
+                did={did}
+                initialItems={initialPage.documents}
+                initialNextOffset={initialPage.documentsNextOffset}
               />
-            </div>
-          </div>
-        ) : null}
+            </TabPanel>
+          ) : null}
 
-        {showDocuments ? (
-          <div
-            {...stylex.props(
-              styles.section,
-              !showSubscriptions && !showRecommendations && styles.sectionLast,
-            )}
-          >
-            <SectionHead kicker="Documents" title="Loose documents" />
-            <div>
-              {documents.map((article, index) => (
-                <ArticleRow
-                  key={article.uri}
-                  article={article}
-                  isFirstInSection={index === 0}
-                  showSaveButton={false}
-                />
-              ))}
-              <LoadMoreFooter
-                nextOffset={documentsNextOffset}
-                loadingMore={documentsScroll.loadingMore}
-                sentinelRef={documentsScroll.sentinelRef}
+          {visibleTabs.includes("publications") ? (
+            <TabPanel id="publications" style={styles.tabPanel}>
+              <AuthorPublicationsPanel
+                did={did}
+                initialItems={initialPage.publications}
+                initialNextOffset={initialPage.publicationsNextOffset}
               />
-            </div>
-          </div>
-        ) : null}
+            </TabPanel>
+          ) : null}
 
-        {showSubscriptions ? (
-          <div
-            {...stylex.props(
-              styles.section,
-              !showRecommendations && styles.sectionLast,
-            )}
-          >
-            <SectionHead kicker="Following" title="Subscriptions" />
-            {subscriptions.length === 0 ? (
-              <div {...stylex.props(styles.emptyNote)}>
-                Subscriptions aren&apos;t indexed yet.
-              </div>
-            ) : (
-              <div>
-                {subscriptions.map((pub, index) => (
-                  <PubDirectoryRow
-                    key={pub.uri}
-                    pub={pub}
-                    isFirstInSection={index === 0}
-                    isLast={
-                      index === subscriptions.length - 1 &&
-                      subscriptionsNextOffset == null
-                    }
-                  />
-                ))}
-                <LoadMoreFooter
-                  nextOffset={subscriptionsNextOffset}
-                  loadingMore={subscriptionsScroll.loadingMore}
-                  sentinelRef={subscriptionsScroll.sentinelRef}
-                />
-              </div>
-            )}
-          </div>
-        ) : null}
+          {visibleTabs.includes("subscriptions") ? (
+            <TabPanel id="subscriptions" style={styles.tabPanel}>
+              <AuthorSubscriptionsPanel
+                did={did}
+                initialItems={initialPage.subscriptions}
+                initialNextOffset={initialPage.subscriptionsNextOffset}
+              />
+            </TabPanel>
+          ) : null}
 
-        {showRecommendations ? (
-          <div {...stylex.props(styles.section, styles.sectionLast)}>
-            <SectionHead kicker="Likes" title="Liked articles" />
-            {recommendations.length === 0 ? (
-              <div {...stylex.props(styles.emptyNote)}>
-                Likes aren&apos;t indexed yet.
-              </div>
-            ) : (
-              <div>
-                {recommendations.map((article, index) => (
-                  <ArticleRow
-                    key={article.uri}
-                    article={article}
-                    isFirstInSection={index === 0}
-                    showSaveButton={false}
-                  />
-                ))}
-                <LoadMoreFooter
-                  nextOffset={recommendationsNextOffset}
-                  loadingMore={recommendationsScroll.loadingMore}
-                  sentinelRef={recommendationsScroll.sentinelRef}
-                  showEndNote
-                />
-              </div>
-            )}
+          {visibleTabs.includes("readers") ? (
+            <TabPanel id="readers" style={styles.tabPanel}>
+              <AuthorReadersPanel
+                did={did}
+                initialItems={initialPage.readers}
+                initialNextOffset={initialPage.readersNextOffset}
+              />
+            </TabPanel>
+          ) : null}
+
+          {visibleTabs.includes("lists") && lists ? (
+            <TabPanel id="lists" style={styles.tabPanel}>
+              <AuthorListsPanel did={did} lists={lists} />
+            </TabPanel>
+          ) : null}
+        </ReaderContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function AuthorPublicationsPanel({
+  did,
+  initialItems,
+  initialNextOffset,
+}: {
+  did: string;
+  initialItems: Array<PublicationCard>;
+  initialNextOffset: number | null;
+}) {
+  const [items, setItems] = useState(initialItems);
+  const [nextOffset, setNextOffset] = useState(initialNextOffset);
+
+  const loadMore = useCallback(async () => {
+    if (nextOffset == null) return;
+    const page = await authorApi.getAuthorPublications({
+      data: { did, limit: AUTHOR_PAGE_SIZE, offset: nextOffset },
+    });
+    setItems((prev) => {
+      const seen = new Set(prev.map((pub) => pub.uri));
+      return [...prev, ...page.items.filter((pub) => !seen.has(pub.uri))];
+    });
+    setNextOffset(page.nextOffset);
+  }, [did, nextOffset]);
+  const scroll = useInfiniteScroll(nextOffset, loadMore);
+
+  if (items.length === 0) {
+    return (
+      <div {...stylex.props(styles.emptyNote)}>
+        No publications indexed yet.
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {items.map((pub, index) => (
+        <PubDirectoryRow
+          key={pub.uri}
+          pub={pub}
+          isFirstInSection={index === 0}
+          isLast={index === items.length - 1 && nextOffset == null}
+        />
+      ))}
+      <LoadMoreFooter
+        nextOffset={nextOffset}
+        loadingMore={scroll.loadingMore}
+        sentinelRef={scroll.sentinelRef}
+      />
+    </div>
+  );
+}
+
+function AuthorPostsPanel({
+  did,
+  initialItems,
+  initialNextOffset,
+}: {
+  did: string;
+  initialItems: Array<ArticleCard>;
+  initialNextOffset: number | null;
+}) {
+  const [items, setItems] = useState(initialItems);
+  const [nextOffset, setNextOffset] = useState(initialNextOffset);
+
+  const loadMore = useCallback(async () => {
+    if (nextOffset == null) return;
+    const page = await authorApi.getAuthorDocuments({
+      data: { did, limit: AUTHOR_ACTIVITY_PAGE_SIZE, offset: nextOffset },
+    });
+    setItems((prev) => {
+      const seen = new Set(prev.map((article) => article.uri));
+      return [
+        ...prev,
+        ...page.items.filter((article) => !seen.has(article.uri)),
+      ];
+    });
+    setNextOffset(page.nextOffset);
+  }, [did, nextOffset]);
+  const scroll = useInfiniteScroll(nextOffset, loadMore);
+
+  if (items.length === 0) {
+    return (
+      <div {...stylex.props(styles.emptyNote)}>No posts indexed yet.</div>
+    );
+  }
+
+  return (
+    <div>
+      {items.map((article, index) => (
+        <ArticleRow
+          key={article.uri}
+          article={article}
+          isFirstInSection={index === 0}
+          showSaveButton={false}
+        />
+      ))}
+      <LoadMoreFooter
+        nextOffset={nextOffset}
+        loadingMore={scroll.loadingMore}
+        sentinelRef={scroll.sentinelRef}
+      />
+    </div>
+  );
+}
+
+function AuthorSubscriptionsPanel({
+  did,
+  initialItems,
+  initialNextOffset,
+}: {
+  did: string;
+  initialItems: Array<PublicationCard>;
+  initialNextOffset: number | null;
+}) {
+  const [items, setItems] = useState(initialItems);
+  const [nextOffset, setNextOffset] = useState(initialNextOffset);
+
+  const loadMore = useCallback(async () => {
+    if (nextOffset == null) return;
+    const page = await authorApi.getAuthorSubscriptions({
+      data: { did, limit: AUTHOR_ACTIVITY_PAGE_SIZE, offset: nextOffset },
+    });
+    setItems((prev) => {
+      const seen = new Set(prev.map((pub) => pub.uri));
+      return [...prev, ...page.items.filter((pub) => !seen.has(pub.uri))];
+    });
+    setNextOffset(page.nextOffset);
+  }, [did, nextOffset]);
+  const scroll = useInfiniteScroll(nextOffset, loadMore);
+
+  if (items.length === 0) {
+    return (
+      <div {...stylex.props(styles.emptyNote)}>
+        Subscriptions aren&apos;t indexed yet.
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {items.map((pub, index) => (
+        <PubDirectoryRow
+          key={pub.uri}
+          pub={pub}
+          isFirstInSection={index === 0}
+          isLast={index === items.length - 1 && nextOffset == null}
+        />
+      ))}
+      <LoadMoreFooter
+        nextOffset={nextOffset}
+        loadingMore={scroll.loadingMore}
+        sentinelRef={scroll.sentinelRef}
+      />
+    </div>
+  );
+}
+
+function AuthorReadersPanel({
+  did,
+  initialItems,
+  initialNextOffset,
+}: {
+  did: string;
+  initialItems: Array<AuthorReader>;
+  initialNextOffset: number | null;
+}) {
+  const [items, setItems] = useState(initialItems);
+  const [nextOffset, setNextOffset] = useState(initialNextOffset);
+
+  const loadMore = useCallback(async () => {
+    if (nextOffset == null) return;
+    const page = await authorApi.getAuthorReaders({
+      data: { did, limit: AUTHOR_ACTIVITY_PAGE_SIZE, offset: nextOffset },
+    });
+    setItems((prev) => {
+      const seen = new Set(prev.map((reader) => reader.did));
+      return [
+        ...prev,
+        ...page.items.filter((reader) => !seen.has(reader.did)),
+      ];
+    });
+    setNextOffset(page.nextOffset);
+  }, [did, nextOffset]);
+  const scroll = useInfiniteScroll(nextOffset, loadMore);
+
+  if (items.length === 0) {
+    return (
+      <div {...stylex.props(styles.emptyNote)}>No readers indexed yet.</div>
+    );
+  }
+
+  return (
+    <div>
+      {items.map((reader, index) => (
+        <AuthorReaderRow key={reader.did} reader={reader} isFirst={index === 0} />
+      ))}
+      <LoadMoreFooter
+        nextOffset={nextOffset}
+        loadingMore={scroll.loadingMore}
+        sentinelRef={scroll.sentinelRef}
+      />
+    </div>
+  );
+}
+
+function AuthorReaderRow({
+  reader,
+  isFirst,
+}: {
+  reader: AuthorReader;
+  isFirst: boolean;
+}) {
+  const name = reader.displayName?.trim() || reader.handle || "Reader";
+
+  return (
+    <div
+      {...stylex.props(styles.readerRow, isFirst && styles.readerRowFirst)}
+    >
+      <AuthorProfileLink authorRef={reader.did} linkStyle={styles.readerLink}>
+        <Avatar
+          size="md"
+          src={reader.avatarUrl ?? undefined}
+          fallback={initials(name)}
+          alt={name}
+          style={styles.readerAvatar}
+        />
+      </AuthorProfileLink>
+      <div>
+        <AuthorProfileLink authorRef={reader.did} linkStyle={styles.readerLink}>
+          <span {...stylex.props(styles.readerName)}>{name}</span>
+        </AuthorProfileLink>
+        {reader.handle ? (
+          <div>
+            <Handle style={styles.readerHandle}>@{reader.handle}</Handle>
           </div>
         ) : null}
-      </ReaderContent>
+      </div>
+    </div>
+  );
+}
+
+const ListRowLink = createLink(AriaLink);
+
+function AuthorListsPanel({
+  did,
+  lists,
+}: {
+  did: string;
+  lists: Array<SubscriptionList>;
+}) {
+  return (
+    <div>
+      {lists.map((list, index) => (
+        <ListRowLink
+          key={list.uri}
+          to="/l/$did/$rkey"
+          params={{ did, rkey: list.rkey }}
+          {...stylex.props(
+            styles.listRow,
+            ui.bgGhost,
+            index === 0 && styles.listRowFirst,
+          )}
+        >
+          <span {...stylex.props(styles.listRowLink)}>
+            <ListPlus size={14} aria-hidden /> {list.name}
+          </span>
+          {list.description ? (
+            <p {...stylex.props(styles.listRowDesc)}>{list.description}</p>
+          ) : null}
+          <span {...stylex.props(styles.listRowMeta)}>
+            {list.publications.length === 1
+              ? "1 publication"
+              : `${list.publications.length} publications`}
+          </span>
+        </ListRowLink>
+      ))}
     </div>
   );
 }

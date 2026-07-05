@@ -70,7 +70,13 @@ export const Route = createFileRoute("/_layout/search")({
 
 const styles = stylex.create({
   header: {
-    paddingTop: spacing["10"],
+    display: "flex",
+    flexDirection: "column",
+    gap: gap.md,
+    paddingTop: {
+      default: spacing["6"],
+      "@media (min-width: 40rem)": spacing["10"],
+    },
   },
   searchField: {
     alignItems: "center",
@@ -80,8 +86,8 @@ const styles = stylex.create({
     borderBottomColor: uiColor.border3,
     borderBottomStyle: "solid",
     borderBottomWidth: 2,
-    marginBottom: spacing["2"],
-    paddingBottom: spacing["4"],
+    marginBottom: spacing["8"],
+    paddingBottom: spacing["6"],
     paddingTop: spacing["4"],
   },
   searchIcon: {

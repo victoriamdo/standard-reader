@@ -24,6 +24,11 @@ type AuthorProfileLinkProps = Omit<
   linkStyle?:
     | stylex.StyleXStyles
     | Array<stylex.StyleXStyles | false | undefined>;
+  /**
+   * Use a focusable span + client navigation instead of `<a>`. Required when
+   * nested inside another link (e.g. article card bylines).
+   */
+  nested?: boolean;
 };
 
 /**
@@ -35,12 +40,54 @@ export function AuthorProfileLink({
   authorRef,
   children,
   linkStyle,
+  nested = false,
   onClick,
   ...rest
 }: AuthorProfileLinkProps) {
   const navigate = useNavigate();
   const did = normalizeAuthorRef(authorRef);
   const href = authorProfilePath(did);
+
+  const mergedStyle = stylex.props(
+    styles.link,
+    ...(linkStyle
+      ? Array.isArray(linkStyle)
+        ? linkStyle
+        : [linkStyle]
+      : []),
+  );
+
+  const goToProfile = () => {
+    void navigate({ to: "/u/$did", params: { did } });
+  };
+
+  if (nested) {
+    return (
+      <span
+        // oxlint-disable-next-line jsx_a11y/prefer-tag-over-role -- nested inside parent card link
+        role="link"
+        tabIndex={0}
+        onClick={(event) => {
+          event.stopPropagation();
+          onClick?.(event as unknown as React.MouseEvent<HTMLAnchorElement>);
+          if (event.button === 0) {
+            goToProfile();
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            goToProfile();
+          }
+        }}
+        {...rest}
+        {...mergedStyle}
+      >
+        {children}
+      </span>
+    );
+  }
 
   return (
     <a
@@ -59,17 +106,10 @@ export function AuthorProfileLink({
           return;
         }
         event.preventDefault();
-        void navigate({ to: "/u/$did", params: { did } });
+        goToProfile();
       }}
       {...rest}
-      {...stylex.props(
-        styles.link,
-        ...(linkStyle
-          ? Array.isArray(linkStyle)
-            ? linkStyle
-            : [linkStyle]
-          : []),
-      )}
+      {...mergedStyle}
     >
       {children}
     </a>

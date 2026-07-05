@@ -8,6 +8,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { CheckCheck } from "lucide-react";
 import {
   Suspense,
   useCallback,
@@ -28,7 +29,7 @@ import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { formatCount } from "#/lib/format-count";
 import { getPublicUrlClient } from "#/lib/public-url";
-import { pageSocialMeta } from "#/lib/site-metadata";
+import { latestFeedUrl, pageSocialMeta } from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
 
@@ -38,8 +39,18 @@ import {
   applyMarkReadManyOptimisticUpdate,
   invalidateReadQueries,
 } from "../components/reader/read-optimistic";
+import { RssFeedButton } from "../components/reader/rss-feed-button";
+import {
+  AlertDialog,
+  AlertDialogActionButton,
+  AlertDialogCancelButton,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+} from "../design-system/alert-dialog";
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
+import { IconButton } from "../design-system/icon-button";
 import {
   SegmentedControl,
   SegmentedControlItem,
@@ -66,7 +77,7 @@ const SKELETON_ROWS = 8;
 const latestSearchSchema = z.object({
   filter: z
     .enum(["unread", "subscriptions", "all", "trending"])
-    .default("subscriptions"),
+    .default("unread"),
 });
 
 const LATEST_FILTERS = [
@@ -95,17 +106,33 @@ export const Route = createFileRoute("/_layout/latest")({
     if (preload) {
       void context.queryClient.prefetchQuery(countsOptions);
       void context.queryClient.prefetchQuery(feedOptions);
-      return;
+      return { readerScope };
     }
 
     await Promise.all([
       context.queryClient.ensureQueryData(feedOptions),
       context.queryClient.ensureQueryData(countsOptions),
     ]);
+    return { readerScope };
   },
-  head: () => ({
-    meta: pageSocialMeta("latest", getPublicUrlClient()),
-  }),
+  head: ({ loaderData }) => {
+    const baseUrl = getPublicUrlClient();
+    const did = loaderData?.readerScope;
+    return {
+      meta: pageSocialMeta("latest", baseUrl),
+      links:
+        did && did !== "guest"
+          ? [
+              {
+                rel: "alternate",
+                type: "application/rss+xml",
+                title: "Your Latest · Standard Reader",
+                href: latestFeedUrl(baseUrl, did),
+              },
+            ]
+          : [],
+    };
+  },
   component: Latest,
 });
 
@@ -523,12 +550,16 @@ function Latest() {
     void navigate({ search: { filter: next }, resetScroll: false });
   };
 
+  const [markAllReadOpen, setMarkAllReadOpen] = useState(false);
   const { mutate: markAllRead, isPending: markingAllRead } = useMutation({
     ...readerApi.markFollowsAllUnreadReadMutationOptions(),
     onMutate: () => {
       applyMarkReadManyOptimisticUpdate(queryClient, [], {
         clearAllFollowingUnread: true,
       });
+    },
+    onSuccess: () => {
+      setMarkAllReadOpen(false);
     },
     onError: () => {
       invalidateReadQueries(queryClient);
@@ -634,20 +665,50 @@ function Latest() {
             </ButtonLink>
           </Flex>
         )}
-        {trackReading &&
-        signedIn &&
-        filter === "unread" &&
-        !countsPending &&
-        counts.unread > 0 ? (
-          <Button
-            variant="tertiary"
-            size="sm"
-            isPending={markingAllRead}
-            onPress={() => markAllRead()}
-          >
-            Mark all as read
-          </Button>
-        ) : null}
+        <Flex align="center" gap="md">
+          {signedIn && filter === "unread" ? (
+            <RssFeedButton
+              name="Your Latest"
+              feedUrl={latestFeedUrl(getPublicUrlClient(), readerScope)}
+              size="lg"
+            />
+          ) : null}
+          {trackReading &&
+          signedIn &&
+          filter === "unread" &&
+          !countsPending &&
+          counts.unread > 0 ? (
+            <AlertDialog
+              isOpen={markAllReadOpen}
+              onOpenChange={setMarkAllReadOpen}
+              trigger={
+                <IconButton
+                  variant="secondary"
+                  size="lg"
+                  label="Mark all as read"
+                >
+                  <CheckCheck size={18} />
+                </IconButton>
+              }
+            >
+              <AlertDialogHeader>Mark all as read?</AlertDialogHeader>
+              <AlertDialogDescription>
+                Every unread article in your subscriptions will be marked read.
+                This can’t be undone.
+              </AlertDialogDescription>
+              <AlertDialogFooter>
+                <AlertDialogCancelButton isDisabled={markingAllRead} />
+                <AlertDialogActionButton
+                  closeOnPress={false}
+                  isPending={markingAllRead}
+                  onPress={() => markAllRead()}
+                >
+                  Mark all as read
+                </AlertDialogActionButton>
+              </AlertDialogFooter>
+            </AlertDialog>
+          ) : null}
+        </Flex>
       </div>
 
       <Suspense

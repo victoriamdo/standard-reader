@@ -739,6 +739,8 @@ export function FollowButton({
   size = "sm",
   pub,
   initialFollowing,
+  responsive = true,
+  style,
 }: {
   publicationUri: string;
   signedIn: boolean;
@@ -747,6 +749,9 @@ export function FollowButton({
   pub?: PublicationCard;
   /** @deprecated Prefer letting the button read follow status from React Query. */
   initialFollowing?: boolean;
+  /** When false, always renders the labeled button, skipping the icon-only mobile variant. */
+  responsive?: boolean;
+  style?: stylex.StyleXStyles;
 }) {
   const queryClient = useQueryClient();
   const loginSearch = useLoginSearch();
@@ -781,6 +786,20 @@ export function FollowButton({
   );
 
   if (!signedIn) {
+    if (!responsive) {
+      return (
+        <ButtonLink
+          to="/login"
+          search={loginSearch}
+          variant="secondary"
+          size={size}
+          style={style}
+          onClick={stopFollowBubble}
+        >
+          {desktopIcon} Follow
+        </ButtonLink>
+      );
+    }
     return (
       <>
         <ButtonLink
@@ -821,6 +840,21 @@ export function FollowButton({
       onSettled: () => invalidateFollowQueries(queryClient),
     });
   };
+
+  if (!responsive) {
+    return (
+      <Button
+        variant={following ? "secondary" : "primary"}
+        size={size}
+        onPress={onPress}
+        onClick={stopFollowClick}
+        style={style}
+      >
+        {desktopIcon}
+        {followLabel}
+      </Button>
+    );
+  }
 
   return (
     <>
@@ -884,6 +918,7 @@ function Byline({
         <AuthorProfileLink
           authorRef={article.did}
           linkStyle={styles.bylineEyebrow}
+          nested
         >
           <PublicationAvatar
             pub={{

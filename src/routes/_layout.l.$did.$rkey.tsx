@@ -26,12 +26,17 @@ import type {
 } from "#/integrations/tanstack-query/api-shapes";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
-import { listOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
+import {
+  listFeedUrl,
+  listOgImageUrl,
+  siteSocialMeta,
+} from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
 import { ListEditModal } from "../components/reader/list-edit-modal";
 import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
+import { RssFeedButton } from "../components/reader/rss-feed-button";
 import { ShareMenu } from "../components/reader/share-menu";
 import {
   AlertDialog,
@@ -99,6 +104,14 @@ export const Route = createFileRoute("/_layout/l/$did/$rkey")({
         url: `${baseUrl}${match.pathname}`,
         ogImage: listOgImageUrl(baseUrl, params.did, params.rkey),
       }),
+      links: [
+        {
+          rel: "alternate",
+          type: "application/rss+xml",
+          title: `${name} · Standard Reader`,
+          href: listFeedUrl(baseUrl, params.did, params.rkey),
+        },
+      ],
     };
   },
   component: ListPage,
@@ -530,6 +543,11 @@ function ListPage() {
             </IconButton>
           ) : null}
           <ShareMenu pageUrl={pageUrl} variant="icon" size="lg" />
+          <RssFeedButton
+            name={list.name}
+            feedUrl={listFeedUrl(getPublicUrlClient(), did, rkey)}
+            size="lg"
+          />
           {viewer.isOwner ? (
             <>
               <IconButton

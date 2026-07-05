@@ -39,7 +39,7 @@ import type { HomeScope } from "../integrations/tanstack-query/api-feed.function
 import { feedApi } from "../integrations/tanstack-query/api-feed.functions";
 import { user } from "../integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "../lib/public-url";
-import { pageSocialMeta } from "../lib/site-metadata";
+import { latestFeedUrl, pageSocialMeta } from "../lib/site-metadata";
 import { useHomeScope } from "../lib/use-home-scope";
 
 const homeSearchSchema = z.object({
@@ -79,15 +79,44 @@ export const Route = createFileRoute("/_layout/")({
 
     return { scope: page.scope, readerScope: page.readerScope };
   },
-  head: () => ({
-    meta: pageSocialMeta("today", getPublicUrlClient()),
-  }),
+  head: ({ loaderData }) => {
+    const baseUrl = getPublicUrlClient();
+    const did = loaderData?.readerScope;
+    return {
+      meta: pageSocialMeta("today", baseUrl),
+      links:
+        did && did !== "guest"
+          ? [
+              {
+                rel: "alternate",
+                type: "application/rss+xml",
+                title: "Your Latest · Standard Reader",
+                href: latestFeedUrl(baseUrl, did),
+              },
+            ]
+          : [],
+    };
+  },
   component: Home,
 });
 
 const styles = stylex.create({
-  scopeControl: {
-    alignSelf: "flex-start",
+  controls: {
+    alignItems: {
+      default: "stretch",
+      "@media (min-width: 40rem)": "center",
+    },
+    columnGap: spacing["4"],
+    display: "flex",
+    flexDirection: {
+      default: "column",
+      "@media (min-width: 40rem)": "row",
+    },
+    marginBottom: spacing["8"],
+    rowGap: spacing["3"],
+  },
+  segmentedControlResponsive: {
+    width: { default: "100%", "@media (min-width: 40rem)": "auto" },
   },
   twoCol: {
     alignItems: "start",
@@ -524,24 +553,23 @@ function HomeFeed({
             labels.unreadLabel
           )
         }
-        metaAccessory={
-          showScopeToggle ? (
-            <SegmentedControl
-              selectedKeys={new Set([scope])}
-              onSelectionChange={onScopeChange}
-              size="lg"
-              style={styles.scopeControl}
-            >
-              <SegmentedControlItem id="follows">
-                Subscriptions
-              </SegmentedControlItem>
-              <SegmentedControlItem id="network">
-                Everything
-              </SegmentedControlItem>
-            </SegmentedControl>
-          ) : null
-        }
       />
+
+      {showScopeToggle ? (
+        <div {...stylex.props(styles.controls)}>
+          <SegmentedControl
+            selectedKeys={new Set([scope])}
+            onSelectionChange={onScopeChange}
+            size="lg"
+            style={styles.segmentedControlResponsive}
+          >
+            <SegmentedControlItem id="follows">
+              Subscriptions
+            </SegmentedControlItem>
+            <SegmentedControlItem id="network">Everything</SegmentedControlItem>
+          </SegmentedControl>
+        </div>
+      ) : null}
 
       {feed.featured ? <FeatureArticle article={feed.featured} /> : null}
 

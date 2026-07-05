@@ -9,19 +9,22 @@ import { resolveAuthorDid } from "#/server/atproto/resolve-author-ref";
 import { resolveSifaProfileUrl } from "#/server/atproto/sifa-profile";
 import { observe } from "#/server/observability/log";
 import {
-  authorLooseDocuments,
+  authorDocuments,
   authorProfileStats,
   authorPublications,
+  authorReaders,
   authorRecommendations,
   authorSubscriptions,
 } from "#/server/reader/queries";
-
+import type { AuthorReader } from "#/server/reader/queries";
 import type {
   ArticleCard,
   ProfileSummary,
   PublicationCard,
 } from "./api-shapes";
 import { dbMiddleware } from "./db-middleware";
+
+export type { AuthorReader };
 
 /**
  * Author profile queries — identity from `profiles` (backfilled from AT Proto
@@ -73,6 +76,8 @@ export interface AuthorProfile {
   publicationsNextOffset: number | null;
   subscriptions: Array<PublicationCard>;
   subscriptionsNextOffset: number | null;
+  readers: Array<AuthorReader>;
+  readersNextOffset: number | null;
   recommendations: Array<ArticleCard>;
   recommendationsNextOffset: number | null;
   documents: Array<ArticleCard>;
@@ -91,6 +96,11 @@ export interface AuthorSubscriptionsPage {
 
 export interface AuthorRecommendationsPage {
   items: Array<ArticleCard>;
+  nextOffset: number | null;
+}
+
+export interface AuthorReadersPage {
+  items: Array<AuthorReader>;
   nextOffset: number | null;
 }
 
@@ -178,6 +188,7 @@ const getAuthorProfile = createServerFn({ method: "GET" })
           stats,
           publications,
           subscriptionsPage,
+          readersPage,
           recommendationsPage,
           documentsPage,
         ] = await Promise.all([
@@ -192,11 +203,15 @@ const getAuthorProfile = createServerFn({ method: "GET" })
             did,
             limit: data.activityLimit,
           }),
+          authorReaders(db, schema, {
+            did,
+            limit: data.activityLimit,
+          }),
           authorRecommendations(db, schema, {
             did,
             limit: data.activityLimit,
           }),
-          authorLooseDocuments(db, schema, {
+          authorDocuments(db, schema, {
             did,
             limit: data.activityLimit,
           }),
@@ -235,8 +250,15 @@ const getAuthorProfile = createServerFn({ method: "GET" })
           subscriptionsNextOffset: nextOffsetForPage(
             0,
             data.activityLimit,
-            subscriptionsPage.items.length,
+            subscriptionsPage.fetchedCount,
             subscriptionsPage.total,
+          ),
+          readers: readersPage.items,
+          readersNextOffset: nextOffsetForPage(
+            0,
+            data.activityLimit,
+            readersPage.items.length,
+            readersPage.total,
           ),
           recommendations: recommendationsPage.items,
           recommendationsNextOffset: nextOffsetForPage(
@@ -319,6 +341,34 @@ const getAuthorSubscriptions = createServerFn({ method: "GET" })
           nextOffset: nextOffsetForPage(
             data.offset,
             data.limit,
+            page.fetchedCount,
+            page.total,
+          ),
+        };
+      },
+    ),
+  );
+
+const getAuthorReaders = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .validator(authorActivityInput)
+  .handler(
+    observe(
+      "author.getReaders",
+      async ({ data, context }, span): Promise<AuthorReadersPage> => {
+        const { db, schema } = context;
+        const did = await resolveAuthorDid(db, schema, data.did);
+        span.set("did", did);
+        span.set("offset", data.offset);
+
+        const page = await authorReaders(db, schema, { ...data, did });
+        span.set("count", page.items.length);
+
+        return {
+          items: page.items,
+          nextOffset: nextOffsetForPage(
+            data.offset,
+            data.limit,
             page.items.length,
             page.total,
           ),
@@ -367,7 +417,7 @@ const getAuthorDocuments = createServerFn({ method: "GET" })
         span.set("did", did);
         span.set("offset", data.offset);
 
-        const page = await authorLooseDocuments(db, schema, { ...data, did });
+        const page = await authorDocuments(db, schema, { ...data, did });
         span.set("count", page.items.length);
 
         return {
@@ -424,6 +474,19 @@ function getAuthorSubscriptionsQueryOptions(
   });
 }
 
+function getAuthorReadersQueryOptions(
+  did: string,
+  {
+    limit = AUTHOR_ACTIVITY_PAGE_SIZE,
+    offset = 0,
+  }: { limit?: number; offset?: number } = {},
+) {
+  return queryOptions({
+    queryKey: ["author", "readers", did, limit, offset] as const,
+    queryFn: async () => getAuthorReaders({ data: { did, limit, offset } }),
+  });
+}
+
 function getAuthorRecommendationsQueryOptions(
   did: string,
   {
@@ -459,6 +522,8 @@ export const authorApi = {
   getAuthorPublications,
   getAuthorSubscriptions,
   getAuthorSubscriptionsQueryOptions,
+  getAuthorReaders,
+  getAuthorReadersQueryOptions,
   getAuthorRecommendations,
   getAuthorRecommendationsQueryOptions,
   getAuthorDocuments,

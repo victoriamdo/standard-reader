@@ -18,6 +18,7 @@ import { collectionReaderViewSearch } from "#/lib/open-collections-in-magazine";
 import { getPublicUrlClient } from "#/lib/public-url";
 import {
   SITE_NAME,
+  collectionFeedUrl,
   collectionOgImageUrl,
   siteSocialMeta,
 } from "#/lib/site-metadata";
@@ -127,7 +128,15 @@ export const Route = createFileRoute("/collection/$did/$rkey")({
           ? collectionOgImageUrl(baseUrl, match.params.did, match.params.rkey)
           : undefined,
       }),
-      links: magazineThemeFontHeadLinks(theme),
+      links: [
+        ...magazineThemeFontHeadLinks(theme),
+        {
+          rel: "alternate",
+          type: "application/rss+xml",
+          title: pageTitle,
+          href: collectionFeedUrl(baseUrl, match.params.did, match.params.rkey),
+        },
+      ],
       styles: backdrop ? [backdrop] : [],
     };
   },

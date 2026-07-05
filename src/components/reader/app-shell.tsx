@@ -1096,16 +1096,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Flex align="center" justify="between" style={styles.mobileBar}>
                 <Brand />
                 <div {...stylex.props(styles.mobileBarActions)}>
-                  {signedIn ? (
-                    <IconButton
-                      aria-label="Submit feedback"
-                      size="md"
-                      variant="tertiary"
-                      onPress={() => setFeedbackOpen(true)}
-                    >
-                      <MessageSquarePlus size={20} />
-                    </IconButton>
-                  ) : null}
                   <SubscriptionsSwitcher
                     count={following.length}
                     onPress={() => setSubsSheetOpen(true)}

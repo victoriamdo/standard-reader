@@ -95,6 +95,7 @@
     "katex": "^0.17.0",
     "kokoro-js": "^1.2.1",
     "lucide-react": "^0.548.0",
+    "marked": "^18.0.5",
     "media-chrome": "^4.19.1",
     "nitro": "3.0.260603-beta",
     "pg": "^8.21.0",
