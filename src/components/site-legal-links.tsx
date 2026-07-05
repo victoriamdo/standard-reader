@@ -83,6 +83,17 @@ export function SiteLegalLinks({ style }: { style?: stylex.StyleXStyles }) {
       >
         API
       </Link>
+      <span {...stylex.props(styles.separator)} aria-hidden>
+        ·
+      </span>
+      <a
+        href="https://github.com/hipstersmoothie/standard-reader"
+        target="_blank"
+        rel="noopener noreferrer"
+        {...stylex.props(styles.link)}
+      >
+        Source
+      </a>
     </nav>
   );
 }
