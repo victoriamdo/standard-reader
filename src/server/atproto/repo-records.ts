@@ -1133,7 +1133,9 @@ export async function saveToMarginCollection(
     $type: MARGIN_NSID.note,
     target,
     motivation: input.passage ? "highlighting" : "bookmarking",
-    ...(input.note ? { body: { value: input.note, format: "text/plain" } } : {}),
+    ...(input.note
+      ? { body: { value: input.note, format: "text/plain" } }
+      : {}),
     createdAt: input.createdAt,
   };
   const itemRecord: Record<string, unknown> = {

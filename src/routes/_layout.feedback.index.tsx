@@ -145,15 +145,6 @@ const styles = stylex.create({
     },
     rowGap: gap["5xl"],
   },
-  eyebrow: {
-    color: uiColor.text2,
-    fontFamily: fontFamily.sans,
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-    letterSpacing: tracking.widest,
-    marginBottom: spacing["2.5"],
-    textTransform: "uppercase",
-  },
   title: {
     color: uiColor.text2,
     fontFamily: fontFamily.serif,

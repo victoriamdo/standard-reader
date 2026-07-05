@@ -1,7 +1,7 @@
 /** Formatting helpers shared by the reader UI (kept apart from components). */
 
-import { STANDARD_NSID } from "#/lib/atproto/nsids";
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
+import { STANDARD_NSID } from "#/lib/atproto/nsids";
 
 /** Byline author (lead contributor, else publication owner, else publication
  * name). Lives here (not in a component file) so both `article-view.tsx` and

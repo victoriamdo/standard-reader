@@ -41,7 +41,9 @@ describe("resolveIdentity", () => {
     ["wrong scheme", "ftp://pds.example.com"],
   ])("returns pds: null for a %s serviceEndpoint (%s)", async (_desc, ep) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockDidDoc(ep)));
-    const identity = await resolveIdentity(`did:plc:malformed-${ep || "empty"}`);
+    const identity = await resolveIdentity(
+      `did:plc:malformed-${ep || "empty"}`,
+    );
     expect(identity.pds).toBeNull();
   });
 });

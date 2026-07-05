@@ -364,9 +364,8 @@ export async function revokeAtprotoSession(did: Did): Promise<void> {
   // after this revoke (e.g. the return leg of a revoke + re-authorize upgrade
   // flow) re-resolves from the DB instead of reusing a client bound to the
   // now-revoked session's DPoP key. See restore-client.server.ts.
-  const { invalidateAuthenticatedClientCache } = await import(
-    "./restore-client.server"
-  );
+  const { invalidateAuthenticatedClientCache } =
+    await import("./restore-client.server");
   invalidateAuthenticatedClientCache(did);
 
   let revoked = false;

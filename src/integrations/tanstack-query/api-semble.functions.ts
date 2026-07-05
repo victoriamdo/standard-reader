@@ -134,21 +134,17 @@ const saveArticleToSembleCollection = createServerFn({ method: "POST" })
         pds,
       );
 
-      const result = await saveToSembleCollection(
-        session.client,
-        session.did,
-        {
-          collectionUri,
-          collectionCid: resolvedCid,
-          url: data.url,
-          title: data.title,
-          ...(data.description ? { description: data.description } : {}),
-          ...(data.author ? { author: data.author } : {}),
-          ...(data.siteName ? { siteName: data.siteName } : {}),
-          ...(data.imageUrl ? { imageUrl: data.imageUrl } : {}),
-          createdAt,
-        },
-      );
+      const result = await saveToSembleCollection(session.client, session.did, {
+        collectionUri,
+        collectionCid: resolvedCid,
+        url: data.url,
+        title: data.title,
+        ...(data.description ? { description: data.description } : {}),
+        ...(data.author ? { author: data.author } : {}),
+        ...(data.siteName ? { siteName: data.siteName } : {}),
+        ...(data.imageUrl ? { imageUrl: data.imageUrl } : {}),
+        createdAt,
+      });
       return { ...result, collectionUri };
     }),
   );

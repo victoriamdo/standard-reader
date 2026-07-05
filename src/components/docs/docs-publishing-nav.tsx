@@ -30,9 +30,7 @@ export function DocsPublishingNav() {
     <nav {...stylex.props(docsStyles.refNav)} aria-label="Publishing guide">
       <div {...stylex.props(docsStyles.refNavGroup)}>
         <div {...stylex.props(docsStyles.refNavHeadingRow)}>
-          <span {...stylex.props(docsStyles.refNavHeading)}>
-            On this page
-          </span>
+          <span {...stylex.props(docsStyles.refNavHeading)}>On this page</span>
         </div>
         {LINKS.map((link) => (
           <a

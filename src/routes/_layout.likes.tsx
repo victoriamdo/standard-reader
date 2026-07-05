@@ -6,7 +6,6 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Heart } from "lucide-react";
 import { useCallback } from "react";
 
 import { ButtonLink } from "#/components/router-links";

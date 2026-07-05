@@ -10,7 +10,6 @@ import {
   FolderPlus,
   Home,
   Layers,
-  MessageSquarePlus,
   Newspaper,
   Plus,
   Search,
@@ -528,9 +527,6 @@ const styles = stylex.create({
     boxShadow: `0 0 0 2px ${primaryColor.solid1}`,
   },
   addTrigger: {
-    width: "100%",
-  },
-  feedbackTrigger: {
     width: "100%",
   },
 });

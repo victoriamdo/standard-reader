@@ -361,7 +361,10 @@ export function SectionHead({
 }) {
   return (
     <div
-      {...stylex.props(styles.sectionHead, !stackOnMobile && styles.sectionHeadRow)}
+      {...stylex.props(
+        styles.sectionHead,
+        !stackOnMobile && styles.sectionHeadRow,
+      )}
     >
       <Flex direction="column" gap="md" style={styles.sectionHeadTitle}>
         {kicker != null && <Kicker icon={icon}>{kicker}</Kicker>}

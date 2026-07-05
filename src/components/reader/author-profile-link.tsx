@@ -50,11 +50,7 @@ export function AuthorProfileLink({
 
   const mergedStyle = stylex.props(
     styles.link,
-    ...(linkStyle
-      ? Array.isArray(linkStyle)
-        ? linkStyle
-        : [linkStyle]
-      : []),
+    ...(linkStyle ? (Array.isArray(linkStyle) ? linkStyle : [linkStyle]) : []),
   );
 
   const goToProfile = () => {

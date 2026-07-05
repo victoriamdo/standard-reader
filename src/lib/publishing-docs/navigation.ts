@@ -7,9 +7,8 @@ export const PUBLISHING_DOCS_IDS = {
   example: "example",
 } as const;
 
-export const PUBLISHING_DOCS_SCROLL_SPY_IDS = Object.values(
-  PUBLISHING_DOCS_IDS,
-);
+export const PUBLISHING_DOCS_SCROLL_SPY_IDS =
+  Object.values(PUBLISHING_DOCS_IDS);
 
 export type PublishingDocsJumpNavGroup = {
   label: string;

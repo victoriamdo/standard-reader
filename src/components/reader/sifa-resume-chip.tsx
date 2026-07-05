@@ -125,7 +125,9 @@ export function AuthorSifaResumeChip({
 
   if (!mounted) return null;
   if (sifaProfileUrl) {
-    return <SifaResumeChip href={sifaProfileUrl} style={style} variant={variant} />;
+    return (
+      <SifaResumeChip href={sifaProfileUrl} style={style} variant={variant} />
+    );
   }
   if (isPending) {
     return <SifaResumeChipPlaceholder style={style} variant={variant} />;

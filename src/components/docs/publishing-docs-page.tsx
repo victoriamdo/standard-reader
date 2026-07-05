@@ -271,11 +271,11 @@ export function PublishingDocsPage() {
             at.markpub.markdown
           </code>{" "}
           — markdown with facets for rich text. It&apos;s not part of the
-          site.standard spec either — no markdown format is — but it&apos;s
-          the only one that&apos;s actually spec&apos;d in a meaningful,
-          reusable way, rather than one app&apos;s own ad hoc shape. Use this
-          for a hand-rolled integration unless you already produce one of the
-          platform formats below.
+          site.standard spec either — no markdown format is — but it&apos;s the
+          only one that&apos;s actually spec&apos;d in a meaningful, reusable
+          way, rather than one app&apos;s own ad hoc shape. Use this for a
+          hand-rolled integration unless you already produce one of the platform
+          formats below.
         </p>
         <p {...stylex.props(docsStyles.prose)}>
           <strong>Leaflet, Pckt, Offprint.</strong>{" "}

@@ -472,9 +472,8 @@ const upgradeToAtstoreReview = createServerFn({ method: "POST" })
   .validator(upgradeToCollectionsInputSchema)
   .handler(async ({ data }) => {
     const request = getRequest();
-    const { getReaderContextForRequest } = await import(
-      "#/middleware/auth-session.server"
-    );
+    const { getReaderContextForRequest } =
+      await import("#/middleware/auth-session.server");
 
     const reader = await getReaderContextForRequest(request);
     if (!reader) {

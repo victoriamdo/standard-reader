@@ -194,11 +194,15 @@ console.log(
 );
 
 if (ownedResult.gone.length > 0) {
-  console.log(`\nRepos reported gone (owned lists), ${ownedResult.gone.length}:`);
+  console.log(
+    `\nRepos reported gone (owned lists), ${ownedResult.gone.length}:`,
+  );
   for (const did of ownedResult.gone) console.log(`  ${did}`);
 }
 if (savedResult.gone.length > 0) {
-  console.log(`\nRepos reported gone (list saves), ${savedResult.gone.length}:`);
+  console.log(
+    `\nRepos reported gone (list saves), ${savedResult.gone.length}:`,
+  );
   for (const did of savedResult.gone) console.log(`  ${did}`);
 }
 

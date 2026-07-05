@@ -7,14 +7,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-  Compass,
-  Flame,
-  LayoutGrid,
-  List,
-  Sparkles,
-  Users,
-} from "lucide-react";
+import { Flame, LayoutGrid, List, Sparkles, Users } from "lucide-react";
 import {
   Suspense,
   useCallback,

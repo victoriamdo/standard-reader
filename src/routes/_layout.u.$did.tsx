@@ -21,12 +21,12 @@ import {
   AUTHOR_ACTIVITY_PAGE_SIZE,
   authorApi,
 } from "#/integrations/tanstack-query/api-author.functions";
+import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
+import type { SubscriptionList } from "#/integrations/tanstack-query/api-lists.functions";
 import type {
   ArticleCard,
   PublicationCard,
 } from "#/integrations/tanstack-query/api-shapes";
-import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
-import type { SubscriptionList } from "#/integrations/tanstack-query/api-lists.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import {
   authorFeedUrl,
@@ -36,8 +36,8 @@ import {
 
 import { AuthorProfileLink } from "../components/reader/author-profile-link";
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
-import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
 import { LinkifiedText } from "../components/reader/linkified-text";
+import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
 import { RssFeedButton } from "../components/reader/rss-feed-button";
 import { ShareMenu } from "../components/reader/share-menu";
 import { AuthorSifaResumeChip } from "../components/reader/sifa-resume-chip";
@@ -536,7 +536,11 @@ function AuthorProfileContent({
                   <ExternalLink size={15} />
                 </IconButton>
               ) : null}
-              <AuthorSifaResumeChip did={did} handle={profile.handle} variant="icon" />
+              <AuthorSifaResumeChip
+                did={did}
+                handle={profile.handle}
+                variant="icon"
+              />
             </div>
           </div>
 
@@ -569,12 +573,20 @@ function AuthorProfileContent({
                 <ExternalLink size={15} />
               </IconButton>
             ) : null}
-            <AuthorSifaResumeChip did={did} handle={profile.handle} variant="icon" />
+            <AuthorSifaResumeChip
+              did={did}
+              handle={profile.handle}
+              variant="icon"
+            />
           </div>
         </div>
       </div>
 
-      <Tabs selectedKey={tab} onSelectionChange={onTabChange} style={styles.tabs}>
+      <Tabs
+        selectedKey={tab}
+        onSelectionChange={onTabChange}
+        style={styles.tabs}
+      >
         <div {...stylex.props(styles.tabBar)}>
           <div {...stylex.props(styles.tabBarInner)}>
             <TabList aria-label="Author sections" style={styles.tabList}>
@@ -756,9 +768,7 @@ function AuthorPostsPanel({
   const scroll = useInfiniteScroll(nextOffset, loadMore);
 
   if (items.length === 0) {
-    return (
-      <div {...stylex.props(styles.emptyNote)}>No posts indexed yet.</div>
-    );
+    return <div {...stylex.props(styles.emptyNote)}>No posts indexed yet.</div>;
   }
 
   return (
@@ -851,10 +861,7 @@ function AuthorReadersPanel({
     });
     setItems((prev) => {
       const seen = new Set(prev.map((reader) => reader.did));
-      return [
-        ...prev,
-        ...page.items.filter((reader) => !seen.has(reader.did)),
-      ];
+      return [...prev, ...page.items.filter((reader) => !seen.has(reader.did))];
     });
     setNextOffset(page.nextOffset);
   }, [did, nextOffset]);
@@ -869,7 +876,11 @@ function AuthorReadersPanel({
   return (
     <div>
       {items.map((reader, index) => (
-        <AuthorReaderRow key={reader.did} reader={reader} isFirst={index === 0} />
+        <AuthorReaderRow
+          key={reader.did}
+          reader={reader}
+          isFirst={index === 0}
+        />
       ))}
       <LoadMoreFooter
         nextOffset={nextOffset}
@@ -890,9 +901,7 @@ function AuthorReaderRow({
   const name = reader.displayName?.trim() || reader.handle || "Reader";
 
   return (
-    <div
-      {...stylex.props(styles.readerRow, isFirst && styles.readerRowFirst)}
-    >
+    <div {...stylex.props(styles.readerRow, isFirst && styles.readerRowFirst)}>
       <AuthorProfileLink authorRef={reader.did} linkStyle={styles.readerLink}>
         <Avatar
           size="md"

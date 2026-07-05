@@ -112,7 +112,10 @@ interface StatusRecordValue {
 export async function fetchStandardReaderDiscussionStatuses(): Promise<
   Map<string, FeedbackStatus>
 > {
-  const latest = new Map<string, { state: FeedbackStatus; createdAt: string }>();
+  const latest = new Map<
+    string,
+    { state: FeedbackStatus; createdAt: string }
+  >();
   try {
     let cursor: string | undefined;
     do {

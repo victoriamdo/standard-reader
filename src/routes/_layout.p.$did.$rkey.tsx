@@ -648,10 +648,7 @@ function PublicationProfile() {
           ) : null}
 
           <div {...stylex.props(styles.statStrip)}>
-            <Stat
-              value={formatReaders(pub.subscriberCount)}
-              label="Readers"
-            />
+            <Stat value={formatReaders(pub.subscriberCount)} label="Readers" />
             <Stat value={String(pub.documentCount)} label="Posts" />
             <Stat
               value={lastActive(pub.lastDocumentAt ?? null)}
@@ -857,8 +854,8 @@ function PublicationRecentWriting({
             >
               <AlertDialogHeader>Mark all as read?</AlertDialogHeader>
               <AlertDialogDescription>
-                Every unread article from this publication will be marked
-                read. This can’t be undone.
+                Every unread article from this publication will be marked read.
+                This can’t be undone.
               </AlertDialogDescription>
               <AlertDialogFooter>
                 <AlertDialogCancelButton isDisabled={markingAllRead} />
