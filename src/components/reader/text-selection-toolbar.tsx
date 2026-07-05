@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { IconButton } from "#/design-system/icon-button";
+import { MenuItem, MenuSeparator } from "#/design-system/menu";
 import { animationDuration } from "#/design-system/theme/animations.stylex";
 import { uiColor } from "#/design-system/theme/color.stylex";
 import { radius } from "#/design-system/theme/radius.stylex";
@@ -21,7 +22,9 @@ import { quoteShareApi } from "#/integrations/tanstack-query/api-quote-share.fun
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
 import { buildQuoteShareUrl, normalizeQuoteText } from "#/lib/quote-share";
 
+import { primaryAuthor } from "./format";
 import { LinkShareMenu } from "./link-share-menu";
+import { SaveToCollectionDialog } from "./save-to-collection-dialog";
 
 const MIN_SELECTION_LENGTH = 3;
 const SYNC_SELECTION_DELAY_MS = 0;
@@ -113,6 +116,9 @@ export function TextSelectionToolbar({
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [sharePending, setSharePending] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const [saveDialog, setSaveDialog] = useState<"margin" | "semble" | null>(
+    null,
+  );
   const { playFromSelection } = usePageReader();
 
   const hideToolbar = useCallback(() => {
@@ -290,6 +296,39 @@ export function TextSelectionToolbar({
     globalThis.getSelection()?.removeAllRanges();
   }, [hideToolbar]);
 
+  const [savePassage, setSavePassage] = useState<string | null>(null);
+
+  const openSaveDialog = useCallback(
+    (app: "margin" | "semble") => {
+      if (!toolbar) return;
+      setSavePassage(toolbar.text);
+      setSaveDialog(app);
+      dismissAfterShare();
+    },
+    [dismissAfterShare, toolbar],
+  );
+
+  // Decoupled from `ensureShareUrl` (which reads live `toolbar` state) since
+  // the save dialog stays open — and may complete its OAuth round-trip —
+  // after the toolbar (and its selection) has already been dismissed.
+  const ensureSaveQuoteShareUrl = useCallback(async (): Promise<
+    string | null
+  > => {
+    if (!savePassage) return null;
+    try {
+      const { id } = await quoteShareApi.createQuoteShare({
+        data: { documentUri, quote: savePassage },
+      });
+      return buildQuoteShareUrl(did, rkey, id);
+    } catch {
+      toasts.add(
+        { title: "Couldn't create share link", variant: "critical" },
+        { timeout: 3000 },
+      );
+      return null;
+    }
+  }, [did, documentUri, rkey, savePassage]);
+
   const onPlayPress = useCallback(() => {
     if (!toolbar) return;
     playFromSelection(article, toolbar.text);
@@ -297,53 +336,91 @@ export function TextSelectionToolbar({
     globalThis.getSelection()?.removeAllRanges();
   }, [article, hideToolbar, playFromSelection, toolbar]);
 
-  if (!toolbar || globalThis.document === undefined) return null;
-
-  return createPortal(
-    <div
-      ref={anchorRef}
-      {...stylex.props(styles.anchor)}
-      style={{ left: toolbar.x, top: toolbar.y }}
-    >
-      <Toolbar
-        aria-label="Text selection actions"
-        style={[styles.shell, styles.shellVisible]}
-      >
-        <ToolbarGroup aria-label="Listen">
-          <IconButton
-            variant="tertiary"
-            size="lg"
-            label="Read from here"
-            onPress={onPlayPress}
-          >
-            <Play size={18} />
-          </IconButton>
-        </ToolbarGroup>
-        <ToolbarGroup aria-label="Share">
-          <IconButton
-            variant="tertiary"
-            size="lg"
-            label="Copy link"
-            isDisabled={sharePending}
-            onPress={onCopyLinkPress}
-          >
-            <LinkIcon size={18} />
-          </IconButton>
-          <LinkShareMenu
-            getLinkUrl={() => shareUrl}
-            ensureLinkUrl={ensureShareUrl}
-            isOpen={shareMenuOpen}
-            onOpenChange={setShareMenuOpen}
-            onShare={dismissAfterShare}
-            trigger={
-              <IconButton variant="tertiary" size="lg" label="Share">
-                <Share2 size={18} />
-              </IconButton>
-            }
-          />
-        </ToolbarGroup>
-      </Toolbar>
-    </div>,
-    document.body,
+  return (
+    <>
+      {toolbar && globalThis.document !== undefined
+        ? createPortal(
+            <div
+              ref={anchorRef}
+              {...stylex.props(styles.anchor)}
+              style={{ left: toolbar.x, top: toolbar.y }}
+            >
+              <Toolbar
+                aria-label="Text selection actions"
+                style={[styles.shell, styles.shellVisible]}
+              >
+                <ToolbarGroup aria-label="Listen">
+                  <IconButton
+                    variant="tertiary"
+                    size="lg"
+                    label="Read from here"
+                    onPress={onPlayPress}
+                  >
+                    <Play size={18} />
+                  </IconButton>
+                </ToolbarGroup>
+                <ToolbarGroup aria-label="Share">
+                  <IconButton
+                    variant="tertiary"
+                    size="lg"
+                    label="Copy link"
+                    isDisabled={sharePending}
+                    onPress={onCopyLinkPress}
+                  >
+                    <LinkIcon size={18} />
+                  </IconButton>
+                  <LinkShareMenu
+                    getLinkUrl={() => shareUrl}
+                    ensureLinkUrl={ensureShareUrl}
+                    isOpen={shareMenuOpen}
+                    onOpenChange={setShareMenuOpen}
+                    onShare={dismissAfterShare}
+                    trigger={
+                      <IconButton variant="tertiary" size="lg" label="Share">
+                        <Share2 size={18} />
+                      </IconButton>
+                    }
+                  >
+                    <MenuSeparator />
+                    <MenuItem onPress={() => openSaveDialog("margin")}>
+                      Save to Margin…
+                    </MenuItem>
+                    <MenuItem onPress={() => openSaveDialog("semble")}>
+                      Save to Semble…
+                    </MenuItem>
+                  </LinkShareMenu>
+                </ToolbarGroup>
+              </Toolbar>
+            </div>,
+            document.body,
+          )
+        : null}
+      {/* Rendered independent of `toolbar` — the save dialog (and its OAuth
+          round-trip) must stay mounted even after the toolbar/selection is
+          dismissed. */}
+      <SaveToCollectionDialog
+        app="margin"
+        isOpen={saveDialog === "margin"}
+        onOpenChange={(open) => setSaveDialog(open ? "margin" : null)}
+        articleTitle={article.title}
+        getStandardReaderUrl={() => globalThis.location.href}
+        originalUrl={article.canonicalUrl}
+        passage={savePassage ?? undefined}
+      />
+      <SaveToCollectionDialog
+        app="semble"
+        isOpen={saveDialog === "semble"}
+        onOpenChange={(open) => setSaveDialog(open ? "semble" : null)}
+        articleTitle={article.title}
+        getStandardReaderUrl={() => globalThis.location.href}
+        originalUrl={article.canonicalUrl}
+        articleDescription={article.description}
+        articleAuthor={primaryAuthor(article)}
+        articleSiteName={article.publication?.name}
+        articleImageUrl={article.coverImageUrl}
+        passage={savePassage ?? undefined}
+        ensureQuoteShareUrl={ensureSaveQuoteShareUrl}
+      />
+    </>
   );
 }

@@ -17,9 +17,11 @@ import {
   collectionSidecarUri,
   collectionsPublicationUri,
 } from "#/lib/atproto/collection-uris.ts";
-import { COLLECTION } from "#/lib/atproto/nsids";
+import { COLLECTION, COSMIK_NSID, MARGIN_NSID } from "#/lib/atproto/nsids";
 import type { CollectionManifest } from "#/lib/collections/manifest";
 import { serializeCollectionManifestForRepo } from "#/lib/markpub/collection-fields.ts";
+import { listRepoRecords } from "#/server/atproto/fetch-record";
+import { buildAtUri } from "#/server/atproto/uri";
 
 export {
   collectionDocumentUri,
@@ -95,6 +97,15 @@ function lexListRecordsParams(args: {
  */
 export function subjectRkey(subject: string): string {
   return createHash("sha256").update(subject).digest("hex").slice(0, 32);
+}
+
+/**
+ * Full sha256 hex digest of a string — used for `at.margin.note`
+ * `target.sourceHash`. Unlike {@link subjectRkey} (truncated to 32 chars for
+ * the rkey charset) this returns the complete 64-char digest Margin expects.
+ */
+export function sha256Hex(input: string): string {
+  return createHash("sha256").update(input).digest("hex");
 }
 
 /** Create or replace a record at a fixed `(collection, rkey)` (idempotent upsert). */
@@ -991,6 +1002,249 @@ export async function deleteUserinputUpvoteRecord(
     collection: "app.userinput.upvote",
     rkey,
   });
+}
+
+// ── Margin (at.margin.*) / Semble (network.cosmik.*) saves ──────────────────
+
+/** A Margin or Semble collection as listed from the reader's own repo. */
+export interface ThirdPartyCollectionSummary {
+  uri: string;
+  cid?: string;
+  name: string;
+}
+
+/**
+ * List the reader's own `at.margin.collection` records. Uses
+ * {@link listRepoRecords} (Slingshot-first, cid-bearing) rather than the
+ * authenticated {@link listCollectionRecords} — the latter drops the cid,
+ * which Margin doesn't need but keeps the two read paths consistent with
+ * Semble's.
+ */
+export async function listMarginCollectionRecords(
+  did: string,
+  pds: string | null,
+): Promise<Array<ThirdPartyCollectionSummary>> {
+  const { records } = await listRepoRecords(did, MARGIN_NSID.collection, pds);
+  return records
+    .map((r) => {
+      const value = r.value as { name?: string } | undefined;
+      if (!value?.name) return null;
+      return { uri: r.uri, ...(r.cid ? { cid: r.cid } : {}), name: value.name };
+    })
+    .filter((r): r is ThirdPartyCollectionSummary => r !== null);
+}
+
+/** List the reader's own `network.cosmik.collection` records. */
+export async function listSembleCollectionRecords(
+  did: string,
+  pds: string | null,
+): Promise<Array<ThirdPartyCollectionSummary>> {
+  const { records } = await listRepoRecords(did, COSMIK_NSID.collection, pds);
+  return records
+    .map((r) => {
+      const value = r.value as { name?: string } | undefined;
+      if (!value?.name) return null;
+      return { uri: r.uri, ...(r.cid ? { cid: r.cid } : {}), name: value.name };
+    })
+    .filter((r): r is ThirdPartyCollectionSummary => r !== null);
+}
+
+/** Create an `at.margin.collection` (a new Margin collection). */
+export async function createMarginCollection(
+  client: Client,
+  repo: string,
+  input: { name: string; createdAt: string },
+): Promise<{ uri: string; cid: string }> {
+  return repoPutRecord(client, {
+    repo,
+    collection: MARGIN_NSID.collection,
+    rkey: tidNow().toString(),
+    record: {
+      $type: MARGIN_NSID.collection,
+      name: input.name,
+      createdAt: input.createdAt,
+    },
+  });
+}
+
+/**
+ * Create a `network.cosmik.collection` (a new Semble collection). Per the
+ * published lexicon, `accessType` is a closed enum of `"OPEN" | "CLOSED"` —
+ * there is no `"PRIVATE"` value. `"OPEN"` matches every collection observed
+ * in the wild on Semble's own appview.
+ */
+export async function createSembleCollection(
+  client: Client,
+  repo: string,
+  input: { name: string; createdAt: string },
+): Promise<{ uri: string; cid: string }> {
+  return repoPutRecord(client, {
+    repo,
+    collection: COSMIK_NSID.collection,
+    rkey: tidNow().toString(),
+    record: {
+      $type: COSMIK_NSID.collection,
+      name: input.name,
+      accessType: "OPEN",
+      collaborators: [],
+      createdAt: input.createdAt,
+      updatedAt: input.createdAt,
+    },
+  });
+}
+
+/**
+ * Save an article to a Margin collection: create an `at.margin.note`
+ * (bookmark, or a highlight when `passage` is set) plus an
+ * `at.margin.collectionItem` linking it into `collectionUri`. Both are bare
+ * AT-URIs (no strongRef), so the note's rkey can be pre-minted and both
+ * records written in one `applyWrites` batch — mirrors
+ * {@link putCollectionDocumentPair}'s pre-mint-then-batch shape, with a
+ * sequential fallback if the batch is rejected.
+ */
+export async function saveToMarginCollection(
+  client: Client,
+  repo: string,
+  input: {
+    collectionUri: string;
+    url: string;
+    title: string;
+    passage?: string;
+    /** Optional free-text note attached to the bookmark/highlight, written as
+     * `body.value` — per the lexicon: "For bookmarks, use body.value for the
+     * description." */
+    note?: string;
+    createdAt: string;
+  },
+): Promise<{ noteUri: string; collectionItemUri: string }> {
+  const noteRkey = tidNow().toString();
+  const noteUri = buildAtUri(repo, MARGIN_NSID.note, noteRkey);
+  const itemRkey = tidNow().toString();
+
+  const target: Record<string, unknown> = {
+    title: input.title,
+    source: input.url,
+    sourceHash: sha256Hex(input.url),
+  };
+  if (input.passage) {
+    target.selector = { type: "TextQuoteSelector", exact: input.passage };
+  }
+  const noteRecord: Record<string, unknown> = {
+    $type: MARGIN_NSID.note,
+    target,
+    motivation: input.passage ? "highlighting" : "bookmarking",
+    ...(input.note ? { body: { value: input.note, format: "text/plain" } } : {}),
+    createdAt: input.createdAt,
+  };
+  const itemRecord: Record<string, unknown> = {
+    $type: MARGIN_NSID.collectionItem,
+    collection: input.collectionUri,
+    annotation: noteUri,
+    createdAt: input.createdAt,
+  };
+
+  try {
+    await repoApplyWrites(client, {
+      repo,
+      writes: [
+        {
+          $type: "com.atproto.repo.applyWrites#create",
+          collection: MARGIN_NSID.note,
+          rkey: noteRkey,
+          value: noteRecord,
+        },
+        {
+          $type: "com.atproto.repo.applyWrites#create",
+          collection: MARGIN_NSID.collectionItem,
+          rkey: itemRkey,
+          value: itemRecord,
+        },
+      ],
+    });
+  } catch {
+    await repoPutRecord(client, {
+      repo,
+      collection: MARGIN_NSID.note,
+      rkey: noteRkey,
+      record: noteRecord,
+    });
+    await repoPutRecord(client, {
+      repo,
+      collection: MARGIN_NSID.collectionItem,
+      rkey: itemRkey,
+      record: itemRecord,
+    });
+  }
+
+  return {
+    noteUri,
+    collectionItemUri: buildAtUri(repo, MARGIN_NSID.collectionItem, itemRkey),
+  };
+}
+
+/**
+ * Save an article to a Semble collection: create a `network.cosmik.card`,
+ * then a `network.cosmik.collectionLink` strongRef pointing at it. Unlike
+ * Margin, the link's `card` field is a strongRef requiring the card's
+ * content-addressed cid — unknowable before the card is written — so these
+ * two writes are necessarily sequential, not a single `applyWrites` batch.
+ */
+export async function saveToSembleCollection(
+  client: Client,
+  repo: string,
+  input: {
+    collectionUri: string;
+    collectionCid: string;
+    url: string;
+    title: string;
+    description?: string;
+    author?: string;
+    siteName?: string;
+    imageUrl?: string;
+    createdAt: string;
+  },
+): Promise<{ cardUri: string; cardCid: string; collectionLinkUri: string }> {
+  const metadata: Record<string, unknown> = {
+    $type: "network.cosmik.card#urlMetadata",
+    type: "article",
+    title: input.title,
+    ...(input.description ? { description: input.description } : {}),
+    ...(input.author ? { author: input.author } : {}),
+    ...(input.siteName ? { siteName: input.siteName } : {}),
+    ...(input.imageUrl ? { imageUrl: input.imageUrl } : {}),
+  };
+
+  const { uri: cardUri, cid: cardCid } = await repoPutRecord(client, {
+    repo,
+    collection: COSMIK_NSID.card,
+    rkey: tidNow().toString(),
+    record: {
+      $type: COSMIK_NSID.card,
+      type: "URL",
+      content: {
+        $type: "network.cosmik.card#urlContent",
+        url: input.url,
+        metadata,
+      },
+      createdAt: input.createdAt,
+    },
+  });
+
+  const { uri: collectionLinkUri } = await repoPutRecord(client, {
+    repo,
+    collection: COSMIK_NSID.collectionLink,
+    rkey: tidNow().toString(),
+    record: {
+      $type: COSMIK_NSID.collectionLink,
+      card: { uri: cardUri, cid: cardCid },
+      collection: { uri: input.collectionUri, cid: input.collectionCid },
+      addedAt: input.createdAt,
+      addedBy: repo,
+      createdAt: input.createdAt,
+    },
+  });
+
+  return { cardUri, cardCid, collectionLinkUri };
 }
 
 export {

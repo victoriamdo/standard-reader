@@ -197,6 +197,13 @@
       "when": 1783136466181,
       "tag": "0027_futuristic_mach_iv",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1783209756154,
+      "tag": "0028_lazy_sugar_man",
+      "breakpoints": true
     }
   ]
 }

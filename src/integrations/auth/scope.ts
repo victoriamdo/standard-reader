@@ -54,6 +54,23 @@ export const ATSTORE_REVIEW_SCOPE = "include:fyi.atstore.authThirdPartyReviews";
 export const USERINPUT_BASIC_SCOPE = "include:app.userinput.authBasic";
 
 /**
+ * Permission-set scope published by Margin (margin.at) covering create /
+ * update / delete on its `at.margin.*` collections (note, collectionItem,
+ * collection, …). Requested when a reader saves an article to a Margin
+ * collection; persisted via `user.marginSaveEnabled` so it's silently
+ * re-requested on every future login once granted.
+ */
+export const MARGIN_FULL_SCOPE = "include:at.margin.authFull";
+
+/**
+ * Permission-set scope published by Semble/Cosmik (semble.so, appview at
+ * network.cosmik.*) covering create/update/delete on its `network.cosmik.*`
+ * collections (card, collectionLink, collection, …). Mirrors
+ * {@link MARGIN_FULL_SCOPE}; persisted via `user.sembleSaveEnabled`.
+ */
+export const SEMBLE_FULL_SCOPE = "include:network.cosmik.authFull";
+
+/**
  * Basic sign-in scope — what 95% of readers need. Covers app-owned reader-state
  * (`authBasicFeatures`) plus standard.site follows & likes (`authSocial`).
  */
@@ -99,6 +116,8 @@ export const clientMetadataScope = [
     ...collectionsScope,
     ...subscribeScope,
     USERINPUT_BASIC_SCOPE,
+    MARGIN_FULL_SCOPE,
+    SEMBLE_FULL_SCOPE,
   ]),
 ];
 
@@ -134,6 +153,17 @@ export function formatOAuthScope(entries: Array<string>): string {
 export interface ScopeUserLookup {
   collectionsAuthoringEnabled?: boolean | null;
   userinputFeedbackEnabled?: boolean | null;
+  marginSaveEnabled?: boolean | null;
+  sembleSaveEnabled?: boolean | null;
+}
+
+/** Addenda scopes that can be requested alongside the base tier, keyed by the
+ * signal computed in `api-auth.functions.ts` (opt-in flag OR already-granted
+ * `account.scope`). Explicit `true` here overrides the `user` row lookup. */
+export interface ScopeAddenda {
+  userinput?: boolean;
+  margin?: boolean;
+  semble?: boolean;
 }
 
 /**
@@ -144,15 +174,15 @@ export interface ScopeUserLookup {
  * flow itself) and `intent: "subscribe"` (the subscribe embed) override the
  * flag.
  *
- * The userinput basic scope (`USERINPUT_BASIC_SCOPE`) is appended when
- * `user.userinputFeedbackEnabled` is set OR when `requestUserinputScope` is
- * explicitly `true` (the signal computed in `api-auth.functions.ts` from
- * `user.userinputFeedbackEnabled` OR an already-granted `account.scope`).
+ * Each addendum scope (userinput, Margin, Semble) is appended when its
+ * `user.*Enabled` flag is set OR the corresponding `addenda` entry is
+ * explicitly `true` (the signal computed in `api-auth.functions.ts` from the
+ * opt-in flag OR an already-granted `account.scope`).
  */
 export function resolveAuthScopeForUser(
   user: ScopeUserLookup | null | undefined,
   intent: AuthScopeIntent | undefined,
-  requestUserinputScope = false,
+  addenda: ScopeAddenda = {},
 ): string {
   if (intent === "subscribe") {
     return formatOAuthScope(SCOPE_BY_INTENT.subscribe);
@@ -161,12 +191,18 @@ export function resolveAuthScopeForUser(
     intent === "collections" || user?.collectionsAuthoringEnabled === true
       ? SCOPE_BY_INTENT.collections
       : SCOPE_BY_INTENT.basic;
-  if (requestUserinputScope || user?.userinputFeedbackEnabled === true) {
-    return formatOAuthScope([
-      ...new Set([...base, USERINPUT_BASIC_SCOPE]),
-    ]);
+
+  const extra = new Set(base);
+  if (addenda.userinput || user?.userinputFeedbackEnabled === true) {
+    extra.add(USERINPUT_BASIC_SCOPE);
   }
-  return formatOAuthScope(base);
+  if (addenda.margin || user?.marginSaveEnabled === true) {
+    extra.add(MARGIN_FULL_SCOPE);
+  }
+  if (addenda.semble || user?.sembleSaveEnabled === true) {
+    extra.add(SEMBLE_FULL_SCOPE);
+  }
+  return formatOAuthScope([...extra]);
 }
 
 /**
@@ -326,6 +362,43 @@ export function hasUserinputUpvoteScope(
   if (tokens.includes(USERINPUT_BASIC_SCOPE)) return true;
   return tokens.some((token) =>
     repoScopeAllowsCreateForCollection(token, "app.userinput.upvote"),
+  );
+}
+
+/**
+ * Detect whether the granted scope includes the Margin save writer tier.
+ * Accepts the `include:at.margin.authFull` set token verbatim, or (if the PDS
+ * expanded the set) a granular `repo?collection=at.margin.note` token — with
+ * or without `action=create` — or the action-less `repo:` form.
+ *
+ * The source of truth for "the reader has actually accepted the Margin save
+ * scope" — as opposed to `user.marginSaveEnabled`, which is set optimistically
+ * in `upgradeToMargin` *before* the re-auth completes.
+ */
+export function hasMarginScope(
+  grantedScope: string | null | undefined,
+): boolean {
+  if (!grantedScope) return false;
+  const tokens = grantedScope.split(/\s+/);
+  if (tokens.includes(MARGIN_FULL_SCOPE)) return true;
+  return tokens.some((token) =>
+    repoScopeAllowsCreateForCollection(token, "at.margin.note"),
+  );
+}
+
+/**
+ * Detect whether the granted scope includes the Semble/Cosmik save writer
+ * tier. Mirrors {@link hasMarginScope} for `include:network.cosmik.authFull` /
+ * `network.cosmik.card`.
+ */
+export function hasSembleScope(
+  grantedScope: string | null | undefined,
+): boolean {
+  if (!grantedScope) return false;
+  const tokens = grantedScope.split(/\s+/);
+  if (tokens.includes(SEMBLE_FULL_SCOPE)) return true;
+  return tokens.some((token) =>
+    repoScopeAllowsCreateForCollection(token, "network.cosmik.card"),
   );
 }
 

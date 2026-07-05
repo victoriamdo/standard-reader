@@ -13,11 +13,10 @@ import {
 import type { AuthScopeIntent } from "#/integrations/auth/scope";
 import {
   ATSTORE_REVIEW_SCOPE,
-  USERINPUT_BASIC_SCOPE,
-  basicScope,
-  collectionsScope,
   formatOAuthScope,
   hasCollectionsScope,
+  hasMarginScope,
+  hasSembleScope,
   hasUserinputFeedbackScope,
   resolveAuthScopeForUser,
 } from "#/integrations/auth/scope";
@@ -136,6 +135,167 @@ async function shouldRequestUserinputScope(args: {
   return hasUserinputFeedbackScope(atprotoAccount?.scope ?? null);
 }
 
+/**
+ * Mirror of {@link shouldRequestUserinputScope} for the Margin save scope
+ * tier. Returns `true` when the reader has either opted in
+ * (`user.marginSaveEnabled`) or already granted the scope on their PDS.
+ */
+async function shouldRequestMarginScope(args: {
+  did?: string | undefined;
+  handle: string;
+}): Promise<boolean> {
+  const [{ db }, schema] = await Promise.all([
+    import("#/db/index.server"),
+    import("#/db/schema"),
+  ]);
+
+  let did = args.did;
+  if (!did) {
+    const normalizedHandle = args.handle.replace(/^@/, "").trim();
+    const profile = await db.query.profiles.findFirst({
+      where: eq(schema.profiles.handle, normalizedHandle),
+      columns: { did: true },
+    });
+    did = profile?.did;
+  }
+  if (!did) return false;
+
+  const row = await db.query.user.findFirst({
+    where: eq(schema.user.did, did),
+    columns: { marginSaveEnabled: true },
+    with: {
+      accounts: {
+        columns: { scope: true, providerId: true },
+        where: eq(schema.account.providerId, "atproto"),
+      },
+    },
+  });
+  if (!row) return false;
+  if (row.marginSaveEnabled === true) return true;
+  const atprotoAccount = row.accounts.find((a) => a.providerId === "atproto");
+  return hasMarginScope(atprotoAccount?.scope ?? null);
+}
+
+/**
+ * Mirror of {@link shouldRequestUserinputScope} for the Semble/Cosmik save
+ * scope tier. Returns `true` when the reader has either opted in
+ * (`user.sembleSaveEnabled`) or already granted the scope on their PDS.
+ */
+async function shouldRequestSembleScope(args: {
+  did?: string | undefined;
+  handle: string;
+}): Promise<boolean> {
+  const [{ db }, schema] = await Promise.all([
+    import("#/db/index.server"),
+    import("#/db/schema"),
+  ]);
+
+  let did = args.did;
+  if (!did) {
+    const normalizedHandle = args.handle.replace(/^@/, "").trim();
+    const profile = await db.query.profiles.findFirst({
+      where: eq(schema.profiles.handle, normalizedHandle),
+      columns: { did: true },
+    });
+    did = profile?.did;
+  }
+  if (!did) return false;
+
+  const row = await db.query.user.findFirst({
+    where: eq(schema.user.did, did),
+    columns: { sembleSaveEnabled: true },
+    with: {
+      accounts: {
+        columns: { scope: true, providerId: true },
+        where: eq(schema.account.providerId, "atproto"),
+      },
+    },
+  });
+  if (!row) return false;
+  if (row.sembleSaveEnabled === true) return true;
+  const atprotoAccount = row.accounts.find((a) => a.providerId === "atproto");
+  return hasSembleScope(atprotoAccount?.scope ?? null);
+}
+
+interface UpgradeScopeOverrides {
+  collections?: boolean;
+  userinput?: boolean;
+  margin?: boolean;
+  semble?: boolean;
+}
+
+/**
+ * Resolve the full OAuth scope for a progressive-upgrade re-authorize (the
+ * revoke + re-auth every `upgradeTo*` fn performs). Reads *every* addendum
+ * the reader has already opted into or already been granted on their PDS —
+ * collections, userinput, Margin, Semble — and combines them, so upgrading
+ * to one scope never silently drops another already-granted one. This is
+ * the bug the individual `upgradeTo*` fns had before this helper existed:
+ * each only preserved `collectionsAuthoringEnabled` and its own addendum,
+ * dropping the others on every re-auth.
+ *
+ * `overrides` forces the flag the caller is granting right now to `true` —
+ * the DB write that persists it happens immediately before this is called
+ * (same request), so the row read here already reflects it in practice, but
+ * the override makes that ordering explicit rather than implicit.
+ */
+async function resolveUpgradeScope(
+  userId: string,
+  overrides: UpgradeScopeOverrides = {},
+): Promise<string> {
+  const [{ db }, schema] = await Promise.all([
+    import("#/db/index.server"),
+    import("#/db/schema"),
+  ]);
+  const row = await db.query.user.findFirst({
+    where: eq(schema.user.id, userId),
+    columns: {
+      collectionsAuthoringEnabled: true,
+      userinputFeedbackEnabled: true,
+      marginSaveEnabled: true,
+      sembleSaveEnabled: true,
+    },
+    with: {
+      accounts: {
+        columns: { scope: true, providerId: true },
+        where: eq(schema.account.providerId, "atproto"),
+      },
+    },
+  });
+  const grantedScope =
+    row?.accounts.find((a) => a.providerId === "atproto")?.scope ?? null;
+
+  const requestCollections =
+    overrides.collections ??
+    (row?.collectionsAuthoringEnabled === true ||
+      hasCollectionsScope(grantedScope));
+  const requestUserinput =
+    overrides.userinput ??
+    (row?.userinputFeedbackEnabled === true ||
+      hasUserinputFeedbackScope(grantedScope));
+  const requestMargin =
+    overrides.margin ??
+    (row?.marginSaveEnabled === true || hasMarginScope(grantedScope));
+  const requestSemble =
+    overrides.semble ??
+    (row?.sembleSaveEnabled === true || hasSembleScope(grantedScope));
+
+  return resolveAuthScopeForUser(
+    {
+      collectionsAuthoringEnabled: requestCollections,
+      userinputFeedbackEnabled: requestUserinput,
+      marginSaveEnabled: requestMargin,
+      sembleSaveEnabled: requestSemble,
+    },
+    undefined,
+    {
+      userinput: requestUserinput,
+      margin: requestMargin,
+      semble: requestSemble,
+    },
+  );
+}
+
 const authorize = createServerFn({ method: "GET" })
   .validator(authorizeInputSchema)
   .handler(async ({ data }) => {
@@ -159,28 +319,28 @@ const authorize = createServerFn({ method: "GET" })
     // automatically — even on a fresh sign-in from /login. Falls back to basic
     // when the reader can't be identified (first sign-in) or neither signal is
     // present. The DID is resolved from the handle when not threaded in.
-    const [requestCollections, requestUserinput] = await Promise.all([
-      shouldRequestCollectionsScope({ did: data.did, handle: data.handle }),
-      shouldRequestUserinputScope({ did: data.did, handle: data.handle }),
-    ]);
-    const scope =
-      scopeIntent === "collections" || requestCollections
-        ? resolveAuthScopeForUser(
-            {
-              collectionsAuthoringEnabled: true,
-              userinputFeedbackEnabled: requestUserinput,
-            },
-            scopeIntent,
-            requestUserinput,
-          )
-        : resolveAuthScopeForUser(
-            {
-              collectionsAuthoringEnabled: false,
-              userinputFeedbackEnabled: requestUserinput,
-            },
-            scopeIntent,
-            requestUserinput,
-          );
+    const [requestCollections, requestUserinput, requestMargin, requestSemble] =
+      await Promise.all([
+        shouldRequestCollectionsScope({ did: data.did, handle: data.handle }),
+        shouldRequestUserinputScope({ did: data.did, handle: data.handle }),
+        shouldRequestMarginScope({ did: data.did, handle: data.handle }),
+        shouldRequestSembleScope({ did: data.did, handle: data.handle }),
+      ]);
+    const scope = resolveAuthScopeForUser(
+      {
+        collectionsAuthoringEnabled:
+          scopeIntent === "collections" || requestCollections,
+        userinputFeedbackEnabled: requestUserinput,
+        marginSaveEnabled: requestMargin,
+        sembleSaveEnabled: requestSemble,
+      },
+      scopeIntent,
+      {
+        userinput: requestUserinput,
+        margin: requestMargin,
+        semble: requestSemble,
+      },
+    );
 
     const { url } = await atprotoOAuth.authorize({
       target: {
@@ -285,9 +445,10 @@ const upgradeToCollections = createServerFn({ method: "POST" })
       console.warn("Failed to revoke Atproto session during upgrade:", error);
     }
 
-    // 3. Kick off a fresh authorize with the collections scope tier. The
-    // handle isn't known here (the reader is already signed in), so target
-    // the account by DID.
+    // 3. Kick off a fresh authorize with the collections scope tier (plus
+    // every other addendum the reader has already granted — see
+    // `resolveUpgradeScope`). The handle isn't known here (the reader is
+    // already signed in), so target the account by DID.
     const redirectTarget = sanitizeAuthRedirectTarget(
       data.redirect,
       request.url,
@@ -298,10 +459,7 @@ const upgradeToCollections = createServerFn({ method: "POST" })
         type: "account",
         identifier: reader.did as ActorIdentifier,
       },
-      scope: resolveAuthScopeForUser(
-        { collectionsAuthoringEnabled: true },
-        "collections",
-      ),
+      scope: await resolveUpgradeScope(reader.userId, { collections: true }),
       state: {
         redirect: redirectTarget,
       },
@@ -314,34 +472,17 @@ const upgradeToAtstoreReview = createServerFn({ method: "POST" })
   .validator(upgradeToCollectionsInputSchema)
   .handler(async ({ data }) => {
     const request = getRequest();
-    const [{ db }, schema, { getReaderContextForRequest }] = await Promise.all([
-      import("#/db/index.server"),
-      import("#/db/schema"),
-      import("#/middleware/auth-session.server"),
-    ]);
+    const { getReaderContextForRequest } = await import(
+      "#/middleware/auth-session.server"
+    );
 
     const reader = await getReaderContextForRequest(request);
     if (!reader) {
       throw new Error("Unauthorized");
     }
 
-    const row = await db.query.user.findFirst({
-      where: eq(schema.user.id, reader.userId),
-      columns: { collectionsAuthoringEnabled: true },
-      with: {
-        accounts: {
-          columns: { scope: true, providerId: true },
-          where: eq(schema.account.providerId, "atproto"),
-        },
-      },
-    });
-    const atprotoAccount = row?.accounts.find(
-      (a) => a.providerId === "atproto",
-    );
-    const requestCollections =
-      row?.collectionsAuthoringEnabled === true ||
-      hasCollectionsScope(atprotoAccount?.scope ?? null);
-    const baseScope = requestCollections ? collectionsScope : basicScope;
+    const upgradeScope = await resolveUpgradeScope(reader.userId);
+    const baseScope = upgradeScope.split(" ");
 
     try {
       await revokeAtprotoSession(
@@ -380,9 +521,10 @@ const upgradeToAtstoreReview = createServerFn({ method: "POST" })
  * userinput.app feedback. Sets the `userinputFeedbackEnabled` flag (so future
  * logins silently include the expanded scope — see `shouldRequestUserinputScope`),
  * revokes the current OAuth session, and initiates a fresh authorize flow on
- * the *default* client (no separate OAuth client flavor) with the
- * `USERINPUT_BASIC_SCOPE` addendum. The client navigates to the returned
- * URL; the callback returns to `redirect`.
+ * the *default* client (no separate OAuth client flavor) with the userinput
+ * addendum, plus every other addendum the reader has already granted (see
+ * `resolveUpgradeScope`). The client navigates to the returned URL; the
+ * callback returns to `redirect`.
  *
  * Same revoke + re-auth shape as `upgradeToCollections` per
  * atproto.com/guides/oauth-patterns (BFF scope upgrades revoke + re-auth
@@ -428,25 +570,69 @@ const upgradeToUserinputFeedback = createServerFn({ method: "POST" })
     }
 
     // 3. Kick off a fresh authorize on the DEFAULT client with the userinput
-    //    scope addendum. baseScope is the user's existing tier (collections if
-    //    opted in, otherwise basic) so we don't accidentally downgrade them.
-    const row = await db.query.user.findFirst({
-      where: eq(schema.user.id, reader.userId),
-      columns: { collectionsAuthoringEnabled: true },
-      with: {
-        accounts: {
-          columns: { scope: true, providerId: true },
-          where: eq(schema.account.providerId, "atproto"),
-        },
+    //    scope addendum, plus every other addendum the reader has already
+    //    granted (see `resolveUpgradeScope`).
+    const redirectTarget = sanitizeAuthRedirectTarget(
+      data.redirect,
+      request.url,
+    );
+
+    const { url } = await atprotoOAuth.authorize({
+      target: {
+        type: "account",
+        identifier: reader.did as ActorIdentifier,
+      },
+      scope: await resolveUpgradeScope(reader.userId, { userinput: true }),
+      state: {
+        redirect: redirectTarget,
       },
     });
-    const atprotoAccount = row?.accounts.find(
-      (a) => a.providerId === "atproto",
-    );
-    const requestCollections =
-      row?.collectionsAuthoringEnabled === true ||
-      hasCollectionsScope(atprotoAccount?.scope ?? null);
-    const baseScope = requestCollections ? collectionsScope : basicScope;
+
+    return { authorizationUrl: url.toString() };
+  });
+
+/**
+ * Progressive scope upgrade: opt the signed-in reader into saving articles to
+ * their Margin collections. Sets the `marginSaveEnabled` flag (so future
+ * logins silently include the expanded scope — see
+ * `shouldRequestMarginScope`), revokes the current OAuth session, and
+ * initiates a fresh authorize flow on the *default* client (no separate OAuth
+ * client flavor) with the `MARGIN_FULL_SCOPE` addendum plus every other
+ * addendum the reader has already granted (see `resolveUpgradeScope`).
+ *
+ * Same revoke + re-auth shape as `upgradeToUserinputFeedback` per
+ * atproto.com/guides/oauth-patterns.
+ */
+const upgradeToMargin = createServerFn({ method: "POST" })
+  .validator(upgradeToCollectionsInputSchema)
+  .handler(async ({ data }) => {
+    const request = getRequest();
+    const [{ db }, schema, { getReaderContextForRequest }] = await Promise.all([
+      import("#/db/index.server"),
+      import("#/db/schema"),
+      import("#/middleware/auth-session.server"),
+    ]);
+
+    const reader = await getReaderContextForRequest(request);
+    if (!reader) {
+      throw new Error("Unauthorized");
+    }
+
+    await db
+      .update(schema.user)
+      .set({ marginSaveEnabled: true })
+      .where(eq(schema.user.id, reader.userId));
+
+    try {
+      await revokeAtprotoSession(
+        reader.did as Parameters<typeof revokeAtprotoSession>[0],
+      );
+    } catch (error) {
+      console.warn(
+        "Failed to revoke Atproto session during Margin save upgrade:",
+        error,
+      );
+    }
 
     const redirectTarget = sanitizeAuthRedirectTarget(
       data.redirect,
@@ -458,9 +644,62 @@ const upgradeToUserinputFeedback = createServerFn({ method: "POST" })
         type: "account",
         identifier: reader.did as ActorIdentifier,
       },
-      scope: formatOAuthScope([
-        ...new Set([...baseScope, USERINPUT_BASIC_SCOPE]),
-      ]),
+      scope: await resolveUpgradeScope(reader.userId, { margin: true }),
+      state: {
+        redirect: redirectTarget,
+      },
+    });
+
+    return { authorizationUrl: url.toString() };
+  });
+
+/**
+ * Progressive scope upgrade: opt the signed-in reader into saving articles to
+ * their Semble collections. Mirrors {@link upgradeToMargin} for
+ * `SEMBLE_FULL_SCOPE` / `user.sembleSaveEnabled`.
+ */
+const upgradeToSemble = createServerFn({ method: "POST" })
+  .validator(upgradeToCollectionsInputSchema)
+  .handler(async ({ data }) => {
+    const request = getRequest();
+    const [{ db }, schema, { getReaderContextForRequest }] = await Promise.all([
+      import("#/db/index.server"),
+      import("#/db/schema"),
+      import("#/middleware/auth-session.server"),
+    ]);
+
+    const reader = await getReaderContextForRequest(request);
+    if (!reader) {
+      throw new Error("Unauthorized");
+    }
+
+    await db
+      .update(schema.user)
+      .set({ sembleSaveEnabled: true })
+      .where(eq(schema.user.id, reader.userId));
+
+    try {
+      await revokeAtprotoSession(
+        reader.did as Parameters<typeof revokeAtprotoSession>[0],
+      );
+    } catch (error) {
+      console.warn(
+        "Failed to revoke Atproto session during Semble save upgrade:",
+        error,
+      );
+    }
+
+    const redirectTarget = sanitizeAuthRedirectTarget(
+      data.redirect,
+      request.url,
+    );
+
+    const { url } = await atprotoOAuth.authorize({
+      target: {
+        type: "account",
+        identifier: reader.did as ActorIdentifier,
+      },
+      scope: await resolveUpgradeScope(reader.userId, { semble: true }),
       state: {
         redirect: redirectTarget,
       },
@@ -475,6 +714,8 @@ export const auth = {
   upgradeToCollections,
   upgradeToAtstoreReview,
   upgradeToUserinputFeedback,
+  upgradeToMargin,
+  upgradeToSemble,
   getSavedHandles: getSavedHandlesServer,
   getSavedHandlesQueryOptions,
 };

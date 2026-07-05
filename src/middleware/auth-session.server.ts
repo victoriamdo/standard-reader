@@ -22,6 +22,8 @@ export type AtprotoSessionContext = {
       trackReadingHistory: boolean | null;
       collectionsAuthoringEnabled: boolean | null;
       userinputFeedbackEnabled: boolean | null;
+      marginSaveEnabled: boolean | null;
+      sembleSaveEnabled: boolean | null;
     };
   };
 };
@@ -87,6 +89,12 @@ export interface ReaderContext {
   /** Reader's userinput feedback upgrade flag (DB column). `true` means
    * subsequent authorize flows request the userinput discussion OAuth scope. */
   userinputFeedbackEnabled: boolean | null;
+  /** Reader's Margin save upgrade flag (DB column). `true` means subsequent
+   * authorize flows request the `at.margin.authFull` OAuth scope. */
+  marginSaveEnabled: boolean | null;
+  /** Reader's Semble/Cosmik save upgrade flag (DB column), mirroring
+   * {@link marginSaveEnabled} for `network.cosmik.authFull`. */
+  sembleSaveEnabled: boolean | null;
 }
 
 /**
@@ -124,6 +132,8 @@ export async function getReaderContextForRequest(
         collectionsAuthoringEnabled:
           result.session.user.collectionsAuthoringEnabled,
         userinputFeedbackEnabled: result.session.user.userinputFeedbackEnabled,
+        marginSaveEnabled: result.session.user.marginSaveEnabled,
+        sembleSaveEnabled: result.session.user.sembleSaveEnabled,
       };
     }
   }
@@ -144,6 +154,8 @@ export async function getReaderContextForRequest(
           trackReadingHistory: true,
           collectionsAuthoringEnabled: true,
           userinputFeedbackEnabled: true,
+          marginSaveEnabled: true,
+          sembleSaveEnabled: true,
         },
       },
     },
@@ -166,6 +178,8 @@ export async function getReaderContextForRequest(
     trackReadingHistory: sessionRow.user.trackReadingHistory,
     collectionsAuthoringEnabled: sessionRow.user.collectionsAuthoringEnabled,
     userinputFeedbackEnabled: sessionRow.user.userinputFeedbackEnabled,
+    marginSaveEnabled: sessionRow.user.marginSaveEnabled,
+    sembleSaveEnabled: sessionRow.user.sembleSaveEnabled,
   };
   readerContextCache.set(sessionToken, {
     ctx,

@@ -1,6 +1,22 @@
 /** Formatting helpers shared by the reader UI (kept apart from components). */
 
 import { STANDARD_NSID } from "#/lib/atproto/nsids";
+import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
+
+/** Byline author (lead contributor, else publication owner, else publication
+ * name). Lives here (not in a component file) so both `article-view.tsx` and
+ * `text-selection-toolbar.tsx` can import it without a circular dependency. */
+export function primaryAuthor(article: ArticleDetail): string {
+  const lead = article.contributors[0];
+  if (lead?.displayName) return lead.displayName;
+  if (article.publicationOwnerDisplayName) {
+    return article.publicationOwnerDisplayName;
+  }
+  if (lead?.handle) return `@${lead.handle}`;
+  if (article.publicationOwnerHandle)
+    return `@${article.publicationOwnerHandle}`;
+  return article.publication?.name ?? "Unknown author";
+}
 
 /** Matches the Postcard prototype (~220 wpm). */
 const WORDS_PER_MINUTE = 220;

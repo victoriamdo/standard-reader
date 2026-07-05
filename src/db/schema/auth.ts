@@ -53,6 +53,15 @@ export const user = pgTable("user", {
    * the `authorize` server fn reads to silently re-request the scope on every
    * login. */
   userinputFeedbackEnabled: boolean("userinput_feedback_enabled"),
+  /** `true` enables the Margin (at.margin.*) save scope tier on the next
+   * sign-in (and persists across logins so subsequent authorize requests
+   * silently include the expanded scope). Set when the user goes through the
+   * "Save to Margin" upgrade flow; the source of truth for "actually granted"
+   * is `account.scope` (see `hasMarginScope`). */
+  marginSaveEnabled: boolean("margin_save_enabled"),
+  /** `true` enables the Semble/Cosmik (network.cosmik.*) save scope tier on
+   * the next sign-in, mirroring {@link marginSaveEnabled}. */
+  sembleSaveEnabled: boolean("semble_save_enabled"),
   /** `true` stops the one-time ATStore review prompt toast from showing again. */
   atstoreReviewPromptDismissed: boolean("atstore_review_prompt_dismissed"),
   createdAt: timestamp("created_at", { withTimezone: true })

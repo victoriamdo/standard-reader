@@ -25,3 +25,4 @@ export * from "./schema/quote-shares.ts";
 export * from "./schema/relations.ts";
 export * from "./schema/feedback-draft.ts";
 export * from "./schema/upvote-draft.ts";
+export * from "./schema/save-draft.ts";

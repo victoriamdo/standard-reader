@@ -82,6 +82,7 @@ import {
   formatReaders,
   formatReadingTime,
   initials,
+  primaryAuthor,
   publicationLinkParams,
 } from "./format";
 import { LabelerPill } from "./labeler-pill";
@@ -95,6 +96,7 @@ import {
 import { QuoteShareLayer } from "./quote-share-layer";
 import { applyMarkReadOptimisticUpdate } from "./read-optimistic";
 import { ReaderWordHighlighter } from "./reader-word-highlighter";
+import { SaveDraftConsumer } from "./save-draft-consumer";
 import { useArticleBookmark } from "./use-article-bookmark";
 import { useArticleRecommend } from "./use-article-recommend";
 
@@ -518,18 +520,6 @@ function articleTopic(article: ArticleDetail): string | null {
   return article.publication?.topic ?? null;
 }
 
-function primaryAuthor(article: ArticleDetail): string {
-  const lead = article.contributors[0];
-  if (lead?.displayName) return lead.displayName;
-  if (article.publicationOwnerDisplayName) {
-    return article.publicationOwnerDisplayName;
-  }
-  if (lead?.handle) return `@${lead.handle}`;
-  if (article.publicationOwnerHandle)
-    return `@${article.publicationOwnerHandle}`;
-  return article.publication?.name ?? "Unknown author";
-}
-
 /** The author's bare @handle (lead contributor, else publication owner). */
 function authorHandle(article: ArticleDetail): string | null {
   return (
@@ -929,7 +919,15 @@ function ArticleViewBody({
               onToggle={toggleBookmark}
               isPending={bookmarkPending}
             />
-            <DocumentShareMenu recordUri={article.uri} />
+            <DocumentShareMenu
+              recordUri={article.uri}
+              title={article.title}
+              canonicalUrl={article.canonicalUrl}
+              description={article.description}
+              author={primaryAuthor(article)}
+              siteName={pub?.name}
+              imageUrl={article.coverImageUrl}
+            />
           </div>
         </div>
 
@@ -937,6 +935,7 @@ function ArticleViewBody({
       </div>
 
       <ReaderWordHighlighter rootRef={articleRef} articleUri={article.uri} />
+      <SaveDraftConsumer />
       <article
         ref={articleRef}
         {...stylex.props(

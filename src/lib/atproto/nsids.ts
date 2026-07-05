@@ -45,6 +45,27 @@ export const STANDARD_NSID = {
   recommend: "site.standard.graph.recommend",
 } as const;
 
+/**
+ * Margin (margin.at) lexicons we write to when saving an article to a
+ * reader's Margin collection. Third-party namespace — not published by us.
+ */
+export const MARGIN_NSID = {
+  note: "at.margin.note",
+  collectionItem: "at.margin.collectionItem",
+  collection: "at.margin.collection",
+} as const;
+
+/**
+ * Semble (semble.so, appview at network.cosmik.*) lexicons we write to when
+ * saving an article to a reader's Semble collection. Third-party namespace —
+ * not published by us.
+ */
+export const COSMIK_NSID = {
+  card: "network.cosmik.card",
+  collectionLink: "network.cosmik.collectionLink",
+  collection: "network.cosmik.collection",
+} as const;
+
 /** Every collection NSID we map, app-owned + reused. */
 export const COLLECTION = {
   ...STANDARD_NSID,
