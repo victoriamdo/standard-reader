@@ -227,56 +227,101 @@ async function fetchWithTimeout(url: string, ms = 4000): Promise<Response> {
   }
 }
 
+/** Hard stop on pagination so a misbehaving labeler can't loop forever. */
+const MAX_LABEL_PAGES = 200;
+
+/**
+ * Query a labeler's `queryLabels`, paginating from `sinceCursor` (or from the
+ * beginning if omitted) until exhausted. Returns the labels fetched plus the
+ * cursor to resume from next time.
+ *
+ * The server only returns a `cursor` on a full page (see labelers' own
+ * `queryLabels` impl) — a short final page means "caught up," so `cursor` here
+ * is the last *full* page's boundary rather than `sinceCursor` unchanged. The
+ * next run harmlessly re-fetches (and re-applies) that final partial page.
+ */
 async function queryLabeler(
   did: string,
   uris: Array<string>,
-): Promise<Array<DisplayLabel>> {
+  sinceCursor?: string,
+): Promise<{ labels: Array<DisplayLabel>; cursor: string | undefined }> {
   const base = await resolveLabelerEndpoint(did);
-  if (!base) return [];
+  if (!base) return { labels: [], cursor: sinceCursor };
   // Defense-in-depth: re-validate the stored endpoint before fetching, in
   // case a malicious URL was stored before the ingest-time guard was added
   // (security audit C3).
   try {
     assertSafeFetchUrl(base);
   } catch {
-    return [];
+    return { labels: [], cursor: sinceCursor };
   }
-  const url = new URL(`${base}/xrpc/com.atproto.label.queryLabels`);
-  for (const u of uris) url.searchParams.append("uriPatterns", u);
-  url.searchParams.append("sources", did);
-  url.searchParams.set("limit", "250");
-  try {
-    const res = await fetchWithTimeout(url.toString());
-    if (!res.ok) return [];
-    const json = (await res.json()) as { labels?: Array<DisplayLabel> };
-    return json.labels ?? [];
-  } catch {
-    return [];
+
+  const labels: Array<DisplayLabel> = [];
+  let cursor = sinceCursor;
+  for (let page = 0; page < MAX_LABEL_PAGES; page++) {
+    const url = new URL(`${base}/xrpc/com.atproto.label.queryLabels`);
+    for (const u of uris) url.searchParams.append("uriPatterns", u);
+    url.searchParams.append("sources", did);
+    url.searchParams.set("limit", "250");
+    if (cursor) url.searchParams.set("cursor", cursor);
+    try {
+      const res = await fetchWithTimeout(url.toString());
+      if (!res.ok) break;
+      const json = (await res.json()) as {
+        labels?: Array<DisplayLabel>;
+        cursor?: string;
+      };
+      const batch = json.labels ?? [];
+      labels.push(...batch);
+      if (!json.cursor || batch.length === 0) break;
+      cursor = json.cursor;
+    } catch {
+      break;
+    }
   }
+  return { labels, cursor };
+}
+
+/** The latest state per (src, uri, val), split into active vs. negated. */
+export interface LabelDiff {
+  active: Array<DisplayLabel>;
+  negated: Array<{ src: string; uri: string; val: string }>;
 }
 
 /**
- * Reduce a raw label list to the labels currently in effect: the latest by `cts`
- * for each (src, uri, val), dropping any whose latest state is a negation.
+ * Reduce a raw label list (as fetched incrementally, oldest-first) to its
+ * latest state per (src, uri, val): still-active labels to upsert, and
+ * negated ones to remove from the mirror.
  */
-export function resolveActiveLabels(
-  labels: Array<DisplayLabel>,
-): Array<DisplayLabel> {
+export function resolveLabelDiff(labels: Array<DisplayLabel>): LabelDiff {
   const latest = new Map<string, DisplayLabel>();
   for (const label of labels) {
     const key = `${label.src} ${label.uri} ${label.val}`;
     const prev = latest.get(key);
     if (!prev || (label.cts ?? "") >= (prev.cts ?? "")) latest.set(key, label);
   }
-  return [...latest.values()].filter((l) => !l.neg);
+  const active: Array<DisplayLabel> = [];
+  const negated: Array<{ src: string; uri: string; val: string }> = [];
+  for (const label of latest.values()) {
+    if (label.neg) {
+      negated.push({ src: label.src, uri: label.uri, val: label.val });
+    } else {
+      active.push(label);
+    }
+  }
+  return { active, negated };
 }
 
 /**
- * All active labels a labeler has ever emitted (best effort: queries with the
- * `*` wildcard, which our labelers support). Used by the sync only.
+ * Labels a labeler has emitted since `sinceCursor` (queries the `*` wildcard,
+ * which our labelers support), reduced to a diff plus the cursor to persist
+ * for next time. Omit `sinceCursor` to bootstrap a newly-registered labeler
+ * from its full history. Used by the sync only.
  */
-export async function fetchAllLabelsFromLabeler(
+export async function fetchLabelerLabelsSince(
   did: string,
-): Promise<Array<DisplayLabel>> {
-  return resolveActiveLabels(await queryLabeler(did, ["*"]));
+  sinceCursor: string | undefined,
+): Promise<{ diff: LabelDiff; cursor: string | undefined }> {
+  const { labels, cursor } = await queryLabeler(did, ["*"], sinceCursor);
+  return { diff: resolveLabelDiff(labels), cursor };
 }

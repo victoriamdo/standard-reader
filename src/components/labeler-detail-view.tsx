@@ -1,12 +1,19 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Check } from "lucide-react";
 import type { Key } from "react";
+import { useCallback } from "react";
 
 import { ArticleRow } from "#/components/reader/cards";
+import { useInfiniteScrollSentinel } from "#/components/reader/use-infinite-scroll-sentinel";
 import type { LabelValueDef } from "#/integrations/tanstack-query/api-labelers.functions";
 import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
@@ -74,7 +81,13 @@ export function LabelerDetailView({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const labeler = useQuery(labelerApi.getLabelerQueryOptions(did));
-  const labeled = useQuery(labelerApi.getLabeledDocumentsQueryOptions(did));
+  const {
+    data: labeledPages,
+    isLoading: labeledIsLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery(labelerApi.getLabeledDocumentsInfiniteQueryOptions(did));
   const { enabled: trackReading } = useTrackReadingHistory();
 
   const invalidate = () => {
@@ -103,8 +116,21 @@ export function LabelerDetailView({
   );
   const name = card.displayName ?? card.did;
   const defs = card.labelValueDefinitions ?? [];
-  const documents = labeled.data?.documents ?? [];
-  const labelsByUri = labeled.data?.labelsByUri ?? {};
+  const documents = labeledPages?.pages.flatMap((page) => page.documents) ?? [];
+  const labelsByUri: Record<string, Array<string>> = Object.assign(
+    {},
+    ...(labeledPages?.pages.map((page) => page.labelsByUri) ?? []),
+  );
+  const documentCount = labeledPages?.pages[0]?.total ?? 0;
+
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  const loadMoreRef = useInfiniteScrollSentinel(
+    loadMore,
+    hasNextPage,
+    documents.length,
+  );
 
   const onViewChange = (key: Key) => {
     const next = key as LabelerView;
@@ -142,12 +168,12 @@ export function LabelerDetailView({
                 {defs.length === 1 ? "label" : "labels"}
               </span>
             ) : null}
-            {documents.length > 0 ? (
+            {documentCount > 0 ? (
               <span>
                 <span {...stylex.props(styles.statValue)}>
-                  {documents.length}
+                  {documentCount}
                 </span>
-                {documents.length === 1 ? "document" : "documents"}
+                {documentCount === 1 ? "document" : "documents"}
               </span>
             ) : null}
           </div>
@@ -249,7 +275,7 @@ export function LabelerDetailView({
           </TabPanel>
 
           <TabPanel id="documents" style={styles.tabPanel}>
-            {labeled.isLoading ? (
+            {labeledIsLoading ? (
               <p {...stylex.props(styles.emptyNote)}>Loading…</p>
             ) : documents.length === 0 ? (
               <EmptyState>
@@ -274,6 +300,16 @@ export function LabelerDetailView({
                     }))}
                   />
                 ))}
+                {isFetchingNextPage ? (
+                  <p {...stylex.props(styles.note)}>Loading…</p>
+                ) : null}
+                {hasNextPage ? (
+                  <div
+                    ref={loadMoreRef}
+                    aria-hidden
+                    {...stylex.props(styles.loadSentinel)}
+                  />
+                ) : null}
               </div>
             )}
           </TabPanel>
@@ -449,5 +485,10 @@ const styles = stylex.create({
     textAlign: "center",
     paddingBottom: spacing["8"],
     paddingTop: spacing["8"],
+  },
+  loadSentinel: {
+    height: 1,
+    marginTop: spacing["6"],
+    width: "100%",
   },
 });

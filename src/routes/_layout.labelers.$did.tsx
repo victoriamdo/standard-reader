@@ -32,8 +32,8 @@ export const Route = createFileRoute("/_layout/labelers/$did")({
     await context.queryClient.ensureQueryData(
       labelerApi.getLabelerQueryOptions(params.did),
     );
-    void context.queryClient.prefetchQuery(
-      labelerApi.getLabeledDocumentsQueryOptions(params.did),
+    void context.queryClient.prefetchInfiniteQuery(
+      labelerApi.getLabeledDocumentsInfiniteQueryOptions(params.did),
     );
   },
   head: () => ({

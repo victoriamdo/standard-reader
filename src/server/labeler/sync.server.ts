@@ -7,39 +7,71 @@
  * (see `labels.server.ts`). Run it on a schedule from the ingest worker.
  */
 
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { db as database } from "#/db/index.server";
 import * as dbSchema from "#/db/schema";
 import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 
-import { fetchAllLabelsFromLabeler } from "./labels.server.ts";
+import { fetchLabelerLabelsSince } from "./labels.server.ts";
 
 /** How often the ingest worker re-syncs labeler labels into the read-model. */
 const SYNC_INTERVAL_MS = 2 * 60_000;
 
-/** Replace one labeler's mirrored labels with its current active set. */
+/**
+ * Apply one labeler's new labels since its last synced cursor: upsert active
+ * labels, delete negated ones, then persist the new cursor. Incremental by
+ * design — only the labels emitted since last time cross the wire, instead of
+ * re-fetching (and re-diffing) the labeler's entire history every run.
+ */
 export async function syncLabelerLabels(
   db: Db,
   schema: Schema,
   labelerDid: string,
 ): Promise<number> {
-  const labels = await fetchAllLabelsFromLabeler(labelerDid);
+  const state = await db
+    .select({ cursor: schema.labelSyncState.cursor })
+    .from(schema.labelSyncState)
+    .where(eq(schema.labelSyncState.labelerDid, labelerDid))
+    .limit(1);
+
+  const { diff, cursor } = await fetchLabelerLabelsSince(
+    labelerDid,
+    state[0]?.cursor ?? undefined,
+  );
+
   const dl = schema.documentLabels;
-  // The neon-http driver has no transactions; run delete + insert sequentially.
-  // A periodic sync tolerates the brief window (the next run restores it).
-  await db.delete(dl).where(eq(dl.src, labelerDid));
-  if (labels.length > 0) {
-    await db.insert(dl).values(
-      labels.map((l) => ({
-        src: labelerDid,
-        uri: l.uri,
-        val: l.val,
-        cts: l.cts ? new Date(l.cts) : null,
-      })),
-    );
+  if (diff.active.length > 0) {
+    await db
+      .insert(dl)
+      .values(
+        diff.active.map((l) => ({
+          src: labelerDid,
+          uri: l.uri,
+          val: l.val,
+          cts: l.cts ? new Date(l.cts) : null,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [dl.src, dl.uri, dl.val],
+        set: { cts: sql`excluded.cts`, syncedAt: sql`now()` },
+      });
   }
-  return labels.length;
+  for (const n of diff.negated) {
+    await db
+      .delete(dl)
+      .where(and(eq(dl.src, n.src), eq(dl.uri, n.uri), eq(dl.val, n.val)));
+  }
+
+  await db
+    .insert(schema.labelSyncState)
+    .values({ labelerDid, cursor: cursor ?? null })
+    .onConflictDoUpdate({
+      target: schema.labelSyncState.labelerDid,
+      set: { cursor: cursor ?? null, syncedAt: sql`now()` },
+    });
+
+  return diff.active.length + diff.negated.length;
 }
 
 /** Sync every registered labeler. Failures are logged and skipped per-labeler. */

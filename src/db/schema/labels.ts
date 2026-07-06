@@ -156,3 +156,21 @@ export const documentLabels = pgTable(
 );
 
 export type DocumentLabelRow = typeof documentLabels.$inferSelect;
+
+/**
+ * Per-labeler sync progress (see `sync.server.ts`). Lets the periodic label
+ * sync resume from the labeler's own `queryLabels` cursor instead of
+ * re-fetching and re-diffing every label the labeler has ever emitted on
+ * every run.
+ */
+export const labelSyncState = pgTable("label_sync_state", {
+  /** DID of the labeler (matches `document_labels.src`). */
+  labelerDid: text("labeler_did").primaryKey(),
+  /** Last `cursor` consumed from the labeler's `queryLabels`. */
+  cursor: text("cursor"),
+  syncedAt: timestamp("synced_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type LabelSyncState = typeof labelSyncState.$inferSelect;

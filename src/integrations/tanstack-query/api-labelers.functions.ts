@@ -1,7 +1,11 @@
-import { mutationOptions, queryOptions } from "@tanstack/react-query";
+import {
+  infiniteQueryOptions,
+  mutationOptions,
+  queryOptions,
+} from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, like, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
@@ -24,6 +28,7 @@ import {
   resolveActorDid,
   resolveLabelerView,
 } from "#/server/labeler/resolve.server";
+import { documentPublishedNotInFuture } from "#/server/reader/document-filters";
 import { observe } from "#/server/observability/log";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
 
@@ -70,6 +75,22 @@ export interface DocumentLabel {
 const actorInput = z.object({ actor: z.string().trim().min(1) });
 const labelerInput = z.object({ labeler: z.string().trim().min(1) });
 const uriInput = z.object({ uri: z.string().trim().min(1) });
+
+/** Default page size for a labeler's labeled-documents infinite scroll. */
+export const LABELED_DOCUMENTS_PAGE_SIZE = 30;
+
+const labeledDocumentsInput = labelerInput.extend({
+  limit: z.number().int().min(1).max(100).default(LABELED_DOCUMENTS_PAGE_SIZE),
+  offset: z.number().int().min(0).default(0),
+});
+
+/** One offset page of a labeler's labeled documents. */
+export interface LabeledDocumentsPage {
+  documents: Array<ArticleCard>;
+  labelsByUri: Record<string, Array<string>>;
+  total: number;
+  nextOffset: number | null;
+}
 const setPrefInput = z.object({
   labeler: z.string().trim().min(1),
   val: z.string().trim().min(1),
@@ -249,32 +270,58 @@ const setLabelerPref = createServerFn({ method: "POST" })
 
 const getLabeledDocuments = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
-  .validator(labelerInput)
+  .validator(labeledDocumentsInput)
   .handler(
     observe("labelers.getLabeledDocuments", async ({ data, context }, span) => {
       span.set("labeler", data.labeler);
-      const dl = context.schema.documentLabels;
-      const rows = await context.db
-        .select({ uri: dl.uri, val: dl.val, cts: dl.cts })
-        .from(dl)
-        .where(eq(dl.src, data.labeler));
-      const labelsByUri: Record<string, Array<string>> = {};
-      const uriLatest = new Map<string, string>();
+      span.set("limit", data.limit);
+      span.set("offset", data.offset);
 
-      for (const row of rows) {
-        if (!row.uri.includes("/site.standard.document/")) continue;
+      const dl = context.schema.documentLabels;
+      const d = context.schema.documents;
+      // Join to `documents` (rather than ordering by label `cts`) so the list
+      // reads in reverse-chronological *publish* order, and so every uri in a
+      // page is guaranteed to hydrate below (no unresolved rows to drop).
+      const where = and(
+        eq(dl.src, data.labeler),
+        like(dl.uri, "%/site.standard.document/%"),
+        eq(d.deleted, false),
+        documentPublishedNotInFuture(d),
+      );
+
+      const [countRow, uriRows] = await Promise.all([
+        context.db
+          .select({ count: sql<number>`count(distinct ${dl.uri})::int` })
+          .from(dl)
+          .innerJoin(d, eq(d.uri, dl.uri))
+          .where(where),
+        context.db
+          .selectDistinct({ uri: dl.uri, publishedAt: d.publishedAt })
+          .from(dl)
+          .innerJoin(d, eq(d.uri, dl.uri))
+          .where(where)
+          .orderBy(sql`${d.publishedAt} desc nulls last`, dl.uri)
+          .limit(data.limit)
+          .offset(data.offset),
+      ]);
+
+      const total = countRow[0]?.count ?? 0;
+      const uris = uriRows.map((r) => r.uri);
+      const valRows =
+        uris.length > 0
+          ? await context.db
+              .select({ uri: dl.uri, val: dl.val })
+              .from(dl)
+              .where(and(eq(dl.src, data.labeler), inArray(dl.uri, uris)))
+          : [];
+
+      const labelsByUri: Record<string, Array<string>> = {};
+      for (const row of valRows) {
         const vals = labelsByUri[row.uri] ?? [];
         if (!vals.includes(row.val)) vals.push(row.val);
         labelsByUri[row.uri] = vals;
-        const cts = row.cts ? row.cts.toISOString() : "";
-        if ((uriLatest.get(row.uri) ?? "") < cts) uriLatest.set(row.uri, cts);
       }
 
-      const uris = Object.keys(labelsByUri)
-        .toSorted((a, b) =>
-          (uriLatest.get(b) ?? "").localeCompare(uriLatest.get(a) ?? ""),
-        )
-        .slice(0, 60);
       const documents = await selectArticleCardsByUris(
         context.db,
         context.schema,
@@ -282,13 +329,16 @@ const getLabeledDocuments = createServerFn({ method: "GET" })
         { lite: true },
       );
       span.set("count", documents.length);
+      span.set("total", total);
       return {
         documents,
         labelsByUri,
-      } satisfies {
-        documents: Array<ArticleCard>;
-        labelsByUri: Record<string, Array<string>>;
-      };
+        total,
+        nextOffset:
+          uris.length > 0 && data.offset + uris.length < total
+            ? data.offset + uris.length
+            : null,
+      } satisfies LabeledDocumentsPage;
     }),
   );
 
@@ -392,10 +442,16 @@ function getLabelerQueryOptions(actor: string) {
   });
 }
 
-function getLabeledDocumentsQueryOptions(labeler: string) {
-  return queryOptions({
-    queryKey: ["labeler", labeler, "documents"] as const,
-    queryFn: async () => getLabeledDocuments({ data: { labeler } }),
+function getLabeledDocumentsInfiniteQueryOptions(
+  labeler: string,
+  limit = LABELED_DOCUMENTS_PAGE_SIZE,
+) {
+  return infiniteQueryOptions({
+    queryKey: ["labeler", labeler, "documents", limit] as const,
+    queryFn: async ({ pageParam }) =>
+      getLabeledDocuments({ data: { labeler, limit, offset: pageParam } }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset ?? undefined,
     enabled: labeler.length > 0,
   });
 }
@@ -441,7 +497,7 @@ export const labelerApi = {
   getLabeler,
   getLabelerQueryOptions,
   getLabeledDocuments,
-  getLabeledDocumentsQueryOptions,
+  getLabeledDocumentsInfiniteQueryOptions,
   getDocumentLabels,
   getDocumentLabelsQueryOptions,
   subscribeLabeler,
