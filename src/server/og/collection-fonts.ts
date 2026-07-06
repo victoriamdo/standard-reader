@@ -35,10 +35,10 @@ export async function loadCollectionOgFonts(input: {
 
   return {
     roles: {
-      sans: "Archivo",
+      sans: "Atkinson Hyperlegible Next",
       serif: bodyFamily,
       title: titleFamily,
-      mono: "Archivo",
+      mono: "Atkinson Hyperlegible Next",
     },
     fonts,
   };

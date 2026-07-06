@@ -44,9 +44,9 @@ importers:
       '@atproto/xrpc-server':
         specifier: ^0.11.1
         version: 0.11.1
-      '@fontsource/archivo':
-        specifier: ^5.2.8
-        version: 5.2.8
+      '@fontsource-variable/atkinson-hyperlegible-next':
+        specifier: ^5.2.6
+        version: 5.2.6
       '@fontsource/newsreader':
         specifier: ^5.2.10
         version: 5.2.10
@@ -1519,8 +1519,8 @@ packages:
       '@noble/hashes':
         optional: true
 
-  '@fontsource/archivo@5.2.8':
-    resolution: {integrity: sha512-Fc4yuMt85MmcYooUVpYHAJRJTymPv2+J9HsMP2f5mxR/0pIWgE2V5XfgNTavPpklX2rJFprdT36iE6Rr8ds9MA==}
+  '@fontsource-variable/atkinson-hyperlegible-next@5.2.6':
+    resolution: {integrity: sha512-D0Z8peFkRGYACvmWp8Sl8YPGYLBEJbzqapugtsMEYSUUtpQDiZVDHjk9s7bqB4hSCRYCrKuW6V1V+mnHybVnPw==}
 
   '@fontsource/newsreader@5.2.10':
     resolution: {integrity: sha512-TFaYzoFhDqarUyV2yYjgZZEwT4bpaj6sGBnXSnFknQ/QB8/9LzfY6IO9+inHOX4zzPp87Z7/KuG1OI5gr91Q3A==}
@@ -7784,7 +7784,7 @@ snapshots:
     optionalDependencies:
       '@noble/hashes': 1.8.0
 
-  '@fontsource/archivo@5.2.8': {}
+  '@fontsource-variable/atkinson-hyperlegible-next@5.2.6': {}
 
   '@fontsource/newsreader@5.2.10': {}
 

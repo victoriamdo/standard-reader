@@ -147,7 +147,7 @@ function profileOgMarkup(input: {
             style={{
               color: colors.accent,
               display: "flex",
-              fontFamily: "Archivo",
+              fontFamily: "Atkinson Hyperlegible Next",
               fontSize: 21,
               fontWeight: 400,
               letterSpacing: 2.4,
@@ -211,7 +211,7 @@ function profileOgMarkup(input: {
               style={{
                 color: colors.foreground,
                 display: "flex",
-                fontFamily: "Archivo",
+                fontFamily: "Atkinson Hyperlegible Next",
                 fontSize: 21,
                 fontWeight: 400,
               }}
@@ -224,7 +224,7 @@ function profileOgMarkup(input: {
               style={{
                 color: colors.muted,
                 display: "flex",
-                fontFamily: "Archivo",
+                fontFamily: "Atkinson Hyperlegible Next",
                 fontSize: 21,
                 fontWeight: 400,
               }}
@@ -239,7 +239,7 @@ function profileOgMarkup(input: {
             color: colors.muted,
             display: "flex",
             flexShrink: 0,
-            fontFamily: "Archivo",
+            fontFamily: "Atkinson Hyperlegible Next",
             fontSize: 18,
             fontWeight: 400,
             letterSpacing: 2,

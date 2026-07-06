@@ -192,7 +192,7 @@ function quoteOgMarkup(input: {
               style={{
                 color: colors.muted,
                 display: "flex",
-                fontFamily: "Archivo",
+                fontFamily: "Atkinson Hyperlegible Next",
                 fontSize: 19,
                 fontWeight: 400,
                 lineHeight: "22px",

@@ -48,7 +48,7 @@ function pageOgMarkup(input: { title: string; tagline: string }) {
           style={{
             color: colors.accent,
             display: "flex",
-            fontFamily: "Archivo",
+            fontFamily: "Atkinson Hyperlegible Next",
             fontSize: 24,
             fontWeight: 400,
             letterSpacing: 2.5,
@@ -91,7 +91,7 @@ function pageOgMarkup(input: { title: string; tagline: string }) {
           borderTopWidth: 1,
           color: colors.muted,
           display: "flex",
-          fontFamily: "Archivo",
+          fontFamily: "Atkinson Hyperlegible Next",
           fontSize: 22,
           letterSpacing: 0.4,
           marginTop: "auto",

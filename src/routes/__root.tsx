@@ -188,7 +188,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         },
         {
           rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400;1,6..72,500&family=Archivo:wght@400;500;600;700;800;900&family=Spline+Sans+Mono:wght@400;500;600&display=optional",
+          href: "https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400;1,6..72,500&family=Atkinson+Hyperlegible+Next:wght@400;500;600;700;800;900&family=Spline+Sans+Mono:wght@400;500;600&display=optional",
         },
         { rel: "stylesheet", href: appCss },
         import.meta.env.DEV

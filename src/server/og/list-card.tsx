@@ -71,7 +71,7 @@ function memberBubble(content: React.ReactNode, options: { image?: string }) {
           borderWidth: 2,
           color: colors.accentForeground,
           display: "flex",
-          fontFamily: "Archivo",
+          fontFamily: "Atkinson Hyperlegible Next",
           fontSize: 30,
           fontWeight: 400,
           height: 104,
@@ -127,7 +127,7 @@ function listOgMarkup(input: {
           style={{
             color: colors.accent,
             display: "flex",
-            fontFamily: "Archivo",
+            fontFamily: "Atkinson Hyperlegible Next",
             fontSize: 22,
             fontWeight: 400,
             letterSpacing: 2.4,
@@ -221,7 +221,7 @@ function listOgMarkup(input: {
               style={{
                 color: colors.foreground,
                 display: "flex",
-                fontFamily: "Archivo",
+                fontFamily: "Atkinson Hyperlegible Next",
                 fontSize: 21,
                 fontWeight: 400,
               }}
@@ -233,7 +233,7 @@ function listOgMarkup(input: {
             style={{
               color: colors.muted,
               display: "flex",
-              fontFamily: "Archivo",
+              fontFamily: "Atkinson Hyperlegible Next",
               fontSize: 21,
               fontWeight: 400,
             }}
@@ -247,7 +247,7 @@ function listOgMarkup(input: {
             color: colors.muted,
             display: "flex",
             flexShrink: 0,
-            fontFamily: "Archivo",
+            fontFamily: "Atkinson Hyperlegible Next",
             fontSize: 18,
             fontWeight: 400,
             letterSpacing: 2,

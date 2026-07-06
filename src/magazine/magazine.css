@@ -22,7 +22,7 @@
   --crease-soft: oklch(0.2 0.02 60 / 0.05);
 
   --serif: "Newsreader", Georgia, "Times New Roman", serif;
-  --sans: "Archivo", system-ui, -apple-system, sans-serif;
+  --sans: "Atkinson Hyperlegible Next", system-ui, -apple-system, sans-serif;
   --mono: "Spline Sans Mono", ui-monospace, "SFMono-Regular", monospace;
 
   --display-weight: 500;

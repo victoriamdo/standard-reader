@@ -77,7 +77,7 @@ function siteOgMarkup() {
           borderTopWidth: 1,
           color: colors.muted,
           display: "flex",
-          fontFamily: "Archivo",
+          fontFamily: "Atkinson Hyperlegible Next",
           fontSize: 22,
           letterSpacing: 0.4,
           marginTop: "auto",

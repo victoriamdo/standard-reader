@@ -92,10 +92,10 @@ export const editorialPrimary = stylex.createTheme(primaryColor, {
   },
 });
 
-/** Newsreader (serif/display), Archivo (sans/UI), Spline Sans Mono (mono). */
+/** Newsreader (serif/display), Atkinson Hyperlegible Next (sans/UI), Spline Sans Mono (mono). */
 export const editorialFonts = stylex.createTheme(fontFamily, {
   title: "'Newsreader', Georgia, 'Times New Roman', serif",
-  sans: "'Archivo', system-ui, -apple-system, sans-serif",
+  sans: "'Atkinson Hyperlegible Next', system-ui, -apple-system, sans-serif",
   serif: "'Newsreader', Georgia, 'Times New Roman', serif",
   mono: "'Spline Sans Mono', ui-monospace, 'SFMono-Regular', monospace",
 });

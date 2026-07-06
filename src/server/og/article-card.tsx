@@ -146,7 +146,7 @@ function publicationFooter(input: {
             style={{
               color: colors.muted,
               display: "flex",
-              fontFamily: "Archivo",
+              fontFamily: "Atkinson Hyperlegible Next",
               fontSize: 18,
               fontWeight: 400,
               lineHeight: "21px",
@@ -164,7 +164,7 @@ function publicationFooter(input: {
             color: colors.muted,
             display: "flex",
             flexShrink: 0,
-            fontFamily: "Archivo",
+            fontFamily: "Atkinson Hyperlegible Next",
             fontSize: 19,
             fontWeight: 400,
             letterSpacing: 0.3,
@@ -209,7 +209,7 @@ function articleOgMarkup(input: {
         style={{
           color: colors.accent,
           display: "flex",
-          fontFamily: "Archivo",
+          fontFamily: "Atkinson Hyperlegible Next",
           fontSize: 21,
           fontWeight: 400,
           letterSpacing: 2.4,
