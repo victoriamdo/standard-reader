@@ -30,19 +30,66 @@ export const editorialUi = stylex.createTheme(uiColor, {
 
 /** Terracotta accent — slightly brighter on dark for contrast. */
 export const editorialPrimary = stylex.createTheme(primaryColor, {
-  bg: "light-dark(oklch(0.95 0.03 55), oklch(0.22 0.04 42))",
-  bgSubtle: "light-dark(oklch(0.965 0.022 58), oklch(0.24 0.045 40))",
-  component1: "light-dark(oklch(0.93 0.045 50), oklch(0.28 0.06 38))",
-  component2: "light-dark(oklch(0.9 0.055 48), oklch(0.32 0.07 36))",
-  component3: "light-dark(oklch(0.87 0.065 46), oklch(0.36 0.08 34))",
-  border1: "light-dark(oklch(0.8 0.09 44), oklch(0.45 0.1 34))",
-  border2: "light-dark(oklch(0.7 0.12 42), oklch(0.55 0.12 34))",
-  border3: "light-dark(oklch(0.62 0.14 40), oklch(0.62 0.14 34))",
-  solid1: "light-dark(oklch(0.575 0.155 38), oklch(0.72 0.14 42))",
-  solid2: "light-dark(oklch(0.46 0.16 36), oklch(0.78 0.12 44))",
-  text1: "light-dark(oklch(0.52 0.15 37), oklch(0.8 0.12 44))",
-  text2: "light-dark(oklch(0.46 0.16 36), oklch(0.84 0.1 46))",
-  textContrast: "light-dark(white, oklch(0.16 0.012 60))",
+  bg: {
+    default: "light-dark(#fefdfc, #12110f)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.995 0.992 0.989), color(display-p3 0.071 0.067 0.059))",
+  },
+  bgSubtle: {
+    default: "light-dark(#fcf9f6, #1c1816)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.987 0.976 0.964), color(display-p3 0.107 0.095 0.087))",
+  },
+  component1: {
+    default: "light-dark(#f6eee7, #28211d)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.959 0.936 0.909), color(display-p3 0.151 0.13 0.115))",
+  },
+  component2: {
+    default: "light-dark(#f0e4d9, #322922)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.934 0.897 0.855), color(display-p3 0.191 0.161 0.138))",
+  },
+  component3: {
+    default: "light-dark(#ebdaca, #3e3128)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.909 0.856 0.798), color(display-p3 0.235 0.194 0.162))",
+  },
+  border1: {
+    default: "light-dark(#e4cdb7, #4d3c2f)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.88 0.808 0.73), color(display-p3 0.291 0.237 0.192))",
+  },
+  border2: {
+    default: "light-dark(#dcbc9f, #614a39)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.841 0.742 0.639), color(display-p3 0.365 0.295 0.232))",
+  },
+  border3: {
+    default: "light-dark(#cea37e, #7c5f46)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.782 0.647 0.514), color(display-p3 0.469 0.377 0.287))",
+  },
+  solid1: {
+    default: "light-dark(#ad7f58, #ad7f58)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.651 0.505 0.368), color(display-p3 0.651 0.505 0.368))",
+  },
+  solid2: {
+    default: "light-dark(#a07553, #b88c67)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.601 0.465 0.344), color(display-p3 0.697 0.557 0.423))",
+  },
+  text1: {
+    default: "light-dark(#815e46, #dbb594)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.485 0.374 0.288), color(display-p3 0.835 0.715 0.597))",
+  },
+  text2: {
+    default: "light-dark(#3e332e, #f2e1ca)",
+    "@media (color-gamut: p3)":
+      "light-dark(color(display-p3 0.236 0.202 0.183), color(display-p3 0.938 0.885 0.802))",
+  },
 });
 
 /** Newsreader (serif/display), Archivo (sans/UI), Spline Sans Mono (mono). */

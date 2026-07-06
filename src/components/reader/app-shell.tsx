@@ -123,7 +123,7 @@ const styles = stylex.create({
     alignItems: "center",
     backgroundColor: {
       default: "transparent",
-      ":hover": uiColor.component1,
+      ":hover": uiColor.component2,
     },
     color: uiColor.text2,
     columnGap: gap.xl,
@@ -138,7 +138,7 @@ const styles = stylex.create({
     paddingTop: verticalSpace.lg,
   },
   navItemActive: {
-    backgroundColor: primaryColor.component1,
+    backgroundColor: primaryColor.component3,
     color: primaryColor.text2,
   },
   navLabel: {
@@ -149,8 +149,8 @@ const styles = stylex.create({
   },
   count: {
     borderRadius: radius.full,
-    backgroundColor: uiColor.component1,
-    color: uiColor.text1,
+    backgroundColor: primaryColor.component3,
+    color: primaryColor.text2,
     fontFamily: fontFamily.mono,
     fontSize: "0.7rem",
     paddingBottom: verticalSpace.none,
@@ -267,7 +267,7 @@ const styles = stylex.create({
     alignItems: "center",
     backgroundColor: {
       default: "transparent",
-      ":hover": uiColor.component1,
+      ":hover": uiColor.component2,
     },
     color: "inherit",
     columnGap: gap.lg,
@@ -292,7 +292,7 @@ const styles = stylex.create({
   },
   followUnread: {
     borderRadius: radius.full,
-    backgroundColor: primaryColor.component1,
+    backgroundColor: primaryColor.component3,
     color: primaryColor.text2,
     flexShrink: 0,
     fontFamily: fontFamily.mono,

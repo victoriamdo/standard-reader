@@ -23,7 +23,7 @@ const styles = stylex.create({
     lineHeight: lineHeight.none,
   },
   accent: {
-    color: primaryColor.text2,
+    color: primaryColor.solid2,
   },
 });
 
