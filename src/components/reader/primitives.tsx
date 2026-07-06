@@ -25,7 +25,7 @@ import { formatReaders, initials } from "./format";
 
 const styles = stylex.create({
   kicker: {
-    color: primaryColor.text2,
+    color: primaryColor.text1,
     fontFamily: fontFamily.sans,
     fontSize: "0.72rem",
     fontWeight: fontWeight.semibold,
