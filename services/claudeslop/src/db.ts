@@ -57,6 +57,10 @@ export type LabelerDb = ReturnType<typeof openDb>;
 export function openDb(path: string) {
   const db = new Database(path);
   db.pragma("journal_mode = WAL");
+  // A one-off backfill can run as a second process alongside the live ingest,
+  // so a writer may briefly hold the lock. Wait for it rather than throwing
+  // SQLITE_BUSY (WAL already lets readers run concurrently with the writer).
+  db.pragma("busy_timeout = 10000");
   db.exec(`
     CREATE TABLE IF NOT EXISTS labels (
       seq INTEGER PRIMARY KEY AUTOINCREMENT,

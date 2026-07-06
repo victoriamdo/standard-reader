@@ -106,36 +106,44 @@ async function main(): Promise<void> {
   const scored: Array<{ uri: string; score: number; klass: string }> = [];
   let labeled = 0;
 
+  let errors = 0;
   for (const doc of docs) {
-    const fetched = await documentText(doc.uri, doc.did);
-    if (!fetched) continue;
-    const result = await score(fetched.text);
-    scored.push({
-      uri: doc.uri,
-      score: result.score,
-      klass: result.classification,
-    });
-
-    const desired = result.score >= config.aiThreshold;
-    const prev = getScanState(db, doc.uri);
-    const wasLabeled = prev?.labeled ?? false;
-    if (desired && !wasLabeled) {
-      const signed = await signLabel(keypair, {
-        ver: 1,
-        src: config.labelerDid,
+    try {
+      const fetched = await documentText(doc.uri, doc.did);
+      if (!fetched) continue;
+      const result = await score(fetched.text);
+      scored.push({
         uri: doc.uri,
-        cid: fetched.cid,
-        val: config.labelValue,
-        cts: new Date().toISOString(),
+        score: result.score,
+        klass: result.classification,
       });
-      insertLabel(db, signed);
-      labeled++;
+
+      const desired = result.score >= config.aiThreshold;
+      const prev = getScanState(db, doc.uri);
+      const wasLabeled = prev?.labeled ?? false;
+      if (desired && !wasLabeled) {
+        const signed = await signLabel(keypair, {
+          ver: 1,
+          src: config.labelerDid,
+          uri: doc.uri,
+          cid: fetched.cid,
+          val: config.labelValue,
+          cts: new Date().toISOString(),
+        });
+        insertLabel(db, signed);
+        labeled++;
+      }
+      setScanState(db, doc.uri, {
+        version: config.detectorVersion,
+        labeled: desired,
+      });
+    } catch (error) {
+      // Don't let one bad document abort the whole run.
+      errors++;
+      console.warn(`[backfill] skipped ${doc.uri}:`, error);
     }
-    setScanState(db, doc.uri, {
-      version: config.detectorVersion,
-      labeled: desired,
-    });
   }
+  if (errors > 0) console.warn(`[backfill] ${errors} document(s) errored`);
 
   scored.sort((a, b) => b.score - a.score);
   console.log(`\n[backfill] top scores (threshold ${config.aiThreshold}):`);
