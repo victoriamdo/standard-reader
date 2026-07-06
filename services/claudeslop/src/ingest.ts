@@ -128,7 +128,7 @@ async function handleEvent(
   }
 
   if (!commit.record) return;
-  const result = score(documentText(commit.record));
+  const result = await score(documentText(commit.record));
   const desired = result.score >= config.aiThreshold;
 
   // Idempotent: only act when the desired state differs from what we last

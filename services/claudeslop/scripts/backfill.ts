@@ -13,7 +13,7 @@
 
 import { config } from "../src/config.ts";
 import { getScanState, insertLabel, openDb, setScanState } from "../src/db.ts";
-import { score } from "../src/detector.ts";
+import { preload, score } from "../src/detector.ts";
 import { loadKeypair, signLabel } from "../src/sign.ts";
 
 const APPVIEW = (
@@ -96,6 +96,9 @@ async function main(): Promise<void> {
   const db = openDb(config.sqlitePath);
   const keypair = await loadKeypair(config.signingKeyHex);
 
+  console.log("[backfill] loading detector model…");
+  await preload();
+
   console.log(`[backfill] listing ${LIMIT} recent documents from ${APPVIEW}…`);
   const docs = await recentDocuments(LIMIT);
   console.log(`[backfill] got ${docs.length}; scoring…`);
@@ -106,7 +109,7 @@ async function main(): Promise<void> {
   for (const doc of docs) {
     const fetched = await documentText(doc.uri, doc.did);
     if (!fetched) continue;
-    const result = score(fetched.text);
+    const result = await score(fetched.text);
     scored.push({
       uri: doc.uri,
       score: result.score,

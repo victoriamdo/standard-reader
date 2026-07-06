@@ -1,16 +1,33 @@
 # claudeslop — a minimal AT Protocol labeler
 
-`claudeslop` is a tiny, self-contained [AT Protocol](https://atproto.com) labeler that
-flags prose a heuristic detector thinks reads like AI slop. It's a working labeler **and**
-a reference you can copy: about 700 lines, no framework, no model, no database server.
+`claudeslop` is a self-contained [AT Protocol](https://atproto.com) labeler that
+flags prose an ML detector thinks reads like AI slop.
 
 It speaks the standard labeler API, so anything that understands AT Proto labels — Standard
 Reader, Bluesky, an Ozone instance — can subscribe to it and verify its labels.
 
 ```
 Jetstream ──▶ detector ──▶ sign ──▶ SQLite ──▶ queryLabels / subscribeLabels
- (firehose)   (heuristics)  (k256)   (the log)   (HTTP)        (WebSocket)
+ (firehose)   (ML, HTTP)   (k256)   (the log)   (HTTP)        (WebSocket)
 ```
+
+## Two processes, one container
+
+Scoring uses [`desklib/ai-text-detector-v1.01`](https://huggingface.co/desklib/ai-text-detector-v1.01)
+(DeBERTa-v3-large, top of the [RAID](https://raid-bench.xyz) benchmark), which runs in
+PyTorch — so the labeler ships as **two processes in one image**: the Node labeler and a
+small Python detector sidecar (`detector/`, FastAPI + torch) that they run on `127.0.0.1`.
+`start.sh` launches both; if either exits, the container goes down and is restarted. The
+Node side is a thin HTTP client (`src/detector.ts` → `DETECTOR_URL`); the detector owns
+model policy (English-only + min-length gating) and returns a 0..1 machine-generated
+probability. See `detector/README`-style notes in `detector/app.py` and `detector/model.py`.
+
+Why a sidecar rather than a model in-process: the strong open detectors use custom
+architectures that don't run under `@huggingface/transformers`, and an earlier in-process
+heuristic never fired on real content. The detector needs ~2.5 GB RAM (that's the model,
+regardless of packaging). Even this model has real false-positive risk on terse or stylized
+human prose — keep the label's downstream visibility conservative and tune `AI_THRESHOLD`
+(default 0.85).
 
 ## How a labeler works (the whole thing)
 
@@ -46,17 +63,29 @@ matches `com.atproto.label.defs#label` (signature included as raw bytes).
 
 ## Running it
 
+Start the detector sidecar once, then the labeler points at it over HTTP:
+
 ```bash
+# 1. detector sidecar (Python)
+cd detector
+uv venv --python 3.12 .venv && source .venv/bin/activate
+uv pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+uv pip install -r requirements.txt
+uvicorn app:app --host 127.0.0.1 --port 8000   # first run downloads the model (~1.7 GB)
+
+# 2. labeler (Node), in another shell
 pnpm install
 pnpm gen-key                 # prints LABELER_SIGNING_KEY=…  (save it)
 cp .env.example .env         # fill in LABELER_SIGNING_KEY (+ DID/URL for prod)
-pnpm dev                     # detector + server, http://localhost:4100
-pnpm test                    # detector + signing unit tests
+DETECTOR_URL=http://127.0.0.1:8000 pnpm dev    # server on http://localhost:4100
+pnpm test                    # unit tests (mock the detector; no model needed)
 ```
 
-Config lives in `.env` (see `.env.example`): `LABELER_DID`, `LABELER_SIGNING_KEY`,
-`PUBLIC_URL`, `JETSTREAM_URL`, `SQLITE_PATH`, `PORT`, plus `AI_THRESHOLD` / `DETECTOR_VERSION`
-for tuning. Bump `DETECTOR_VERSION` to force a re-scan of everything seen so far.
+In production both run in one container via `start.sh`; only local dev runs them
+separately. Config lives in `.env` (see `.env.example`): `LABELER_DID`,
+`LABELER_SIGNING_KEY`, `PUBLIC_URL`, `JETSTREAM_URL`, `SQLITE_PATH`, `PORT`, `DETECTOR_URL`,
+plus `AI_THRESHOLD` / `DETECTOR_VERSION` for tuning. Bump `DETECTOR_VERSION` to force a
+re-scan of everything seen so far.
 
 ### Local development against Standard Reader
 
@@ -74,13 +103,15 @@ Then, in the app, set `CLAUDESLOP_LABELER_DID` is **not** needed — just add
 
 ## Deploying
 
-It's one always-on process. The included `railway.json` runs `pnpm start`. Two things matter
-in production:
+One container, two processes. The included `railway.json` builds `Dockerfile` (Node +
+Python + torch, with the detector model baked in at build time) and runs `start.sh`.
+Three things matter in production:
 
 - **Persist the SQLite file** — mount a volume at `SQLITE_PATH` so the label log and cursor
   survive restarts.
 - **DID must resolve to the public host** — `LABELER_DID=did:web:<host>` and `PUBLIC_URL=https://<host>`,
   with `/.well-known/did.json` reachable at that host (this service serves it).
+- **Give it enough RAM** — the detector model needs ~2.5 GB resident.
 
 ## Copying this as a starting point
 

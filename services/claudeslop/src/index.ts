@@ -9,6 +9,7 @@
 
 import { config } from "./config.ts";
 import { openDb } from "./db.ts";
+import { preload } from "./detector.ts";
 import { startIngest } from "./ingest.ts";
 import { startServer } from "./server.ts";
 import { loadKeypair } from "./sign.ts";
@@ -22,6 +23,10 @@ async function main(): Promise<void> {
 
   const db = openDb(config.sqlitePath);
   const keypair = await loadKeypair(config.signingKeyHex);
+
+  console.log(`[claudeslop] waiting for detector at ${config.detectorUrl}…`);
+  await preload();
+  console.log("[claudeslop] detector ready");
 
   startServer(db, keypair);
   startIngest(db, keypair);

@@ -4,3 +4,7 @@ node_modules/
 *.db-wal
 *.db-shm
 .env
+detector/.venv/
+detector/.hf/
+detector/__pycache__/
+detector/.server.log

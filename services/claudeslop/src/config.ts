@@ -30,13 +30,24 @@ export const config = {
   sqlitePath: optional("SQLITE_PATH", "./claudeslop.db"),
   /** HTTP/WS port. */
   port: Number(optional("PORT", "4100")),
+  /** Base URL of the detector inference sidecar (see `detector/`). */
+  detectorUrl: optional("DETECTOR_URL", "http://127.0.0.1:8000").replace(
+    /\/$/,
+    "",
+  ),
 
   /** The single label value this labeler emits. */
   labelValue: "ai-writing",
-  /** Score at/above which a document is labeled. */
-  aiThreshold: Number(optional("AI_THRESHOLD", "0.62")),
+  /**
+   * Score at/above which a document is labeled. The detector returns a
+   * calibrated 0..1 machine-generated probability. Empirically on this corpus
+   * clearly-human prose scores under ~0.25 and confident AI slop scores 0.95+,
+   * with a band of genuinely-ambiguous text in between — so we default to a
+   * conservative 0.85 to keep false positives low (raise for fewer labels).
+   */
+  aiThreshold: Number(optional("AI_THRESHOLD", "0.85")),
   /** Bump to invalidate prior scans and re-evaluate every document. */
-  detectorVersion: Number(optional("DETECTOR_VERSION", "1")),
+  detectorVersion: Number(optional("DETECTOR_VERSION", "3")),
   /** Collection on the firehose we care about. */
   documentCollection: "site.standard.document",
 } as const;

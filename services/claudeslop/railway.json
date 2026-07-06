@@ -1,11 +1,10 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "RAILPACK",
-    "buildCommand": "echo 'claudeslop runs TypeScript via tsx; no build step'"
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "services/claudeslop/Dockerfile"
   },
   "deploy": {
-    "startCommand": "pnpm --filter claudeslop-labeler start",
     "healthcheckPath": "/health",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
