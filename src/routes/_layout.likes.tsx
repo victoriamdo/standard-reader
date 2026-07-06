@@ -169,19 +169,6 @@ function ReaderLikes() {
         metaValue={String(total)}
       />
 
-      <div {...stylex.props(styles.profile)}>
-        <Avatar
-          size="xl"
-          src={session?.user.image ?? undefined}
-          fallback={initial}
-          alt={userName}
-        />
-        <Flex direction="column" gap="xs">
-          <p {...stylex.props(styles.profileName)}>{userName}</p>
-          {userHandle ? <Handle>@{userHandle}</Handle> : null}
-        </Flex>
-      </div>
-
       {total === 0 ? (
         <div {...stylex.props(styles.emptyCard)}>
           <Flex
@@ -206,7 +193,6 @@ function ReaderLikes() {
         </div>
       ) : (
         <>
-          <SectionHead kicker="Likes" title="Recently liked" />
           <ReaderQueueRows items={queueRows} showSaveButton={false} />
           {isFetchingNextPage ? (
             <p {...stylex.props(styles.loadingNote)}>Loading…</p>

@@ -279,7 +279,6 @@ const styles = stylex.create({
       default: "2.125rem",
       "@media (min-width: 40rem)": "3.125rem",
     },
-    fontStyle: "italic",
     fontWeight: fontWeight.semibold,
     letterSpacing: tracking.tight,
     lineHeight: lineHeight.sm,

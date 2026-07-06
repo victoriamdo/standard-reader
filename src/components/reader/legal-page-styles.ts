@@ -55,7 +55,6 @@ export const legalPageStyles = stylex.create({
       [MOBILE]: fontSize["4xl"],
       default: fontSize["5xl"],
     },
-    fontStyle: "italic",
     fontWeight: fontWeight.medium,
     letterSpacing: tracking.tight,
     lineHeight: lineHeight.xs,

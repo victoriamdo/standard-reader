@@ -38,7 +38,6 @@ const SKELETON_ROWS = 4;
 
 const styles = stylex.create({
   headerTitle: {
-    fontFamily: fontFamily.serif,
     fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
     letterSpacing: tracking.tight,
