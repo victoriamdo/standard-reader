@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Flame, Sparkles } from "lucide-react";
-import { Suspense, useMemo } from "react";
+import { Suspense } from "react";
 import { z } from "zod";
 
 import { ButtonLink } from "#/components/router-links";
@@ -64,18 +64,10 @@ export const Route = createFileRoute("/_layout/")({
       }).queryKey,
       page.feed,
     );
-    const excludeUris = [
-      page.feed.featured?.uri,
-      ...page.feed.latestUnread.map((article) => article.uri),
-    ].filter((uri): uri is string => uri != null);
-    context.queryClient.setQueryData(
-      feedApi.getHomeExtrasQueryOptions({
-        scope: page.scope,
-        excludeUris,
-        readerScope: page.readerScope,
-      }).queryKey,
-      page.extras,
-    );
+    // The Trending / You-might-follow rails are below the fold — leave the
+    // extras query unseeded so it fetches client-side after first paint (the
+    // rails render their skeletons meanwhile) instead of blocking SSR on the
+    // recommendation scans.
 
     return { scope: page.scope, readerScope: page.readerScope };
   },
@@ -198,16 +190,6 @@ const styles = stylex.create({
   railRows: {
     paddingTop: spacing["2"],
   },
-  railRowSkeleton: {
-    paddingBottom: spacing["4"],
-    paddingTop: spacing["4"],
-  },
-  railRowSkeletonLast: {
-    paddingBottom: spacing["0"],
-  },
-  railRankSkeleton: {
-    flexShrink: 0,
-  },
   railGrow: {
     flexGrow: 1,
   },
@@ -305,56 +287,7 @@ function HomeFeedSkeleton() {
   );
 }
 
-const TRENDING_RAIL_SKELETON_ROWS = 4;
 const FOLLOW_RAIL_SKELETON_ROWS = 3;
-
-function HomeTrendingRailSkeleton() {
-  return (
-    <div
-      {...stylex.props(styles.railCard)}
-      aria-label="Loading trending articles"
-    >
-      <div {...stylex.props(styles.railHead)}>
-        <Flame size={14} {...stylex.props(styles.railIcon)} /> Trending articles
-      </div>
-      <Flex direction="column" style={styles.railRows} aria-hidden>
-        {Array.from({ length: TRENDING_RAIL_SKELETON_ROWS }, (_, index) => (
-          <Flex
-            key={index}
-            align="start"
-            gap="md"
-            style={[
-              styles.railRowSkeleton,
-              index === TRENDING_RAIL_SKELETON_ROWS - 1 &&
-                styles.railRowSkeletonLast,
-            ]}
-          >
-            <Skeleton
-              variant="rectangle"
-              height={spacing["5"]}
-              width={spacing["6"]}
-              style={styles.railRankSkeleton}
-            />
-            <Flex direction="column" gap="sm" style={styles.railGrow}>
-              <Skeleton variant="rectangle" height={spacing["5"]} width="92%" />
-              <Skeleton
-                variant="rectangle"
-                height={spacing["3.5"]}
-                width="56%"
-              />
-            </Flex>
-          </Flex>
-        ))}
-      </Flex>
-      <Skeleton
-        variant="rectangle"
-        height={spacing["8"]}
-        width="44%"
-        style={styles.railLinkSkeleton}
-      />
-    </div>
-  );
-}
 
 function HomeYouMightFollowRailSkeleton() {
   return (
@@ -458,27 +391,20 @@ function HomeFeed({
       ? (trackReadingPref?.enabled ?? DEFAULT_TRACK_READING_HISTORY)
       : false;
 
-  const excludeUris = useMemo(
-    () =>
-      [
-        feed.featured?.uri,
-        ...feed.latestUnread.map((article) => article.uri),
-      ].filter((uri): uri is string => uri != null),
-    [feed.featured, feed.latestUnread],
-  );
-
   const hasMainContent = Boolean(
     feed.featured || feed.latestUnread.length > 0 || feed.personalized,
   );
 
   const { data: extras, isPending: extrasPending } = useQuery({
-    ...feedApi.getHomeExtrasQueryOptions({ scope, excludeUris, readerScope }),
+    ...feedApi.getHomeExtrasQueryOptions({ scope, readerScope }),
     enabled: hasMainContent,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
 
-  const trending = extras?.trending ?? feed.trending;
+  // Trending ships in the critical feed payload (above the fold, no loader);
+  // only the "You might follow" rail is deferred to `extras`.
+  const trending = feed.trending;
   const youMightFollow = extras?.youMightFollow ?? feed.youMightFollow;
   const unreadCount =
     trackReading && feed.personalized
@@ -601,9 +527,7 @@ function HomeFeed({
         </Flex>
 
         <Flex direction="column" gap="2xl">
-          {extrasPending ? (
-            <HomeTrendingRailSkeleton />
-          ) : trending.length > 0 ? (
+          {trending.length > 0 ? (
             <div {...stylex.props(styles.railCard)}>
               <div {...stylex.props(styles.railHead)}>
                 <Flame size={14} {...stylex.props(styles.railIcon)} /> Trending

@@ -101,12 +101,13 @@ export interface HomeFeed {
 }
 
 /**
- * Trending + You-might-follow rails. Unread masthead counts come from the
- * sidebar snapshot (`getShellBootstrap` / `getSidebar`), not this payload.
+ * The deferred "You might follow" rail. Trending ships in the critical
+ * {@link HomeFeed} payload (cheap, above the fold), so it's not here. Unread
+ * masthead counts come from the sidebar snapshot (`getShellBootstrap` /
+ * `getSidebar`), not this payload.
  */
 export interface HomeFeedExtras {
   unreadCount: number | null;
-  trending: Array<ArticleCard>;
   youMightFollow: Array<PublicationCard>;
 }
 
@@ -114,17 +115,20 @@ export interface HomePageData {
   scope: HomeScope;
   /** Cache scope for personalized feed queries (`did` or `"guest"`). */
   readerScope: string;
+  /**
+   * Critical, above-the-fold payload: lead + latest rows + the Trending rail.
+   * Only the below-the-fold "You might follow" rail is deferred (loaded via
+   * {@link getHomeExtras} after first paint), so SSR never blocks on the
+   * recommendation scans.
+   */
   feed: HomeFeed;
-  extras: HomeFeedExtras;
 }
 
 const homePageInput = z.object({
   scope: z.enum(["follows", "network"]).optional(),
 });
 
-const homeExtrasInput = homeInput.extend({
-  excludeUris: z.array(z.string()).max(100).default([]),
-});
+const homeExtrasInput = homeInput;
 
 export interface LatestFeedCounts {
   /** Unread documents across the reader's subscriptions. */
@@ -221,13 +225,6 @@ async function resolveHomeFeedContext(
 
 type HomeFeedContext = Awaited<ReturnType<typeof resolveHomeFeedContext>>;
 
-function homeExcludeUris(feed: Pick<HomeFeed, "featured" | "latestUnread">) {
-  return [
-    feed.featured?.uri,
-    ...feed.latestUnread.map((article) => article.uri),
-  ].filter((uri): uri is string => uri != null);
-}
-
 async function buildHomeFeedCritical(
   db: Db,
   schema: Schema,
@@ -282,12 +279,37 @@ async function buildHomeFeedCritical(
   );
   const byUri = new Map(enriched.map((article) => [article.uri, article]));
 
+  // Trending rail lives above the fold, so it's part of the critical payload
+  // (not deferred). The read is a cheap indexed top-N over `trending_score`
+  // within the recency window — no recommendation scans — so blocking on it is
+  // fine and avoids a loader flash. Exclude anything already shown as the lead
+  // / latest rows.
+  const excludeUris = [
+    ...(featured ? [featured.uri] : []),
+    ...latestUnread.map((article) => article.uri),
+  ];
+  const trendingRaw = await trendingArticles(db, schema, HOME_RAIL_LIMIT, {
+    excludeUris,
+  });
+  const trendingVisible = await filterHiddenDocuments(
+    db,
+    schema,
+    ctx.did,
+    trendingRaw,
+  );
+  const trending = await attachCommentCountsToArticles(
+    db,
+    schema,
+    trendingVisible.slice(0, HOME_RAIL_LIMIT),
+  );
+  span.set("trending", trending.length);
+
   return {
     featured: featured ? (byUri.get(featured.uri) ?? featured) : null,
     latestUnread: latestUnread.map(
       (article) => byUri.get(article.uri) ?? article,
     ),
-    trending: [],
+    trending,
     youMightFollow: [],
     personalized,
     hasFollows,
@@ -295,50 +317,40 @@ async function buildHomeFeedCritical(
   } satisfies HomeFeed;
 }
 
+/**
+ * The deferred "You might follow" rail — the one expensive part of the home
+ * page (co-subscription / co-recommend / co-reader-like blend). Below the fold,
+ * so it's loaded after first paint via {@link getHomeExtras} rather than
+ * blocking SSR. Trending is not here: it's cheap and above the fold, so it
+ * ships in the critical {@link buildHomeFeedCritical} payload.
+ */
 async function buildHomeFeedExtras(
   db: Db,
   schema: Schema,
   ctx: HomeFeedContext,
-  excludeUris: ReadonlyArray<string>,
   span: Span,
-  trendingRawPromise: ReturnType<typeof trendingArticles>,
-  trendingPubUrisPromise: ReturnType<typeof trendingPublicationUris>,
 ): Promise<HomeFeedExtras> {
   const { personalized, did, followUris } = ctx;
-  const exclude = new Set(excludeUris);
 
-  const [trendingRaw, trendingPubUris] = await Promise.all([
-    trendingRawPromise,
-    trendingPubUrisPromise,
-  ]);
-
-  const trendingExcluded = trendingRaw.filter(
-    (article) => !exclude.has(article.uri),
-  );
-  const trendingVisible = await filterHiddenDocuments(
+  const trendingPubUris = await trendingPublicationUris(
     db,
     schema,
-    did,
-    trendingExcluded,
+    HOME_RAIL_LIMIT,
   );
-  const trendingFiltered = trendingVisible.slice(0, HOME_RAIL_LIMIT);
 
-  const [youMightFollowRaw, trending] = await Promise.all([
+  const youMightFollow =
     personalized && did
-      ? recommendedPublications(db, schema, did, HOME_RAIL_LIMIT, {
+      ? await recommendedPublications(db, schema, did, HOME_RAIL_LIMIT, {
           excludeUris: trendingPubUris,
           followUris,
         })
-      : popularPublications(db, schema, HOME_RAIL_LIMIT, trendingPubUris),
-    attachCommentCountsToArticles(db, schema, trendingFiltered),
-  ]);
+      : await popularPublications(db, schema, HOME_RAIL_LIMIT, trendingPubUris);
 
-  span.set("trending", trending.length);
+  span.set("youMightFollow", youMightFollow.length);
 
   return {
     unreadCount: null,
-    trending,
-    youMightFollow: youMightFollowRaw,
+    youMightFollow,
   } satisfies HomeFeedExtras;
 }
 
@@ -366,7 +378,6 @@ async function loadHomeFeedExtras(
   schema: Schema,
   did: string | null | undefined,
   scope: HomeScope,
-  excludeUris: ReadonlyArray<string>,
   span: Span,
   options: { trackReading?: boolean; trackReadingEnabled?: boolean } = {},
 ): Promise<HomeFeedExtras> {
@@ -378,54 +389,7 @@ async function loadHomeFeedExtras(
     span,
     options,
   );
-  return buildHomeFeedExtras(
-    db,
-    schema,
-    ctx,
-    excludeUris,
-    span,
-    trendingArticles(db, schema, HOME_RAIL_LIMIT),
-    trendingPublicationUris(db, schema, HOME_RAIL_LIMIT),
-  );
-}
-
-/** Critical feed + rails in one request; trending queries overlap article fetches. */
-async function loadHomePagePayload(
-  db: Db,
-  schema: Schema,
-  did: string | null | undefined,
-  scope: HomeScope,
-  span: Span,
-  options: { trackReading?: boolean; trackReadingEnabled?: boolean } = {},
-): Promise<{ feed: HomeFeed; extras: HomeFeedExtras }> {
-  const ctx = await resolveHomeFeedContext(
-    db,
-    schema,
-    did,
-    scope,
-    span,
-    options,
-  );
-
-  const trendingRawPromise = trendingArticles(db, schema, HOME_RAIL_LIMIT);
-  const trendingPubUrisPromise = trendingPublicationUris(
-    db,
-    schema,
-    HOME_RAIL_LIMIT,
-  );
-
-  const feed = await buildHomeFeedCritical(db, schema, ctx, span);
-  const extras = await buildHomeFeedExtras(
-    db,
-    schema,
-    ctx,
-    homeExcludeUris(feed),
-    span,
-    trendingRawPromise,
-    trendingPubUrisPromise,
-  );
-
-  return { feed, extras };
+  return buildHomeFeedExtras(db, schema, ctx, span);
 }
 
 const getHomeFeed = createServerFn({ method: "GET" })
@@ -441,7 +405,12 @@ const getHomeFeed = createServerFn({ method: "GET" })
     }),
   );
 
-/** Scope preference + home feed in one round trip for the route loader. */
+/**
+ * Scope preference + critical home feed in one round trip for the route loader.
+ * The Trending / You-might-follow rails are below the fold and fetched
+ * separately via {@link getHomeExtras} after first paint, so the SSR response
+ * isn't blocked on the recommendation/trending scans.
+ */
 const getHomePage = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
   .validator(homePageInput)
@@ -465,7 +434,7 @@ const getHomePage = createServerFn({ method: "GET" })
           ? undefined
           : dbValueToTrackReadingHistory(reader.trackReadingHistory ?? null);
 
-      const { feed, extras } = await loadHomePagePayload(
+      const feed = await loadHomeFeedCritical(
         db,
         schema,
         did,
@@ -477,12 +446,11 @@ const getHomePage = createServerFn({ method: "GET" })
         scope,
         readerScope: did ?? "guest",
         feed,
-        extras,
       } satisfies HomePageData;
     }),
   );
 
-/** Rails + unread badge — loaded after the critical feed paints. */
+/** "You might follow" rail — loaded after the critical feed paints. */
 const getHomeExtras = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
   .validator(homeExtrasInput)
@@ -491,15 +459,9 @@ const getHomeExtras = createServerFn({ method: "GET" })
       const { db, schema, trackReadingEnabled } = context;
       const did = await attachReaderSpanContext(span, getRequest());
 
-      return loadHomeFeedExtras(
-        db,
-        schema,
-        did,
-        data.scope,
-        data.excludeUris,
-        span,
-        { trackReadingEnabled },
-      );
+      return loadHomeFeedExtras(db, schema, did, data.scope, span, {
+        trackReadingEnabled,
+      });
     }),
   );
 
@@ -650,19 +612,11 @@ function getHomeFeedQueryOptions({
 
 function getHomeExtrasQueryOptions({
   scope = "follows",
-  excludeUris = [],
   readerScope = "guest",
 }: z.input<typeof homeExtrasInput> & { readerScope?: string } = {}) {
   return queryOptions({
-    queryKey: [
-      "feed",
-      "home",
-      "extras",
-      scope,
-      readerScope,
-      excludeUris,
-    ] as const,
-    queryFn: async () => getHomeExtras({ data: { scope, excludeUris } }),
+    queryKey: ["feed", "home", "extras", scope, readerScope] as const,
+    queryFn: async () => getHomeExtras({ data: { scope } }),
     staleTime: 60_000,
   });
 }

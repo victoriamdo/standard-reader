@@ -9,6 +9,7 @@
  */
 
 import { and, eq, inArray } from "drizzle-orm";
+import { cache as reactCache } from "react";
 
 import type { LabelPref, LabelVisibility } from "#/db/schema/labels";
 import type {
@@ -52,8 +53,16 @@ export async function subscribedLabelerDids(
 /**
  * The caller's subscribed labeler DIDs plus a `${labelerDid} ${val}` →
  * visibility map of their saved per-label prefs. One query feeds both.
+ *
+ * Memoized per request ({@link reactCache}): a single feed load reads labels
+ * for several URI sets (hide-filter + attach for the critical rows, then the
+ * trending rail), and each read would otherwise re-query the reader's labeler
+ * subscriptions. `db`/`schema` are stable singletons and `callerDid` is stable
+ * within a request, so all of them share one query.
  */
-async function readerSubscriptions(
+const readerSubscriptions = reactCache(readerSubscriptionsImpl);
+
+async function readerSubscriptionsImpl(
   db: Db,
   schema: Schema,
   callerDid: string,
