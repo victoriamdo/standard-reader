@@ -1,12 +1,17 @@
 import * as stylex from "@stylexjs/stylex";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import {
   createFileRoute,
   createLink,
   redirect,
   useNavigate,
 } from "@tanstack/react-router";
-import { ExternalLink, ListPlus } from "lucide-react";
+import { ExternalLink, ListPlus, Settings } from "lucide-react";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link as AriaLink } from "react-aria-components";
@@ -23,10 +28,12 @@ import {
 } from "#/integrations/tanstack-query/api-author.functions";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import type { SubscriptionList } from "#/integrations/tanstack-query/api-lists.functions";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
 import type {
   ArticleCard,
   PublicationCard,
 } from "#/integrations/tanstack-query/api-shapes";
+import type { HideableTabId, ProfileTabId } from "#/lib/profile-tabs";
 import { getPublicUrlClient } from "#/lib/public-url";
 import {
   authorFeedUrl,
@@ -38,6 +45,7 @@ import { AuthorProfileLink } from "../components/reader/author-profile-link";
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
 import { LinkifiedText } from "../components/reader/linkified-text";
 import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
+import { ProfileTabsSettingsModal } from "../components/reader/profile-tabs-settings-modal";
 import { RssFeedButton } from "../components/reader/rss-feed-button";
 import { ShareMenu } from "../components/reader/share-menu";
 import { AuthorSifaResumeChip } from "../components/reader/sifa-resume-chip";
@@ -61,7 +69,7 @@ const AUTHOR_PAGE_SIZE = 24;
 
 const authorSearchSchema = z.object({
   tab: z
-    .enum(["posts", "publications", "subscriptions", "readers", "lists"])
+    .enum(["posts", "publications", "subscriptions", "readers", "lists", "likes"])
     .default("posts"),
 });
 
@@ -461,6 +469,65 @@ function AuthorProfileContent({
 }) {
   const { data: lists } = useQuery(listApi.getAuthorListsQueryOptions(did));
 
+  const { data: session } = useQuery(user.getSessionQueryOptions);
+  const isOwnProfile =
+    session?.user?.did != null && session.user.did === did;
+
+  const queryClient = useQueryClient();
+  const [hiddenTabs, setHiddenTabs] = useState<Array<HideableTabId>>(
+    initialPage.hiddenTabs,
+  );
+  const [showLikes, setShowLikes] = useState<boolean>(initialPage.showLikes);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const saveTabSettings = useMutation({
+    mutationFn: (next: {
+      hiddenTabs: Array<HideableTabId>;
+      showLikes: boolean;
+    }) => user.setProfileTabSettings({ data: next }),
+    onSuccess: (result) => {
+      // Keep every cached page of this profile in sync so a remount reflects
+      // the saved visibility without a refetch.
+      queryClient.setQueriesData<AuthorProfile | null>(
+        { queryKey: ["author", "profile", did] },
+        (prev) =>
+          prev
+            ? {
+                ...prev,
+                hiddenTabs: result.hiddenTabs,
+                showLikes: result.showLikes,
+              }
+            : prev,
+      );
+    },
+  });
+
+  const onToggleTab = (tabId: ProfileTabId, visible: boolean) => {
+    const prevHidden = hiddenTabs;
+    const prevShowLikes = showLikes;
+    let nextHidden = hiddenTabs;
+    let nextShowLikes = showLikes;
+    if (tabId === "likes") {
+      // "Likes" is opt-in, tracked separately from the opt-out hidden list.
+      nextShowLikes = visible;
+      setShowLikes(visible);
+    } else {
+      nextHidden = visible
+        ? hiddenTabs.filter((id) => id !== tabId)
+        : [...hiddenTabs.filter((id) => id !== tabId), tabId];
+      setHiddenTabs(nextHidden);
+    }
+    saveTabSettings.mutate(
+      { hiddenTabs: nextHidden, showLikes: nextShowLikes },
+      {
+        onError: () => {
+          setHiddenTabs(prevHidden);
+          setShowLikes(prevShowLikes);
+        },
+      },
+    );
+  };
+
   const { tab: requestedTab } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const onTabChange = (key: React.Key) => {
@@ -482,13 +549,21 @@ function AuthorProfileContent({
   const name = authorDisplayName(profile);
   const pageUrl = `${getPublicUrlClient()}/u/${did}`;
 
-  const visibleTabs: Array<AuthorTab> = [
+  // Tabs that have content to show. The owner can hide any of these from their
+  // public profile via the settings modal; `hiddenTabs` is applied for everyone.
+  const candidateTabs: Array<AuthorTab> = [
     stats.documentCount > 0 && ("posts" as const),
     stats.publicationCount > 0 && ("publications" as const),
     stats.subscriptionCount > 0 && ("subscriptions" as const),
     stats.subscriberCount > 0 && ("readers" as const),
     lists && lists.length > 0 && ("lists" as const),
+    stats.recommendationCount > 0 && ("likes" as const),
   ].filter((id): id is AuthorTab => id !== false);
+  const visibleTabs = candidateTabs.filter((id) => {
+    // "Likes" is opt-in (default off); the rest are opt-out (default on).
+    if (id === "likes") return showLikes;
+    return !hiddenTabs.includes(id);
+  });
   const tab = visibleTabs.includes(requestedTab)
     ? requestedTab
     : (visibleTabs[0] ?? requestedTab);
@@ -544,6 +619,16 @@ function AuthorProfileContent({
                 handle={profile.handle}
                 variant="icon"
               />
+              {isOwnProfile ? (
+                <IconButton
+                  variant="secondary"
+                  size="md"
+                  label="Profile settings"
+                  onPress={() => setSettingsOpen(true)}
+                >
+                  <Settings size={15} />
+                </IconButton>
+              ) : null}
             </div>
           </div>
 
@@ -581,6 +666,16 @@ function AuthorProfileContent({
               handle={profile.handle}
               variant="icon"
             />
+            {isOwnProfile ? (
+              <IconButton
+                variant="secondary"
+                size="md"
+                label="Profile settings"
+                onPress={() => setSettingsOpen(true)}
+              >
+                <Settings size={15} />
+              </IconButton>
+            ) : null}
           </div>
         </div>
       </div>
@@ -630,6 +725,14 @@ function AuthorProfileContent({
                   Lists
                   <Badge size="sm" style={styles.tabCount}>
                     {lists.length}
+                  </Badge>
+                </Tab>
+              ) : null}
+              {visibleTabs.includes("likes") ? (
+                <Tab id="likes">
+                  Likes
+                  <Badge size="sm" style={styles.tabCount}>
+                    {stats.recommendationCount}
                   </Badge>
                 </Tab>
               ) : null}
@@ -684,8 +787,28 @@ function AuthorProfileContent({
               <AuthorListsPanel did={did} lists={lists} />
             </TabPanel>
           ) : null}
+
+          {visibleTabs.includes("likes") ? (
+            <TabPanel id="likes" style={styles.tabPanel}>
+              <AuthorLikesPanel
+                did={did}
+                initialItems={initialPage.recommendations}
+                initialNextOffset={initialPage.recommendationsNextOffset}
+              />
+            </TabPanel>
+          ) : null}
         </ReaderContent>
       </Tabs>
+
+      {isOwnProfile ? (
+        <ProfileTabsSettingsModal
+          isOpen={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          candidateTabs={candidateTabs}
+          visibleTabs={visibleTabs}
+          onToggleTab={onToggleTab}
+        />
+      ) : null}
     </div>
   );
 }
@@ -772,6 +895,59 @@ function AuthorPostsPanel({
 
   if (items.length === 0) {
     return <div {...stylex.props(styles.emptyNote)}>No posts indexed yet.</div>;
+  }
+
+  return (
+    <div>
+      {items.map((article, index) => (
+        <ArticleRow
+          key={article.uri}
+          article={article}
+          isFirstInSection={index === 0}
+          showSaveButton={false}
+        />
+      ))}
+      <LoadMoreFooter
+        nextOffset={nextOffset}
+        loadingMore={scroll.loadingMore}
+        sentinelRef={scroll.sentinelRef}
+      />
+    </div>
+  );
+}
+
+function AuthorLikesPanel({
+  did,
+  initialItems,
+  initialNextOffset,
+}: {
+  did: string;
+  initialItems: Array<ArticleCard>;
+  initialNextOffset: number | null;
+}) {
+  const [items, setItems] = useState(initialItems);
+  const [nextOffset, setNextOffset] = useState(initialNextOffset);
+
+  const loadMore = useCallback(async () => {
+    if (nextOffset == null) return;
+    const page = await authorApi.getAuthorRecommendations({
+      data: { did, limit: AUTHOR_ACTIVITY_PAGE_SIZE, offset: nextOffset },
+    });
+    setItems((prev) => {
+      const seen = new Set(prev.map((article) => article.uri));
+      return [
+        ...prev,
+        ...page.items.filter((article) => !seen.has(article.uri)),
+      ];
+    });
+    setNextOffset(page.nextOffset);
+  }, [did, nextOffset]);
+  const scroll = useInfiniteScroll(nextOffset, loadMore);
+
+  if (items.length === 0) {
+    return (
+      <div {...stylex.props(styles.emptyNote)}>No liked articles yet.</div>
+    );
   }
 
   return (

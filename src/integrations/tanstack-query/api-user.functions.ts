@@ -32,6 +32,12 @@ import {
   openLinksExternallyToDbValue,
   parseOpenLinksExternally,
 } from "#/lib/open-links";
+import type { HideableTabId } from "#/lib/profile-tabs";
+import {
+  hiddenTabsToDbValue,
+  hideableTabIdSchema,
+  parseHiddenTabs,
+} from "#/lib/profile-tabs";
 import {
   READER_VOICE_COOKIE,
   READER_VOICE_COOKIE_MAX_AGE_SECONDS,
@@ -573,6 +579,39 @@ const setOpenLinksPreference = createServerFn({ method: "POST" })
     return { openExternally: data.openExternally };
   });
 
+const setProfileTabSettings = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .validator(
+    z.object({
+      hiddenTabs: z.array(hideableTabIdSchema),
+      showLikes: z.boolean(),
+    }),
+  )
+  .handler(
+    observe(
+      "user.setProfileTabSettings",
+      async (
+        { data, context },
+        span,
+      ): Promise<{ hiddenTabs: Array<HideableTabId>; showLikes: boolean }> => {
+        const session = context?.session;
+        if (!session?.user) {
+          throw new Error("Not authenticated");
+        }
+
+        const dbValue = hiddenTabsToDbValue(data.hiddenTabs);
+        span.set("hiddenTabs", dbValue ?? "");
+        span.set("showLikes", data.showLikes);
+        await context.db
+          .update(context.schema.user)
+          .set({ profileHiddenTabs: dbValue, profileShowLikes: data.showLikes })
+          .where(eq(context.schema.user.id, session.user.id));
+
+        return { hiddenTabs: parseHiddenTabs(dbValue), showLikes: data.showLikes };
+      },
+    ),
+  );
+
 const getOpenCollectionsInMagazinePreference = createServerFn({ method: "GET" })
   .middleware([dbMiddleware, maybeAuthMiddleware])
   .handler(async ({ context }): Promise<{ openInMagazine: boolean }> => {
@@ -865,6 +904,7 @@ export const user = {
   getOpenLinksPreference,
   getOpenLinksPreferenceQueryOptions,
   setOpenLinksPreference,
+  setProfileTabSettings,
   getOpenCollectionsInMagazinePreference,
   getOpenCollectionsInMagazinePreferenceQueryOptions,
   setOpenCollectionsInMagazinePreference,

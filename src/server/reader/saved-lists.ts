@@ -166,6 +166,37 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<Array<SubscriptionList>>>();
+/**
+ * Readers we've already kicked a lazy PDS backfill for this process. The
+ * backfill (see {@link scheduleListBackfill}) is a one-shot migration for
+ * saves made before the read-model mirror existed; without this guard a reader
+ * with genuinely no saved lists — the common case — would re-fetch their whole
+ * repo from the PDS on the first feed/sidebar load of every cache window.
+ */
+const backfillAttempted = new Set<string>();
+
+/**
+ * Fire the pre-mirror lazy backfill for `did` in the background, at most once
+ * per process. Never awaited on the read path: saves now arrive via the tap
+ * ingester in real time, so the mirror is authoritative for the request and
+ * this only catches historical saves. If it does find saves, drop the cached
+ * empty state so the next read reflects them instead of waiting out the TTL.
+ */
+function scheduleListBackfill(did: string): void {
+  if (backfillAttempted.has(did)) return;
+  backfillAttempted.add(did);
+  void (async () => {
+    try {
+      const { backfillListsFromRepo } = await import("#/server/ingest/handlers");
+      const { listSaves: saved } = await backfillListsFromRepo(did);
+      if (saved > 0) cache.delete(did);
+    } catch (error) {
+      // Allow a later read to retry rather than pinning the failure forever.
+      backfillAttempted.delete(did);
+      console.warn(`[saved-lists] background backfill failed for ${did}`, error);
+    }
+  })();
+}
 
 /** Map joined listSaves × lists rows to SubscriptionList, skipping own-list saves. */
 function mapJoinedRows(
@@ -216,7 +247,8 @@ function mapJoinedRows(
 /**
  * The reader's saved lists (excluding saves that point at their own lists),
  * resolved from the DB mirror and cached for {@link SAVED_LISTS_TTL_MS}.
- * Falls back to a PDS fetch + backfill when no list_saves rows exist yet.
+ * When the mirror has no rows, kicks a one-shot background PDS backfill (see
+ * {@link scheduleListBackfill}) but returns the current state without waiting.
  */
 export async function savedListsForReader(
   db: Db,
@@ -252,32 +284,11 @@ export async function savedListsForReader(
         ),
       );
 
-    // No rows yet — backfill from the PDS and retry once.
+    // No mirrored saves. Kick a one-shot PDS backfill in the background (to
+    // catch pre-mirror saves) but never block the feed/sidebar critical path
+    // on it — return the current (empty) mirror state immediately.
     if (joined.length === 0) {
-      const { backfillListsFromRepo } =
-        await import("#/server/ingest/handlers");
-      await backfillListsFromRepo(did);
-
-      const refetched = await db
-        .select({
-          listUri: listSaves.listUri,
-          uri: lists.uri,
-          rkey: lists.rkey,
-          name: lists.name,
-          description: lists.description,
-          publications: lists.publications,
-          createdAt: lists.createdAt,
-        })
-        .from(listSaves)
-        .leftJoin(lists, eq(lists.uri, listSaves.listUri))
-        .where(
-          and(
-            eq(listSaves.saverDid, did),
-            eq(listSaves.deleted, false),
-            eq(lists.deleted, false),
-          ),
-        );
-      return mapJoinedRows(refetched, did);
+      scheduleListBackfill(did);
     }
 
     return mapJoinedRows(joined, did);

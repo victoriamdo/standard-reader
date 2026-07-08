@@ -7,6 +7,7 @@ import {
   LogOut,
   MessageSquareText,
   Settings,
+  User,
 } from "lucide-react";
 import type { PopoverProps } from "react-aria-components";
 import { Button as AriaButton } from "react-aria-components";
@@ -187,6 +188,8 @@ export function NavbarAuth({
         />
       );
 
+    const profileRef = session.user.did ?? session.user.handle;
+
     return (
       <Menu
         size="lg"
@@ -201,6 +204,15 @@ export function NavbarAuth({
           ) : undefined
         }
       >
+        {profileRef ? (
+          <MenuItemLink
+            to="/u/$did"
+            params={{ did: profileRef }}
+            suffix={<User />}
+          >
+            View profile
+          </MenuItemLink>
+        ) : null}
         {trackReading ? (
           <MenuItemLink to="/history" suffix={<History />}>
             Reading history

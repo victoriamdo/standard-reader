@@ -40,6 +40,12 @@ export const user = pgTable("user", {
   trackReadingHistory: boolean("track_reading_history"),
   /** `network` shows the whole-network home feed; `null` = follows (default). */
   homeScope: text("home_scope"),
+  /** Comma-separated author-profile tab ids the owner has hidden from their
+   * public profile (`posts,publications,...`); `null`/empty = all visible. */
+  profileHiddenTabs: text("profile_hidden_tabs"),
+  /** `true` shows the opt-in "Likes" tab on the public profile; `null`/`false`
+   * keeps it hidden (the tab is disabled by default). */
+  profileShowLikes: boolean("profile_show_likes"),
   /** `true` enables collections authoring (requests the collections OAuth scope
    * tier on the next sign-in). Set when the user opts into the collections
    * upgrade flow; persists across logins so subsequent authorize requests

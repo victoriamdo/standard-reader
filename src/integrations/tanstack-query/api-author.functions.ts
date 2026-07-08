@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
+import type { HideableTabId } from "#/lib/profile-tabs";
+import { parseHiddenTabs } from "#/lib/profile-tabs";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { resolveAuthorDid } from "#/server/atproto/resolve-author-ref";
 import { resolveSifaProfileUrl } from "#/server/atproto/sifa-profile";
@@ -83,6 +85,10 @@ export interface AuthorProfile {
   recommendationsNextOffset: number | null;
   documents: Array<ArticleCard>;
   documentsNextOffset: number | null;
+  /** Default-visible tab ids the profile owner has hidden from their profile. */
+  hiddenTabs: Array<HideableTabId>;
+  /** Whether the opt-in "Likes" tab is enabled on this profile. */
+  showLikes: boolean;
 }
 
 export interface AuthorPublicationsPage {
@@ -192,6 +198,7 @@ const getAuthorProfile = createServerFn({ method: "GET" })
           readersPage,
           recommendationsPage,
           documentsPage,
+          ownerRow,
         ] = await Promise.all([
           resolveAuthorProfile(db, schema, did),
           authorProfileStats(db, schema, did),
@@ -216,7 +223,16 @@ const getAuthorProfile = createServerFn({ method: "GET" })
             did,
             limit: data.activityLimit,
           }),
+          // The tab-visibility settings live on the owner's `user` row (keyed by
+          // DID), independent of who is viewing the profile.
+          db.query.user.findFirst({
+            where: eq(schema.user.did, did),
+            columns: { profileHiddenTabs: true, profileShowLikes: true },
+          }),
         ]);
+
+        const hiddenTabs = parseHiddenTabs(ownerRow?.profileHiddenTabs ?? null);
+        const showLikes = ownerRow?.profileShowLikes === true;
 
         const hasIdentity =
           profile.handle != null ||
@@ -275,6 +291,8 @@ const getAuthorProfile = createServerFn({ method: "GET" })
             documentsPage.items.length,
             documentsPage.total,
           ),
+          hiddenTabs,
+          showLikes,
         };
       },
     ),
