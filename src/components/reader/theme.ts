@@ -94,10 +94,15 @@ export const editorialPrimary = stylex.createTheme(primaryColor, {
 
 /** Newsreader (serif/display), Atkinson Hyperlegible Next (sans/UI), Spline Sans Mono (mono). */
 export const editorialFonts = stylex.createTheme(fontFamily, {
-  title: "'Newsreader', Georgia, 'Times New Roman', serif",
-  sans: "'Atkinson Hyperlegible Next', system-ui, -apple-system, sans-serif",
-  serif: "'Newsreader', Georgia, 'Times New Roman', serif",
-  mono: "'Spline Sans Mono', ui-monospace, 'SFMono-Regular', monospace",
+  // The `* Fallback: *` families are metric-adjusted @font-face rules generated
+  // by Capsize in src/styles.css (`pnpm fonts:generate`); they keep the local
+  // fallback the same size as the web font so text doesn't shift as it loads.
+  title:
+    "'Newsreader', 'Newsreader Fallback: Georgia', 'Newsreader Fallback: Times New Roman', Georgia, 'Times New Roman', serif",
+  sans: "'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible Next Fallback: -apple-system', 'Atkinson Hyperlegible Next Fallback: Arial', system-ui, -apple-system, sans-serif",
+  serif:
+    "'Newsreader', 'Newsreader Fallback: Georgia', 'Newsreader Fallback: Times New Roman', Georgia, 'Times New Roman', serif",
+  mono: "'Spline Sans Mono', 'Spline Sans Mono Fallback', ui-monospace, 'SFMono-Regular', monospace",
 });
 
 /** Stronger shadows on dark surfaces so popovers/cards stay legible. */
