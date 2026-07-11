@@ -4,6 +4,7 @@ import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 import { publicationDisplayName } from "#/integrations/tanstack-query/api-shapes";
 import type {
   ActorMentionMap,
+  DocumentMentionMap,
   InlineMentionRefs,
   InlineMentions,
   PublicationMentionMap,
@@ -61,6 +62,30 @@ async function resolvePublications(
   return map;
 }
 
+async function resolveDocuments(
+  db: Db,
+  schema: Schema,
+  atUris: Array<string>,
+): Promise<DocumentMentionMap> {
+  if (atUris.length === 0) return {};
+  const d = schema.documents;
+  const rows = await db
+    .select({ uri: d.uri, did: d.did, rkey: d.rkey, title: d.title })
+    .from(d)
+    .where(and(eq(d.deleted, false), inArray(d.uri, atUris)));
+
+  const map: DocumentMentionMap = {};
+  for (const row of rows) {
+    map[row.uri] = {
+      atUri: row.uri,
+      did: row.did,
+      rkey: row.rkey,
+      title: row.title,
+    };
+  }
+  return map;
+}
+
 async function resolveActors(
   db: Db,
   schema: Schema,
@@ -97,14 +122,15 @@ export async function resolveInlineMentions(
   schema: Schema,
   refs: InlineMentionRefs,
 ): Promise<InlineMentions> {
-  const [publications, actors] = await Promise.all([
+  const [publications, documents, actors] = await Promise.all([
     resolvePublications(
       db,
       schema,
       refs.publicationAtUris,
       refs.publicationUrls,
     ),
+    resolveDocuments(db, schema, refs.documentAtUris),
     resolveActors(db, schema, refs.actorDids),
   ]);
-  return { publications, actors };
+  return { publications, documents, actors };
 }

@@ -20,10 +20,12 @@ import { Avatar } from "#/design-system/avatar";
 import { segmentFacetedText, shiftFacets } from "#/lib/leaflet/facets";
 import type {
   ResolvedActorMention,
+  ResolvedDocumentMention,
   ResolvedPublicationMention,
 } from "#/lib/leaflet/publication-mentions";
 import {
   lookupActorMention,
+  lookupDocumentMention,
   lookupPublicationMention,
 } from "#/lib/leaflet/publication-mentions";
 import type { LeafletFacet } from "#/lib/leaflet/types";
@@ -85,6 +87,30 @@ function PublicationMentionChip({
 }
 
 /**
+ * Inline document reference — an `#atMention` whose target is a
+ * `pub.leaflet.document`. Links to the document's Standard Reader page
+ * (`/a/$did/$rkey`), keeping the facet's plaintext (usually the title) as the
+ * label. Until it resolves the segment falls back to plain text.
+ */
+function DocumentMentionChip({
+  mention,
+  children,
+}: {
+  mention: ResolvedDocumentMention;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      to="/a/$did/$rkey"
+      params={{ did: mention.did, rkey: mention.rkey }}
+      {...stylex.props(articleBodyStyles.facetLink, styles.mentionChip)}
+    >
+      {children}
+    </Link>
+  );
+}
+
+/**
  * Inline actor (`#didMention`) reference. Once resolved, shows the actor's
  * avatar in place of the leading `@` and links to their profile; until then it
  * falls back to the original `@handle` text.
@@ -131,7 +157,7 @@ function FacetSegment({
   text: string;
   features: Array<FacetFeature>;
 }) {
-  const { publications, actors } = useInlineMentions();
+  const { publications, documents, actors } = useInlineMentions();
 
   if (features.length === 0) return <>{text}</>;
 
@@ -147,6 +173,7 @@ function FacetSegment({
     findFacetFeature(features, "didMention") ??
     findFacetFeature(features, "mention");
   const publicationMention = lookupPublicationMention(features, publications);
+  const documentMention = lookupDocumentMention(features, documents);
 
   let node: React.ReactNode = text;
 
@@ -159,6 +186,12 @@ function FacetSegment({
       <PublicationMentionChip mention={publicationMention}>
         {text}
       </PublicationMentionChip>
+    );
+  } else if (documentMention) {
+    node = (
+      <DocumentMentionChip mention={documentMention}>
+        {text}
+      </DocumentMentionChip>
     );
   } else if (link?.uri) {
     node = (

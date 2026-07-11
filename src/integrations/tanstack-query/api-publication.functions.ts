@@ -94,6 +94,7 @@ const socialProofInput = z.object({
 const inlineMentionsInput = z.object({
   publicationAtUris: z.array(z.string()).default([]),
   publicationUrls: z.array(z.string()).default([]),
+  documentAtUris: z.array(z.string()).default([]),
   actorDids: z.array(z.string()).default([]),
 });
 
@@ -704,6 +705,7 @@ const getInlineMentions = createServerFn({ method: "POST" })
         const { db, schema } = context;
         span.set("publicationAtUris", data.publicationAtUris.length);
         span.set("publicationUrls", data.publicationUrls.length);
+        span.set("documentAtUris", data.documentAtUris.length);
         span.set("actorDids", data.actorDids.length);
         return resolveInlineMentions(db, schema, data);
       },
@@ -716,6 +718,7 @@ function getInlineMentionsQueryOptions(refs: InlineMentionRefs) {
   const key = [
     ...refs.publicationAtUris,
     ...refs.publicationUrls,
+    ...refs.documentAtUris,
     ...refs.actorDids,
   ].toSorted();
   return queryOptions({

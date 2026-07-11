@@ -42,6 +42,19 @@ const PUBLICATION_COLLECTIONS = new Set<string>([
 ]);
 
 /**
+ * Leaflet's document lexicon. Standard Reader mirrors each
+ * `pub.leaflet.document` to a `site.standard.document` twin **at the same
+ * rkey**, so an `#atMention` targeting either collection resolves to the same
+ * row (mirroring how publications work above).
+ */
+const LEAFLET_DOCUMENT_NSID = "pub.leaflet.document";
+
+const DOCUMENT_COLLECTIONS = new Set<string>([
+  STANDARD_NSID.document,
+  LEAFLET_DOCUMENT_NSID,
+]);
+
+/**
  * If `atUri` targets a publication — via `site.standard.publication` or its
  * `pub.leaflet.publication` twin — return the canonical
  * `site.standard.publication` AT-URI used as the mention map key; else null.
@@ -55,6 +68,22 @@ export function publicationMentionKey(atUri: string): string | null {
   if (!did || !collection || !rkey) return null;
   if (!PUBLICATION_COLLECTIONS.has(collection)) return null;
   return `at://${did}/${STANDARD_NSID.publication}/${rkey}`;
+}
+
+/**
+ * If `atUri` targets a document — via `site.standard.document` or its
+ * `pub.leaflet.document` twin — return the canonical `site.standard.document`
+ * AT-URI used as the mention map key; else null.
+ */
+export function documentMentionKey(atUri: string): string | null {
+  if (!atUri.startsWith("at://")) return null;
+  const parts = atUri.slice("at://".length).split("/");
+  if (parts.length < 3) return null;
+  const [did, collection, ...rest] = parts;
+  const rkey = rest.join("/");
+  if (!did || !collection || !rkey) return null;
+  if (!DOCUMENT_COLLECTIONS.has(collection)) return null;
+  return `at://${did}/${STANDARD_NSID.document}/${rkey}`;
 }
 
 /**
@@ -82,14 +111,32 @@ export interface ResolvedActorMention {
 /** Resolved actor mentions keyed by DID. */
 export type ActorMentionMap = Record<string, ResolvedActorMention>;
 
+/**
+ * A Standard Reader document resolved for an inline `#atMention` facet whose
+ * target is a `pub.leaflet.document` (or its `site.standard.document` twin).
+ * Rendered as an inline link to `/a/$did/$rkey` instead of bare text.
+ */
+export interface ResolvedDocumentMention {
+  /** Canonical `site.standard.document` AT-URI. */
+  atUri: string;
+  did: string;
+  rkey: string;
+  title: string;
+}
+
+/** Resolved document mentions keyed by canonical document AT-URI. */
+export type DocumentMentionMap = Record<string, ResolvedDocumentMention>;
+
 /** The full set of inline references resolved for a document. */
 export interface InlineMentions {
   publications: PublicationMentionMap;
+  documents: DocumentMentionMap;
   actors: ActorMentionMap;
 }
 
 export const EMPTY_INLINE_MENTIONS: InlineMentions = {
   publications: {},
+  documents: {},
   actors: {},
 };
 
@@ -99,6 +146,8 @@ export interface InlineMentionRefs {
   publicationAtUris: Array<string>;
   /** Homepage URLs from `#link` facets (candidate publications). */
   publicationUrls: Array<string>;
+  /** Canonical `site.standard.document` AT-URIs from `#atMention` facets. */
+  documentAtUris: Array<string>;
   /** Actor DIDs from `#didMention` / `#mention` facets. */
   actorDids: Array<string>;
 }
@@ -108,6 +157,7 @@ export function hasInlineMentionRefs(refs: InlineMentionRefs): boolean {
   return (
     refs.publicationAtUris.length > 0 ||
     refs.publicationUrls.length > 0 ||
+    refs.documentAtUris.length > 0 ||
     refs.actorDids.length > 0
   );
 }
@@ -122,6 +172,7 @@ export function hasInlineMentionRefs(refs: InlineMentionRefs): boolean {
 export function collectInlineMentionRefs(content: unknown): InlineMentionRefs {
   const publicationAtUris = new Set<string>();
   const publicationUrls = new Set<string>();
+  const documentAtUris = new Set<string>();
   const actorDids = new Set<string>();
 
   const walk = (node: unknown): void => {
@@ -137,8 +188,12 @@ export function collectInlineMentionRefs(content: unknown): InlineMentionRefs {
         if (!isRecord(feature)) continue;
         const kind = facetKind(feature.$type);
         if (kind === "atMention" && typeof feature.atURI === "string") {
-          const key = publicationMentionKey(feature.atURI);
-          if (key) publicationAtUris.add(key);
+          // An `#atMention` targets either a publication or a document; the two
+          // key helpers are mutually exclusive by collection.
+          const pubKey = publicationMentionKey(feature.atURI);
+          if (pubKey) publicationAtUris.add(pubKey);
+          const docKey = documentMentionKey(feature.atURI);
+          if (docKey) documentAtUris.add(docKey);
         } else if (kind === "link" && typeof feature.uri === "string") {
           publicationUrls.add(feature.uri);
         } else if (
@@ -157,6 +212,7 @@ export function collectInlineMentionRefs(content: unknown): InlineMentionRefs {
   return {
     publicationAtUris: [...publicationAtUris],
     publicationUrls: [...publicationUrls],
+    documentAtUris: [...documentAtUris],
     actorDids: [...actorDids],
   };
 }
@@ -206,6 +262,28 @@ export function lookupPublicationMention(
       typeof feature.uri === "string"
     ) {
       const hit = mentions[mentionUrlKey(feature.uri)];
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+/**
+ * Resolve the document an `#atMention` facet segment references against a
+ * resolved map, if any.
+ */
+export function lookupDocumentMention(
+  features: ReadonlyArray<unknown>,
+  documents: DocumentMentionMap,
+): ResolvedDocumentMention | null {
+  for (const feature of features) {
+    if (!isRecord(feature)) continue;
+    if (
+      facetKind(feature.$type) === "atMention" &&
+      typeof feature.atURI === "string"
+    ) {
+      const key = documentMentionKey(feature.atURI);
+      const hit = key ? documents[key] : undefined;
       if (hit) return hit;
     }
   }
