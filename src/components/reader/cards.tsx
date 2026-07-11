@@ -454,6 +454,16 @@ const styles = stylex.create({
     marginBottom: spacing["0"],
     marginTop: spacing["2.5"],
   },
+  pubCardDescClamp: {
+    display: "-webkit-box",
+    flexBasis: "auto",
+    flexGrow: 0,
+    overflow: "hidden",
+    // eslint-disable-next-line @stylexjs/valid-styles
+    WebkitBoxOrient: "vertical",
+    // eslint-disable-next-line @stylexjs/valid-styles
+    WebkitLineClamp: 3,
+  },
   pubCardGrow: {
     flexBasis: "0%",
     flexGrow: 1,
@@ -1827,6 +1837,7 @@ export function PubCard({
   rail = false,
   hideTopic = false,
   tagPostCount,
+  clampDescription = false,
 }: {
   pub: PublicationCard;
   rail?: boolean;
@@ -1834,6 +1845,8 @@ export function PubCard({
   hideTopic?: boolean;
   /** Tagged-post tally for tag directory cards. */
   tagPostCount?: number;
+  /** Cap the description at three lines (keeps preview grids tidy). */
+  clampDescription?: boolean;
 }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -1852,7 +1865,14 @@ export function PubCard({
         <OwnerHandleLink did={pub.did} handle={pub.ownerHandle} />
       ) : null}
       {pub.description ? (
-        <p {...stylex.props(styles.pubCardDesc)}>{pub.description}</p>
+        <p
+          {...stylex.props(
+            styles.pubCardDesc,
+            clampDescription && styles.pubCardDescClamp,
+          )}
+        >
+          {pub.description}
+        </p>
       ) : (
         <div aria-hidden {...stylex.props(styles.pubCardGrow)} />
       )}

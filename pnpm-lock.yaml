@@ -47,6 +47,9 @@ importers:
       '@fontsource-variable/atkinson-hyperlegible-next':
         specifier: ^5.2.6
         version: 5.2.6
+      '@fontsource/atkinson-hyperlegible-next':
+        specifier: ^5.2.7
+        version: 5.2.7
       '@fontsource/newsreader':
         specifier: ^5.2.10
         version: 5.2.10
@@ -1539,6 +1542,9 @@ packages:
 
   '@fontsource-variable/atkinson-hyperlegible-next@5.2.6':
     resolution: {integrity: sha512-D0Z8peFkRGYACvmWp8Sl8YPGYLBEJbzqapugtsMEYSUUtpQDiZVDHjk9s7bqB4hSCRYCrKuW6V1V+mnHybVnPw==}
+
+  '@fontsource/atkinson-hyperlegible-next@5.2.7':
+    resolution: {integrity: sha512-FDRsNkqauNRBRiTD3YF6FV8yOVFjkcBqUjwrv6KnooEIRjsTuePUnahPsLHApWNtp1riztVCOPnr9RMHUZU3TQ==}
 
   '@fontsource/newsreader@5.2.10':
     resolution: {integrity: sha512-TFaYzoFhDqarUyV2yYjgZZEwT4bpaj6sGBnXSnFknQ/QB8/9LzfY6IO9+inHOX4zzPp87Z7/KuG1OI5gr91Q3A==}
@@ -8032,6 +8038,8 @@ snapshots:
       '@noble/hashes': 1.8.0
 
   '@fontsource-variable/atkinson-hyperlegible-next@5.2.6': {}
+
+  '@fontsource/atkinson-hyperlegible-next@5.2.7': {}
 
   '@fontsource/newsreader@5.2.10': {}
 

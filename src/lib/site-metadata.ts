@@ -61,8 +61,9 @@ export const PAGE_OG_CARDS = {
   },
   about: {
     path: "/about",
-    title: "About",
-    tagline: "What Standard Reader is, and how it fits the Atmosphere.",
+    title: "A home for the writing you love",
+    tagline:
+      "New writing from the standard.site publications you follow — calm, chronological, and yours to take anywhere.",
   },
   docsApi: {
     path: "/docs/api",

@@ -68,16 +68,18 @@ export function loadOgFonts(): Promise<Array<LoadedFont>> {
         600,
         "normal",
       ),
+      // Static (non-variable) .woff files: satori's font parser supports
+      // ttf/otf/woff but NOT woff2, so we can't feed it the variable woff2.
       loadLocalFont(
-        "@fontsource-variable/atkinson-hyperlegible-next",
-        "atkinson-hyperlegible-next-latin-wght-normal.woff2",
+        "@fontsource/atkinson-hyperlegible-next",
+        "atkinson-hyperlegible-next-latin-400-normal.woff",
         "Atkinson Hyperlegible Next",
         400,
         "normal",
       ),
       loadLocalFont(
-        "@fontsource-variable/atkinson-hyperlegible-next",
-        "atkinson-hyperlegible-next-latin-wght-normal.woff2",
+        "@fontsource/atkinson-hyperlegible-next",
+        "atkinson-hyperlegible-next-latin-700-normal.woff",
         "Atkinson Hyperlegible Next",
         700,
         "normal",

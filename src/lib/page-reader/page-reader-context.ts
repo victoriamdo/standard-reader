@@ -25,6 +25,17 @@ export interface PageReaderContextValue {
   playArticle: (article: ArticleDetail) => void;
   /** Read the given article starting from a selected passage. */
   playFromSelection: (article: ArticleDetail, selectionText: string) => void;
+  /**
+   * Read an arbitrary passage of text (e.g. a marketing demo) aloud with the
+   * app's own voice, surfaced in the global player like any article.
+   */
+  playSample: (sample: {
+    uri: string;
+    title: string;
+    publicationName?: string | null;
+    author?: string | null;
+    text: string;
+  }) => void;
   /** Re-prepare the last article after an error. */
   retry: () => void;
   /** Sentences currently loaded for playback (in narration order). */

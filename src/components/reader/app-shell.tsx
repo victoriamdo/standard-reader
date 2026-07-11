@@ -874,9 +874,15 @@ function BottomNav({
   );
 }
 
-function Brand({ style }: { style?: stylex.StyleXStyles }) {
+function Brand({
+  style,
+  to = "/",
+}: {
+  style?: stylex.StyleXStyles;
+  to?: "/" | "/about";
+}) {
   return (
-    <Link to="/" {...stylex.props(styles.brandLink, style)}>
+    <Link to={to} {...stylex.props(styles.brandLink, style)}>
       <BrandWordmark />
     </Link>
   );
@@ -1013,7 +1019,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <PageReaderProvider>
       <div {...stylex.props(styles.shell)} data-app-shell>
         <aside {...stylex.props(styles.sidebar)}>
-          <Brand style={styles.brandSidebar} />
+          <Brand style={styles.brandSidebar} to="/about" />
           <nav {...stylex.props(styles.nav)}>
             {primaryNav.map((item) => (
               <SidebarNavItem

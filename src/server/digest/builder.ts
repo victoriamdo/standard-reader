@@ -56,6 +56,8 @@ export async function buildDigestForUser(
     publicationUris: followUris,
     sinceDays: DIGEST_WINDOW_DAYS,
     limit: DIGEST_ARTICLE_LIMIT,
+    // Don't re-surface articles the reader already opened this week.
+    excludeReadForDid: did,
   });
 
   const [networkArticles, recommendations] = await Promise.all([
@@ -63,6 +65,7 @@ export async function buildDigestForUser(
       sinceDays: DIGEST_WINDOW_DAYS,
       limit: DIGEST_NETWORK_ARTICLE_LIMIT,
       excludeUris: articles.map((a) => a.uri),
+      excludeReadForDid: did,
     }),
     recommendedPublications(db, schema, did, DIGEST_RECOMMENDATION_LIMIT, {
       followUris,

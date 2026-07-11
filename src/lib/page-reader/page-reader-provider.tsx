@@ -264,6 +264,39 @@ export function PageReaderProvider({
     [getNarration, startPlayback],
   );
 
+  const playSample = useCallback(
+    (sample: {
+      uri: string;
+      title: string;
+      publicationName?: string | null;
+      author?: string | null;
+      text: string;
+    }) => {
+      const engine = engineRef.current;
+      if (!engine || !sample.text) return;
+
+      // A sample isn't a real article — nothing to resume or classify — so
+      // clear the article bookkeeping and read it with the reader's chosen
+      // voice (the standard female voice when the preference is auto).
+      lastPlaybackRef.current = null;
+      preparedRef.current = null;
+      setNowPlaying({
+        uri: sample.uri,
+        did: "",
+        rkey: "",
+        title: sample.title,
+        publicationName: sample.publicationName ?? null,
+        author: sample.author ?? null,
+      });
+      setScrollLocked(true);
+
+      const preference = voicePreferenceRef.current;
+      const voice: ReaderVoice = preference === "auto" ? "af_heart" : preference;
+      void engine.prepare(sample.text, voice);
+    },
+    [],
+  );
+
   const retry = useCallback(() => {
     const last = lastPlaybackRef.current;
     if (last) startPlayback(last.article, last.text);
@@ -335,6 +368,7 @@ export function PageReaderProvider({
       nowPlaying,
       playArticle,
       playFromSelection,
+      playSample,
       retry,
       getSentences,
       getProgress,
@@ -352,6 +386,7 @@ export function PageReaderProvider({
       nowPlaying,
       playArticle,
       playFromSelection,
+      playSample,
       retry,
       getSentences,
       getProgress,

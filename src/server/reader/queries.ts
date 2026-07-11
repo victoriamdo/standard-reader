@@ -112,6 +112,23 @@ function documentReadExistsColumn(
 }
 
 /**
+ * `NOT EXISTS` predicate excluding documents this reader has already read.
+ * Same correlated subquery as {@link documentReadExistsColumn} but as a WHERE
+ * condition — used by the weekly digest so it never re-surfaces read articles.
+ * A no-op for readers who don't track reading history (no `reads` rows exist).
+ */
+function documentUnreadWhere(schema: Schema, readForDid: string): SQL {
+  const r = schema.reads;
+  return sql`not exists(
+    select 1
+    from ${r}
+    where ${r.documentUri} = "documents"."uri"
+      and ${r.ownerDid} = ${readForDid}
+      and ${r.deleted} = false
+  )`;
+}
+
+/**
  * Newest-first {@link ArticleCard}s, filtered to follows / unread / featured /
  * discover-eligible as requested. Excludes posts whose `publishedAt` is still in
  * the future. Returns `[]` when `publicationUris` is set but empty (a reader with
@@ -587,11 +604,14 @@ export async function bestOfFollows(
     sinceDays,
     limit,
     readForDid,
+    excludeReadForDid,
   }: {
     publicationUris: Array<string>;
     sinceDays: number;
     limit: number;
     readForDid?: string;
+    /** Omit documents this reader has already read (weekly digest). */
+    excludeReadForDid?: string;
   },
 ): Promise<Array<ArticleCard>> {
   if (publicationUris.length === 0) return [];
@@ -601,20 +621,23 @@ export async function bestOfFollows(
   const pr = schema.profiles;
   const pa = alias(schema.profiles, "pa");
 
+  const conds = [
+    eq(d.deleted, false),
+    documentPublishedNotInFuture(d),
+    inArray(d.publicationUri, publicationUris),
+    sql`${d.publishedAt} > now() - (${sinceDays}::text || ' days')::interval`,
+  ];
+  if (excludeReadForDid) {
+    conds.push(documentUnreadWhere(schema, excludeReadForDid));
+  }
+
   const rows = await db
     .select(trendingArticleSelection(schema, readForDid))
     .from(d)
     .leftJoin(p, eq(p.uri, d.publicationUri))
     .leftJoin(pr, eq(pr.did, p.did))
     .leftJoin(pa, eq(pa.did, d.did))
-    .where(
-      and(
-        eq(d.deleted, false),
-        documentPublishedNotInFuture(d),
-        inArray(d.publicationUri, publicationUris),
-        sql`${d.publishedAt} > now() - (${sinceDays}::text || ' days')::interval`,
-      ),
-    )
+    .where(and(...conds))
     .orderBy(desc(d.trendingScore), desc(d.publishedAt))
     .limit(trendingFetchPoolSize(limit));
 
@@ -637,10 +660,13 @@ export async function topNetworkArticles(
     sinceDays,
     limit,
     excludeUris = [],
+    excludeReadForDid,
   }: {
     sinceDays: number;
     limit: number;
     excludeUris?: Array<string>;
+    /** Omit documents this reader has already read (weekly digest). */
+    excludeReadForDid?: string;
   },
 ): Promise<Array<ArticleCard>> {
   const d = schema.documents;
@@ -656,6 +682,9 @@ export async function topNetworkArticles(
   ];
   if (excludeUris.length > 0) {
     conds.push(notInArray(d.uri, excludeUris));
+  }
+  if (excludeReadForDid) {
+    conds.push(documentUnreadWhere(schema, excludeReadForDid));
   }
 
   const rows = await db
