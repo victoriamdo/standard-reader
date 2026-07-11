@@ -42,19 +42,16 @@ export interface RenderDigestOptions {
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-const RANGE_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
+const WEEK_LABEL_FMT = new Intl.DateTimeFormat("en-US", {
   month: "short",
-  day: "numeric",
-});
-const RANGE_DAY_YEAR = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   year: "numeric",
 });
 
-/** "Jul 3–10, 2026" for the header week label. */
+/** "Week of Jul 4, 2026" for the header label (start of the covered week). */
 function weekLabel(now: Date): string {
   const start = new Date(now.getTime() - WEEK_MS);
-  return `${RANGE_MONTH_DAY.format(start)}–${RANGE_DAY_YEAR.format(now)}`;
+  return `Week of ${WEEK_LABEL_FMT.format(start)}`;
 }
 
 function trimBase(baseUrl: string): string {
@@ -123,6 +120,9 @@ export async function renderDigestEmail(
   const now = options.now ?? new Date();
 
   const articles = digest.articles.map((card) => toDigestArticle(card, base));
+  const networkArticles = digest.networkArticles.map((card) =>
+    toDigestArticle(card, base),
+  );
   const recommendations = digest.recommendations.map((pub) =>
     toDigestPublication(pub, base),
   );
@@ -131,6 +131,7 @@ export async function renderDigestEmail(
   const props = {
     weekLabel: weekLabel(now),
     articles,
+    networkArticles,
     recommendations,
     unsubscribeUrl: `${base}/api/digest/unsubscribe?token=${encodeURIComponent(token)}`,
     logoUrl: `${base}/icon-192.png`,

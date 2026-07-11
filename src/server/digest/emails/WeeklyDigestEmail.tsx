@@ -57,8 +57,9 @@ interface DigestPublication {
 }
 
 interface DigestEmailProps {
-  weekLabel: string; // e.g. "Jul 3–10, 2026"
+  weekLabel: string; // e.g. "Week of Jul 4, 2026"
   articles: Array<DigestArticle>;
+  networkArticles: Array<DigestArticle>;
   recommendations: Array<DigestPublication>;
   unsubscribeUrl: string;
   logoUrl: string;
@@ -540,6 +541,7 @@ function RecommendationCard({ pub }: { pub: DigestPublication }) {
 export default function WeeklyDigestEmail({
   weekLabel,
   articles,
+  networkArticles,
   recommendations,
   unsubscribeUrl,
   logoUrl,
@@ -565,7 +567,6 @@ export default function WeeklyDigestEmail({
             .d-accent  { color:#dbb594 !important; }
             .d-accent2 { color:#b88c67 !important; }
             .d-divider { border-color:#443a30 !important; }
-            .d-rule    { border-color:#f2e1ca !important; }
           }
           /* Outlook.com dark mode */
           [data-ogsc] .d-bg      { background:#17120e !important; }
@@ -576,7 +577,6 @@ export default function WeeklyDigestEmail({
           [data-ogsc] .d-accent  { color:#dbb594 !important; }
           [data-ogsc] .d-accent2 { color:#b88c67 !important; }
           [data-ogsc] .d-divider { border-color:#443a30 !important; }
-          [data-ogsc] .d-rule    { border-color:#f2e1ca !important; }
 
           @media only screen and (max-width:620px) {
             .container { width:100% !important; }
@@ -691,9 +691,9 @@ export default function WeeklyDigestEmail({
                   {/* ---- Header rule ---- */}
                   <Section style={{ padding: "18px 34px 0" }}>
                     <Hr
-                      className="d-rule"
+                      className="d-divider"
                       style={{
-                        borderColor: c.ink,
+                        borderColor: c.line,
                         borderWidth: "1px 0 0",
                         margin: 0,
                         height: 0,
@@ -710,6 +710,29 @@ export default function WeeklyDigestEmail({
                       <ArticleCard key={a.url + i} article={a} lead={i === 0} />
                     ))}
                   </Section>
+
+                  {/* ---- Top on the network ---- */}
+                  {networkArticles.length > 0 && (
+                    <>
+                      <Section style={{ ...px, paddingTop: "30px" }}>
+                        <Hr
+                          className="d-divider"
+                          style={{
+                            borderColor: c.line,
+                            borderWidth: "1px 0 0",
+                            margin: "0 0 20px",
+                            height: 0,
+                          }}
+                        />
+                        <SectionLabel>Top on the network</SectionLabel>
+                      </Section>
+                      <Section style={px}>
+                        {networkArticles.map((a, i) => (
+                          <ArticleCard key={a.url + i} article={a} />
+                        ))}
+                      </Section>
+                    </>
+                  )}
 
                   {/* ---- Publications to explore ---- */}
                   {recommendations.length > 0 && (
@@ -737,9 +760,9 @@ export default function WeeklyDigestEmail({
                   {/* ---- Footer ---- */}
                   <Section style={{ padding: "36px 34px 8px" }}>
                     <Hr
-                      className="d-rule"
+                      className="d-divider"
                       style={{
-                        borderColor: c.ink,
+                        borderColor: c.line,
                         borderWidth: "1px 0 0",
                         margin: 0,
                         height: 0,
@@ -788,7 +811,13 @@ export default function WeeklyDigestEmail({
                                 color: c.ink,
                               }}
                             >
-                              Standard Digest
+                              Standard{" "}
+                              <span
+                                className="d-accent2"
+                                style={{ color: c.solid2 }}
+                              >
+                                Digest
+                              </span>
                             </span>
                           </td>
                         </tr>

@@ -19,10 +19,12 @@ import {
   bestOfFollows,
   recommendedPublications,
   selectFollowUris,
+  topNetworkArticles,
 } from "#/server/reader/queries";
 
 import {
   DIGEST_ARTICLE_LIMIT,
+  DIGEST_NETWORK_ARTICLE_LIMIT,
   DIGEST_RECOMMENDATION_LIMIT,
   DIGEST_WINDOW_DAYS,
 } from "./config";
@@ -30,6 +32,8 @@ import {
 export interface DigestData {
   /** Best-of articles from the reader's follows (empty ⇒ nothing to send). */
   articles: Array<ArticleCard>;
+  /** Top articles across the whole network this week (excludes `articles`). */
+  networkArticles: Array<ArticleCard>;
   /** Trending, not-yet-followed publications to recommend. */
   recommendations: Array<PublicationCard>;
 }
@@ -54,15 +58,17 @@ export async function buildDigestForUser(
   });
 
   if (articles.length === 0) {
-    return { articles: [], recommendations: [] };
+    return { articles: [], networkArticles: [], recommendations: [] };
   }
 
-  const recommendations = await recommendedPublications(
-    db,
-    schema,
-    did,
-    DIGEST_RECOMMENDATION_LIMIT,
-  );
+  const [networkArticles, recommendations] = await Promise.all([
+    topNetworkArticles(db, schema, {
+      sinceDays: DIGEST_WINDOW_DAYS,
+      limit: DIGEST_NETWORK_ARTICLE_LIMIT,
+      excludeUris: articles.map((a) => a.uri),
+    }),
+    recommendedPublications(db, schema, did, DIGEST_RECOMMENDATION_LIMIT),
+  ]);
 
-  return { articles, recommendations };
+  return { articles, networkArticles, recommendations };
 }

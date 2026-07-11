@@ -65,6 +65,8 @@ export const digestConfig = {
 
 /** Number of "best of your follows" articles to include. */
 export const DIGEST_ARTICLE_LIMIT = 5;
+/** Number of network-wide "top this week" articles to include. */
+export const DIGEST_NETWORK_ARTICLE_LIMIT = 5;
 /** Number of unfollowed publication recommendations to include. */
 export const DIGEST_RECOMMENDATION_LIMIT = 2;
 /** Only articles published within this many days are eligible for the digest. */

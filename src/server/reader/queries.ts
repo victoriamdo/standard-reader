@@ -617,6 +617,56 @@ export async function bestOfFollows(
   return applyTrendingDiversityCaps(cards, limit).slice(0, limit);
 }
 
+/**
+ * "Top on the network this week" for the weekly digest: the best discover-
+ * eligible articles across the whole network, published within the last
+ * `sinceDays`, ranked by `documents.trending_score` with the same diversity
+ * caps. Like {@link bestOfFollows} but network-wide (no follow filter, discover-
+ * eligible only). Pass `excludeUris` (the reader's best-of picks) so the same
+ * article never appears in both sections.
+ */
+export async function topNetworkArticles(
+  db: Db,
+  schema: Schema,
+  {
+    sinceDays,
+    limit,
+    excludeUris = [],
+  }: {
+    sinceDays: number;
+    limit: number;
+    excludeUris?: Array<string>;
+  },
+): Promise<Array<ArticleCard>> {
+  const d = schema.documents;
+  const p = schema.publications;
+  const pr = schema.profiles;
+  const pa = alias(schema.profiles, "pa");
+
+  const conds = [
+    eq(d.deleted, false),
+    discoverEligibleArticleWhere(p),
+    documentPublishedNotInFuture(d),
+    sql`${d.publishedAt} > now() - (${sinceDays}::text || ' days')::interval`,
+  ];
+  if (excludeUris.length > 0) {
+    conds.push(notInArray(d.uri, excludeUris));
+  }
+
+  const rows = await db
+    .select(trendingArticleSelection(schema))
+    .from(d)
+    .leftJoin(p, eq(p.uri, d.publicationUri))
+    .leftJoin(pr, eq(pr.did, p.did))
+    .leftJoin(pa, eq(pa.did, d.did))
+    .where(and(...conds))
+    .orderBy(desc(d.trendingScore), desc(d.publishedAt))
+    .limit(trendingFetchPoolSize(limit));
+
+  const cards = rows.map((row) => toArticleCard(row));
+  return applyTrendingDiversityCaps(cards, limit).slice(0, limit);
+}
+
 /** Count of discover-eligible articles in the trending candidate set. */
 export async function countTrendingDocuments(
   db: Db,
