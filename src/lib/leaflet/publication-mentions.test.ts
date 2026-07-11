@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { PublicationMentionMap } from "./publication-mentions";
 import {
   collectInlineMentionRefs,
+  documentMentionKey,
   lookupActorMention,
+  lookupDocumentMention,
   lookupPublicationMention,
   mentionUrlKey,
   normalizeMentionUrl,
@@ -138,6 +140,67 @@ describe("collectInlineMentionRefs", () => {
       ],
     });
     expect(refs.publicationAtUris).toEqual([]);
+    expect(refs.documentAtUris).toEqual([]);
+  });
+
+  it("collects document atMentions, normalizing the pub.leaflet twin", () => {
+    const refs = collectInlineMentionRefs({
+      features: [
+        {
+          $type: "pub.leaflet.richtext.facet#atMention",
+          atURI: "at://did:plc:auth/pub.leaflet.document/3lzdlwt2i2s2i",
+        },
+      ],
+    });
+    expect(refs.documentAtUris).toEqual([
+      "at://did:plc:auth/site.standard.document/3lzdlwt2i2s2i",
+    ]);
+    // A document atMention is not a publication.
+    expect(refs.publicationAtUris).toEqual([]);
+  });
+});
+
+describe("documentMentionKey", () => {
+  it("normalizes pub.leaflet and site.standard document URIs to the canonical key", () => {
+    const canonical =
+      "at://did:plc:auth/site.standard.document/3lzdlwt2i2s2i";
+    expect(
+      documentMentionKey("at://did:plc:auth/pub.leaflet.document/3lzdlwt2i2s2i"),
+    ).toBe(canonical);
+    expect(documentMentionKey(canonical)).toBe(canonical);
+  });
+
+  it("returns null for non-document collections", () => {
+    expect(
+      documentMentionKey("at://did:plc:auth/site.standard.publication/x"),
+    ).toBeNull();
+    expect(documentMentionKey("https://example.com")).toBeNull();
+  });
+});
+
+describe("lookupDocumentMention", () => {
+  it("resolves an atMention against the document map", () => {
+    const canonical =
+      "at://did:plc:auth/site.standard.document/3lzdlwt2i2s2i";
+    const documents = {
+      [canonical]: {
+        atUri: canonical,
+        did: "did:plc:auth",
+        rkey: "3lzdlwt2i2s2i",
+        title: "Tutorial: Migrando de PDS",
+      },
+    };
+    const hit = lookupDocumentMention(
+      [
+        {
+          $type: "pub.leaflet.richtext.facet#atMention",
+          atURI: "at://did:plc:auth/pub.leaflet.document/3lzdlwt2i2s2i",
+        },
+      ],
+      documents,
+    );
+    expect(hit?.title).toBe("Tutorial: Migrando de PDS");
+    expect(lookupDocumentMention([], documents)).toBeNull();
   });
 });
 

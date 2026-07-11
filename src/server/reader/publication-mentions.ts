@@ -111,11 +111,12 @@ async function resolveActors(
 
 /**
  * Resolve inline Leaflet references — publication `#atMention`s / homepage
- * `#link`s and actor `#didMention`s — to Standard Reader publications and
- * profiles, so the reader can render them as avatar chips linking to
- * `/p/$did/$rkey` and `/u/$did` (matching how Leaflet renders them) instead of
- * bare text or off-site links. Resolved lazily on the client after the article
- * paints, so it never blocks the article's initial (SSR) render.
+ * `#link`s, document `#atMention`s, and actor `#didMention`s — to Standard
+ * Reader publications, documents, and profiles, so the reader can render them
+ * as chips/links to `/p/$did/$rkey`, `/a/$did/$rkey`, and `/u/$did` (matching
+ * how Leaflet renders them) instead of bare text or off-site links. Resolved
+ * lazily on the client after the article paints, so it never blocks the
+ * article's initial (SSR) render.
  */
 export async function resolveInlineMentions(
   db: Db,
