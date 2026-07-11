@@ -132,6 +132,10 @@ export const documents = pgTable(
     index("documents_site_idx").on(table.siteUri),
     index("documents_search_idx").using("gin", table.searchVector),
     index("documents_trending_idx").on(table.trendingScore.desc()),
+    // Extension page-URL resolution: lookup live documents by canonical URL.
+    index("documents_canonical_url_idx")
+      .on(table.canonicalUrl)
+      .where(sql`deleted = false`),
   ],
 );
 
