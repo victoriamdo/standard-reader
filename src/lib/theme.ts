@@ -57,6 +57,17 @@ export const EMPTY_CODE_HIGHLIGHTS: CodeHighlightsByScheme = {
 };
 
 /** Synchronous `system` resolution — runs in `<head>` before React hydrates. */
+/**
+ * Browser/PWA title-bar color per resolved scheme — editorial primary
+ * `component1` (see `src/components/reader/theme.ts`). Single source of truth
+ * for the `<meta name="theme-color">` content, set both by the pre-paint script
+ * below and reactively when the user changes theme.
+ */
+export const THEME_COLOR_BY_SCHEME: Record<ResolvedThemeScheme, string> = {
+  light: "#f6eee7",
+  dark: "#28211d",
+};
+
 export const RESOLVED_SCHEME_SCRIPT = `
 (function () {
   var mode = document.documentElement.getAttribute("data-theme");
@@ -65,6 +76,13 @@ export const RESOLVED_SCHEME_SCRIPT = `
     mode === "light" ? "light" :
     (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   document.documentElement.setAttribute("data-resolved-scheme", resolved);
+  // Point the title-bar color at the *resolved* scheme so an explicit in-app
+  // light/dark override wins over the OS preference (a plain media-query meta
+  // can't see \`data-theme\`).
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    meta.setAttribute("content", resolved === "dark" ? "${THEME_COLOR_BY_SCHEME.dark}" : "${THEME_COLOR_BY_SCHEME.light}");
+  }
 })();
 `.trim();
 

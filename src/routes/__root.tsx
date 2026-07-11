@@ -7,7 +7,7 @@ import {
   createRootRouteWithContext,
   useRouterState,
 } from "@tanstack/react-router";
-import { useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 
 import { NavTelemetry } from "../components/nav-telemetry";
 import {
@@ -27,7 +27,11 @@ import {
 } from "../integrations/tanstack-query/shell-queries";
 import { getPublicUrlClient } from "../lib/public-url";
 import { siteOgImageUrl, siteSocialMeta } from "../lib/site-metadata";
-import { DEFAULT_THEME_MODE, RESOLVED_SCHEME_SCRIPT } from "../lib/theme";
+import {
+  DEFAULT_THEME_MODE,
+  RESOLVED_SCHEME_SCRIPT,
+  THEME_COLOR_BY_SCHEME,
+} from "../lib/theme";
 import { ReloadPrompt } from "../pwa/reload-prompt";
 import { saveHandle } from "../utils/saved-handles";
 
@@ -235,6 +239,33 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     refetchOnWindowFocus: false,
   });
   const themeMode = themePreference?.mode ?? DEFAULT_THEME_MODE;
+  // SSR can't see the OS preference, so "system" defaults to light for the
+  // initial paint; RESOLVED_SCHEME_SCRIPT corrects it synchronously before the
+  // first paint, and the effect below keeps it in sync afterwards.
+  const ssrScheme = themeMode === "dark" ? "dark" : "light";
+
+  // Keep the title-bar color on the *resolved* scheme as the user toggles theme
+  // (or, in "system" mode, as the OS preference flips) without a reload.
+  useEffect(() => {
+    if (globalThis.window === undefined) return;
+    const query = globalThis.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const resolved =
+        themeMode === "dark"
+          ? "dark"
+          : themeMode === "light"
+            ? "light"
+            : query.matches
+              ? "dark"
+              : "light";
+      const meta = document.querySelector('meta[name="theme-color"]');
+      meta?.setAttribute("content", THEME_COLOR_BY_SCHEME[resolved]);
+    };
+    apply();
+    if (themeMode !== "system") return;
+    query.addEventListener("change", apply);
+    return () => query.removeEventListener("change", apply);
+  }, [themeMode]);
 
   return (
     <html
@@ -244,19 +275,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       suppressHydrationWarning
     >
       <head>
-        {/* Browser/PWA chrome uses the editorial primary `component1` per
-            scheme. Raw tags — not via head()/meta — because TanStack dedupes
-            meta by `name` and would drop one. */}
-        <meta
-          name="theme-color"
-          media="(prefers-color-scheme: light)"
-          content="#f6eee7"
-        />
-        <meta
-          name="theme-color"
-          media="(prefers-color-scheme: dark)"
-          content="#28211d"
-        />
+        {/* Browser/PWA title-bar color. A single meta (no media query) whose
+            content tracks the *resolved* scheme — set pre-paint by
+            RESOLVED_SCHEME_SCRIPT and kept in sync by useThemeColorMeta — so an
+            explicit in-app light/dark override wins over the OS preference. */}
+        <meta name="theme-color" content={THEME_COLOR_BY_SCHEME[ssrScheme]} />
         <style dangerouslySetInnerHTML={{ __html: COLOR_SCHEME_CSS }} />
         <script
           dangerouslySetInnerHTML={{ __html: EMBED_SUBSCRIBE_PATH_SCRIPT }}
