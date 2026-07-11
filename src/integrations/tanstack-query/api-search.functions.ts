@@ -174,9 +174,9 @@ const searchArticles = createServerFn({ method: "GET" })
         notExcludedPublicationArticleWhere(p),
       );
 
-      // Rank + page the bare document URIs in an inner subquery, then join back
-      // to the real tables in the outer query for the card columns and the
-      // ts_headline snippets — so headline (and the recommend-count subquery)
+      // Page the bare document URIs (newest first) in an inner subquery, then
+      // join back to the real tables in the outer query for the card columns and
+      // the ts_headline snippets — so headline (and the recommend-count subquery)
       // run only for the `limit + 1` returned rows, not every matched document.
       // The inner subquery projects only `uri` on purpose: `articleCardColumns`
       // selects several columns that share an underlying name (`d.did`/`p.did`,
@@ -189,8 +189,8 @@ const searchArticles = createServerFn({ method: "GET" })
         .leftJoin(p, eq(p.uri, d.publicationUri))
         .where(articleWhere)
         .orderBy(
-          sql`ts_rank(${d.searchVector}, ${tsq}) desc`,
           desc(d.publishedAt),
+          desc(d.uri),
         )
         .limit(data.limit + 1)
         .offset(data.offset)
@@ -212,8 +212,8 @@ const searchArticles = createServerFn({ method: "GET" })
         .leftJoin(pr, eq(pr.did, p.did))
         .leftJoin(pa, eq(pa.did, d.did))
         .orderBy(
-          sql`ts_rank(${d.searchVector}, ${tsq}) desc`,
           desc(d.publishedAt),
+          desc(d.uri),
         );
 
       const hasMore = pageRows.length > data.limit;
