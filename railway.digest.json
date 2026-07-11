@@ -1,0 +1,11 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK"
+  },
+  "deploy": {
+    "startCommand": "pnpm digest:send",
+    "cronSchedule": "0 14 * * 1",
+    "restartPolicyType": "NEVER"
+  }
+}

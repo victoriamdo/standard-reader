@@ -70,6 +70,16 @@ export const user = pgTable("user", {
   sembleSaveEnabled: boolean("semble_save_enabled"),
   /** `true` stops the one-time ATStore review prompt toast from showing again. */
   atstoreReviewPromptDismissed: boolean("atstore_review_prompt_dismissed"),
+  /** `true` enables the weekly digest email: requests the `transition:email`
+   * OAuth scope on the next sign-in (persisted so subsequent logins silently
+   * re-request it and keep `email` fresh), and opts the reader into the weekly
+   * send. Cleared when the reader unsubscribes or turns the digest off. */
+  weeklyDigestEnabled: boolean("weekly_digest_enabled"),
+  /** When the last weekly digest was sent to this reader; drives the send
+   * runner's idempotency guard (skip if sent within the last ~6 days). */
+  weeklyDigestLastSentAt: timestamp("weekly_digest_last_sent_at", {
+    withTimezone: true,
+  }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

@@ -8,10 +8,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { invalidateReadQueries } from "#/components/reader/read-optimistic";
 import { ButtonLink } from "#/components/router-links";
+import { auth } from "#/integrations/tanstack-query/api-auth.functions";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
 import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { DEFAULT_CUSTOM_GOOGLE_FONT } from "#/lib/google-fonts";
 import { AMERICAN_ENGLISH_VOICES } from "#/lib/page-reader/voice-catalog";
 import { isReaderVoicePreference } from "#/lib/reader-voice";
@@ -419,6 +421,46 @@ export function UserSettingsView() {
     listApi.deleteAllListsMutationOptions(),
   );
 
+  const digestStatusQuery = useQuery(user.getWeeklyDigestStatusQueryOptions);
+  // "On" requires both the opt-in flag AND the actually-granted email scope —
+  // if the opt-in re-auth never completed, the toggle reads off so re-enabling
+  // re-runs the authorize flow.
+  const digestEnabled = Boolean(
+    digestStatusQuery.data?.enabled && digestStatusQuery.data?.hasEmailScope,
+  );
+  const digestEmail = digestStatusQuery.data?.email ?? null;
+
+  const enableDigestMutation = useMutation({
+    mutationFn: async () => {
+      const redirect = globalThis.location
+        ? globalThis.location.pathname + globalThis.location.search
+        : "/settings";
+      const result = await auth.upgradeToWeeklyDigest({ data: { redirect } });
+      // Full navigation to the PDS authorize screen — grants `transition:email`
+      // and returns to `redirect`; the callback captures the email.
+      globalThis.location.href = result.authorizationUrl;
+    },
+  });
+  const disableDigestMutation = useMutation({
+    mutationFn: async () => auth.disableWeeklyDigest(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: user.getWeeklyDigestStatusQueryOptions.queryKey,
+      });
+    },
+  });
+  const digestPending =
+    enableDigestMutation.isPending || disableDigestMutation.isPending;
+  const [digestDialogOpen, setDigestDialogOpen] = useState(false);
+
+  const onToggleDigest = (next: boolean) => {
+    // Turning on requests the `transition:email` scope (a full PDS re-auth), so
+    // confirm first and explain why. Turning off just clears the flag — no
+    // re-auth, no dialog.
+    if (next) setDigestDialogOpen(true);
+    else disableDigestMutation.mutate();
+  };
+
   const onDeleteHistory = (close: () => void) => {
     deleteHistoryMutation.mutate(undefined, {
       onSuccess: () => {
@@ -526,6 +568,53 @@ export function UserSettingsView() {
               aria-label="Track reading history"
             />
           </SettingRow>
+        </div>
+      </section>
+
+      <section {...stylex.props(styles.section)}>
+        <h2 {...stylex.props(styles.sectionHeading)}>Weekly digest</h2>
+        <div {...stylex.props(styles.settingGroup)}>
+          <SettingRow
+            label="Weekly digest email"
+            description={
+              digestEnabled && digestEmail
+                ? `On — delivered to ${digestEmail}. The best of the publications you follow, plus a couple worth discovering.`
+                : "A weekly email with the best of what you follow, plus a couple of publications worth discovering. Turning this on asks your PDS to share your email address."
+            }
+          >
+            <Switch
+              isSelected={digestEnabled}
+              onChange={onToggleDigest}
+              isDisabled={digestPending || digestStatusQuery.isLoading}
+              aria-label="Weekly digest email"
+            />
+          </SettingRow>
+          <AlertDialog
+            isOpen={digestDialogOpen}
+            onOpenChange={setDigestDialogOpen}
+            trigger={null}
+          >
+            <AlertDialogHeader>Enable the weekly digest</AlertDialogHeader>
+            <AlertDialogDescription>
+              To email your digest, Standard needs your account email address.
+              We'll ask your PDS to share it — you'll be sent to your login to
+              approve the request, then brought right back here. Your email is
+              used only to send the weekly digest, and you can turn it off any
+              time.
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton isDisabled={enableDigestMutation.isPending}>
+                Not now
+              </AlertDialogCancelButton>
+              <AlertDialogActionButton
+                closeOnPress={false}
+                isPending={enableDigestMutation.isPending}
+                onPress={() => enableDigestMutation.mutate()}
+              >
+                Continue to approve
+              </AlertDialogActionButton>
+            </AlertDialogFooter>
+          </AlertDialog>
         </div>
       </section>
 

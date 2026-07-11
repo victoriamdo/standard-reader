@@ -71,6 +71,19 @@ export const MARGIN_FULL_SCOPE = "include:at.margin.authFull";
 export const SEMBLE_FULL_SCOPE = "include:network.cosmik.authFull";
 
 /**
+ * Transitional ATProto OAuth scope granting read access to the account email
+ * address: it makes `com.atproto.server.getSession` include `email` +
+ * `emailConfirmed` in its response (see atproto.com/specs/oauth). Unlike the
+ * `include:`/`repo` scopes above (which grant record writes), this is account
+ * data, so it's a `transition:*` scope rather than a permission set.
+ *
+ * Requested when a reader opts into the weekly digest; persisted via
+ * `user.weeklyDigestEnabled` so it's silently re-requested on every future
+ * login once granted, keeping `user.email` fresh.
+ */
+export const EMAIL_SCOPE = "transition:email";
+
+/**
  * Basic sign-in scope — what 95% of readers need. Covers app-owned reader-state
  * (`authBasicFeatures`) plus standard.site follows & likes (`authSocial`).
  */
@@ -118,6 +131,7 @@ export const clientMetadataScope = [
     USERINPUT_BASIC_SCOPE,
     MARGIN_FULL_SCOPE,
     SEMBLE_FULL_SCOPE,
+    EMAIL_SCOPE,
   ]),
 ];
 
@@ -155,6 +169,7 @@ export interface ScopeUserLookup {
   userinputFeedbackEnabled?: boolean | null;
   marginSaveEnabled?: boolean | null;
   sembleSaveEnabled?: boolean | null;
+  weeklyDigestEnabled?: boolean | null;
 }
 
 /** Addenda scopes that can be requested alongside the base tier, keyed by the
@@ -164,6 +179,7 @@ export interface ScopeAddenda {
   userinput?: boolean;
   margin?: boolean;
   semble?: boolean;
+  email?: boolean;
 }
 
 /**
@@ -201,6 +217,9 @@ export function resolveAuthScopeForUser(
   }
   if (addenda.semble || user?.sembleSaveEnabled === true) {
     extra.add(SEMBLE_FULL_SCOPE);
+  }
+  if (addenda.email || user?.weeklyDigestEnabled === true) {
+    extra.add(EMAIL_SCOPE);
   }
   return formatOAuthScope([...extra]);
 }
@@ -400,6 +419,23 @@ export function hasSembleScope(
   return tokens.some((token) =>
     repoScopeAllowsCreateForCollection(token, "network.cosmik.card"),
   );
+}
+
+/**
+ * Detect whether the granted scope includes the account-email read tier
+ * (`transition:email`). Unlike the record-write scopes above, this is a
+ * transitional scope with no `include:`/`repo` expansion, so a verbatim token
+ * check is the whole story.
+ *
+ * The source of truth for "the reader has actually granted email access" — as
+ * opposed to `user.weeklyDigestEnabled`, which is set optimistically in
+ * `upgradeToWeeklyDigest` *before* the re-auth completes.
+ */
+export function hasEmailScope(
+  grantedScope: string | null | undefined,
+): boolean {
+  if (!grantedScope) return false;
+  return grantedScope.split(/\s+/).includes(EMAIL_SCOPE);
 }
 
 /**

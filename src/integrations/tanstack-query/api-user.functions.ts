@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { revokeAtprotoSession } from "#/integrations/auth/atproto";
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
+import { hasEmailScope } from "#/integrations/auth/scope";
 import {
   HOME_SCOPE_COOKIE,
   HOME_SCOPE_COOKIE_MAX_AGE_SECONDS,
@@ -849,6 +850,53 @@ const dismissAtstoreReviewPrompt = createServerFn({ method: "POST" })
     return { dismissed: true };
   });
 
+interface WeeklyDigestStatus {
+  /** Opted into the weekly digest (`user.weeklyDigestEnabled`). */
+  enabled: boolean;
+  /** The `transition:email` scope has actually been granted on the PDS. When
+   * `enabled` is true but this is false, the opt-in re-auth didn't complete. */
+  hasEmailScope: boolean;
+  /** The account email we've captured, if any (for display). */
+  email: string | null;
+}
+
+/** Current weekly-digest opt-in state for the signed-in reader. */
+const getWeeklyDigestStatus = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .handler(async ({ context }): Promise<WeeklyDigestStatus> => {
+    const { getReaderContextForRequest } =
+      await import("#/middleware/auth-session.server");
+    const reader = await getReaderContextForRequest(getRequest());
+    if (!reader) {
+      return { enabled: false, hasEmailScope: false, email: null };
+    }
+
+    const row = await context.db.query.user.findFirst({
+      where: eq(context.schema.user.id, reader.userId),
+      columns: { weeklyDigestEnabled: true, email: true },
+      with: {
+        accounts: {
+          columns: { scope: true, providerId: true },
+          where: eq(context.schema.account.providerId, "atproto"),
+        },
+      },
+    });
+    const scope =
+      row?.accounts.find((a) => a.providerId === "atproto")?.scope ?? null;
+
+    return {
+      enabled: row?.weeklyDigestEnabled === true,
+      hasEmailScope: hasEmailScope(scope),
+      email: row?.email ?? null,
+    };
+  });
+
+const getWeeklyDigestStatusQueryOptions = queryOptions({
+  queryKey: ["weeklyDigestStatus"] as const,
+  queryFn: () => getWeeklyDigestStatus(),
+  staleTime: Number.POSITIVE_INFINITY,
+});
+
 const signOut = createServerFn({ method: "POST" })
   .middleware([dbMiddleware])
   .handler(async ({ context }) => {
@@ -918,5 +966,7 @@ export const user = {
   getHomeScopePreferenceQueryOptions,
   setHomeScopePreference,
   dismissAtstoreReviewPrompt,
+  getWeeklyDigestStatus,
+  getWeeklyDigestStatusQueryOptions,
   signOut,
 };

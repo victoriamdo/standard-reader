@@ -563,6 +563,60 @@ export async function trendingArticles(
   return capped.slice(offset, offset + limit);
 }
 
+/**
+ * "Best of your follows" for the weekly digest: articles from the reader's
+ * followed publications, published within the last `sinceDays`, ranked by the
+ * precomputed `documents.trending_score` (recommends + velocity + freshness +
+ * backlinks) and passed through the same per-publication / per-author diversity
+ * caps as the Discover trending rail so one prolific follow can't dominate.
+ *
+ * Unlike {@link trendingArticles} this is NOT gated on discover-eligibility or
+ * an engagement floor — everything from a publication you chose to follow is
+ * fair game; we only rank it. Returns `[]` for a reader with no follows.
+ */
+export async function bestOfFollows(
+  db: Db,
+  schema: Schema,
+  {
+    publicationUris,
+    sinceDays,
+    limit,
+    readForDid,
+  }: {
+    publicationUris: Array<string>;
+    sinceDays: number;
+    limit: number;
+    readForDid?: string;
+  },
+): Promise<Array<ArticleCard>> {
+  if (publicationUris.length === 0) return [];
+
+  const d = schema.documents;
+  const p = schema.publications;
+  const pr = schema.profiles;
+  const pa = alias(schema.profiles, "pa");
+
+  const rows = await db
+    .select(trendingArticleSelection(schema, readForDid))
+    .from(d)
+    .leftJoin(p, eq(p.uri, d.publicationUri))
+    .leftJoin(pr, eq(pr.did, p.did))
+    .leftJoin(pa, eq(pa.did, d.did))
+    .where(
+      and(
+        eq(d.deleted, false),
+        documentPublishedNotInFuture(d),
+        inArray(d.publicationUri, publicationUris),
+        sql`${d.publishedAt} > now() - (${sinceDays}::text || ' days')::interval`,
+      ),
+    )
+    .orderBy(desc(d.trendingScore), desc(d.publishedAt))
+    .limit(trendingFetchPoolSize(limit));
+
+  const cards = rows.map((row) => toArticleCard(row));
+  return applyTrendingDiversityCaps(cards, limit).slice(0, limit);
+}
+
 /** Count of discover-eligible articles in the trending candidate set. */
 export async function countTrendingDocuments(
   db: Db,

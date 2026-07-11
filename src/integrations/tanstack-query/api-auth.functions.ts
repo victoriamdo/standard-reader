@@ -15,6 +15,7 @@ import {
   ATSTORE_REVIEW_SCOPE,
   formatOAuthScope,
   hasCollectionsScope,
+  hasEmailScope,
   hasMarginScope,
   hasSembleScope,
   hasUserinputFeedbackScope,
@@ -217,11 +218,56 @@ async function shouldRequestSembleScope(args: {
   return hasSembleScope(atprotoAccount?.scope ?? null);
 }
 
+/**
+ * Mirror of {@link shouldRequestSembleScope} for the account-email read scope
+ * (`transition:email`). Returns `true` when the reader has either opted into
+ * the weekly digest (`user.weeklyDigestEnabled`) or already granted the email
+ * scope on their PDS (`account.scope` includes `transition:email`). This keeps
+ * the grant sticky so `user.email` is refreshed from `getSession` on every
+ * subsequent login without re-prompting.
+ */
+async function shouldRequestEmailScope(args: {
+  did?: string | undefined;
+  handle: string;
+}): Promise<boolean> {
+  const [{ db }, schema] = await Promise.all([
+    import("#/db/index.server"),
+    import("#/db/schema"),
+  ]);
+
+  let did = args.did;
+  if (!did) {
+    const normalizedHandle = args.handle.replace(/^@/, "").trim();
+    const profile = await db.query.profiles.findFirst({
+      where: eq(schema.profiles.handle, normalizedHandle),
+      columns: { did: true },
+    });
+    did = profile?.did;
+  }
+  if (!did) return false;
+
+  const row = await db.query.user.findFirst({
+    where: eq(schema.user.did, did),
+    columns: { weeklyDigestEnabled: true },
+    with: {
+      accounts: {
+        columns: { scope: true, providerId: true },
+        where: eq(schema.account.providerId, "atproto"),
+      },
+    },
+  });
+  if (!row) return false;
+  if (row.weeklyDigestEnabled === true) return true;
+  const atprotoAccount = row.accounts.find((a) => a.providerId === "atproto");
+  return hasEmailScope(atprotoAccount?.scope ?? null);
+}
+
 interface UpgradeScopeOverrides {
   collections?: boolean;
   userinput?: boolean;
   margin?: boolean;
   semble?: boolean;
+  email?: boolean;
 }
 
 /**
@@ -254,6 +300,7 @@ async function resolveUpgradeScope(
       userinputFeedbackEnabled: true,
       marginSaveEnabled: true,
       sembleSaveEnabled: true,
+      weeklyDigestEnabled: true,
     },
     with: {
       accounts: {
@@ -279,6 +326,9 @@ async function resolveUpgradeScope(
   const requestSemble =
     overrides.semble ??
     (row?.sembleSaveEnabled === true || hasSembleScope(grantedScope));
+  const requestEmail =
+    overrides.email ??
+    (row?.weeklyDigestEnabled === true || hasEmailScope(grantedScope));
 
   return resolveAuthScopeForUser(
     {
@@ -286,12 +336,14 @@ async function resolveUpgradeScope(
       userinputFeedbackEnabled: requestUserinput,
       marginSaveEnabled: requestMargin,
       sembleSaveEnabled: requestSemble,
+      weeklyDigestEnabled: requestEmail,
     },
     undefined,
     {
       userinput: requestUserinput,
       margin: requestMargin,
       semble: requestSemble,
+      email: requestEmail,
     },
   );
 }
@@ -319,13 +371,19 @@ const authorize = createServerFn({ method: "GET" })
     // automatically — even on a fresh sign-in from /login. Falls back to basic
     // when the reader can't be identified (first sign-in) or neither signal is
     // present. The DID is resolved from the handle when not threaded in.
-    const [requestCollections, requestUserinput, requestMargin, requestSemble] =
-      await Promise.all([
-        shouldRequestCollectionsScope({ did: data.did, handle: data.handle }),
-        shouldRequestUserinputScope({ did: data.did, handle: data.handle }),
-        shouldRequestMarginScope({ did: data.did, handle: data.handle }),
-        shouldRequestSembleScope({ did: data.did, handle: data.handle }),
-      ]);
+    const [
+      requestCollections,
+      requestUserinput,
+      requestMargin,
+      requestSemble,
+      requestEmail,
+    ] = await Promise.all([
+      shouldRequestCollectionsScope({ did: data.did, handle: data.handle }),
+      shouldRequestUserinputScope({ did: data.did, handle: data.handle }),
+      shouldRequestMarginScope({ did: data.did, handle: data.handle }),
+      shouldRequestSembleScope({ did: data.did, handle: data.handle }),
+      shouldRequestEmailScope({ did: data.did, handle: data.handle }),
+    ]);
     const scope = resolveAuthScopeForUser(
       {
         collectionsAuthoringEnabled:
@@ -333,12 +391,14 @@ const authorize = createServerFn({ method: "GET" })
         userinputFeedbackEnabled: requestUserinput,
         marginSaveEnabled: requestMargin,
         sembleSaveEnabled: requestSemble,
+        weeklyDigestEnabled: requestEmail,
       },
       scopeIntent,
       {
         userinput: requestUserinput,
         margin: requestMargin,
         semble: requestSemble,
+        email: requestEmail,
       },
     );
 
@@ -707,6 +767,99 @@ const upgradeToSemble = createServerFn({ method: "POST" })
     return { authorizationUrl: url.toString() };
   });
 
+/**
+ * Progressive scope upgrade: opt the signed-in reader into the weekly digest
+ * email. Sets the `weeklyDigestEnabled` flag (so future logins silently
+ * re-request `transition:email` — see `shouldRequestEmailScope` — keeping
+ * `user.email` fresh), revokes the current OAuth session, and initiates a fresh
+ * authorize flow on the *default* client with the email addendum plus every
+ * other addendum the reader has already granted (see `resolveUpgradeScope`).
+ *
+ * Same revoke + re-auth shape as {@link upgradeToMargin} per
+ * atproto.com/guides/oauth-patterns. The reader consents once; the email is
+ * read from `com.atproto.server.getSession` on the callback and every
+ * subsequent login (see `callback.server.ts`).
+ */
+const upgradeToWeeklyDigest = createServerFn({ method: "POST" })
+  .validator(upgradeToCollectionsInputSchema)
+  .handler(async ({ data }) => {
+    const request = getRequest();
+    const [{ db }, schema, { getReaderContextForRequest }] = await Promise.all([
+      import("#/db/index.server"),
+      import("#/db/schema"),
+      import("#/middleware/auth-session.server"),
+    ]);
+
+    const reader = await getReaderContextForRequest(request);
+    if (!reader) {
+      throw new Error("Unauthorized");
+    }
+
+    await db
+      .update(schema.user)
+      .set({ weeklyDigestEnabled: true })
+      .where(eq(schema.user.id, reader.userId));
+
+    try {
+      await revokeAtprotoSession(
+        reader.did as Parameters<typeof revokeAtprotoSession>[0],
+      );
+    } catch (error) {
+      console.warn(
+        "Failed to revoke Atproto session during weekly digest upgrade:",
+        error,
+      );
+    }
+
+    const redirectTarget = sanitizeAuthRedirectTarget(
+      data.redirect,
+      request.url,
+    );
+
+    const { url } = await atprotoOAuth.authorize({
+      target: {
+        type: "account",
+        identifier: reader.did as ActorIdentifier,
+      },
+      scope: await resolveUpgradeScope(reader.userId, { email: true }),
+      state: {
+        redirect: redirectTarget,
+      },
+    });
+
+    return { authorizationUrl: url.toString() };
+  });
+
+/**
+ * Turn the weekly digest off for the signed-in reader: clears the
+ * `weeklyDigestEnabled` flag so the send runner skips them. No re-auth — the
+ * `transition:email` grant is harmless to keep, and dropping it would force an
+ * unnecessary consent round-trip if they ever re-enable. Mirrors the one-click
+ * unsubscribe route's effect (`src/routes/api/digest/unsubscribe.tsx`).
+ */
+const disableWeeklyDigest = createServerFn({ method: "POST" }).handler(
+  async () => {
+    const request = getRequest();
+    const [{ db }, schema, { getReaderContextForRequest }] = await Promise.all([
+      import("#/db/index.server"),
+      import("#/db/schema"),
+      import("#/middleware/auth-session.server"),
+    ]);
+
+    const reader = await getReaderContextForRequest(request);
+    if (!reader) {
+      throw new Error("Unauthorized");
+    }
+
+    await db
+      .update(schema.user)
+      .set({ weeklyDigestEnabled: false })
+      .where(eq(schema.user.id, reader.userId));
+
+    return { ok: true };
+  },
+);
+
 export const auth = {
   authorize,
   signup,
@@ -715,6 +868,8 @@ export const auth = {
   upgradeToUserinputFeedback,
   upgradeToMargin,
   upgradeToSemble,
+  upgradeToWeeklyDigest,
+  disableWeeklyDigest,
   getSavedHandles: getSavedHandlesServer,
   getSavedHandlesQueryOptions,
 };

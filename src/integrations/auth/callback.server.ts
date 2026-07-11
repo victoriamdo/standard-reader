@@ -1,3 +1,4 @@
+import { Client } from "@atcute/client";
 import type { OAuthClient } from "@atcute/oauth-node-client";
 import { redirect } from "@tanstack/react-router";
 import { and, eq } from "drizzle-orm";
@@ -5,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "#/db/index.server";
 import * as schema from "#/db/schema";
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
+import { hasEmailScope } from "#/integrations/auth/scope";
 import {
   fetchBlueskyPublicProfileFields,
   shouldApplyBlueskyAvatarFromPublicUrl,
@@ -66,6 +68,29 @@ export async function handleAtprotoOAuthCallback(args: {
       console.warn("Failed to read OAuth token info on callback:", error);
     }
 
+    // When the reader has granted the `transition:email` scope (weekly-digest
+    // opt-in), read their account email from `com.atproto.server.getSession` on
+    // the authenticated session so `user.email` stays fresh on every login.
+    // Best-effort: never let an email read failure break sign-in.
+    let accountEmail: string | null = null;
+    let accountEmailConfirmed = false;
+    if (hasEmailScope(grantedScope)) {
+      try {
+        const client = new Client({ handler: oauthSession });
+        const res = await client.get("com.atproto.server.getSession", {});
+        if (res.ok) {
+          const data = res.data as {
+            email?: string | null;
+            emailConfirmed?: boolean;
+          };
+          accountEmail = data.email ?? null;
+          accountEmailConfirmed = Boolean(data.emailConfirmed);
+        }
+      } catch (error) {
+        console.warn("Failed to read account email on callback:", error);
+      }
+    }
+
     const handle = stateData?.handle || publicProfile?.handle || "";
     const displayName = publicProfile?.displayName || handle || did;
     const blueskyAvatarUrl = publicProfile?.avatarUrl ?? null;
@@ -119,6 +144,20 @@ export async function handleAtprotoOAuthCallback(args: {
         userId,
         scope: grantedScope,
       });
+    }
+
+    // Persist the account email (weekly-digest opt-in). Separate best-effort
+    // write so a unique-constraint collision or transient failure can't break
+    // sign-in — the email is a convenience for the digest, not login state.
+    if (accountEmail) {
+      try {
+        await db
+          .update(schema.user)
+          .set({ email: accountEmail, emailVerified: accountEmailConfirmed })
+          .where(eq(schema.user.id, userId));
+      } catch (error) {
+        console.warn("Failed to persist account email on callback:", error);
+      }
     }
 
     const sessionToken = crypto.randomUUID();
