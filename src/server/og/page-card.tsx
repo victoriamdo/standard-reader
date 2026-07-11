@@ -6,17 +6,12 @@ import { loadOgFonts } from "#/server/og/fonts";
 import { renderOgPng } from "#/server/og/render-png";
 import { ogSatoriOptions } from "#/server/og/satori-options";
 
+import { SITE_OG_PALETTE } from "./site-palette";
+
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
 
-/** Same editorial palette as the site card (`site-card.tsx`). */
-const colors = {
-  background: "#f9f7f2",
-  foreground: "#3e3934",
-  muted: "#8a847a",
-  accent: "#bd5633",
-  line: "#d9d2c8",
-} as const;
+const colors = SITE_OG_PALETTE;
 
 function pageOgMarkup(input: { title: string; tagline: string }) {
   return (

@@ -9,21 +9,15 @@ import { renderOgPng } from "#/server/og/render-png";
 import { ogSatoriOptions } from "#/server/og/satori-options";
 import { truncateAtWord } from "#/server/og/text";
 
+import { SITE_OG_PALETTE } from "./site-palette";
+
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
 
 /** Member icons shown on the card (a "+N" bubble covers the rest). */
 const MAX_MEMBER_ICONS = 6;
 
-/** Same editorial palette as the site/page cards. */
-const colors = {
-  background: "#f9f7f2",
-  foreground: "#3e3934",
-  muted: "#8a847a",
-  accent: "#bd5633",
-  accentForeground: "#f9f7f2",
-  line: "#d9d2c8",
-} as const;
+const colors = SITE_OG_PALETTE;
 
 function nameFontSize(text: string): number {
   const length = text.length;

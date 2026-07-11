@@ -38,8 +38,8 @@ describe("resolveQuoteOgColors", () => {
       themeAccentForeground: null,
     });
 
-    expect(colors.background).toBe("#f9f7f2");
-    expect(colors.foreground).toBe("#3e3934");
+    expect(colors.background).toBe("#fcfaf5");
+    expect(colors.foreground).toBe("#251f1b");
   });
 
   it("derives readable accent-subtle toggle colors", () => {

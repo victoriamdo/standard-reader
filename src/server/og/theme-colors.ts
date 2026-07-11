@@ -1,3 +1,5 @@
+import { SITE_OG_PALETTE } from "./site-palette";
+
 interface Rgb {
   r: number;
   g: number;
@@ -26,16 +28,11 @@ export interface PublicationThemeInput {
 }
 
 const DEFAULT: QuoteOgColors = {
-  background: "#f9f7f2",
-  foreground: "#3e3934",
-  muted: "#8a847a",
-  accent: "#bd5633",
-  accentForeground: "#f9f7f2",
-  line: "#d9d2c8",
-  hoverBg: "#f0ece7",
-  hoverFg: "#3e3934",
-  accentSubtle: "#f0e0d7",
-  accentSubtleFg: "#bd5633",
+  ...SITE_OG_PALETTE,
+  hoverBg: "#f2eee8",
+  hoverFg: SITE_OG_PALETTE.foreground,
+  accentSubtle: "#f0e4d9",
+  accentSubtleFg: SITE_OG_PALETTE.accent,
 };
 
 const BLACK: Rgb = { r: 0, g: 0, b: 0 };
