@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 import babel from "@rolldown/plugin-babel";
@@ -8,6 +9,7 @@ import browserslist from "browserslist";
 import { browserslistToTargets } from "lightningcss";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
@@ -81,9 +83,139 @@ const config = defineConfig({
     // and warns — then falls back to module mode (base64-embedded WASM) which
     // works fine. The warning is cosmetic only.
     // Ref: https://github.com/unjs/unwasm + nuxt/content#3694
-    nitro({ wasm: { silent: true } }),
+    nitro({
+      wasm: { silent: true },
+      // Nitro 3's `nf3` dependency tracer calls `realpath` on every file that
+      // `nodeFileTrace` collects and hard-crashes (`ENOENT`) on broken symlinks.
+      // pnpm creates one such symlink per *non-current* platform for native
+      // packages that gate their platform binaries via `os`/`cpu` optional deps
+      // (`@resvg/resvg-js`, `sharp`, `lightningcss`, `@rolldown/binding`, …), so
+      // on any single machine ~hundreds of those symlinks dangle. They point at
+      // binaries for other OS/arch that were never installed and must not ship
+      // anyway. Prune them from the trace before the realpath pass runs — the
+      // `traceResult` hook fires first (nf3 trace.mjs), and `reasons` is a Map.
+      traceOpts: {
+        hooks: {
+          traceResult(traceResult: { reasons: Map<string, unknown> }) {
+            let pruned = 0;
+            for (const tracedPath of traceResult.reasons.keys()) {
+              // nf3 traces relative to base "/"; `existsSync` follows symlinks
+              // and returns false for a dangling one — exactly what to drop.
+              if (!existsSync(path.resolve("/", tracedPath))) {
+                traceResult.reasons.delete(tracedPath);
+                pruned++;
+              }
+            }
+            if (pruned > 0) {
+              console.log(
+                `[nitro:trace] pruned ${pruned} unresolvable cross-platform path(s)`,
+              );
+            }
+          },
+        },
+      },
+    }),
     tanstackStart(),
     viteReact(),
+    // Progressive Web App: Workbox service worker for offline support, asset
+    // precaching, and a controlled update flow. This is a TanStack Start + Nitro
+    // SSR app, so there is no static `index.html` for the plugin to inject into:
+    //   - `injectRegister: false` — we register the SW manually from client code
+    //     (`src/pwa/register.ts`), mounted via `<ReloadPrompt />` in `__root.tsx`.
+    //   - `manifest: false` — the static `public/manifest.json` stays the source
+    //     of truth; it's already linked from the root route's `head()`.
+    //   - `registerType: "prompt"` — updates surface a "Reload" toast instead of
+    //     silently reloading mid-article.
+    // The generated `sw.js` lands in the Vite client output that Nitro serves as
+    // static (`.output/public`), so scope `/` works without extra routing.
+    VitePWA({
+      strategies: "generateSW",
+      registerType: "prompt",
+      injectRegister: false,
+      manifest: false,
+      // TanStack Start + Nitro 3 serves static assets from `.output/public`, not
+      // the default `dist/`. Point the SW output and the precache glob there so
+      // the generated `sw.js` is actually served at `/sw.js` and precaches the
+      // real hashed client chunks (see TanStack/router#4988).
+      outDir: ".output/public",
+      // SW is disabled in `vite dev` on purpose — Nitro dev + an active SW is a
+      // common source of stale-cache confusion. Verify against `build`+`preview`.
+      devOptions: { enabled: false },
+      workbox: {
+        globDirectory: ".output/public",
+        // Precache ONLY the small, always-needed shell: the offline fallback,
+        // the manifest, and the app icons. Deliberately do NOT precache the
+        // hashed JS/CSS chunks — this app ships heavy, lazily-loaded features
+        // (kokoro TTS ~1.3 MB, transformers ~0.5 MB, per-route chunks) that most
+        // readers never touch. Those are runtime-cached on demand below, so an
+        // install stays lightweight (~tens of KB) instead of eagerly pulling
+        // ~4.5 MB. Hashed assets are immutable, so CacheFirst is safe for them.
+        globPatterns: [
+          "offline.html",
+          "manifest.json",
+          "favicon.svg",
+          "apple-touch-icon.png",
+          "icon-*.png",
+        ],
+        // The app shell HTML is server-rendered, so there is nothing to fall
+        // back to from the precache — navigations are handled by runtime caching
+        // (NetworkFirst) below, with `public/offline.html` as the last resort.
+        navigateFallback: null,
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        // `registerType: "prompt"` controls activation — don't skip waiting.
+        skipWaiting: false,
+        runtimeCaching: [
+          {
+            // Page navigations: prefer the network (fresh SSR HTML), fall back
+            // to cache, then to the offline page when both fail.
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "pages",
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 },
+              precacheFallback: { fallbackURL: "/offline.html" },
+            },
+          },
+          {
+            // Hashed build assets (immutable). Cache on first use so repeat
+            // loads and visited routes work offline, without a heavy precache.
+            urlPattern: ({ url, sameOrigin }) =>
+              sameOrigin && url.pathname.startsWith("/assets/"),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "assets",
+              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Google Fonts stylesheet + font files (render-blocking `<link>`s in
+            // `__root.tsx`). Cache aggressively — they're immutable and versioned.
+            urlPattern: ({ url }) =>
+              url.origin === "https://fonts.googleapis.com" ||
+              url.origin === "https://fonts.gstatic.com",
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-fonts",
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Article / avatar / OG images (often cross-origin CDN blobs).
+            urlPattern: ({ request }) => request.destination === "image",
+            handler: "CacheFirst",
+            options: {
+              cacheName: "images",
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+    }),
     // React Compiler (facebook/react#36173) via @rolldown/plugin-babel +
     // reactCompilerPreset from @vitejs/plugin-react.
     // Preserve the plugin's default `node_modules` exclusion (the compiler

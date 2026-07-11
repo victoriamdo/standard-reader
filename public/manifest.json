@@ -33,7 +33,7 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#c2502b",
+  "theme_color": "#f7f3ec",
   "background_color": "#fcfbf6",
   "categories": ["news", "books"]
 }

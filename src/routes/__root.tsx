@@ -27,6 +27,7 @@ import {
 import { getPublicUrlClient } from "../lib/public-url";
 import { siteOgImageUrl, siteSocialMeta } from "../lib/site-metadata";
 import { DEFAULT_THEME_MODE, RESOLVED_SCHEME_SCRIPT } from "../lib/theme";
+import { ReloadPrompt } from "../pwa/reload-prompt";
 import { saveHandle } from "../utils/saved-handles";
 
 import appCss from "../styles.css?url";
@@ -252,6 +253,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <PersistOAuthSavedHandle />
         <NavTelemetry />
         {isEmbedPath(pathname) ? null : <PlausibleAnalytics />}
+        {isEmbedPath(pathname) ? null : <ReloadPrompt />}
         {children}
 
         <Scripts />
