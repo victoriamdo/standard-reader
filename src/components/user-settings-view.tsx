@@ -45,7 +45,9 @@ import {
 } from "../design-system/alert-dialog";
 import { Avatar } from "../design-system/avatar";
 import { Button } from "../design-system/button";
+import { Dialog, DialogBody, DialogHeader } from "../design-system/dialog";
 import { Flex } from "../design-system/flex";
+import { ProgressCircle } from "../design-system/progress-circle";
 import {
   SegmentedControl,
   SegmentedControlItem,
@@ -237,6 +239,33 @@ const styles = stylex.create({
     marginBottom: verticalSpace["3xl"],
     marginTop: verticalSpace.none,
     maxWidth: "52ch",
+  },
+  digestPreviewBody: {
+    marginBottom: verticalSpace.none,
+    marginTop: verticalSpace.none,
+    paddingLeft: horizontalSpace.none,
+    paddingRight: horizontalSpace.none,
+  },
+  digestPreviewContainer: {
+    minHeight: "70vh",
+    position: "relative",
+    width: "100%",
+  },
+  digestPreviewFrame: {
+    borderWidth: 0,
+    display: "block",
+    height: "70vh",
+    width: "100%",
+  },
+  digestPreviewFrameLoading: {
+    opacity: 0,
+  },
+  digestPreviewSpinner: {
+    alignItems: "center",
+    display: "flex",
+    inset: 0,
+    justifyContent: "center",
+    position: "absolute",
   },
 });
 
@@ -452,6 +481,8 @@ export function UserSettingsView() {
   const digestPending =
     enableDigestMutation.isPending || disableDigestMutation.isPending;
   const [digestDialogOpen, setDigestDialogOpen] = useState(false);
+  const [digestPreviewOpen, setDigestPreviewOpen] = useState(false);
+  const [digestPreviewLoading, setDigestPreviewLoading] = useState(true);
 
   const onToggleDigest = (next: boolean) => {
     // Turning on requests the `transition:email` scope (a full PDS re-auth), so
@@ -582,12 +613,57 @@ export function UserSettingsView() {
                 : "A weekly email with the best of what you follow, plus a couple of publications worth discovering. Turning this on asks your PDS to share your email address."
             }
           >
-            <Switch
-              isSelected={digestEnabled}
-              onChange={onToggleDigest}
-              isDisabled={digestPending || digestStatusQuery.isLoading}
-              aria-label="Weekly digest email"
-            />
+            <Flex align="center" gap="md">
+              <Dialog
+                size="lg"
+                isOpen={digestPreviewOpen}
+                onOpenChange={setDigestPreviewOpen}
+                trigger={
+                  <Button
+                    variant="secondary"
+                    onPress={() => {
+                      setDigestPreviewLoading(true);
+                      setDigestPreviewOpen(true);
+                    }}
+                  >
+                    Preview
+                  </Button>
+                }
+              >
+                <DialogHeader>Your weekly digest</DialogHeader>
+                <DialogBody style={styles.digestPreviewBody}>
+                  {digestPreviewOpen ? (
+                    <div {...stylex.props(styles.digestPreviewContainer)}>
+                      {digestPreviewLoading ? (
+                        <div {...stylex.props(styles.digestPreviewSpinner)}>
+                          <ProgressCircle
+                            isIndeterminate
+                            size="lg"
+                            aria-label="Loading digest preview"
+                          />
+                        </div>
+                      ) : null}
+                      <iframe
+                        title="Weekly digest preview"
+                        src="/api/digest/preview"
+                        onLoad={() => setDigestPreviewLoading(false)}
+                        {...stylex.props(
+                          styles.digestPreviewFrame,
+                          digestPreviewLoading &&
+                            styles.digestPreviewFrameLoading,
+                        )}
+                      />
+                    </div>
+                  ) : null}
+                </DialogBody>
+              </Dialog>
+              <Switch
+                isSelected={digestEnabled}
+                onChange={onToggleDigest}
+                isDisabled={digestPending || digestStatusQuery.isLoading}
+                aria-label="Weekly digest email"
+              />
+            </Flex>
           </SettingRow>
           <AlertDialog
             isOpen={digestDialogOpen}
@@ -596,14 +672,16 @@ export function UserSettingsView() {
           >
             <AlertDialogHeader>Enable the weekly digest</AlertDialogHeader>
             <AlertDialogDescription>
-              To email your digest, Standard needs your account email address.
-              We'll ask your PDS to share it — you'll be sent to your login to
-              approve the request, then brought right back here. Your email is
-              used only to send the weekly digest, and you can turn it off any
-              time.
+              To email your digest, Standard Reader needs your account email
+              address. We'll ask your PDS to share it — you'll be sent to your
+              login to approve the request, then brought right back here. Your
+              email is used only to send the weekly digest, and you can turn it
+              off any time.
             </AlertDialogDescription>
             <AlertDialogFooter>
-              <AlertDialogCancelButton isDisabled={enableDigestMutation.isPending}>
+              <AlertDialogCancelButton
+                isDisabled={enableDigestMutation.isPending}
+              >
                 Not now
               </AlertDialogCancelButton>
               <AlertDialogActionButton

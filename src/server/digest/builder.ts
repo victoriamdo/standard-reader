@@ -39,10 +39,10 @@ export interface DigestData {
 }
 
 /**
- * Assemble the digest for one reader. Returns `{ articles: [] }` when the
- * reader has no fresh best-of content this week — the caller should skip the
- * send entirely rather than mail an empty digest. Recommendations are only
- * fetched when there's a digest worth sending.
+ * Assemble the digest for one reader. Builds all three sections; the "skip if
+ * there's nothing worth sending" decision (empty `articles`) lives in the send
+ * runner, so the preview path can render a complete digest even for readers
+ * whose follows were quiet this week.
  */
 export async function buildDigestForUser(
   db: Db,
@@ -56,10 +56,6 @@ export async function buildDigestForUser(
     sinceDays: DIGEST_WINDOW_DAYS,
     limit: DIGEST_ARTICLE_LIMIT,
   });
-
-  if (articles.length === 0) {
-    return { articles: [], networkArticles: [], recommendations: [] };
-  }
 
   const [networkArticles, recommendations] = await Promise.all([
     topNetworkArticles(db, schema, {
