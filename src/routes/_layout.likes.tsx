@@ -1,10 +1,7 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
-import {
-  useSuspenseInfiniteQuery,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useCallback } from "react";
 
@@ -15,15 +12,9 @@ import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
 
-import {
-  Handle,
-  Masthead,
-  ReaderContent,
-  SectionHead,
-} from "../components/reader/primitives";
+import { Masthead, ReaderContent } from "../components/reader/primitives";
 import { ReaderQueueRows } from "../components/reader/reader-queue-rows";
 import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
-import { Avatar } from "../design-system/avatar";
 import { Flex } from "../design-system/flex";
 import { uiColor } from "../design-system/theme/color.stylex";
 import { radius } from "../design-system/theme/radius.stylex";
@@ -59,22 +50,6 @@ export const Route = createFileRoute("/_layout/likes")({
 });
 
 const styles = stylex.create({
-  profile: {
-    alignItems: "center",
-    columnGap: spacing["4"],
-    display: "flex",
-    rowGap: spacing["4"],
-    marginBottom: spacing["8"],
-  },
-  profileName: {
-    color: uiColor.text2,
-    fontFamily: fontFamily.sans,
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    lineHeight: lineHeight.sm,
-    marginBottom: spacing["0"],
-    marginTop: spacing["0"],
-  },
   emptyCard: {
     borderColor: uiColor.border1,
     borderRadius: radius.md,
@@ -129,15 +104,11 @@ const styles = stylex.create({
 });
 
 function ReaderLikes() {
-  const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery(readerApi.getLikesInfiniteQueryOptions());
 
   const likes = data.pages.flatMap((page) => page.items);
   const total = data.pages[0]?.total ?? 0;
-  const userName = session?.user.name ?? "Reader";
-  const userHandle = session?.user.handle;
-  const initial = userName.charAt(0).toUpperCase();
 
   const loadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {

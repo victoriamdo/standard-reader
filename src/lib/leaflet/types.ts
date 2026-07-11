@@ -4,6 +4,10 @@ export const LEAFLET_FACET = {
   italic: "pub.leaflet.richtext.facet#italic",
   link: "pub.leaflet.richtext.facet#link",
   code: "pub.leaflet.richtext.facet#code",
+  /** Inline reference to a repo record — e.g. a `site.standard.publication`. */
+  atMention: "pub.leaflet.richtext.facet#atMention",
+  /** Inline reference to an actor by DID. */
+  didMention: "pub.leaflet.richtext.facet#didMention",
 } as const;
 
 export const LEAFLET_BLOCK = {
@@ -48,6 +52,10 @@ export interface LeafletByteRange {
 export interface LeafletFacetFeature {
   $type?: string;
   uri?: string;
+  /** `#atMention` target — an AT-URI (e.g. a `site.standard.publication`). */
+  atURI?: string;
+  /** `#didMention` target DID. */
+  did?: string;
 }
 
 export interface LeafletFacet {

@@ -56,9 +56,9 @@ const generated = `${START}\n${blocks.join("\n\n")}\n  ${END}`;
 
 const css = readFileSync(stylesPath, "utf8");
 const pattern = new RegExp(
-  `${START.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}[\\s\\S]*?${END.replace(
+  `${START.replaceAll(/[.*+?^${}()|[\]\\/]/g, String.raw`\$&`)}[\\s\\S]*?${END.replaceAll(
     /[.*+?^${}()|[\]\\/]/g,
-    "\\$&",
+    String.raw`\$&`,
   )}`,
 );
 

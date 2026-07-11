@@ -12,7 +12,9 @@ import {
 } from "#/components/reader/quote-highlight-tracker";
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import { parseArticleBlocks } from "#/lib/document/blocks";
+import { LEAFLET_DOCUMENT_FORMAT } from "#/lib/document/content-formats";
 import { resolveArticleHeroImage } from "#/lib/document/lead-image";
+import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 
 import {
@@ -21,6 +23,7 @@ import {
   readingDropCapStyleProps,
 } from "./body-styles";
 import { CONTENT_RENDERERS } from "./renderers";
+import { InlineMentionProvider } from "./renderers/shared/inline-mention-provider";
 import type { ContentRendererProps } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -143,6 +146,18 @@ export function ArticleContent({
       hasHero,
       skipFirstBlock,
     };
+    // Only Leaflet content carries inline publication/actor facets; other
+    // formats skip the resolver (and its lazy fetch) entirely.
+    const isLeaflet =
+      contentType === LEAFLET_CONTENT ||
+      contentType === LEAFLET_DOCUMENT_FORMAT;
+    if (isLeaflet) {
+      return (
+        <InlineMentionProvider content={article.contentJson}>
+          <Renderer {...props} />
+        </InlineMentionProvider>
+      );
+    }
     return <Renderer {...props} />;
   }
 

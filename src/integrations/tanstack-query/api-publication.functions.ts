@@ -8,6 +8,7 @@ import { z } from "zod";
 import { publicationLinkParams } from "#/components/reader/format";
 import type { CollectionManifest } from "#/lib/collections/manifest";
 import type { CollectionTheme } from "#/lib/collections/theme";
+import type { InlineMentionRefs } from "#/lib/leaflet/publication-mentions";
 import type { CodeHighlightsByScheme } from "#/lib/theme";
 import {
   getReaderContextForRequest,
@@ -28,6 +29,7 @@ import type { CollectionMagazineData } from "#/server/reader/collection-magazine
 import { loadCollectionMagazine } from "#/server/reader/collection-magazine";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
 import { selectPublicationHeader } from "#/server/reader/publication-header";
+import { resolveInlineMentions } from "#/server/reader/publication-mentions";
 import {
   articleRecommendedPublications,
   publicationFollowedByCoReaders,
@@ -87,6 +89,12 @@ const articleExtrasInput = z.object({
 const socialProofInput = z.object({
   publicationUri: z.string().min(1),
   limit: z.number().int().min(1).max(100).default(100),
+});
+
+const inlineMentionsInput = z.object({
+  publicationAtUris: z.array(z.string()).default([]),
+  publicationUrls: z.array(z.string()).default([]),
+  actorDids: z.array(z.string()).default([]),
 });
 
 const embedInput = z.object({
@@ -683,6 +691,40 @@ const getArticleExtras = createServerFn({ method: "GET" })
     ),
   );
 
+// POST (not GET): a content-heavy article can reference dozens of link URLs,
+// which would overflow a GET query string. Still side-effect-free; TanStack
+// Query caches by queryKey client-side regardless of method.
+const getInlineMentions = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
+  .validator(inlineMentionsInput)
+  .handler(
+    observe(
+      "publication.getInlineMentions",
+      async ({ data, context }, span) => {
+        const { db, schema } = context;
+        span.set("publicationAtUris", data.publicationAtUris.length);
+        span.set("publicationUrls", data.publicationUrls.length);
+        span.set("actorDids", data.actorDids.length);
+        return resolveInlineMentions(db, schema, data);
+      },
+    ),
+  );
+
+function getInlineMentionsQueryOptions(refs: InlineMentionRefs) {
+  // Stable key across render order; the resolved map is content-derived and
+  // changes only when the referenced set does.
+  const key = [
+    ...refs.publicationAtUris,
+    ...refs.publicationUrls,
+    ...refs.actorDids,
+  ].toSorted();
+  return queryOptions({
+    queryKey: ["inlineMentions", key] as const,
+    queryFn: async () => getInlineMentions({ data: refs }),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 function getPublicationHeaderQueryOptions(publicationUri: string) {
   return queryOptions({
     queryKey: ["publication", "header", publicationUri] as const,
@@ -794,4 +836,6 @@ export const publicationApi = {
   getCollectionQueryOptions,
   getArticleExtras,
   getArticleExtrasQueryOptions,
+  getInlineMentions,
+  getInlineMentionsQueryOptions,
 };

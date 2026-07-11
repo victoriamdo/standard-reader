@@ -3,6 +3,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { LinkProps } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
+import { useHover, mergeProps } from "react-aria";
 
 import { parseInternalRoute } from "#/lib/internal-route";
 
@@ -20,6 +21,11 @@ export function AppLink({
   ...rest
 }: AppLinkProps) {
   const route = parseInternalRoute(href);
+  const { hoverProps, isHovered } = useHover({});
+  // `linkProps` (a huge `LinkProps` union) can't flow through `mergeProps`
+  // without collapsing to a non-spreadable type, so merge only the plain DOM
+  // props and spread the route props directly.
+  const domProps = mergeProps(rest, hoverProps, { onClick });
 
   if (route) {
     const linkProps = route.params
@@ -29,8 +35,8 @@ export function AppLink({
     return (
       <Link
         {...linkProps}
-        {...rest}
-        onClick={onClick}
+        {...domProps}
+        data-hovered={isHovered || undefined}
         {...(linkStyle ? stylex.props(linkStyle) : {})}
       >
         {children}
@@ -43,8 +49,8 @@ export function AppLink({
       href={href}
       target="_blank"
       rel="noreferrer"
-      onClick={onClick}
-      {...rest}
+      {...domProps}
+      data-hovered={isHovered || undefined}
       {...(linkStyle ? stylex.props(linkStyle) : {})}
     >
       {children}

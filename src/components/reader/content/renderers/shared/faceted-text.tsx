@@ -1,9 +1,13 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+import { Link } from "@tanstack/react-router";
 import { Fragment } from "react";
+import { useHover } from "react-aria";
 
 import { AppLink } from "#/components/reader/app-link";
+import { initials } from "#/components/reader/format";
+import { PublicationAvatar } from "#/components/reader/primitives";
 import {
   DropCapChar,
   QuoteShareMark,
@@ -12,8 +16,16 @@ import {
   intersectHighlightRange,
   useQuoteHighlightTracker,
 } from "#/components/reader/quote-highlight-tracker";
-import { authorProfilePath } from "#/lib/author-profile";
+import { Avatar } from "#/design-system/avatar";
 import { segmentFacetedText, shiftFacets } from "#/lib/leaflet/facets";
+import type {
+  ResolvedActorMention,
+  ResolvedPublicationMention,
+} from "#/lib/leaflet/publication-mentions";
+import {
+  lookupActorMention,
+  lookupPublicationMention,
+} from "#/lib/leaflet/publication-mentions";
 import type { LeafletFacet } from "#/lib/leaflet/types";
 import { utf8ByteLength } from "#/lib/leaflet/utf8";
 import type { QuoteHighlightRange } from "#/lib/quote-highlight-text";
@@ -22,6 +34,95 @@ import { useReadingTypography } from "#/lib/use-reading-typography";
 import { articleBodyStyles, readingDropCapStyleProps } from "../../body-styles";
 import type { FacetFeature } from "./facets";
 import { findFacetFeature, hasFacetKind } from "./facets";
+import { useInlineMentions } from "./publication-mention-context";
+
+const styles = stylex.create({
+  mentionChip: {
+    whiteSpace: "nowrap",
+  },
+  // Shrink the design-system Avatar to sit inline with body text.
+  mentionAvatar: {
+    display: "inline-flex",
+    width: "1.05em",
+    height: "1.05em",
+    marginRight: "0.25em",
+    verticalAlign: "-0.2em",
+  },
+});
+
+/**
+ * Inline publication reference — the pub's icon (when it has one) + name,
+ * linking to its Standard Reader page. Mirrors how Leaflet renders publication
+ * tags. Publications without an icon render name-only rather than falling back
+ * to initials.
+ */
+function PublicationMentionChip({
+  mention,
+  children,
+}: {
+  mention: ResolvedPublicationMention;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      to="/p/$did/$rkey"
+      params={{ did: mention.did, rkey: mention.rkey }}
+      {...stylex.props(
+        articleBodyStyles.publicationBylineLink,
+        styles.mentionChip,
+      )}
+    >
+      {mention.iconUrl ? (
+        <PublicationAvatar
+          pub={{ name: mention.name, iconUrl: mention.iconUrl }}
+          size="sm"
+          style={styles.mentionAvatar}
+        />
+      ) : null}
+      {children}
+    </Link>
+  );
+}
+
+/**
+ * Inline actor (`#didMention`) reference. Once resolved, shows the actor's
+ * avatar in place of the leading `@` and links to their profile; until then it
+ * falls back to the original `@handle` text.
+ */
+function ActorMentionChip({
+  did,
+  actor,
+  text,
+}: {
+  did: string;
+  actor: ResolvedActorMention | null;
+  text: string;
+}) {
+  // Only swap the leading `@` for an avatar once the actor resolves; until then
+  // keep the original `@handle` so there is no flash of bare text.
+  const label = actor ? text.replace(/^@/, "") : text;
+  const { isHovered, hoverProps } = useHover({});
+  return (
+    <Link
+      to="/u/$did"
+      params={{ did }}
+      {...stylex.props(articleBodyStyles.facetMentionLink, styles.mentionChip)}
+      data-hovered={isHovered || undefined}
+      {...hoverProps}
+    >
+      {actor ? (
+        <Avatar
+          size="sm"
+          src={actor.avatarUrl ?? undefined}
+          fallback={initials(actor.handle ?? label)}
+          alt={actor.handle ?? ""}
+          style={styles.mentionAvatar}
+        />
+      ) : null}
+      {label}
+    </Link>
+  );
+}
 
 function FacetSegment({
   text,
@@ -30,6 +131,8 @@ function FacetSegment({
   text: string;
   features: Array<FacetFeature>;
 }) {
+  const { publications, actors } = useInlineMentions();
+
   if (features.length === 0) return <>{text}</>;
 
   const isBold =
@@ -43,6 +146,7 @@ function FacetSegment({
   const didMention =
     findFacetFeature(features, "didMention") ??
     findFacetFeature(features, "mention");
+  const publicationMention = lookupPublicationMention(features, publications);
 
   let node: React.ReactNode = text;
 
@@ -50,7 +154,13 @@ function FacetSegment({
     node = <code {...stylex.props(articleBodyStyles.facetCode)}>{text}</code>;
   }
 
-  if (link?.uri) {
+  if (publicationMention) {
+    node = (
+      <PublicationMentionChip mention={publicationMention}>
+        {text}
+      </PublicationMentionChip>
+    );
+  } else if (link?.uri) {
     node = (
       <AppLink href={link.uri} linkStyle={articleBodyStyles.facetLink}>
         {text}
@@ -58,12 +168,11 @@ function FacetSegment({
     );
   } else if (didMention?.did) {
     node = (
-      <AppLink
-        href={authorProfilePath(didMention.did)}
-        linkStyle={articleBodyStyles.facetMentionLink}
-      >
-        {text}
-      </AppLink>
+      <ActorMentionChip
+        did={didMention.did}
+        actor={lookupActorMention(features, actors)}
+        text={text}
+      />
     );
   }
 
