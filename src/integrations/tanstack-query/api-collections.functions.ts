@@ -18,7 +18,10 @@ import type {
 } from "#/lib/collections/manifest";
 import { collectionManifestFromSources } from "#/lib/collections/manifest";
 import { getPublicUrl } from "#/lib/public-url";
-import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
+import {
+  getAtprotoSessionForRequest,
+  getReaderDidForRequest,
+} from "#/middleware/auth-session.server";
 import { blobCid, cdnImageUrl } from "#/server/atproto/blob";
 import { resolveIdentity } from "#/server/atproto/identity";
 import {
@@ -780,9 +783,13 @@ const listCollectionsPublications = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
   .handler(
     observe("collections.listPublications", async ({ context }, span) => {
-      const session = await getAtprotoSessionForRequest(getRequest());
-      if (!session) return [] satisfies Array<CollectionsPublicationSummary>;
-      span.set("did", session.did);
+      // DB-only DID lookup — the warm read path never touches the PDS, so skip
+      // the `manager.resume()` client restore. Only the cold-start backfill
+      // below needs the client, and it restores it lazily.
+      const request = getRequest();
+      const did = await getReaderDidForRequest(request);
+      if (!did) return [] satisfies Array<CollectionsPublicationSummary>;
+      span.set("did", did);
 
       const { db, schema } = context;
       const rows = await db
@@ -803,7 +810,7 @@ const listCollectionsPublications = createServerFn({ method: "GET" })
         )
         .where(
           and(
-            eq(schema.publications.did, session.did),
+            eq(schema.publications.did, did),
             eq(schema.publications.collectionsPublication, true),
             eq(schema.publications.deleted, false),
           ),
@@ -814,6 +821,10 @@ const listCollectionsPublications = createServerFn({ method: "GET" })
       // DB, and serve from the DB on subsequent reads. Per the read-model rule,
       // the DB mirror is the read path; the PDS is only a cold-start fallback.
       if (rows.length === 0) {
+        // Cold start: restore the PDS client (network round trip) only now,
+        // when the DB mirror has nothing to serve.
+        const session = await getAtprotoSessionForRequest(request);
+        if (!session) return [] satisfies Array<CollectionsPublicationSummary>;
         const backfilled = await listCollectionsPublicationsFromPds(
           session.client,
           session.did,
@@ -902,9 +913,12 @@ const createCollectionsPublication = createServerFn({ method: "POST" })
 
 const getMyCollections = createServerFn({ method: "GET" }).handler(
   observe("collections.getMine", async (_, span) => {
-    const session = await getAtprotoSessionForRequest(getRequest());
-    if (!session) return [] satisfies Array<CollectionCard>;
-    span.set("did", session.did);
+    // DB-only DID lookup — the read path below never touches the PDS, so skip
+    // the `manager.resume()` client restore that blocked the response.
+    const request = getRequest();
+    const did = await getReaderDidForRequest(request);
+    if (!did) return [] satisfies Array<CollectionCard>;
+    span.set("did", did);
 
     // Read from the DB mirror (documents table already has collectionJson
     // synced by the tap ingester). No PDS I/O on the read path. Project only
@@ -927,7 +941,7 @@ const getMyCollections = createServerFn({ method: "GET" }).handler(
       .from(documents)
       .where(
         andDocs(
-          eqDocs(documents.did, session.did),
+          eqDocs(documents.did, did),
           isNotNull(documents.collectionJson),
         ),
       );
@@ -942,7 +956,7 @@ const getMyCollections = createServerFn({ method: "GET" }).handler(
       if (!manifest) continue;
       cards.push({
         uri: row.uri,
-        did: session.did,
+        did,
         rkey: row.rkey,
         publicationUri: row.publicationUri,
         title: row.title ?? "Untitled collection",
@@ -957,12 +971,18 @@ const getMyCollections = createServerFn({ method: "GET" }).handler(
     cards.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
     span.set("count", cards.length);
 
-    // Run sidecar repair in the background (no PDS read on the hot path;
-    // repair only writes missing sidecars, which the ingester will catch up).
-    void repairMissingCollectionsPublicationSidecars(
-      session.client,
-      session.did,
-    ).catch(() => {});
+    // Run sidecar repair in the background. It needs the PDS client, so restore
+    // the ATProto session here — off the response hot path — instead of blocking
+    // the read above on it. Repair only writes missing sidecars, which the
+    // ingester will otherwise catch up on.
+    void (async () => {
+      const session = await getAtprotoSessionForRequest(request);
+      if (!session) return;
+      await repairMissingCollectionsPublicationSidecars(
+        session.client,
+        session.did,
+      );
+    })().catch(() => {});
 
     return cards satisfies Array<CollectionCard>;
   }),
