@@ -41,7 +41,6 @@ import {
   SectionDivider,
   SectionHead,
 } from "../components/reader/primitives";
-import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
 import { Grid } from "../design-system/grid";
 import { SearchField } from "../design-system/search-field";
@@ -69,7 +68,6 @@ const DEFERRED_ROOT_MARGIN = "600px 0px";
 const RAIL_LIMIT = 10;
 const TRENDING_LIMIT_OPTIONS = [5, 10, 20, 50, 100] as const;
 const DEFAULT_TRENDING_LIMIT = 5;
-const SOCIAL_PROOF_COLLAPSED = 3;
 const SOCIAL_PROOF_MAX = 60;
 
 const discoverSearchSchema = z.object({
@@ -153,10 +151,6 @@ const styles = stylex.create({
     overflowX: "auto",
     paddingBottom: spacing["2"],
     paddingTop: spacing["3"],
-  },
-  socialGrid: {
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-    marginTop: spacing["5"],
   },
   directorySearch: {
     flexShrink: 0,
@@ -423,35 +417,13 @@ function DiscoverSocialProofSection({
 }: {
   followedBy: Array<PublicationCard> | undefined;
 }) {
-  const [socialProofExpanded, setSocialProofExpanded] = useState(false);
-
   if (followedBy === undefined) return null;
 
   return (
     <div {...stylex.props(styles.section)}>
-      <SectionHead
-        title="Followed by people you follow"
-        action={
-          followedBy.length > SOCIAL_PROOF_COLLAPSED ? (
-            <Button
-              variant="tertiary"
-              size="sm"
-              onPress={() => setSocialProofExpanded((open) => !open)}
-            >
-              {socialProofExpanded ? "Show less" : "Show more"}
-            </Button>
-          ) : undefined
-        }
-      />
+      <SectionHead title="Followed by people you follow" />
       {followedBy.length > 0 ? (
-        <Grid columnGap="lg" rowGap="lg" style={styles.socialGrid}>
-          {(socialProofExpanded
-            ? followedBy
-            : followedBy.slice(0, SOCIAL_PROOF_COLLAPSED)
-          ).map((pub) => (
-            <PubCard key={pub.uri} pub={pub} />
-          ))}
-        </Grid>
+        <HorizontalRail pubs={followedBy} />
       ) : (
         <p {...stylex.props(styles.emptyRail)}>
           Follow more publications to see what similar readers subscribe to.
