@@ -5,9 +5,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Monitor, Moon, Sparkles, Sun } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pressable } from "react-aria";
 
 import { invalidateReadQueries } from "#/components/reader/read-optimistic";
 import { ButtonLink } from "#/components/router-links";
+import { Tooltip } from "#/design-system/tooltip";
 import { auth } from "#/integrations/tanstack-query/api-auth.functions";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
 import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
@@ -657,12 +659,20 @@ export function UserSettingsView() {
                   ) : null}
                 </DialogBody>
               </Dialog>
-              <Switch
-                isSelected={digestEnabled}
-                onChange={onToggleDigest}
-                isDisabled={digestPending || digestStatusQuery.isLoading}
-                aria-label="Weekly digest email"
-              />
+              <Tooltip text="Coming soon">
+                <Pressable>
+                  <div>
+                    <Switch
+                      isSelected={digestEnabled}
+                      onChange={onToggleDigest}
+                      isDisabled={
+                        true || digestPending || digestStatusQuery.isLoading
+                      }
+                      aria-label="Weekly digest email"
+                    />
+                  </div>
+                </Pressable>
+              </Tooltip>
             </Flex>
           </SettingRow>
           <AlertDialog
