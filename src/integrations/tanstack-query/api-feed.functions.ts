@@ -31,6 +31,7 @@ import {
   selectArticleCards,
   trendingArticles,
   trendingPublicationUris,
+  trendingPublications,
 } from "#/server/reader/queries";
 import { rotationSeed } from "#/server/reader/rail-rotation";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
@@ -49,13 +50,15 @@ import { dbMiddleware } from "./db-middleware";
 
 const HOME_ROW_LIMIT = 8;
 const HOME_RAIL_LIMIT = 6;
+/** Trending articles shown as the main column on the Trending tab. */
+const HOME_TRENDING_ROW_LIMIT = 10;
 /** Full trending tab on Latest — home rail stays at {@link HOME_RAIL_LIMIT}. */
 export const TRENDING_PAGE_LIMIT = 100;
 const LATEST_PAGE_SIZE = 20;
 
 const homeInput = z.object({
-  /** `follows` — subscriptions (default); `network` — whole-network discover feed. */
-  scope: z.enum(["follows", "network"]).default("follows"),
+  /** `follows` — subscriptions (default); `trending` — network-wide trending articles. */
+  scope: z.enum(["follows", "trending"]).default("follows"),
 });
 
 export type HomeScope = z.infer<typeof homeInput>["scope"];
@@ -86,8 +89,13 @@ export interface HomeFeed {
   featured: ArticleCard | null;
   /** Latest unread rows from follows (excludes the featured lead). */
   latestUnread: Array<ArticleCard>;
-  /** Trending articles rail (network-wide). */
+  /**
+   * Network-wide trending articles. Populated only on the Trending tab, where
+   * they render as the main column; empty on the follows tab.
+   */
   trending: Array<ArticleCard>;
+  /** Trending publications rail (sidebar, shown on every tab). */
+  trendingPublications: Array<PublicationCard>;
   /** Recommended publications rail ("You might follow"). */
   youMightFollow: Array<PublicationCard>;
   /** True when tailored to the reader's follows (vs cold-start/signed-out). */
@@ -126,7 +134,7 @@ export interface HomePageData {
 }
 
 const homePageInput = z.object({
-  scope: z.enum(["follows", "network"]).optional(),
+  scope: z.enum(["follows", "trending"]).optional(),
 });
 
 const homeExtrasInput = homeInput;
@@ -202,6 +210,7 @@ async function resolveHomeFeedContext(
 
   const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
   const hasFollows = followUris.length > 0;
+  const isTrending = scope === "trending";
   const personalized = hasFollows && scope === "follows";
   span.set("follows", followUris.length);
   span.set("scope", scope);
@@ -219,6 +228,7 @@ async function resolveHomeFeedContext(
     followUris,
     trackReading,
     hasFollows,
+    isTrending,
     personalized,
     rowQuery,
   };
@@ -232,9 +242,59 @@ async function buildHomeFeedCritical(
   ctx: HomeFeedContext,
   span: Span,
 ): Promise<HomeFeed> {
-  const { trackReading, hasFollows, personalized, rowQuery } = ctx;
+  const { trackReading, hasFollows, isTrending, personalized, rowQuery } = ctx;
 
-  const [featuredLead, rows] = await Promise.all([
+  // Trending tab: the main column is network-wide trending articles, with the
+  // top article promoted to the featured lead (like the subscriptions view).
+  // The publications rail (sidebar) is fetched alongside so both ship in the
+  // critical payload.
+  if (isTrending) {
+    const [trendingPubs, trendingRaw] = await Promise.all([
+      trendingPublications(db, schema, HOME_RAIL_LIMIT),
+      trendingArticles(db, schema, HOME_TRENDING_ROW_LIMIT + 1, {
+        readForDid: trackReading && ctx.did ? ctx.did : undefined,
+      }),
+    ]);
+    span.set("trendingPublications", trendingPubs.length);
+
+    const trendingFiltered = await filterHiddenDocuments(
+      db,
+      schema,
+      ctx.did,
+      trendingRaw,
+    );
+    const trendingVisible = trendingFiltered.slice(
+      0,
+      HOME_TRENDING_ROW_LIMIT + 1,
+    );
+    const trendingCards = await attachSubscribedLabels(
+      db,
+      schema,
+      ctx.did,
+      await attachCommentCountsToArticles(
+        db,
+        schema,
+        trackReading ? trendingVisible : articleCardsAsAllRead(trendingVisible),
+      ),
+    );
+    span.set("trending", trendingCards.length);
+
+    return {
+      featured: trendingCards[0] ?? null,
+      latestUnread: [],
+      trending: trendingCards.slice(1),
+      trendingPublications: trendingPubs,
+      youMightFollow: [],
+      personalized,
+      hasFollows,
+      unreadCount: null,
+    } satisfies HomeFeed;
+  }
+
+  // Trending publications rail (sidebar). Cheap indexed top-N, fetched
+  // alongside the main rows so it's part of the critical payload.
+  const [trendingPubs, featuredLead, rows] = await Promise.all([
+    trendingPublications(db, schema, HOME_RAIL_LIMIT),
     selectArticleCards(db, schema, {
       ...rowQuery,
       featuredOnly: true,
@@ -245,6 +305,7 @@ async function buildHomeFeedCritical(
       limit: HOME_ROW_LIMIT + 1,
     }),
   ]);
+  span.set("trendingPublications", trendingPubs.length);
 
   let featured: ArticleCard | null = featuredLead[0] ?? rows[0] ?? null;
   let latestUnread = rows
@@ -280,37 +341,13 @@ async function buildHomeFeedCritical(
   );
   const byUri = new Map(enriched.map((article) => [article.uri, article]));
 
-  // Trending rail lives above the fold, so it's part of the critical payload
-  // (not deferred). The read is a cheap indexed top-N over `trending_score`
-  // within the recency window — no recommendation scans — so blocking on it is
-  // fine and avoids a loader flash. Exclude anything already shown as the lead
-  // / latest rows.
-  const excludeUris = [
-    ...(featured ? [featured.uri] : []),
-    ...latestUnread.map((article) => article.uri),
-  ];
-  const trendingRaw = await trendingArticles(db, schema, HOME_RAIL_LIMIT, {
-    excludeUris,
-  });
-  const trendingVisible = await filterHiddenDocuments(
-    db,
-    schema,
-    ctx.did,
-    trendingRaw,
-  );
-  const trending = await attachCommentCountsToArticles(
-    db,
-    schema,
-    trendingVisible.slice(0, HOME_RAIL_LIMIT),
-  );
-  span.set("trending", trending.length);
-
   return {
     featured: featured ? (byUri.get(featured.uri) ?? featured) : null,
     latestUnread: latestUnread.map(
       (article) => byUri.get(article.uri) ?? article,
     ),
-    trending,
+    trending: [],
+    trendingPublications: trendingPubs,
     youMightFollow: [],
     personalized,
     hasFollows,

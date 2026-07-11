@@ -7,7 +7,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Flame, LayoutGrid, List, Sparkles, Users } from "lucide-react";
+import { LayoutGrid, List } from "lucide-react";
 import {
   Suspense,
   useCallback,
@@ -229,10 +229,6 @@ const styles = stylex.create({
   toolbarSkeletonFilters: {
     flexWrap: "wrap",
   },
-  kickerIcon: {
-    height: spacing["3.5"],
-    width: spacing["3.5"],
-  },
 });
 
 const SORT_OPTIONS = [
@@ -240,10 +236,6 @@ const SORT_OPTIONS = [
   { id: "active", label: "Active" },
   { id: "az", label: "A–Z" },
 ] as const;
-
-function SectionIcon({ children }: { children: React.ReactNode }) {
-  return <span {...stylex.props(styles.kickerIcon)}>{children}</span>;
-}
 
 function HorizontalRail({ pubs }: { pubs: Array<PublicationCard> }) {
   return (

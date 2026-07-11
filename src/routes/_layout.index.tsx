@@ -1,8 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { ArrowRight, Flame, Sparkles } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { z } from "zod";
 
 import { ButtonLink } from "#/components/router-links";
@@ -10,15 +14,10 @@ import { DEFAULT_TRACK_READING_HISTORY } from "#/lib/track-reading-history";
 
 import {
   ArticleRow,
-  CompactRow,
   FeatureArticle,
   MiniPubRow,
 } from "../components/reader/cards";
-import {
-  Masthead,
-  ReaderContent,
-  SectionHead,
-} from "../components/reader/primitives";
+import { Masthead, ReaderContent } from "../components/reader/primitives";
 import { Flex } from "../design-system/flex";
 import {
   SegmentedControl,
@@ -43,7 +42,7 @@ import { latestFeedUrl, pageSocialMeta } from "../lib/site-metadata";
 import { useHomeScope } from "../lib/use-home-scope";
 
 const homeSearchSchema = z.object({
-  scope: z.enum(["follows", "network"]).optional(),
+  scope: z.enum(["follows", "trending"]).optional(),
 });
 
 export const Route = createFileRoute("/_layout/")({
@@ -217,14 +216,6 @@ function homeMastheadKicker(weekday: string, personalized: boolean): string {
   return `${weekday} · ${personalized ? "Your feed" : "Across the network"}`;
 }
 
-function homeSectionKicker(personalized: boolean): string {
-  return personalized ? "From your follows" : "Fresh off the network";
-}
-
-function homeSectionTitle(trackReading: boolean): string {
-  return trackReading ? "Latest unread" : "Latest";
-}
-
 function homeFeedLabels({
   weekday,
   today,
@@ -232,6 +223,7 @@ function homeFeedLabels({
   trackReading,
   unreadCount,
   unreadCountPending = false,
+  isTrending = false,
 }: {
   weekday: string;
   today: string;
@@ -239,7 +231,19 @@ function homeFeedLabels({
   trackReading: boolean;
   unreadCount: number | null | undefined;
   unreadCountPending?: boolean;
+  isTrending?: boolean;
 }) {
+  if (isTrending) {
+    return {
+      kicker: `${weekday} · Trending`,
+      dek: "The most-read writing across the network right now.",
+      metaLabel: today,
+      unreadLabel: undefined,
+      sectionKicker: "Across the network",
+      sectionTitle: "Trending",
+    };
+  }
+
   const unreadLabel = trackReading
     ? unreadCountPending || unreadCount == null
       ? undefined
@@ -258,8 +262,6 @@ function homeFeedLabels({
     dek,
     metaLabel: today,
     unreadLabel,
-    sectionKicker: homeSectionKicker(personalized),
-    sectionTitle: homeSectionTitle(trackReading),
   };
 }
 
@@ -368,6 +370,7 @@ function HomeFeed({
   readerScope: string;
 }) {
   const navigate = useNavigate({ from: Route.fullPath });
+  const router = useRouter();
   const { setScope } = useHomeScope();
   const { data: feed } = useSuspenseQuery({
     ...feedApi.getHomeFeedQueryOptions({ scope, readerScope }),
@@ -385,14 +388,18 @@ function HomeFeed({
     refetchOnWindowFocus: false,
   });
   const signedIn = Boolean(session?.user);
-  const showNetworkFeed = scope === "network" || !feed.personalized;
+  const isTrending = scope === "trending";
+  const showNetworkFeed = isTrending || !feed.personalized;
   const trackReading =
     signedIn && !showNetworkFeed
       ? (trackReadingPref?.enabled ?? DEFAULT_TRACK_READING_HISTORY)
       : false;
 
   const hasMainContent = Boolean(
-    feed.featured || feed.latestUnread.length > 0 || feed.personalized,
+    feed.featured ||
+    feed.latestUnread.length > 0 ||
+    feed.personalized ||
+    isTrending,
   );
 
   const { data: extras, isPending: extrasPending } = useQuery({
@@ -402,9 +409,24 @@ function HomeFeed({
     refetchOnWindowFocus: false,
   });
 
-  // Trending ships in the critical feed payload (above the fold, no loader);
-  // only the "You might follow" rail is deferred to `extras`.
-  const trending = feed.trending;
+  // Warm the opposite tab's route data so toggling scope is instant — otherwise
+  // the switch blocks on a fresh loader round-trip and flashes the skeleton.
+  // Only worthwhile when the scope toggle is actually shown.
+  const canToggleScope = signedIn && (sidebar?.hasFollows ?? feed.hasFollows);
+  const otherScope: HomeScope = isTrending ? "follows" : "trending";
+  useEffect(() => {
+    if (!canToggleScope) return;
+    void router.preloadRoute({
+      to: Route.fullPath,
+      search: { scope: otherScope },
+    });
+  }, [router, canToggleScope, otherScope]);
+
+  // Trending articles (main column on the Trending tab) and trending
+  // publications (sidebar) ship in the critical feed payload (above the fold,
+  // no loader); only the "You might follow" rail is deferred to `extras`.
+  const mainArticles = isTrending ? feed.trending : feed.latestUnread;
+  const trendingPubs = feed.trendingPublications;
   const youMightFollow = extras?.youMightFollow ?? feed.youMightFollow;
   const unreadCount =
     trackReading && feed.personalized
@@ -415,7 +437,7 @@ function HomeFeed({
 
   const onScopeChange = (keys: Set<React.Key> | "all") => {
     const next = keys === "all" ? "follows" : [...keys][0];
-    if (next === "follows" || next === "network") {
+    if (next === "follows" || next === "trending") {
       setScope(next);
       void navigate({ search: { scope: next }, resetScroll: false });
     }
@@ -429,9 +451,15 @@ function HomeFeed({
     trackReading,
     unreadCount,
     unreadCountPending,
+    isTrending,
   });
 
-  if (!feed.personalized && feed.latestUnread.length === 0 && !feed.featured) {
+  if (
+    !isTrending &&
+    !feed.personalized &&
+    feed.latestUnread.length === 0 &&
+    !feed.featured
+  ) {
     return (
       <ReaderContent>
         <Masthead
@@ -453,7 +481,7 @@ function HomeFeed({
     );
   }
 
-  const showScopeToggle = signedIn && (sidebar?.hasFollows ?? feed.hasFollows);
+  const showScopeToggle = canToggleScope;
 
   return (
     <ReaderContent>
@@ -492,7 +520,7 @@ function HomeFeed({
             <SegmentedControlItem id="follows">
               Subscriptions
             </SegmentedControlItem>
-            <SegmentedControlItem id="network">Everything</SegmentedControlItem>
+            <SegmentedControlItem id="trending">Trending</SegmentedControlItem>
           </SegmentedControl>
         </div>
       ) : null}
@@ -501,20 +529,27 @@ function HomeFeed({
 
       <div {...stylex.props(styles.twoCol)}>
         <Flex direction="column">
-          <SectionHead
-            kicker={labels.sectionKicker}
-            title={labels.sectionTitle}
-          />
           <div>
-            {feed.latestUnread.map((article) => (
+            {mainArticles.map((article, index) => (
               <ArticleRow
                 key={article.uri}
                 article={article}
                 showSaveButton={false}
+                isFirstInSection={index === 0}
               />
             ))}
           </div>
-          {session?.user ? (
+          {isTrending ? (
+            <ButtonLink
+              to="/latest"
+              search={{ filter: "trending" }}
+              variant="secondary"
+              size="lg"
+              style={styles.viewAll}
+            >
+              See all trending <ArrowRight size={15} />
+            </ButtonLink>
+          ) : session?.user ? (
             <ButtonLink
               to="/latest"
               variant="secondary"
@@ -527,29 +562,28 @@ function HomeFeed({
         </Flex>
 
         <Flex direction="column" gap="2xl">
-          {trending.length > 0 ? (
+          {trendingPubs.length > 0 ? (
             <div {...stylex.props(styles.railCard)}>
               <div {...stylex.props(styles.railHead)}>
                 <Flame size={14} {...stylex.props(styles.railIcon)} /> Trending
-                articles
+                publications
               </div>
               <div>
-                {trending.map((article, i) => (
-                  <CompactRow
-                    key={article.uri}
-                    article={article}
-                    rank={i + 1}
+                {trendingPubs.slice(0, 3).map((pub, i, pubs) => (
+                  <MiniPubRow
+                    key={pub.uri}
+                    pub={pub}
+                    isLast={i === pubs.length - 1}
                   />
                 ))}
               </div>
               <ButtonLink
-                to="/latest"
-                search={{ filter: "trending" }}
+                to="/discover"
                 variant="tertiary"
                 size="sm"
                 style={styles.directoryLink}
               >
-                See all trending <ArrowRight size={14} />
+                Open the directory <ArrowRight size={14} />
               </ButtonLink>
             </div>
           ) : null}

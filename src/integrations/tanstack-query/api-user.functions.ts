@@ -792,7 +792,7 @@ const setTrackReadingHistoryPreference = createServerFn({ method: "POST" })
   });
 
 const homeScopeInput = z.object({
-  scope: z.enum(["follows", "network"]),
+  scope: z.enum(["follows", "trending"]),
 });
 
 const getHomeScopePreference = createServerFn({ method: "GET" })
