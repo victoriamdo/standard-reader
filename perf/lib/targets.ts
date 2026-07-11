@@ -81,6 +81,12 @@ function sharedRouteDefs(): Array<SharedRouteDef> {
       budgetMs: 4000,
     },
     {
+      id: "search.author",
+      name: "Search (author)",
+      path: `/search?q=${encodeURIComponent(fixtures.searchAuthorQuery)}`,
+      budgetMs: 4000,
+    },
+    {
       id: "about",
       name: "About",
       path: "/about",

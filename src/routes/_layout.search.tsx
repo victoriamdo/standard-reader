@@ -341,6 +341,17 @@ function formatMatchCount(shown: number, total: number): string {
   return `${total} match${total === 1 ? "" : "es"}`;
 }
 
+/**
+ * Article results are paged without an exact total (the count(*) over the whole
+ * match set was too costly), so show the number loaded plus a "+" when more
+ * pages remain.
+ */
+function formatShownCount(shown: number, hasMore: boolean): string {
+  if (shown === 0) return "No matches";
+  const plus = hasMore ? "+" : "";
+  return `${shown}${plus} match${shown === 1 && !hasMore ? "" : "es"}`;
+}
+
 function Search() {
   const { q: urlQ = "" } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -419,7 +430,6 @@ function Search() {
   }, [debouncedQ, pubPage]);
 
   const articles = articlePages?.pages.flatMap((page) => page.items) ?? [];
-  const articleTotal = articlePages?.pages[0]?.total ?? 0;
 
   const loadMorePublications = useCallback(async () => {
     if (pubNextOffset == null || loadingMorePubsRef.current) return;
@@ -474,15 +484,14 @@ function Search() {
   const hint = hasQuery
     ? pubsPending || articlesPending
       ? "Searching…"
-      : `${pubTotal} publication${pubTotal === 1 ? "" : "s"} · ${articleTotal} article${articleTotal === 1 ? "" : "s"}`
+      : `${pubTotal} publication${pubTotal === 1 ? "" : "s"} · ${articles.length}${hasNextPage ? "+" : ""} article${articles.length === 1 && !hasNextPage ? "" : "s"}`
     : 'Try "climate", "typography", or a handle like stdout.dev';
 
   const showEmpty =
     resultsReady && publications.length === 0 && articles.length === 0;
   const showPublicationSection =
     pubsPending || publications.length > 0 || pubTotal > 0;
-  const showArticleSection =
-    articlesPending || articles.length > 0 || articleTotal > 0;
+  const showArticleSection = articlesPending || articles.length > 0;
   const publicationSectionFirst = showPublicationSection;
   const articleSectionFirst = !showPublicationSection && showArticleSection;
 
@@ -557,7 +566,7 @@ function Search() {
               >
                 <SectionHead
                   kicker="Articles"
-                  title={formatMatchCount(articles.length, articleTotal)}
+                  title={formatShownCount(articles.length, hasNextPage)}
                 />
                 {articles.map((article, index) => (
                   <ArticleRow

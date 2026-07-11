@@ -136,6 +136,12 @@ export const documents = pgTable(
     index("documents_canonical_url_idx")
       .on(table.canonicalUrl)
       .where(sql`deleted = false`),
+    // URL-shaped article searches match `canonical_url ILIKE '%host/path%'`; a
+    // trigram index serves that leading-wildcard match (the btree above can't).
+    index("documents_canonical_url_trgm_idx").using(
+      "gin",
+      table.canonicalUrl.op("gin_trgm_ops"),
+    ),
   ],
 );
 

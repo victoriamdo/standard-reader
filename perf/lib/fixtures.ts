@@ -7,6 +7,8 @@ export interface PerfFixtures {
   collectionEditPath: string | null;
   tag: string;
   searchQuery: string;
+  /** A handle/name-shaped query exercising the author pre-resolution path. */
+  searchAuthorQuery: string;
 }
 
 function routeFromRecordUri(
@@ -57,6 +59,8 @@ export function loadPerfFixtures(): PerfFixtures {
     collectionEditPath,
     tag: process.env.PERF_TEST_TAG?.trim() || "observability",
     searchQuery: process.env.PERF_TEST_SEARCH_QUERY?.trim() || "reader",
+    searchAuthorQuery:
+      process.env.PERF_TEST_SEARCH_AUTHOR_QUERY?.trim() || "stdout.dev",
   };
 }
 

@@ -2,11 +2,10 @@ import { isDid } from "@atcute/lexicons/syntax";
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
-import type * as DbSchema from "#/db/schema";
 import { STANDARD_NSID } from "#/lib/atproto/nsids";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { getPublicUrl } from "#/lib/public-url";
@@ -72,7 +71,6 @@ export interface SearchPublicationsPage {
 export interface SearchArticlesPage {
   query: string;
   items: Array<ArticleCard>;
-  total: number;
   nextOffset: number | null;
 }
 
@@ -159,62 +157,80 @@ const searchArticles = createServerFn({ method: "GET" })
 
       const tsq = sql`websearch_to_tsquery('english', ${data.q})`;
       const hints = documentQueryHints(data.q);
-      const matchClause = documentMatchSql(d, pr, pa, tsq, hints, data.q);
+      // Resolve author/handle matches up front via a trigram-indexed profile
+      // lookup, so the documents predicate stays single-table (index-served)
+      // instead of OR-ing `ILIKE '%q%'` across the joined profiles tables — the
+      // cross-table OR is what forced a full scan of `documents` on every query.
+      const authorMatch = await resolveAuthorMatchesForQuery(
+        db,
+        schema,
+        data.q,
+        hints,
+      );
+      const matchClause = documentMatchSql(d, tsq, hints, authorMatch);
       const articleWhere = and(
         eq(d.deleted, false),
         matchClause,
         notExcludedPublicationArticleWhere(p),
       );
 
-      const [countRow, articleRows] = await Promise.all([
-        db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(d)
-          .leftJoin(p, eq(p.uri, d.publicationUri))
-          .leftJoin(pr, eq(pr.did, p.did))
-          .leftJoin(pa, eq(pa.did, d.did))
-          .where(articleWhere),
-        db
-          .select({
-            ...articleCardColumns(schema),
-            searchTitleHtml: documentSearchTitleHeadline(d.title, tsq),
-            searchSnippetHtml: documentSearchSnippetHeadline(
-              d.description,
-              d.textContent,
-              tsq,
-            ),
-          })
-          .from(d)
-          .leftJoin(p, eq(p.uri, d.publicationUri))
-          .leftJoin(pr, eq(pr.did, p.did))
-          .leftJoin(pa, eq(pa.did, d.did))
-          .where(articleWhere)
-          .orderBy(
-            sql`ts_rank(${d.searchVector}, ${tsq}) desc`,
-            desc(d.publishedAt),
-          )
-          .limit(data.limit)
-          .offset(data.offset),
-      ]);
+      // Rank + page the bare document URIs in an inner subquery, then join back
+      // to the real tables in the outer query for the card columns and the
+      // ts_headline snippets — so headline (and the recommend-count subquery)
+      // run only for the `limit + 1` returned rows, not every matched document.
+      // The inner subquery projects only `uri` on purpose: `articleCardColumns`
+      // selects several columns that share an underlying name (`d.did`/`p.did`,
+      // owner vs. author `handle`/`avatar_url`), which would collide as subquery
+      // output columns. Fetching one extra row tells us whether a next page
+      // exists without an exact count(*) over the whole match set.
+      const page = db
+        .select({ uri: d.uri })
+        .from(d)
+        .leftJoin(p, eq(p.uri, d.publicationUri))
+        .where(articleWhere)
+        .orderBy(
+          sql`ts_rank(${d.searchVector}, ${tsq}) desc`,
+          desc(d.publishedAt),
+        )
+        .limit(data.limit + 1)
+        .offset(data.offset)
+        .as("page");
 
-      const total = countRow[0]?.count ?? 0;
+      const pageRows = await db
+        .select({
+          ...articleCardColumns(schema),
+          searchTitleHtml: documentSearchTitleHeadline(d.title, tsq),
+          searchSnippetHtml: documentSearchSnippetHeadline(
+            d.description,
+            d.textContent,
+            tsq,
+          ),
+        })
+        .from(page)
+        .innerJoin(d, eq(d.uri, page.uri))
+        .leftJoin(p, eq(p.uri, d.publicationUri))
+        .leftJoin(pr, eq(pr.did, p.did))
+        .leftJoin(pa, eq(pa.did, d.did))
+        .orderBy(
+          sql`ts_rank(${d.searchVector}, ${tsq}) desc`,
+          desc(d.publishedAt),
+        );
+
+      const hasMore = pageRows.length > data.limit;
+      const articleRows = hasMore ? pageRows.slice(0, data.limit) : pageRows;
+
       const items = await attachCommentCountsToArticles(
         db,
         schema,
         articleRows.map((row) => toArticleCard(row)),
       );
-      span.set("total", total);
       span.set("count", items.length);
 
-      const nextOffset =
-        items.length > 0 && data.offset + items.length < total
-          ? data.offset + items.length
-          : null;
+      const nextOffset = hasMore ? data.offset + data.limit : null;
 
       return {
         query: data.q,
         items,
-        total,
         nextOffset,
       } satisfies SearchArticlesPage;
     }),
@@ -390,49 +406,101 @@ function documentQueryHints(input: string): DocumentQueryHints {
   return EMPTY_DOCUMENT_HINTS;
 }
 
-/**
- * Build the article match clause from {@link documentQueryHints}: an exact
- * record/URL reference matches alone, otherwise the FTS vector is OR-ed with
- * any author handle/DID match so "alice.bsky.social" surfaces her articles
- * alongside ordinary title/body hits.
- */
-/** Aliased `profiles` table (`pa`) — the document author's profile. */
-type ProfileAlias = ReturnType<typeof alias<typeof DbSchema.profiles, "pa">>;
+/** Cap on how many matching author profiles a single search resolves. */
+const AUTHOR_MATCH_LIMIT = 50;
+/** Trigram indexes need a full 3-char gram; shorter terms can't use the index. */
+const AUTHOR_MATCH_MIN_LENGTH = 3;
 
+/** Author DIDs (and their publications) whose handle/name matched the query. */
+interface AuthorMatch {
+  dids: Array<string>;
+  pubUris: Array<string>;
+}
+
+const EMPTY_AUTHOR_MATCH: AuthorMatch = { dids: [], pubUris: [] };
+
+/**
+ * Decide the author term for an article query and resolve matching profiles.
+ * Reference-style queries (exact at-URI, canonical URL, or DID) never match by
+ * name. A bare `@handle`/handle hint matches that handle; a plain-text query of
+ * at least {@link AUTHOR_MATCH_MIN_LENGTH} chars matches handles and display
+ * names, so "alice" or "alice.bsky.social" still surfaces her documents (incl.
+ * loose docs whose author has no publication row). Returns empty when there's
+ * nothing to resolve — the caller then matches on the FTS vector alone.
+ */
+async function resolveAuthorMatchesForQuery(
+  db: Db,
+  schema: Schema,
+  q: string,
+  hints: DocumentQueryHints,
+): Promise<AuthorMatch> {
+  if (hints.uri || hints.canonicalLike || hints.authorDid) {
+    return EMPTY_AUTHOR_MATCH;
+  }
+  const term = hints.authorHandle ?? q.trim();
+  if (term.length < AUTHOR_MATCH_MIN_LENGTH) return EMPTY_AUTHOR_MATCH;
+  return resolveAuthorMatches(db, schema, term);
+}
+
+/**
+ * Trigram-indexed profile lookup → the matching author DIDs and the URIs of
+ * any publications they own. Both feed single-table `IN (...)` predicates on
+ * `documents` (`did` covers the author / loose-doc case; `publication_uri`
+ * covers documents published under a matched author's publication), so the
+ * planner can serve the whole article match with a BitmapOr over indexes
+ * instead of scanning to evaluate a cross-table `ILIKE`. Capped at
+ * {@link AUTHOR_MATCH_LIMIT} joined rows.
+ */
+async function resolveAuthorMatches(
+  db: Db,
+  schema: Schema,
+  term: string,
+): Promise<AuthorMatch> {
+  const pr = schema.profiles;
+  const p = schema.publications;
+  const like = `%${term}%`;
+  const rows = await db
+    .select({ did: pr.did, pubUri: p.uri })
+    .from(pr)
+    .leftJoin(p, and(eq(p.did, pr.did), eq(p.deleted, false)))
+    .where(or(ilike(pr.handle, like), ilike(pr.displayName, like)))
+    .limit(AUTHOR_MATCH_LIMIT);
+
+  const dids = [...new Set(rows.map((row) => row.did))];
+  const pubUris = [
+    ...new Set(
+      rows.map((row) => row.pubUri).filter((uri): uri is string => uri != null),
+    ),
+  ];
+  return { dids, pubUris };
+}
+
+/**
+ * Build the article match clause from {@link documentQueryHints} and the
+ * pre-resolved {@link AuthorMatch}: an exact record/URL reference matches alone,
+ * otherwise the FTS vector is OR-ed with the matched author DIDs / publications
+ * (and an explicit author DID hint) so "alice.bsky.social" surfaces her
+ * articles alongside ordinary title/body hits. Every arm is a `documents`
+ * column, so the OR stays index-servable.
+ */
 function documentMatchSql(
   d: Schema["documents"],
-  pr: Schema["profiles"],
-  pa: ProfileAlias,
   tsq: ReturnType<typeof sql>,
   hints: DocumentQueryHints,
-  q: string,
+  authorMatch: AuthorMatch,
 ) {
   if (hints.uri) return eq(d.uri, hints.uri);
   if (hints.canonicalLike) return ilike(d.canonicalUrl, hints.canonicalLike);
 
   const parts = [sql`${d.searchVector} @@ ${tsq}`];
-  if (hints.authorHandle) {
-    // Match the handle on either the publication owner (`pr`) or the document
-    // author (`pa`). Loose documents have no publication row, so `pr.handle`
-    // is null — without `pa` the author's own handle never surfaces their docs.
-    parts.push(ilike(pr.handle, `%${hints.authorHandle}%`));
-    parts.push(ilike(pa.handle, `%${hints.authorHandle}%`));
+  if (authorMatch.dids.length > 0) {
+    parts.push(inArray(d.did, authorMatch.dids));
+  }
+  if (authorMatch.pubUris.length > 0) {
+    parts.push(inArray(d.publicationUri, authorMatch.pubUris));
   }
   if (hints.authorDid) {
     parts.push(eq(d.did, hints.authorDid));
-  }
-  // For plain-text queries, also match the author's handle and display name so
-  // searching by a person's name or partial handle surfaces their documents
-  // (incl. loose docs whose author has no publication). `searchVector` only
-  // covers title/description/body, and `authorHandle` only fires for bare
-  // handle-like inputs (with dots) — this catches partial handles and names.
-  const trimmed = q.trim();
-  if (trimmed.length > 0 && !hints.authorHandle && !hints.authorDid) {
-    const like = `%${trimmed}%`;
-    parts.push(ilike(pr.handle, like));
-    parts.push(ilike(pa.handle, like));
-    parts.push(ilike(pr.displayName, like));
-    parts.push(ilike(pa.displayName, like));
   }
   return or(...parts) ?? sql`false`;
 }

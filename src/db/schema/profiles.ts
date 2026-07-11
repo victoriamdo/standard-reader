@@ -47,7 +47,20 @@ export const profiles = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("profiles_handle_idx").on(table.handle)],
+  (table) => [
+    index("profiles_handle_idx").on(table.handle),
+    // Trigram indexes powering the author/handle `ILIKE '%q%'` lookups in search
+    // (article author pre-resolution, loose-doc accounts). A plain btree can't
+    // serve a leading-wildcard match; `gin_trgm_ops` can.
+    index("profiles_handle_trgm_idx").using(
+      "gin",
+      table.handle.op("gin_trgm_ops"),
+    ),
+    index("profiles_display_name_trgm_idx").using(
+      "gin",
+      table.displayName.op("gin_trgm_ops"),
+    ),
+  ],
 );
 
 export type Profile = typeof profiles.$inferSelect;
