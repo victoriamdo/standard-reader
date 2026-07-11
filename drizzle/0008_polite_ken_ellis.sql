@@ -1,1 +1,0 @@
-ALTER TABLE "documents" ADD COLUMN "has_renderable_body" boolean DEFAULT true NOT NULL;

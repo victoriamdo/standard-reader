@@ -1,1 +1,0 @@
-ALTER TABLE "user" ADD COLUMN "atstore_review_prompt_dismissed" boolean;

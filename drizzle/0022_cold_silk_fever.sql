@@ -1,1 +1,0 @@
-ALTER TABLE "publications" ADD COLUMN "collections_publication" boolean DEFAULT false NOT NULL;

@@ -1,1 +1,0 @@
-ALTER TABLE "user" ADD COLUMN "reading_typography" text;

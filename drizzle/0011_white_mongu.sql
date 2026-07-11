@@ -1,1 +1,0 @@
-ALTER TABLE "user" ADD COLUMN "open_links_externally" boolean;

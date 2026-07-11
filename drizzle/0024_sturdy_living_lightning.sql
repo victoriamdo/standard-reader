@@ -1,1 +1,0 @@
-ALTER TABLE "user" ADD COLUMN "collections_authoring_enabled" boolean;
