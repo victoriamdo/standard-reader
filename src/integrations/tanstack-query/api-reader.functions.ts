@@ -283,6 +283,53 @@ const followPublication = createServerFn({ method: "POST" })
     }),
   );
 
+/** Follow several publications in one request — used by the onboarding wizard's
+ * select-then-commit flow. Writes are sequential (one restored PDS client, no
+ * parallel `putRecord` burst against a brand-new account's PDS) and per-URI
+ * failures are reported rather than aborting the batch, so the UI can keep the
+ * failed rows selected and offer a retry. */
+const followPublications = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
+  .validator(z.object({ publicationUris: z.array(z.string().min(1)).min(1).max(25) }))
+  .handler(
+    observe("reader.followPublications", async ({ data }, span) => {
+      span.set("count", data.publicationUris.length);
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) {
+        throw new Error("Sign in to follow publications.");
+      }
+      span.set("did", session.did);
+
+      const results: Array<{ uri: string; ok: boolean; error?: string }> = [];
+      for (const publicationUri of data.publicationUris) {
+        try {
+          const createdAt = new Date().toISOString();
+          const { uri, cid } = await putSubscriptionRecord(
+            session.client,
+            session.did,
+            publicationUri,
+            createdAt,
+          );
+          await upsertSubscription(
+            uri,
+            session.did,
+            subjectRkey(publicationUri),
+            cid,
+            { publication: publicationUri, createdAt },
+          );
+          results.push({ uri: publicationUri, ok: true });
+        } catch (error) {
+          console.warn("[reader] batch follow failed", publicationUri, error);
+          results.push({ uri: publicationUri, ok: false, error: String(error) });
+        }
+      }
+
+      span.set("followed", results.filter((r) => r.ok).length);
+      await trackReaderRepo(session.did);
+      return { results };
+    }),
+  );
+
 const unfollowPublication = createServerFn({ method: "POST" })
   .middleware([dbMiddleware])
   .validator(publicationInput)
@@ -1098,6 +1145,7 @@ export const readerApi = {
   getFollowStatusQueryOptions,
   followPublication,
   followPublicationMutationOptions,
+  followPublications,
   unfollowPublication,
   unfollowPublicationMutationOptions,
   // like (site.standard.graph.recommend)

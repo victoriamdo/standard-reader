@@ -75,6 +75,7 @@ export interface LeafletHeaderBlock {
   $type?: string;
   level?: number;
   plaintext: string;
+  facets?: Array<LeafletFacet>;
 }
 
 export interface LeafletBskyPostBlock {

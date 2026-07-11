@@ -33,6 +33,12 @@ import {
   openLinksExternallyToDbValue,
   parseOpenLinksExternally,
 } from "#/lib/open-links";
+import {
+  ONBOARDING_COMPLETED_COOKIE,
+  ONBOARDING_COMPLETED_COOKIE_MAX_AGE_SECONDS,
+  dbValueToOnboardingCompleted,
+  onboardingCompletedToCookieValue,
+} from "#/lib/onboarding";
 import type { HideableTabId } from "#/lib/profile-tabs";
 import {
   hiddenTabsToDbValue,
@@ -119,6 +125,7 @@ async function loadSessionFromToken(sessionToken: string) {
           collectionsAuthoringEnabled: true,
           atstoreReviewPromptDismissed: true,
           userinputFeedbackEnabled: true,
+          onboardingCompleted: true,
         },
         with: {
           accounts: {
@@ -195,6 +202,9 @@ async function loadSessionFromToken(sessionToken: string) {
     collectionsAuthoringEnabled: userRow.collectionsAuthoringEnabled,
     atstoreReviewPromptDismissed: userRow.atstoreReviewPromptDismissed,
     userinputFeedbackEnabled: userRow.userinputFeedbackEnabled,
+    onboardingCompleted: dbValueToOnboardingCompleted(
+      userRow.onboardingCompleted,
+    ),
     grantedScope,
     client,
   };
@@ -273,6 +283,7 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
             collectionsAuthoringEnabled: true,
             atstoreReviewPromptDismissed: true,
             userinputFeedbackEnabled: true,
+            onboardingCompleted: true,
           },
           with: {
             accounts: {
@@ -351,6 +362,12 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
               userinputFeedbackEnabled?: boolean | null;
             }
           ).userinputFeedbackEnabled === true,
+        onboardingCompleted:
+          (
+            userRow as typeof userRow & {
+              onboardingCompleted?: boolean | null;
+            }
+          ).onboardingCompleted === true,
         // Granted OAuth scope snapshotted on the callback (`account.scope`).
         // The UI gates collections authoring on this — it's the source of truth
         // for "the reader has actually accepted the collections tier".
@@ -405,6 +422,7 @@ const getSession = createServerFn({ method: "GET" }).handler(async () => {
     collectionsAuthoringEnabled: loaded.collectionsAuthoringEnabled,
     atstoreReviewPromptDismissed: loaded.atstoreReviewPromptDismissed === true,
     userinputFeedbackEnabled: loaded.userinputFeedbackEnabled === true,
+    onboardingCompleted: loaded.onboardingCompleted === true,
     grantedScope: loaded.grantedScope,
   };
 });
@@ -850,6 +868,32 @@ const dismissAtstoreReviewPrompt = createServerFn({ method: "POST" })
     return { dismissed: true };
   });
 
+/** Mark the first-run onboarding wizard as finished or dismissed. Dual-writes
+ * the cookie (for guests / SSR) and, when signed in, `user.onboarding_completed`
+ * so the Home gate stops redirecting the reader to `/welcome`. */
+const setOnboardingCompleted = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .handler(async ({ context }): Promise<{ completed: boolean }> => {
+    setCookie(
+      ONBOARDING_COMPLETED_COOKIE,
+      onboardingCompletedToCookieValue(true),
+      {
+        path: "/",
+        sameSite: "lax",
+        maxAge: ONBOARDING_COMPLETED_COOKIE_MAX_AGE_SECONDS,
+      },
+    );
+
+    if (context?.session?.user) {
+      await context.db
+        .update(context.schema.user)
+        .set({ onboardingCompleted: true })
+        .where(eq(context.schema.user.id, context.session.user.id));
+    }
+
+    return { completed: true };
+  });
+
 interface WeeklyDigestStatus {
   /** Opted into the weekly digest (`user.weeklyDigestEnabled`). */
   enabled: boolean;
@@ -966,6 +1010,7 @@ export const user = {
   getHomeScopePreferenceQueryOptions,
   setHomeScopePreference,
   dismissAtstoreReviewPrompt,
+  setOnboardingCompleted,
   getWeeklyDigestStatus,
   getWeeklyDigestStatusQueryOptions,
   signOut,

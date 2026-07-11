@@ -70,6 +70,10 @@ export const user = pgTable("user", {
   sembleSaveEnabled: boolean("semble_save_enabled"),
   /** `true` stops the one-time ATStore review prompt toast from showing again. */
   atstoreReviewPromptDismissed: boolean("atstore_review_prompt_dismissed"),
+  /** `true` once the first-run onboarding wizard was finished or dismissed;
+   * `null` = never seen (eligible for `/welcome` when the reader has no
+   * follows). See `src/lib/onboarding.ts`. */
+  onboardingCompleted: boolean("onboarding_completed"),
   /** `true` enables the weekly digest email: requests the `transition:email`
    * OAuth scope on the next sign-in (persisted so subsequent logins silently
    * re-request it and keep `email` fresh), and opts the reader into the weekly

@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
   createFileRoute,
+  redirect,
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
@@ -37,6 +38,7 @@ import {
 import type { HomeScope } from "../integrations/tanstack-query/api-feed.functions";
 import { feedApi } from "../integrations/tanstack-query/api-feed.functions";
 import { user } from "../integrations/tanstack-query/api-user.functions";
+import { sidebarQueryOptions } from "../integrations/tanstack-query/shell-queries";
 import { getPublicUrlClient } from "../lib/public-url";
 import { latestFeedUrl, pageSocialMeta } from "../lib/site-metadata";
 import { useHomeScope } from "../lib/use-home-scope";
@@ -47,6 +49,24 @@ const homeSearchSchema = z.object({
 
 export const Route = createFileRoute("/_layout/")({
   validateSearch: homeSearchSchema,
+  // First-run gate: a signed-in reader who hasn't finished onboarding and
+  // follows nothing is sent to the wizard. Guests and readers who already have
+  // follows (or completed onboarding) fall through. Both queries are seeded by
+  // the root bootstrap + `_layout` loader, so this is normally two cache reads.
+  beforeLoad: async ({ context }) => {
+    const session = await context.queryClient.ensureQueryData(
+      user.getSessionQueryOptions,
+    );
+    if (!session?.user || session.onboardingCompleted) {
+      return;
+    }
+    const sidebar = await context.queryClient.ensureQueryData(
+      sidebarQueryOptions(),
+    );
+    if (!sidebar.hasFollows) {
+      throw redirect({ to: "/welcome" });
+    }
+  },
   loaderDeps: ({ search }) => ({ scope: search.scope }),
   loader: async ({ context, deps }) => {
     const page = await feedApi.getHomePage({

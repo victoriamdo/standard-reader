@@ -64,6 +64,7 @@ export function LeafletBlockView({
         <HeadingBlockView
           plaintext={block.block.plaintext}
           level={block.block.level}
+          facets={block.block.facets}
           embedded={embedded}
         />
       );

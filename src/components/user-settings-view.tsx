@@ -4,7 +4,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Monitor, Moon, Sparkles, Sun } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable } from "react-aria";
 
 import { invalidateReadQueries } from "#/components/reader/read-optimistic";
@@ -75,6 +75,7 @@ import {
 import { Masthead, ReaderContent } from "./reader/primitives";
 import { ReadingCustomFontPicker } from "./reading-custom-font-picker";
 import { ReadingSettingsPreview } from "./reading-settings-preview";
+import { TypographySegmentedControl } from "./typography-segmented-control";
 
 const MOBILE = "@media (max-width: 47.5rem)";
 
@@ -270,57 +271,6 @@ const styles = stylex.create({
     position: "absolute",
   },
 });
-
-function TypographySegmentedControl<T extends string>({
-  value,
-  options,
-  label,
-  onChange,
-  style,
-}: {
-  value: T;
-  options: ReadonlyArray<T>;
-  label: (option: T) => string;
-  onChange: (next: T) => void;
-  style?: stylex.StyleXStyles;
-}) {
-  const [selected, setSelected] = useState(value);
-
-  useEffect(() => {
-    setSelected(value);
-  }, [value]);
-
-  const selectedKeys = useMemo(() => new Set([selected]), [selected]);
-
-  const handleSelectionChange = useCallback(
-    (keys: Set<React.Key> | "all") => {
-      const key = keys === "all" ? undefined : String([...keys][0]);
-      if (
-        typeof key === "string" &&
-        (options as ReadonlyArray<string>).includes(key)
-      ) {
-        const next = key as T;
-        setSelected(next);
-        requestAnimationFrame(() => onChange(next));
-      }
-    },
-    [onChange, options],
-  );
-
-  return (
-    <SegmentedControl
-      selectedKeys={selectedKeys}
-      onSelectionChange={handleSelectionChange}
-      style={style}
-    >
-      {options.map((option) => (
-        <SegmentedControlItem key={option} id={option}>
-          {label(option)}
-        </SegmentedControlItem>
-      ))}
-    </SegmentedControl>
-  );
-}
 
 function SettingRow({
   label,

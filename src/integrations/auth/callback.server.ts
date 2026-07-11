@@ -11,7 +11,10 @@ import {
   fetchBlueskyPublicProfileFields,
   shouldApplyBlueskyAvatarFromPublicUrl,
 } from "#/lib/bluesky-public-profile";
-import { sanitizeAuthRedirectTarget } from "#/utils/auth-redirect";
+import {
+  DEFAULT_AUTH_REDIRECT,
+  sanitizeAuthRedirectTarget,
+} from "#/utils/auth-redirect";
 
 export async function handleAtprotoOAuthCallback(args: {
   request: Request;
@@ -103,6 +106,7 @@ export async function handleAtprotoOAuthCallback(args: {
     }
 
     let userId: string;
+    let isNewUser = false;
 
     if (existingUserByDid) {
       userId = existingUserByDid.id;
@@ -110,6 +114,7 @@ export async function handleAtprotoOAuthCallback(args: {
       userId = existingAccount.userId;
     } else {
       userId = crypto.randomUUID();
+      isNewUser = true;
       await db.insert(schema.user).values({
         id: userId,
         name: displayName,
@@ -181,11 +186,18 @@ export async function handleAtprotoOAuthCallback(args: {
       `Max-Age=${30 * 24 * 60 * 60}`,
     ].join("; ");
 
+    // Brand-new accounts land in the first-run onboarding wizard, but only
+    // when they weren't already headed somewhere specific (a subscribe-intent
+    // deep link passes an explicit redirect — honor it; the Home gate catches
+    // a still-empty account later). Existing users keep their returnTo.
+    const effectiveReturnTo =
+      isNewUser && returnTo === DEFAULT_AUTH_REDIRECT ? "/welcome" : returnTo;
+
     const headers = new Headers();
     const baseUrl = new URL(request.url);
-    const redirectUrl = returnTo.startsWith("http")
-      ? new URL(returnTo)
-      : new URL(returnTo, `${baseUrl.protocol}//${baseUrl.host}`);
+    const redirectUrl = effectiveReturnTo.startsWith("http")
+      ? new URL(effectiveReturnTo)
+      : new URL(effectiveReturnTo, `${baseUrl.protocol}//${baseUrl.host}`);
 
     redirectUrl.searchParams.set("loginSuccess", "true");
     if (handle) {

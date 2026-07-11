@@ -274,6 +274,155 @@ const getRecommendedPublications = createServerFn({ method: "GET" })
     ),
   );
 
+export type OnboardingSuggestionKind = "trending" | "topic" | "popular";
+
+export interface OnboardingSuggestionSection {
+  kind: OnboardingSuggestionKind;
+  /** The selected topic for `kind: "topic"` sections; `null` otherwise. */
+  topic: string | null;
+  items: Array<PublicationCard>;
+}
+
+export interface OnboardingSuggestions {
+  sections: Array<OnboardingSuggestionSection>;
+  /** URIs shown in the trending section, so the UI can badge them. */
+  trendingUris: Array<string>;
+}
+
+const onboardingSuggestionsInput = z.object({
+  topics: z.array(z.string().min(1).max(60)).max(5).default([]),
+  limit: z.number().int().min(1).max(40).default(18),
+});
+
+/**
+ * Assemble onboarding follow suggestions into deduped sections: trending first,
+ * then one section per selected topic (in selection order), then a "popular on
+ * the network" backfill sized to reach `limit`. Each publication appears in only
+ * the first section that surfaces it, publications with no documents are
+ * dropped, and anything in `excludeUris` (the reader's existing follows) is
+ * skipped. Pure so it can be unit-tested without a DB.
+ */
+export function buildOnboardingSections(input: {
+  trending: Array<PublicationCard>;
+  topicGroups: Array<{ topic: string; items: Array<PublicationCard> }>;
+  popular: Array<PublicationCard>;
+  excludeUris: Iterable<string>;
+  limit: number;
+}): Array<OnboardingSuggestionSection> {
+  const seen = new Set<string>(input.excludeUris);
+  const take = (items: Array<PublicationCard>): Array<PublicationCard> => {
+    const out: Array<PublicationCard> = [];
+    for (const pub of items) {
+      if (pub.documentCount <= 0 || seen.has(pub.uri)) continue;
+      seen.add(pub.uri);
+      out.push(pub);
+    }
+    return out;
+  };
+
+  const sections: Array<OnboardingSuggestionSection> = [];
+
+  const trending = take(input.trending);
+  if (trending.length > 0) {
+    sections.push({ kind: "trending", topic: null, items: trending });
+  }
+
+  for (const group of input.topicGroups) {
+    const items = take(group.items);
+    if (items.length > 0) {
+      sections.push({ kind: "topic", topic: group.topic, items });
+    }
+  }
+
+  const already = sections.reduce((n, s) => n + s.items.length, 0);
+  const remaining = Math.max(0, input.limit - already);
+  if (remaining > 0) {
+    const popular = take(input.popular).slice(0, remaining);
+    if (popular.length > 0) {
+      sections.push({ kind: "popular", topic: null, items: popular });
+    }
+  }
+
+  return sections;
+}
+
+/**
+ * Follow suggestions for the first-run onboarding wizard — trending this week,
+ * popular publications in each topic the reader picked, and a rotating popular
+ * backfill. Pure composition of the existing discover queries; excludes what the
+ * reader already follows.
+ */
+const getOnboardingSuggestions = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .validator(onboardingSuggestionsInput)
+  .handler(
+    observe(
+      "discover.getOnboardingSuggestions",
+      async ({ data, context }, span): Promise<OnboardingSuggestions> => {
+        const { db, schema } = context;
+        const session = await getAtprotoSessionForRequest(getRequest());
+        const did = session?.did ?? null;
+        if (did) span.set("did", did);
+
+        // De-dupe selected topics case-insensitively, keeping selection order.
+        const seenTopic = new Set<string>();
+        const topics: Array<string> = [];
+        for (const raw of data.topics) {
+          const topic = raw.trim();
+          const key = topic.toLowerCase();
+          if (!topic || seenTopic.has(key)) continue;
+          seenTopic.add(key);
+          topics.push(topic);
+        }
+        span.set("topics", topics.join(",") || "(none)");
+
+        const followUris = did
+          ? await effectiveFollowUris(db, schema, did)
+          : [];
+
+        const [trending, topicGroups] = await Promise.all([
+          trendingPublications(db, schema, 6),
+          Promise.all(
+            topics.map(async (topic) => ({
+              topic,
+              items: await discoverDirectoryPublications(db, schema, {
+                topic,
+                sort: "readers",
+                limit: 8,
+                offset: 0,
+              }),
+            })),
+          ),
+        ]);
+
+        const trendingUris = trending.map((pub) => pub.uri);
+        const popular = await popularPublications(
+          db,
+          schema,
+          data.limit,
+          [...new Set([...followUris, ...trendingUris])],
+          rotationSeed("onboarding", did ?? "anon"),
+        );
+
+        const sections = buildOnboardingSections({
+          trending,
+          topicGroups,
+          popular,
+          excludeUris: followUris,
+          limit: data.limit,
+        });
+
+        span.set("sections", sections.length);
+        span.set(
+          "items",
+          sections.reduce((n, s) => n + s.items.length, 0),
+        );
+
+        return { sections, trendingUris };
+      },
+    ),
+  );
+
 const getEffectiveFollowUris = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
   .handler(
@@ -413,6 +562,17 @@ function getFollowedByPeopleYouFollowQueryOptions({
   });
 }
 
+function getOnboardingSuggestionsQueryOptions({
+  topics = [],
+  limit = 18,
+}: z.input<typeof onboardingSuggestionsInput> = {}) {
+  return queryOptions({
+    queryKey: ["discover", "onboarding-suggestions", topics, limit] as const,
+    queryFn: async () => getOnboardingSuggestions({ data: { topics, limit } }),
+    staleTime: 60_000,
+  });
+}
+
 function getEffectiveFollowUrisQueryOptions() {
   return queryOptions({
     queryKey: ["discover", "effectiveFollowUris"] as const,
@@ -435,6 +595,8 @@ export const discoverApi = {
   getRecommendedPublicationsQueryOptions,
   getFollowedByPeopleYouFollow,
   getFollowedByPeopleYouFollowQueryOptions,
+  getOnboardingSuggestions,
+  getOnboardingSuggestionsQueryOptions,
   getEffectiveFollowUris,
   getEffectiveFollowUrisQueryOptions,
 };
