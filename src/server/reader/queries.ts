@@ -52,6 +52,11 @@ import {
   discoverEligiblePublicationWhere,
 } from "#/server/reader/publication-filters";
 import {
+  ROTATION_POOL_MULTIPLIER,
+  rotateRail,
+  rotationSeed,
+} from "#/server/reader/rail-rotation";
+import {
   MIN_ARTICLE_RECOMMENDERS,
   TRENDING_MAX_AGE_DAYS,
   applyTrendingDiversityCaps,
@@ -1184,6 +1189,12 @@ export interface PublicationRailOpts {
    * members aren't re-suggested; defaults to raw subscriptions.
    */
   followUris?: Array<string>;
+  /**
+   * Rotation seed (see {@link rotationSeed}). Pass a surface-specific seed so
+   * home / discover / digest rails draw different slices of the candidate
+   * pool; defaults to a per-viewer daily seed.
+   */
+  seed?: string;
 }
 
 function mergeExcludeUris(...groups: Array<Array<string>>): Array<string> {
@@ -1297,7 +1308,9 @@ async function corecommendScoresForAnchors(
 
 /**
  * Publications liked by readers who also follow the anchor set (personalized
- * social signal).
+ * social signal). Scores are normalized by each publication's total recommend
+ * base (`count / sqrt(total)`) so already-huge publications don't drown out
+ * niche ones that are disproportionately liked by the reader's cohort.
  */
 async function coReaderLikeScores(
   db: Db,
@@ -1313,6 +1326,7 @@ async function coReaderLikeScores(
   const sub = schema.subscriptions;
   const rc = schema.recommends;
   const doc = schema.documents;
+  const st = schema.publicationStats;
 
   const coReaders = db
     .selectDistinct({ did: sub.subscriberDid })
@@ -1334,11 +1348,15 @@ async function coReaderLikeScores(
   const rows = await db
     .select({
       uri: doc.publicationUri,
-      score: sql<number>`count(distinct ${rc.recommenderDid})`.mapWith(Number),
+      score: sql<number>`count(distinct ${rc.recommenderDid})::float8
+        / sqrt(greatest(max(coalesce(${st.recommendCount}, 0)), 1)::float8)`.mapWith(
+        Number,
+      ),
     })
     .from(rc)
     .innerJoin(doc, eq(doc.uri, rc.documentUri))
     .innerJoin(coReaders, eq(coReaders.did, rc.recommenderDid))
+    .leftJoin(st, eq(st.publicationUri, doc.publicationUri))
     .where(and(...recConds, isNotNull(doc.publicationUri)))
     .groupBy(doc.publicationUri);
 
@@ -1370,6 +1388,7 @@ async function backfillPublicationRail(
   primary: Array<PublicationCard>,
   limit: number,
   excludeUris: Array<string>,
+  seed?: string,
 ): Promise<Array<PublicationCard>> {
   if (primary.length >= limit) {
     return primary.slice(0, limit);
@@ -1384,6 +1403,7 @@ async function backfillPublicationRail(
     schema,
     limit - primary.length,
     seen,
+    seed,
   );
   return [...primary, ...backfill].slice(0, limit);
 }
@@ -1391,12 +1411,17 @@ async function backfillPublicationRail(
 /**
  * Most-subscribed discover-eligible publications (cold-start "popular"), with an
  * optional exclusion set (e.g. publications the reader already follows).
+ *
+ * When `seed` is provided, a wider candidate pool is fetched and rank-weighted
+ * sampling ({@link rotateRail}) draws the final `limit`, so the rail rotates
+ * daily/per-surface instead of showing the identical top-N to everyone.
  */
 export async function popularPublications(
   db: Db,
   schema: Schema,
   limit: number,
   excludeUris: Array<string> = [],
+  seed?: string,
 ): Promise<Array<PublicationCard>> {
   const p = schema.publications;
   const st = schema.publicationStats;
@@ -1410,6 +1435,7 @@ export async function popularPublications(
     conds.push(notInArray(p.uri, excludeUris));
   }
 
+  const poolSize = seed ? limit * ROTATION_POOL_MULTIPLIER : limit;
   const rows = await db
     .select(publicationCardColumns(schema))
     .from(p)
@@ -1421,8 +1447,9 @@ export async function popularPublications(
       desc(sql`coalesce(${st.recommendCount}, 0)`),
       desc(sql`coalesce(${st.subscriberCount}, 0)`),
     )
-    .limit(limit);
-  return rows.map((row) => toPublicationCard(row));
+    .limit(poolSize);
+  const cards = rows.map((row) => toPublicationCard(row));
+  return seed ? rotateRail(cards, limit, seed) : cards;
 }
 
 /**
@@ -1438,10 +1465,11 @@ export async function recommendedPublications(
   opts: PublicationRailOpts = {},
 ): Promise<Array<PublicationCard>> {
   const excludeUris = opts.excludeUris ?? [];
+  const seed = opts.seed ?? rotationSeed("recommended", did);
   const followUris =
     opts.followUris ?? (await selectFollowUris(db, schema, did));
   if (followUris.length === 0) {
-    return popularPublications(db, schema, limit, excludeUris);
+    return popularPublications(db, schema, limit, excludeUris, seed);
   }
 
   const mergedExclude = mergeExcludeUris(excludeUris, followUris);
@@ -1457,13 +1485,24 @@ export async function recommendedPublications(
     { weight: RECOMMENDATION_BLEND.coReaderLike, scores: coReaderLikes },
   ]);
 
-  const primary = await publicationCardsByOrderedUris(
+  // Fetch a wider pool than needed, then rotate: rank-weighted sampling keeps
+  // the strongest matches likely while letting the long tail surface across
+  // days/surfaces, so the rail stops showing the same handful every time.
+  const pool = await publicationCardsByOrderedUris(
     db,
     schema,
-    ranked.slice(0, limit).map((row) => row.uri),
+    ranked.slice(0, limit * ROTATION_POOL_MULTIPLIER).map((row) => row.uri),
   );
+  const primary = rotateRail(pool, limit, seed);
 
-  return backfillPublicationRail(db, schema, primary, limit, mergedExclude);
+  return backfillPublicationRail(
+    db,
+    schema,
+    primary,
+    limit,
+    mergedExclude,
+    seed,
+  );
 }
 
 /**
@@ -1478,6 +1517,7 @@ export async function followedByPeopleYouFollow(
   opts: PublicationRailOpts = {},
 ): Promise<Array<PublicationCard>> {
   const excludeUris = opts.excludeUris ?? [];
+  const seed = opts.seed ?? rotationSeed("followed-by", did);
   const followUris =
     opts.followUris ?? (await selectFollowUris(db, schema, did));
   if (followUris.length === 0) {
@@ -1527,11 +1567,12 @@ export async function followedByPeopleYouFollow(
     { weight: RECOMMENDATION_BLEND.coReaderLike, scores: likeScores },
   ]);
 
-  return publicationCardsByOrderedUris(
+  const pool = await publicationCardsByOrderedUris(
     db,
     schema,
-    ranked.slice(0, limit).map((row) => row.uri),
+    ranked.slice(0, limit * ROTATION_POOL_MULTIPLIER).map((row) => row.uri),
   );
+  return rotateRail(pool, limit, seed);
 }
 
 /**

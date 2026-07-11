@@ -400,24 +400,13 @@ function DiscoverRecommendedSection({
   signedIn: boolean;
   recommended: Array<PublicationCard> | undefined;
 }) {
-  const recommendedKicker = signedIn
-    ? "Tuned to your follows"
-    : "Established reads";
   const recommendedTitle = signedIn ? "Recommended for you" : "Recommended";
 
   if (recommended === undefined) return null;
 
   return (
     <div {...stylex.props(styles.section)}>
-      <SectionHead
-        kicker={recommendedKicker}
-        title={recommendedTitle}
-        icon={
-          <SectionIcon>
-            <Sparkles size={13} />
-          </SectionIcon>
-        }
-      />
+      <SectionHead title={recommendedTitle} />
       {recommended.length > 0 ? (
         <HorizontalRail pubs={recommended} />
       ) : (
@@ -441,13 +430,7 @@ function DiscoverSocialProofSection({
   return (
     <div {...stylex.props(styles.section)}>
       <SectionHead
-        kicker="Social proof"
         title="Followed by people you follow"
-        icon={
-          <SectionIcon>
-            <Users size={13} />
-          </SectionIcon>
-        }
         action={
           followedBy.length > SOCIAL_PROOF_COLLAPSED ? (
             <Button
@@ -490,13 +473,7 @@ function DiscoverTrendingSection() {
   return (
     <div {...stylex.props(styles.section)}>
       <SectionHead
-        kicker="Most active this week"
         title="Trending publications"
-        icon={
-          <SectionIcon>
-            <Flame size={13} />
-          </SectionIcon>
-        }
         action={
           <Select
             aria-label="Publications shown"
@@ -895,6 +872,8 @@ function Discover() {
         }
       />
 
+      <DiscoverTrendingSection />
+
       <DiscoverRecommendedSection
         signedIn={signedIn}
         recommended={extras?.recommended}
@@ -903,8 +882,6 @@ function Discover() {
       {signedIn ? (
         <DiscoverSocialProofSection followedBy={extras?.followedBy ?? []} />
       ) : null}
-
-      <DiscoverTrendingSection />
 
       <SectionDivider />
 

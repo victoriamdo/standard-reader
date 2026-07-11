@@ -21,6 +21,7 @@ import {
   selectFollowUris,
   topNetworkArticles,
 } from "#/server/reader/queries";
+import { rotationSeed } from "#/server/reader/rail-rotation";
 
 import {
   DIGEST_ARTICLE_LIMIT,
@@ -63,7 +64,10 @@ export async function buildDigestForUser(
       limit: DIGEST_NETWORK_ARTICLE_LIMIT,
       excludeUris: articles.map((a) => a.uri),
     }),
-    recommendedPublications(db, schema, did, DIGEST_RECOMMENDATION_LIMIT),
+    recommendedPublications(db, schema, did, DIGEST_RECOMMENDATION_LIMIT, {
+      followUris,
+      seed: rotationSeed("digest", did),
+    }),
   ]);
 
   return { articles, networkArticles, recommendations };

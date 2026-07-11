@@ -17,6 +17,7 @@ import {
   trendingPublicationUris,
   trendingPublications,
 } from "#/server/reader/queries";
+import { rotationSeed } from "#/server/reader/rail-rotation";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
 
 import type { Db, PublicationCard, Schema } from "./api-shapes";
@@ -81,10 +82,17 @@ async function loadRecommendedRail(
 ): Promise<Array<PublicationCard>> {
   const items =
     did == null
-      ? await popularPublications(db, schema, limit, trendingExclude)
+      ? await popularPublications(
+          db,
+          schema,
+          limit,
+          trendingExclude,
+          rotationSeed("discover", "anon"),
+        )
       : await recommendedPublications(db, schema, did, limit, {
           excludeUris: trendingExclude,
           followUris,
+          seed: rotationSeed("discover", did),
         });
   return items.filter((pub) => pub.documentCount > 0);
 }
@@ -124,6 +132,7 @@ async function loadDiscoverExtras(
       ? followedByPeopleYouFollow(db, schema, did, socialProofLimit, {
           excludeUris: trendingExclude,
           followUris,
+          seed: rotationSeed("discover-followed-by", did),
         })
       : Promise.resolve([]),
   ]);
@@ -241,6 +250,7 @@ const getRecommendedPublications = createServerFn({ method: "GET" })
             schema,
             data.limit,
             trendingExclude,
+            rotationSeed("discover", "anon"),
           );
           span.set("count", items.length);
           return items.filter((pub) => pub.documentCount > 0);
@@ -255,6 +265,7 @@ const getRecommendedPublications = createServerFn({ method: "GET" })
           {
             excludeUris: trendingExclude,
             followUris: await effectiveFollowUris(db, schema, session.did),
+            seed: rotationSeed("discover", session.did),
           },
         );
         span.set("count", items.length);
@@ -311,6 +322,7 @@ const getFollowedByPeopleYouFollow = createServerFn({ method: "GET" })
           {
             excludeUris: trendingExclude,
             followUris: await effectiveFollowUris(db, schema, session.did),
+            seed: rotationSeed("discover-followed-by", session.did),
           },
         );
         span.set("count", items.length);

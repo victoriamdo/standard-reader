@@ -32,6 +32,7 @@ import {
   trendingArticles,
   trendingPublicationUris,
 } from "#/server/reader/queries";
+import { rotationSeed } from "#/server/reader/rail-rotation";
 import { effectiveFollowUris } from "#/server/reader/saved-lists";
 import { loadSidebarData } from "#/server/reader/shell-snapshot.server";
 
@@ -343,8 +344,15 @@ async function buildHomeFeedExtras(
       ? await recommendedPublications(db, schema, did, HOME_RAIL_LIMIT, {
           excludeUris: trendingPubUris,
           followUris,
+          seed: rotationSeed("home", did),
         })
-      : await popularPublications(db, schema, HOME_RAIL_LIMIT, trendingPubUris);
+      : await popularPublications(
+          db,
+          schema,
+          HOME_RAIL_LIMIT,
+          trendingPubUris,
+          rotationSeed("home", did ?? "anon"),
+        );
 
   span.set("youMightFollow", youMightFollow.length);
 
