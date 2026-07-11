@@ -16,6 +16,7 @@ import {
   editorialShadow,
   editorialUi,
 } from "../components/reader/theme";
+import { uiColor } from "../design-system/theme/color.stylex";
 import { ui } from "../design-system/theme/semantic-color.stylex";
 import { PlausibleAnalytics } from "../integrations/plausible/analytics";
 import { user } from "../integrations/tanstack-query/api-user.functions";
@@ -61,6 +62,18 @@ const EMBED_SUBSCRIBE_PATH_SCRIPT = `
 const rootStyles = stylex.create({
   embedShellBody: {
     margin: 0,
+  },
+  // When installed (standalone), the OS draws the title bar in `theme_color`
+  // directly above the web content with no divider. Add a hairline along the
+  // top edge of the app so the title bar reads as separated from the content.
+  // No-op in a normal browser tab, where the browser chrome already divides it.
+  standaloneTitlebarBorder: {
+    borderTopColor: uiColor.border1,
+    borderTopStyle: "solid",
+    borderTopWidth: {
+      default: 0,
+      "@media (display-mode: standalone)": 1,
+    },
   },
 });
 
@@ -165,7 +178,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
           name: "viewport",
           content: "width=device-width, initial-scale=1, viewport-fit=cover",
         },
-        { name: "theme-color", content: "#c2502b" },
+        // NOTE: `theme-color` is intentionally NOT here — TanStack dedupes meta
+        // by `name`, so the light/dark pair would collapse to one. They're
+        // rendered as raw tags in RootDocument's <head> instead.
         { name: "apple-mobile-web-app-capable", content: "yes" },
         { name: "apple-mobile-web-app-title", content: "Standard Reader" },
         ...siteSocialMeta({
@@ -229,6 +244,19 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       suppressHydrationWarning
     >
       <head>
+        {/* Browser/PWA chrome uses the editorial primary `component1` per
+            scheme. Raw tags — not via head()/meta — because TanStack dedupes
+            meta by `name` and would drop one. */}
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: light)"
+          content="#f6eee7"
+        />
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: dark)"
+          content="#28211d"
+        />
         <style dangerouslySetInnerHTML={{ __html: COLOR_SCHEME_CSS }} />
         <script
           dangerouslySetInnerHTML={{ __html: EMBED_SUBSCRIBE_PATH_SCRIPT }}
@@ -247,6 +275,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 editorialShadow,
                 ui.bg,
                 ui.text,
+                rootStyles.standaloneTitlebarBorder,
               ],
         )}
       >
