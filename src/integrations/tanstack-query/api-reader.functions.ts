@@ -628,7 +628,10 @@ const getReadingHistory = createServerFn({ method: "GET" })
           .leftJoin(pr, eq(pr.did, p.did))
           .leftJoin(pa, eq(pa.did, d.did))
           .where(where)
-          .orderBy(desc(r.createdAt))
+          // NULLS LAST matches `reads_owner_idx` (owner_did, created_at DESC
+          // NULLS LAST); bare `desc()` is NULLS FIRST, which the planner can't
+          // satisfy from the index — it would seq-scan + sort every read.
+          .orderBy(sql`${r.createdAt} desc nulls last`)
           .limit(data.limit)
           .offset(data.offset),
       ]);
@@ -718,7 +721,9 @@ const getSaved = createServerFn({ method: "GET" })
           .leftJoin(pr, eq(pr.did, p.did))
           .leftJoin(pa, eq(pa.did, d.did))
           .where(where)
-          .orderBy(desc(b.createdAt))
+          // NULLS LAST matches `bookmarks_owner_idx` (owner_did, created_at DESC
+          // NULLS LAST); see getReadingHistory for why bare `desc()` is slow.
+          .orderBy(sql`${b.createdAt} desc nulls last`)
           .limit(data.limit)
           .offset(data.offset),
       ]);

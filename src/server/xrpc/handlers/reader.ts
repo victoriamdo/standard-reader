@@ -268,7 +268,9 @@ async function loadReaderDocumentQueue(
         .leftJoin(pr, eq(pr.did, p.did))
         .leftJoin(pa, eq(pa.did, d.did))
         .where(where)
-        .orderBy(desc(b.createdAt))
+        // NULLS LAST matches `bookmarks_owner_idx`; bare `desc()` is NULLS
+        // FIRST and forces a seq-scan + sort over every bookmark.
+        .orderBy(sql`${b.createdAt} desc nulls last`)
         .limit(limit)
         .offset(offset),
     ]);
@@ -299,7 +301,9 @@ async function loadReaderDocumentQueue(
         .leftJoin(pr, eq(pr.did, p.did))
         .leftJoin(pa, eq(pa.did, d.did))
         .where(where)
-        .orderBy(desc(r.createdAt))
+        // NULLS LAST matches `reads_owner_idx`; bare `desc()` is NULLS FIRST
+        // and forces a seq-scan + sort over every read.
+        .orderBy(sql`${r.createdAt} desc nulls last`)
         .limit(limit)
         .offset(offset),
     ]);
