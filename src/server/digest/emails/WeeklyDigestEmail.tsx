@@ -1,28 +1,27 @@
 /**
- * WeeklyDigestEmail — Standard's weekly reading digest.
+ * WeeklyDigestEmail — the Standard Digest weekly reading email.
  *
  * Built with React Email (@react-email/components). Renders to
- * email-client-safe, table-based HTML with inline styles. Verified layout
- * for Gmail, Apple Mail, and Outlook. Single column, ~600px, mobile-first,
- * light + dark aware. All images use absolute URLs with alt text.
+ * email-client-safe, table-based HTML with inline styles. Single column,
+ * ~600px, mobile-first, light + dark aware. All images use absolute URLs with
+ * alt text.
  *
  * Render:  import { render } from '@react-email/render';
  *          const html = await render(<WeeklyDigestEmail {...props} />);
  *
- * Aesthetic: literary newsletter — Newsreader serif for reading, Archivo for
- * labels, Spline Sans Mono for the technical layer (handles, counts, dates).
- * Warm paper-white, terracotta accent, monogram avatars, honest placeholders.
- *
- * Ported from the Claude Design project (Weekly Digest Email). Brand tokens
- * live in the `c` palette and the `serif`/`sans`/`mono` constants below — the
- * one place to edit when reconciling with production brand.
+ * Colors + fonts mirror the reader's editorial theme
+ * (src/components/reader/theme.ts): warm paper + warm ink, muted terracotta
+ * accent; Newsreader (serif/display), Atkinson Hyperlegible Next (sans/UI),
+ * Spline Sans Mono (mono, counts/dates only). Email can't use the theme's
+ * oklch/StyleX tokens, so the light values are inlined in the `c` palette below
+ * and the dark values live in the `<style>` block, applied via the `d-*`
+ * classes on each element (light + dark are the single place to retune).
  */
 
 import {
   Body,
   Container,
   Head,
-  Heading,
   Hr,
   Html,
   Img,
@@ -62,32 +61,29 @@ interface DigestEmailProps {
   articles: Array<DigestArticle>;
   recommendations: Array<DigestPublication>;
   unsubscribeUrl: string;
-  managePreferencesUrl: string;
   logoUrl: string;
 }
 
 /* ------------------------------------------------------------------ */
-/* Palette + type (hex only — oklch is unsafe in mail clients)        */
+/* Light palette (theme.ts, converted to hex — oklch is unsafe here). */
+/* Dark values live in the <style> block, keyed to each element's d-* */
+/* class.                                                             */
 /* ------------------------------------------------------------------ */
 
 const c = {
-  page: "#f2ede4",
-  card: "#ffffff",
-  ink: "#33302b",
-  inkSoft: "#5f5b52",
-  muted: "#8a8478",
-  faint: "#a9a396",
-  line: "#e6e0d5",
-  accent: "#bd5836",
-  accentInk: "#a5492b",
+  page: "#f2ece1", // warm paper (outer background)
+  card: "#fefdfc", // near-white warm (card surface) — primary.bg
+  ink: "#3e332e", // primary.text2 — dark warm ink
+  inkSoft: "#726b64", // ui.text1 — warm-gray secondary text
+  muted: "#9a928a", // lighter warm gray — meta/counts/dates
+  faint: "#b3aca2", // faint footer text
+  line: "#e4ddd1", // warm hairline / card border
+  accent: "#ad7f58", // primary.solid1 — solid accent
+  accentInk: "#8a5f43", // accent text / links on paper
+  solid2: "#a07553", // primary.solid2 — "Digest" wordmark accent
   white: "#ffffff",
 };
 
-// Font stacks mirror the reader's editorial theme
-// (src/components/reader/theme.ts): Newsreader (serif/display), Atkinson
-// Hyperlegible Next (sans/UI), Spline Sans Mono (mono). Email can't reference
-// the StyleX @font-face fallbacks, so we inline web-safe fallbacks that degrade
-// cleanly where the web fonts don't load (Gmail).
 const serif = "'Newsreader', Georgia, 'Times New Roman', serif";
 const sans =
   "'Atkinson Hyperlegible Next', system-ui, -apple-system, Helvetica, Arial, sans-serif";
@@ -127,8 +123,8 @@ function fmtCount(n: number): string {
 /* Small building blocks                                              */
 /* ------------------------------------------------------------------ */
 
-/** Round monogram / icon. Uses the real icon image when present, else a
- *  colored initials tile (works everywhere; degrades to a square in Outlook). */
+/** Rounded-square publication icon. Uses the real icon image when present, else
+ *  a colored initials tile (works everywhere, incl. Outlook). */
 function PubIcon({
   name,
   iconUrl,
@@ -139,6 +135,7 @@ function PubIcon({
   size: number;
 }) {
   const fontSize = Math.round(size * 0.42);
+  const radius = `${Math.round(size * 0.22)}px`;
   if (iconUrl) {
     return (
       <Img
@@ -149,7 +146,7 @@ function PubIcon({
         style={{
           width: size,
           height: size,
-          borderRadius: "50%",
+          borderRadius: radius,
           display: "block",
         }}
       />
@@ -166,7 +163,7 @@ function PubIcon({
         width: size,
         height: size,
         background: monoTone(name || "x"),
-        borderRadius: "50%",
+        borderRadius: radius,
       }}
     >
       <tbody>
@@ -193,6 +190,7 @@ function PubIcon({
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <Text
+      className="d-muted"
       style={{
         fontFamily: sans,
         fontWeight: 700,
@@ -222,6 +220,7 @@ function ArticleCard({
   const titleSize = lead ? "25px" : "20px";
   return (
     <Section
+      className="d-card"
       style={{
         background: c.card,
         border: `1px solid ${c.line}`,
@@ -288,6 +287,7 @@ function ArticleCard({
                               }}
                             >
                               <span
+                                className="d-soft"
                                 style={{
                                   fontFamily: serif,
                                   fontSize: "14px",
@@ -303,6 +303,7 @@ function ArticleCard({
                     </td>
                     <td align="right" style={{ verticalAlign: "middle" }}>
                       <span
+                        className="d-muted"
                         style={{
                           fontFamily: mono,
                           fontSize: "12px",
@@ -319,6 +320,7 @@ function ArticleCard({
               {/* title */}
               <Link
                 href={article.url}
+                className="d-ink"
                 style={{
                   display: "block",
                   fontFamily: serif,
@@ -336,6 +338,7 @@ function ArticleCard({
               {/* excerpt */}
               {article.description && (
                 <Text
+                  className="d-soft"
                   style={{
                     fontFamily: serif,
                     fontSize: lead ? "16px" : "15px",
@@ -361,6 +364,7 @@ function ArticleCard({
                   <tr>
                     <td align="left" style={{ verticalAlign: "middle" }}>
                       <span
+                        className="d-muted"
                         style={{
                           fontFamily: sans,
                           fontSize: "12.5px",
@@ -370,19 +374,15 @@ function ArticleCard({
                         {article.authorDisplayName
                           ? `By ${article.authorDisplayName}`
                           : "Anonymous"}
-                        {article.authorHandle && (
-                          <>
-                            {" · "}
-                            <span style={{ fontFamily: mono }}>
-                              {article.authorHandle}
-                            </span>
-                          </>
-                        )}
+                        {article.authorHandle
+                          ? ` · ${article.authorHandle}`
+                          : ""}
                       </span>
                     </td>
                     <td align="right" style={{ verticalAlign: "middle" }}>
                       <Link
                         href={article.url}
+                        className="d-accent"
                         style={{
                           fontFamily: sans,
                           fontWeight: 700,
@@ -411,6 +411,7 @@ function ArticleCard({
 function RecommendationCard({ pub }: { pub: DigestPublication }) {
   return (
     <Section
+      className="d-card"
       style={{
         background: c.card,
         border: `1px solid ${c.line}`,
@@ -449,6 +450,7 @@ function RecommendationCard({ pub }: { pub: DigestPublication }) {
                     </td>
                     <td style={{ verticalAlign: "top", paddingLeft: "14px" }}>
                       <Text
+                        className="d-ink"
                         style={{
                           fontFamily: serif,
                           fontWeight: 600,
@@ -462,6 +464,7 @@ function RecommendationCard({ pub }: { pub: DigestPublication }) {
                       </Text>
                       {pub.description && (
                         <Text
+                          className="d-soft"
                           style={{
                             fontFamily: serif,
                             fontSize: "14.5px",
@@ -488,6 +491,7 @@ function RecommendationCard({ pub }: { pub: DigestPublication }) {
                               style={{ verticalAlign: "middle" }}
                             >
                               <span
+                                className="d-muted"
                                 style={{
                                   fontFamily: mono,
                                   fontSize: "11.5px",
@@ -503,6 +507,7 @@ function RecommendationCard({ pub }: { pub: DigestPublication }) {
                             >
                               <Link
                                 href={pub.url}
+                                className="d-accent"
                                 style={{
                                   fontFamily: sans,
                                   fontWeight: 700,
@@ -537,7 +542,6 @@ export default function WeeklyDigestEmail({
   articles,
   recommendations,
   unsubscribeUrl,
-  managePreferencesUrl,
   logoUrl,
 }: DigestEmailProps) {
   const px = { paddingLeft: "34px", paddingRight: "34px" };
@@ -549,14 +553,31 @@ export default function WeeklyDigestEmail({
         <meta name="supported-color-schemes" content="light dark" />
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap');
+
+          /* Dark mode — theme.ts editorial dark values. Each rule targets the
+             property the element actually uses (Hr colors via border-color). */
           @media (prefers-color-scheme: dark) {
-            .bg   { background: #17150f !important; }
-            .card { background: #201d16 !important; border-color: #3a3527 !important; }
-            .ink  { color: #efe9dc !important; }
-            .isf  { color: #c3bcac !important; }
-            .mut  { color: #999181 !important; }
-            .rule { background: #efe9dc !important; }
+            .d-bg      { background:#17120e !important; }
+            .d-card    { background:#27201c !important; border-color:#443a30 !important; }
+            .d-ink     { color:#f2e1ca !important; }
+            .d-soft    { color:#a49b90 !important; }
+            .d-muted   { color:#8b8279 !important; }
+            .d-accent  { color:#dbb594 !important; }
+            .d-accent2 { color:#b88c67 !important; }
+            .d-divider { border-color:#443a30 !important; }
+            .d-rule    { border-color:#f2e1ca !important; }
           }
+          /* Outlook.com dark mode */
+          [data-ogsc] .d-bg      { background:#17120e !important; }
+          [data-ogsc] .d-card    { background:#27201c !important; border-color:#443a30 !important; }
+          [data-ogsc] .d-ink     { color:#f2e1ca !important; }
+          [data-ogsc] .d-soft    { color:#a49b90 !important; }
+          [data-ogsc] .d-muted   { color:#8b8279 !important; }
+          [data-ogsc] .d-accent  { color:#dbb594 !important; }
+          [data-ogsc] .d-accent2 { color:#b88c67 !important; }
+          [data-ogsc] .d-divider { border-color:#443a30 !important; }
+          [data-ogsc] .d-rule    { border-color:#f2e1ca !important; }
+
           @media only screen and (max-width:620px) {
             .container { width:100% !important; }
             .lead-title { font-size:26px !important; }
@@ -566,7 +587,7 @@ export default function WeeklyDigestEmail({
       <Preview>The best of what you follow this week.</Preview>
 
       <Body
-        className="bg"
+        className="d-bg"
         style={{ margin: 0, padding: 0, background: c.page }}
       >
         <table
@@ -575,7 +596,7 @@ export default function WeeklyDigestEmail({
           cellPadding={0}
           cellSpacing={0}
           border={0}
-          className="bg"
+          className="d-bg"
           style={{ background: c.page }}
         >
           <tbody>
@@ -610,11 +631,11 @@ export default function WeeklyDigestEmail({
                                       src={logoUrl}
                                       width={34}
                                       height={34}
-                                      alt="Standard"
+                                      alt="Standard Digest"
                                       style={{
                                         width: 34,
                                         height: 34,
-                                        borderRadius: "5px",
+                                        borderRadius: "8px",
                                         display: "block",
                                       }}
                                     />
@@ -626,7 +647,7 @@ export default function WeeklyDigestEmail({
                                     }}
                                   >
                                     <span
-                                      className="ink"
+                                      className="d-ink"
                                       style={{
                                         fontFamily: serif,
                                         fontWeight: 500,
@@ -635,7 +656,13 @@ export default function WeeklyDigestEmail({
                                         color: c.ink,
                                       }}
                                     >
-                                      Standard
+                                      Standard{" "}
+                                      <span
+                                        className="d-accent2"
+                                        style={{ color: c.solid2 }}
+                                      >
+                                        Digest
+                                      </span>
                                     </span>
                                   </td>
                                 </tr>
@@ -644,7 +671,7 @@ export default function WeeklyDigestEmail({
                           </td>
                           <td align="right" style={{ verticalAlign: "middle" }}>
                             <span
-                              className="mut"
+                              className="d-muted"
                               style={{
                                 fontFamily: mono,
                                 fontSize: "11px",
@@ -661,50 +688,21 @@ export default function WeeklyDigestEmail({
                     </table>
                   </Section>
 
-                  {/* ---- Masthead ---- */}
-                  <Section style={{ padding: "26px 34px 20px" }}>
-                    <Text
-                      style={{
-                        fontFamily: sans,
-                        fontWeight: 700,
-                        fontSize: "11px",
-                        letterSpacing: "0.18em",
-                        textTransform: "uppercase",
-                        color: c.accentInk,
-                        margin: 0,
-                      }}
-                    >
-                      Your weekly digest
-                    </Text>
-                    <Heading
-                      as="h1"
-                      className="lead-title ink"
-                      style={{
-                        fontFamily: serif,
-                        fontStyle: "italic",
-                        fontWeight: 500,
-                        fontSize: "34px",
-                        lineHeight: 1.05,
-                        letterSpacing: "-0.01em",
-                        color: c.ink,
-                        margin: "8px 0 0",
-                      }}
-                    >
-                      The best of what you’re following
-                    </Heading>
+                  {/* ---- Header rule ---- */}
+                  <Section style={{ padding: "18px 34px 0" }}>
                     <Hr
-                      className="rule"
+                      className="d-rule"
                       style={{
                         borderColor: c.ink,
                         borderWidth: "1px 0 0",
-                        margin: "20px 0 0",
+                        margin: 0,
                         height: 0,
                       }}
                     />
                   </Section>
 
                   {/* ---- Best of your follows ---- */}
-                  <Section style={px}>
+                  <Section style={{ ...px, paddingTop: "22px" }}>
                     <SectionLabel>Best of your follows</SectionLabel>
                   </Section>
                   <Section style={px}>
@@ -718,6 +716,7 @@ export default function WeeklyDigestEmail({
                     <>
                       <Section style={{ ...px, paddingTop: "30px" }}>
                         <Hr
+                          className="d-divider"
                           style={{
                             borderColor: c.line,
                             borderWidth: "1px 0 0",
@@ -738,7 +737,7 @@ export default function WeeklyDigestEmail({
                   {/* ---- Footer ---- */}
                   <Section style={{ padding: "36px 34px 8px" }}>
                     <Hr
-                      className="rule"
+                      className="d-rule"
                       style={{
                         borderColor: c.ink,
                         borderWidth: "1px 0 0",
@@ -764,11 +763,11 @@ export default function WeeklyDigestEmail({
                               src={logoUrl}
                               width={22}
                               height={22}
-                              alt="Standard"
+                              alt="Standard Digest"
                               style={{
                                 width: 22,
                                 height: 22,
-                                borderRadius: "4px",
+                                borderRadius: "5px",
                                 display: "block",
                               }}
                             />
@@ -780,7 +779,7 @@ export default function WeeklyDigestEmail({
                             }}
                           >
                             <span
-                              className="ink"
+                              className="d-ink"
                               style={{
                                 fontFamily: serif,
                                 fontWeight: 500,
@@ -789,7 +788,7 @@ export default function WeeklyDigestEmail({
                                 color: c.ink,
                               }}
                             >
-                              Standard
+                              Standard Digest
                             </span>
                           </td>
                         </tr>
@@ -800,29 +799,8 @@ export default function WeeklyDigestEmail({
                     style={{ padding: "14px 40px 4px", textAlign: "center" }}
                   >
                     <Link
-                      href={managePreferencesUrl}
-                      className="isf"
-                      style={{
-                        fontFamily: sans,
-                        fontWeight: 600,
-                        fontSize: "12.5px",
-                        color: c.inkSoft,
-                      }}
-                    >
-                      Manage your digest
-                    </Link>
-                    <span
-                      style={{
-                        fontFamily: sans,
-                        fontSize: "12.5px",
-                        color: c.faint,
-                      }}
-                    >
-                      {"  ·  "}
-                    </span>
-                    <Link
                       href={unsubscribeUrl}
-                      className="isf"
+                      className="d-soft"
                       style={{
                         fontFamily: sans,
                         fontWeight: 600,
@@ -833,32 +811,6 @@ export default function WeeklyDigestEmail({
                       Unsubscribe
                     </Link>
                   </Section>
-                  <Text
-                    className="mut"
-                    style={{
-                      fontFamily: sans,
-                      fontSize: "11.5px",
-                      lineHeight: 1.6,
-                      color: c.faint,
-                      textAlign: "center",
-                      margin: "12px 44px 0",
-                    }}
-                  >
-                    You’re receiving this weekly because you follow publications
-                    on Standard, a reader for the open network.
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: mono,
-                      fontSize: "10.5px",
-                      letterSpacing: "0.02em",
-                      color: "#b7b1a4",
-                      textAlign: "center",
-                      margin: "6px 44px 0",
-                    }}
-                  >
-                    Standard · the open reading network
-                  </Text>
                 </Container>
               </td>
             </tr>

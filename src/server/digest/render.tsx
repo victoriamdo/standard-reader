@@ -133,7 +133,6 @@ export async function renderDigestEmail(
     articles,
     recommendations,
     unsubscribeUrl: `${base}/api/digest/unsubscribe?token=${encodeURIComponent(token)}`,
-    managePreferencesUrl: `${base}/settings`,
     logoUrl: `${base}/icon-192.png`,
   };
 

@@ -33,9 +33,14 @@ export const digestConfig = {
     return required("COMAIL_FROM");
   },
 
-  /** HMAC key for one-click unsubscribe tokens. */
+  /** HMAC key for one-click unsubscribe tokens. Required in production; in dev
+   * it falls back to a static placeholder so the digest preview tool works
+   * without extra setup (preview tokens are never acted on). */
   get unsubscribeSecret(): string {
-    return required("DIGEST_UNSUBSCRIBE_SECRET");
+    const value = process.env.DIGEST_UNSUBSCRIBE_SECRET;
+    if (value) return value;
+    if (process.env.NODE_ENV !== "production") return "dev-preview-secret";
+    throw new Error("DIGEST_UNSUBSCRIBE_SECRET is not set");
   },
 
   /**
@@ -59,7 +64,7 @@ export const digestConfig = {
 } as const;
 
 /** Number of "best of your follows" articles to include. */
-export const DIGEST_ARTICLE_LIMIT = 8;
+export const DIGEST_ARTICLE_LIMIT = 5;
 /** Number of unfollowed publication recommendations to include. */
 export const DIGEST_RECOMMENDATION_LIMIT = 2;
 /** Only articles published within this many days are eligible for the digest. */
