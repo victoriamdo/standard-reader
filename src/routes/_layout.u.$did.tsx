@@ -28,11 +28,11 @@ import {
 } from "#/integrations/tanstack-query/api-author.functions";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import type { SubscriptionList } from "#/integrations/tanstack-query/api-lists.functions";
-import { user } from "#/integrations/tanstack-query/api-user.functions";
 import type {
   ArticleCard,
   PublicationCard,
 } from "#/integrations/tanstack-query/api-shapes";
+import { user } from "#/integrations/tanstack-query/api-user.functions";
 import type { HideableTabId, ProfileTabId } from "#/lib/profile-tabs";
 import { getPublicUrlClient } from "#/lib/public-url";
 import {
@@ -69,7 +69,14 @@ const AUTHOR_PAGE_SIZE = 24;
 
 const authorSearchSchema = z.object({
   tab: z
-    .enum(["posts", "publications", "subscriptions", "readers", "lists", "likes"])
+    .enum([
+      "posts",
+      "publications",
+      "subscriptions",
+      "readers",
+      "lists",
+      "likes",
+    ])
     .default("posts"),
 });
 
@@ -470,8 +477,7 @@ function AuthorProfileContent({
   const { data: lists } = useQuery(listApi.getAuthorListsQueryOptions(did));
 
   const { data: session } = useQuery(user.getSessionQueryOptions);
-  const isOwnProfile =
-    session?.user?.did != null && session.user.did === did;
+  const isOwnProfile = session?.user?.did != null && session.user.did === did;
 
   const queryClient = useQueryClient();
   const [hiddenTabs, setHiddenTabs] = useState<Array<HideableTabId>>(

@@ -187,13 +187,17 @@ function scheduleListBackfill(did: string): void {
   backfillAttempted.add(did);
   void (async () => {
     try {
-      const { backfillListsFromRepo } = await import("#/server/ingest/handlers");
+      const { backfillListsFromRepo } =
+        await import("#/server/ingest/handlers");
       const { listSaves: saved } = await backfillListsFromRepo(did);
       if (saved > 0) cache.delete(did);
     } catch (error) {
       // Allow a later read to retry rather than pinning the failure forever.
       backfillAttempted.delete(did);
-      console.warn(`[saved-lists] background backfill failed for ${did}`, error);
+      console.warn(
+        `[saved-lists] background backfill failed for ${did}`,
+        error,
+      );
     }
   })();
 }

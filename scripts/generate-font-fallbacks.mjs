@@ -19,9 +19,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { createFontStack } from "@capsizecss/core";
-
-import arial from "@capsizecss/metrics/arial";
 import appleSystem from "@capsizecss/metrics/appleSystem";
+import arial from "@capsizecss/metrics/arial";
 import atkinson from "@capsizecss/metrics/atkinsonHyperlegibleNext";
 import courierNew from "@capsizecss/metrics/courierNew";
 import georgia from "@capsizecss/metrics/georgia";
@@ -32,7 +31,8 @@ import timesNewRoman from "@capsizecss/metrics/timesNewRoman";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const stylesPath = path.join(__dirname, "..", "src", "styles.css");
 
-const START = "/* @generated font-fallbacks:start — run `pnpm fonts:generate` */";
+const START =
+  "/* @generated font-fallbacks:start — run `pnpm fonts:generate` */";
 const END = "/* @generated font-fallbacks:end */";
 
 // Each stack: [webFont, ...fallbacks]. Order the fallbacks so the platform that
@@ -70,4 +70,6 @@ if (!pattern.test(css)) {
 }
 
 writeFileSync(stylesPath, css.replace(pattern, generated));
-console.log(`Wrote metric-adjusted fallbacks to ${path.relative(process.cwd(), stylesPath)}`);
+console.log(
+  `Wrote metric-adjusted fallbacks to ${path.relative(process.cwd(), stylesPath)}`,
+);

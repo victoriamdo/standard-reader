@@ -3,14 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 
 import { discoverApi } from "#/integrations/tanstack-query/api-discover.functions";
 
-import { ToggleButton } from "../../design-system/toggle-button";
+import { Skeleton } from "../../design-system/skeleton";
 import { uiColor } from "../../design-system/theme/color.stylex";
 import { gap } from "../../design-system/theme/semantic-spacing.stylex";
 import {
   fontFamily,
   fontSize,
 } from "../../design-system/theme/typography.stylex";
-import { Skeleton } from "../../design-system/skeleton";
+import { ToggleButton } from "../../design-system/toggle-button";
 
 const MAX_TOPICS = 5;
 const TOPIC_LIMIT = 24;

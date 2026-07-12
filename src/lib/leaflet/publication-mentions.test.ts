@@ -162,10 +162,11 @@ describe("collectInlineMentionRefs", () => {
 
 describe("documentMentionKey", () => {
   it("normalizes pub.leaflet and site.standard document URIs to the canonical key", () => {
-    const canonical =
-      "at://did:plc:auth/site.standard.document/3lzdlwt2i2s2i";
+    const canonical = "at://did:plc:auth/site.standard.document/3lzdlwt2i2s2i";
     expect(
-      documentMentionKey("at://did:plc:auth/pub.leaflet.document/3lzdlwt2i2s2i"),
+      documentMentionKey(
+        "at://did:plc:auth/pub.leaflet.document/3lzdlwt2i2s2i",
+      ),
     ).toBe(canonical);
     expect(documentMentionKey(canonical)).toBe(canonical);
   });
@@ -180,8 +181,7 @@ describe("documentMentionKey", () => {
 
 describe("lookupDocumentMention", () => {
   it("resolves an atMention against the document map", () => {
-    const canonical =
-      "at://did:plc:auth/site.standard.document/3lzdlwt2i2s2i";
+    const canonical = "at://did:plc:auth/site.standard.document/3lzdlwt2i2s2i";
     const documents = {
       [canonical]: {
         atUri: canonical,

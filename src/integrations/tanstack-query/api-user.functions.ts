@@ -18,6 +18,12 @@ import {
   parseHomeScope,
 } from "#/lib/home-scope";
 import {
+  ONBOARDING_COMPLETED_COOKIE,
+  ONBOARDING_COMPLETED_COOKIE_MAX_AGE_SECONDS,
+  dbValueToOnboardingCompleted,
+  onboardingCompletedToCookieValue,
+} from "#/lib/onboarding";
+import {
   OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE,
   OPEN_COLLECTIONS_IN_MAGAZINE_COOKIE_MAX_AGE_SECONDS,
   dbValueToOpenCollectionsInMagazine,
@@ -33,12 +39,6 @@ import {
   openLinksExternallyToDbValue,
   parseOpenLinksExternally,
 } from "#/lib/open-links";
-import {
-  ONBOARDING_COMPLETED_COOKIE,
-  ONBOARDING_COMPLETED_COOKIE_MAX_AGE_SECONDS,
-  dbValueToOnboardingCompleted,
-  onboardingCompletedToCookieValue,
-} from "#/lib/onboarding";
 import type { HideableTabId } from "#/lib/profile-tabs";
 import {
   hiddenTabsToDbValue,
@@ -626,7 +626,10 @@ const setProfileTabSettings = createServerFn({ method: "POST" })
           .set({ profileHiddenTabs: dbValue, profileShowLikes: data.showLikes })
           .where(eq(context.schema.user.id, session.user.id));
 
-        return { hiddenTabs: parseHiddenTabs(dbValue), showLikes: data.showLikes };
+        return {
+          hiddenTabs: parseHiddenTabs(dbValue),
+          showLikes: data.showLikes,
+        };
       },
     ),
   );

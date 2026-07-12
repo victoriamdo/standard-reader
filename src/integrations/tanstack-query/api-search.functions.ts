@@ -188,10 +188,7 @@ const searchArticles = createServerFn({ method: "GET" })
         .from(d)
         .leftJoin(p, eq(p.uri, d.publicationUri))
         .where(articleWhere)
-        .orderBy(
-          desc(d.publishedAt),
-          desc(d.uri),
-        )
+        .orderBy(desc(d.publishedAt), desc(d.uri))
         .limit(data.limit + 1)
         .offset(data.offset)
         .as("page");
@@ -211,10 +208,7 @@ const searchArticles = createServerFn({ method: "GET" })
         .leftJoin(p, eq(p.uri, d.publicationUri))
         .leftJoin(pr, eq(pr.did, p.did))
         .leftJoin(pa, eq(pa.did, d.did))
-        .orderBy(
-          desc(d.publishedAt),
-          desc(d.uri),
-        );
+        .orderBy(desc(d.publishedAt), desc(d.uri));
 
       const hasMore = pageRows.length > data.limit;
       const articleRows = hasMore ? pageRows.slice(0, data.limit) : pageRows;

@@ -3,9 +3,7 @@ import { Check, Plus } from "lucide-react";
 
 import type { PublicationCard } from "#/integrations/tanstack-query/api-shapes";
 
-import { PublicationAvatar } from "../reader/primitives";
 import { Badge } from "../../design-system/badge";
-import { ToggleButton } from "../../design-system/toggle-button";
 import { uiColor } from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
 import {
@@ -19,6 +17,8 @@ import {
   fontWeight,
   lineHeight,
 } from "../../design-system/theme/typography.stylex";
+import { ToggleButton } from "../../design-system/toggle-button";
+import { PublicationAvatar } from "../reader/primitives";
 
 const styles = stylex.create({
   row: {

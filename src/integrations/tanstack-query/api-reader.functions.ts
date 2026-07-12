@@ -290,7 +290,9 @@ const followPublication = createServerFn({ method: "POST" })
  * failed rows selected and offer a retry. */
 const followPublications = createServerFn({ method: "POST" })
   .middleware([dbMiddleware])
-  .validator(z.object({ publicationUris: z.array(z.string().min(1)).min(1).max(25) }))
+  .validator(
+    z.object({ publicationUris: z.array(z.string().min(1)).min(1).max(25) }),
+  )
   .handler(
     observe("reader.followPublications", async ({ data }, span) => {
       span.set("count", data.publicationUris.length);
@@ -320,7 +322,11 @@ const followPublications = createServerFn({ method: "POST" })
           results.push({ uri: publicationUri, ok: true });
         } catch (error) {
           console.warn("[reader] batch follow failed", publicationUri, error);
-          results.push({ uri: publicationUri, ok: false, error: String(error) });
+          results.push({
+            uri: publicationUri,
+            ok: false,
+            error: String(error),
+          });
         }
       }
 

@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 
 import { discoverApi } from "#/integrations/tanstack-query/api-discover.functions";
 
-import { PublicationAvatar } from "../reader/primitives";
 import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
 import { verticalSpace } from "../../design-system/theme/semantic-spacing.stylex";
 import {
@@ -15,6 +14,7 @@ import {
 } from "../../design-system/theme/typography.stylex";
 import { Body } from "../../design-system/typography";
 import { Text } from "../../design-system/typography/text";
+import { PublicationAvatar } from "../reader/primitives";
 
 const styles = stylex.create({
   center: {
@@ -56,7 +56,9 @@ const styles = stylex.create({
 });
 
 export function StepIntro() {
-  const countQuery = useQuery(discoverApi.getKnownPublicationCountQueryOptions());
+  const countQuery = useQuery(
+    discoverApi.getKnownPublicationCountQueryOptions(),
+  );
   const trendingQuery = useQuery(
     discoverApi.getTrendingPublicationsQueryOptions({ limit: 6 }),
   );

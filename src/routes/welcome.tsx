@@ -8,9 +8,7 @@ import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { siteSocialMeta } from "#/lib/site-metadata";
 
 const searchSchema = z.object({
-  step: z
-    .enum(["intro", "topics", "follow", "settings", "done"])
-    .optional(),
+  step: z.enum(["intro", "topics", "follow", "settings", "done"]).optional(),
   topics: z.array(z.string().min(1).max(60)).max(5).optional(),
 });
 
@@ -43,9 +41,7 @@ export const Route = createFileRoute("/welcome")({
       discoverApi.getTrendingPublicationsQueryOptions({ limit: 6 }),
     );
     await Promise.all([
-      context.queryClient.ensureQueryData(
-        user.getThemePreferenceQueryOptions,
-      ),
+      context.queryClient.ensureQueryData(user.getThemePreferenceQueryOptions),
       context.queryClient.ensureQueryData(
         user.getReadingTypographyPreferenceQueryOptions,
       ),
@@ -78,7 +74,10 @@ function WelcomePage() {
   };
   const setTopics = (next: Array<string>) => {
     void navigate({
-      search: (prev) => ({ ...prev, topics: next.length > 0 ? next : undefined }),
+      search: (prev) => ({
+        ...prev,
+        topics: next.length > 0 ? next : undefined,
+      }),
     });
   };
 

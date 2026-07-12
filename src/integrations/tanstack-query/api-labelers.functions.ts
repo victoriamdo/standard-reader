@@ -28,8 +28,8 @@ import {
   resolveActorDid,
   resolveLabelerView,
 } from "#/server/labeler/resolve.server";
-import { documentPublishedNotInFuture } from "#/server/reader/document-filters";
 import { observe } from "#/server/observability/log";
+import { documentPublishedNotInFuture } from "#/server/reader/document-filters";
 import { selectArticleCardsByUris } from "#/server/reader/queries";
 
 import type { ArticleCard, Db, Schema } from "./api-shapes";

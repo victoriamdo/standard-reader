@@ -76,7 +76,12 @@ export async function score(input: string): Promise<DetectorResult> {
   const text = (input ?? "").trim();
   const words = wordCount(text);
   if (words < MIN_WORDS) {
-    return { score: 0, classification: "human", wordCount: words, scored: false };
+    return {
+      score: 0,
+      classification: "human",
+      wordCount: words,
+      scored: false,
+    };
   }
 
   const res = await fetch(`${config.detectorUrl}/score`, {

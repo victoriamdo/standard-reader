@@ -16,7 +16,9 @@ export function parseOnboardingCompletedCookie(value: unknown): boolean {
   return value === "1";
 }
 
-export function onboardingCompletedToCookieValue(completed: boolean): "1" | "0" {
+export function onboardingCompletedToCookieValue(
+  completed: boolean,
+): "1" | "0" {
   return completed ? "1" : "0";
 }
 

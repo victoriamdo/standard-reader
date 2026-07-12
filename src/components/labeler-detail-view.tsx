@@ -170,9 +170,7 @@ export function LabelerDetailView({
             ) : null}
             {documentCount > 0 ? (
               <span>
-                <span {...stylex.props(styles.statValue)}>
-                  {documentCount}
-                </span>
+                <span {...stylex.props(styles.statValue)}>{documentCount}</span>
                 {documentCount === 1 ? "document" : "documents"}
               </span>
             ) : null}

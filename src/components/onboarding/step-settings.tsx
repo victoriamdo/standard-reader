@@ -9,7 +9,6 @@ import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { Flex } from "../../design-system/flex";
 import { Separator } from "../../design-system/separator";
 import { Switch } from "../../design-system/switch";
-import { Tooltip } from "../../design-system/tooltip";
 import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
 import {
   gap,
@@ -24,6 +23,7 @@ import {
   lineHeight,
   tracking,
 } from "../../design-system/theme/typography.stylex";
+import { Tooltip } from "../../design-system/tooltip";
 
 const MOBILE = "@media (max-width: 47.5rem)";
 

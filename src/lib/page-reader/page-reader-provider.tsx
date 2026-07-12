@@ -291,7 +291,8 @@ export function PageReaderProvider({
       setScrollLocked(true);
 
       const preference = voicePreferenceRef.current;
-      const voice: ReaderVoice = preference === "auto" ? "af_heart" : preference;
+      const voice: ReaderVoice =
+        preference === "auto" ? "af_heart" : preference;
       void engine.prepare(sample.text, voice);
     },
     [],
