@@ -15,6 +15,7 @@ import { SizeContext } from "../context";
 import { Flex } from "../flex";
 import { Description, FieldErrorMessage, Label } from "../label";
 import { SuffixIcon } from "../suffix-icon";
+import { focusColor } from "../theme/color.stylex";
 import { horizontalSpace } from "../theme/semantic-spacing.stylex";
 import type {
   InputValidationState,
@@ -31,6 +32,13 @@ const styles = stylex.create({
     alignItems: "center",
     display: "flex",
     flexDirection: "row",
+  },
+  segment: {
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
   },
 });
 
@@ -85,7 +93,9 @@ function DateFieldContent({
           {...stylex.props(inputStyles.input, styles.input)}
           ref={inputRef}
         >
-          {(segment) => <DateSegment segment={segment} />}
+          {(segment) => (
+            <DateSegment segment={segment} {...stylex.props(styles.segment)} />
+          )}
         </DateInput>
         <SuffixIcon
           suffix={suffix}

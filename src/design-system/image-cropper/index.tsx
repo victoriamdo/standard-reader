@@ -5,8 +5,9 @@ import { useEffectEvent } from "@react-aria/utils";
 import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
+import { useFocusRing } from "react-aria";
 
-import { uiColor } from "../theme/color.stylex";
+import { focusColor, uiColor } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
 import type { StyleXComponentProps } from "../theme/types";
 
@@ -19,7 +20,7 @@ const styles = stylex.create({
     cornerShape: "squircle",
     outline: {
       default: "none",
-      ":focus-visible": `2px solid ${uiColor.solid1}`,
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
     },
     overflow: "hidden",
     alignItems: "center",
@@ -28,7 +29,7 @@ const styles = stylex.create({
     justifyContent: "center",
     outlineOffset: {
       default: "0px",
-      ":focus-visible": "2px",
+      ":is([data-focus-visible])": "2px",
     },
     position: "relative",
     touchAction: "none",
@@ -178,6 +179,7 @@ export function ImageCropperRoot({
   ...props
 }: ImageCropperRootProps) {
   const [imageUrl, setImageUrl] = useState<string>(() => "");
+  const { isFocusVisible, focusProps } = useFocusRing();
 
   const handleError = () => {
     onCropChange?.(null);
@@ -238,6 +240,8 @@ export function ImageCropperRoot({
       {...cropperProps}
       className={className}
       {...restStylexProps}
+      {...focusProps}
+      data-focus-visible={isFocusVisible || undefined}
       onCropChange={(crop) => {
         if (!crop) {
           onCropChange?.(null);

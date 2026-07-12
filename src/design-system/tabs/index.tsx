@@ -19,7 +19,7 @@ import {
 import { SizeContext } from "../context";
 import { useHaptics } from "../haptics";
 import { animationDuration } from "../theme/animations.stylex";
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
@@ -212,7 +212,7 @@ const styles = stylex.create({
     cornerShape: "squircle",
     outline: {
       default: "none",
-      ":is([data-focus-visible] *)": `2px solid ${uiColor.solid1}`,
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
     },
     outlineOffset: "2px",
   },

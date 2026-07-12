@@ -2,7 +2,7 @@ import { useLayoutEffect } from "@react-aria/utils";
 import * as stylex from "@stylexjs/stylex";
 import { ChevronRight } from "lucide-react";
 import { createContext, use, useId, useMemo } from "react";
-import { mergeProps, useHover, usePress } from "react-aria";
+import { mergeProps, useFocusRing, useHover, usePress } from "react-aria";
 import {
   Button,
   Disclosure,
@@ -12,7 +12,7 @@ import {
 
 import { Flex } from "../flex";
 import { animationDuration } from "../theme/animations.stylex";
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import {
@@ -104,6 +104,11 @@ const styles = stylex.create({
     },
     transitionTimingFunction: "ease-in-out",
     height: sizeSpace["3xl"],
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     paddingLeft: horizontalSpace["xl"],
     paddingRight: horizontalSpace["xl"],
     width: "100%",
@@ -139,6 +144,11 @@ const styles = stylex.create({
     fontWeight: fontWeight["medium"],
     textAlign: "left",
     marginLeft: `calc(${horizontalSpace["md"]} * -1)`,
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     paddingBottom: 0,
     paddingLeft: 0,
     paddingRight: 0,
@@ -317,6 +327,7 @@ export function SidebarItem({
 }: SidebarItemProps) {
   const { hoverProps, isHovered } = useHover({});
   const { pressProps, isPressed } = usePress({});
+  const { focusProps, isFocusVisible } = useFocusRing();
   const Component = "href" in props ? "a" : "button";
 
   return (
@@ -326,10 +337,12 @@ export function SidebarItem({
           props as React.ComponentProps<typeof Component>,
           hoverProps,
           pressProps,
+          focusProps,
         )}
         data-hovered={isHovered || undefined}
         data-pressed={isPressed}
         data-active={isActive}
+        data-focus-visible={isFocusVisible || undefined}
         {...stylex.props(
           styles.sidebarItem,
           isActive && styles.sidebarItemActive,

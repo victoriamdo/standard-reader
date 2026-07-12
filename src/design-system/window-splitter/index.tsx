@@ -11,9 +11,9 @@ import {
   PanelGroup as BasePanelGroup,
   PanelResizer as BasePanelResizer,
 } from "@window-splitter/react";
-import { useHover } from "react-aria";
+import { useFocusRing, useHover } from "react-aria";
 
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { size as sizeSpace } from "../theme/semantic-spacing.stylex";
 import type { StyleXComponentProps } from "../theme/types";
 
@@ -32,6 +32,11 @@ const styles = stylex.create({
       ":is([data-panel-group-direction=vertical])": "row-resize",
     },
     position: "relative",
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
   },
   hitArea: {
     display: {
@@ -79,12 +84,15 @@ export function PanelResizer({
   ...props
 }: WindowSplitterPanelResizerProps) {
   const { hoverProps, isHovered } = useHover({});
+  const { isFocusVisible, focusProps } = useFocusRing();
 
   return (
     <BasePanelResizer
       {...props}
       {...(hoverProps as PanelResizerProps)}
+      {...(focusProps as PanelResizerProps)}
       data-hovered={isHovered || undefined}
+      data-focus-visible={isFocusVisible || undefined}
       {...stylex.props(styles.panelResizer, style)}
       size="1px"
     >

@@ -3,7 +3,7 @@ import { use } from "react";
 import type { LinkProps as AriaLinkProps } from "react-aria-components";
 import { Link as AriaLink } from "react-aria-components";
 
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { gap, verticalSpace } from "../theme/semantic-spacing.stylex";
 import type { StyleXComponentProps } from "../theme/types";
 import { fontFamily, fontWeight } from "../theme/typography.stylex";
@@ -29,6 +29,11 @@ const styles = stylex.create({
     display: "inline-flex",
     fontFamily: fontFamily["sans"],
     fontWeight: fontWeight["normal"],
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     position: "relative",
 
     // eslint-disable-next-line @stylexjs/no-legacy-contextual-styles, @stylexjs/valid-styles

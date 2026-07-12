@@ -30,6 +30,7 @@ import { Flex } from "../flex";
 import { IconButton } from "../icon-button";
 import { Select, SelectItem } from "../select";
 import { Separator } from "../separator";
+import { focusColor } from "../theme/color.stylex";
 import {
   gap,
   horizontalSpace,
@@ -61,6 +62,11 @@ const styles = stylex.create({
     paddingLeft: 0,
     paddingRight: 0,
     paddingTop: 0,
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
   },
   root: {
     display: "block",

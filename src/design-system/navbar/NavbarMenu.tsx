@@ -2,13 +2,13 @@
 
 import * as stylex from "@stylexjs/stylex";
 import * as React from "react";
-import { mergeProps, useHover, usePress } from "react-aria";
+import { mergeProps, useFocusRing, useHover, usePress } from "react-aria";
 import { Button, Disclosure, DisclosurePanel } from "react-aria-components";
 
 import type { HoverCardProps } from "../hover-card";
 import { HoverCard } from "../hover-card";
 import { animationDuration } from "../theme/animations.stylex";
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { containerBreakpoints } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import {
@@ -40,6 +40,12 @@ const styles = stylex.create({
     paddingLeft: horizontalSpace["sm"],
     paddingRight: horizontalSpace["sm"],
     paddingTop: verticalSpace["sm"],
+
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "-2px",
 
     gridTemplateAreas: {
       default: '"title"',
@@ -163,6 +169,12 @@ const styles = stylex.create({
   menuTriggerButton: {
     display: "contents",
     fontSize: "inherit",
+
+    outline: {
+      default: "none",
+      ":is([data-focus-visible] *)": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
   },
   menuDisclosurePanel: {
     marginLeft: `calc(${horizontalSpace["sm"]} * -1)`,
@@ -219,6 +231,7 @@ export function NavbarMenuItem({
 }: NavbarMenuItemProps) {
   const { hoverProps, isHovered } = useHover({ isDisabled });
   const { pressProps, isPressed } = usePress({ isDisabled });
+  const { isFocusVisible, focusProps } = useFocusRing();
   const Component = "href" in props ? "a" : "button";
 
   return (
@@ -227,9 +240,11 @@ export function NavbarMenuItem({
         props as React.ComponentProps<typeof Component>,
         hoverProps,
         pressProps,
+        focusProps,
       )}
       data-hovered={isHovered || undefined}
       data-pressed={isPressed}
+      data-focus-visible={isFocusVisible || undefined}
       {...stylex.props(
         stylex.defaultMarker(),
         styles.menuItem,

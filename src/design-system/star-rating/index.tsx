@@ -3,11 +3,11 @@
 import * as stylex from "@stylexjs/stylex";
 import { Star } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { mergeProps, useKeyboard, usePress } from "react-aria";
+import { mergeProps, useFocusRing, useKeyboard, usePress } from "react-aria";
 
 import type { FlexProps } from "../flex";
 import { Flex } from "../flex";
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { gap } from "../theme/semantic-spacing.stylex";
 import type { StyleXComponentProps } from "../theme/types";
 import { Text } from "../typography/text";
@@ -25,6 +25,13 @@ const styles = stylex.create({
   },
   starsInputDisabled: {
     cursor: "not-allowed",
+  },
+  starsInputFocusVisible: {
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
   },
   starFilled: {
     color: primaryColor.solid2,
@@ -218,6 +225,8 @@ export function StarRatingInput({
     [onChange, valueProp],
   );
 
+  const { isFocusVisible, focusProps } = useFocusRing();
+
   const { keyboardProps } = useKeyboard({
     onKeyDown: (e) => {
       if (isDisabled) return;
@@ -243,7 +252,9 @@ export function StarRatingInput({
       aria-valuenow={value}
       aria-disabled={isDisabled}
       tabIndex={isDisabled ? undefined : 0}
-      {...mergeProps(keyboardProps, props as FlexProps)}
+      data-focus-visible={isFocusVisible || undefined}
+      style={styles.starsInputFocusVisible}
+      {...mergeProps(keyboardProps, focusProps, props as FlexProps)}
     >
       <div
         ref={starsRef}

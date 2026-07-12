@@ -11,7 +11,7 @@ import {
 
 import { ColorSwatch } from "../color-swatch";
 import { SizeContext } from "../context";
-import { uiColor } from "../theme/color.stylex";
+import { focusColor, uiColor } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
 import type { Size, StyleXComponentProps } from "../theme/types";
@@ -35,7 +35,10 @@ const styles = stylex.create({
       ":is([data-size=md] *)": radius.md,
       ":is([data-size=sm] *)": radius.sm,
     },
-    outline: "none",
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
     boxSizing: "border-box",
     forcedColorAdjust: "none",
     position: "relative",
@@ -45,7 +48,10 @@ const styles = stylex.create({
     borderStyle: { ":is([data-selected])::after": "solid" },
     borderWidth: { ":is([data-selected])::after": 1 },
     outlineColor: { ":is([data-selected])::after": "white" },
-    outlineOffset: { ":is([data-selected])::after": "-2px" },
+    outlineOffset: {
+      ":is([data-focus-visible])": "2px",
+      ":is([data-selected])::after": "-2px",
+    },
     outlineStyle: { ":is([data-selected])::after": "solid" },
     outlineWidth: { ":is([data-selected])::after": "2px" },
     "::after": {

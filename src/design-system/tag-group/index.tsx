@@ -14,7 +14,7 @@ import {
 
 import { Description, ErrorMessage, Label } from "../label";
 import { animationDuration } from "../theme/animations.stylex";
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import {
@@ -67,6 +67,11 @@ const styles = stylex.create({
     opacity: {
       ":is([data-disabled])": 0.5,
     },
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     paddingBottom: verticalSpace["xs"],
     paddingLeft: horizontalSpace["lg"],
     paddingRight: {
@@ -90,6 +95,11 @@ const styles = stylex.create({
     },
     display: "flex",
     justifyContent: "center",
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     transitionDuration: animationDuration.fast,
     transitionProperty: {
       default: "background-color",

@@ -18,7 +18,7 @@ import {
 import { Checkbox } from "../checkbox";
 import { SizeContext } from "../context";
 import { animationDuration } from "../theme/animations.stylex";
-import { primaryColor } from "../theme/color.stylex";
+import { focusColor, primaryColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { ui } from "../theme/semantic-color.stylex";
@@ -61,6 +61,11 @@ const styles = stylex.create({
   chevron: {
     borderWidth: 0,
     backgroundColor: "transparent",
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     transform: {
       default: "rotate(0deg)",
       ":is([aria-expanded=true] *)": "rotate(90deg)",
@@ -109,6 +114,11 @@ const styles = stylex.create({
     alignItems: "center",
     display: "flex",
     justifyContent: "center",
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
 
     height: sizeSpace["3xl"],
     width: sizeSpace["3xl"],

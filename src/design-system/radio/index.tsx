@@ -18,6 +18,7 @@ import {
   animationDuration,
   animationTimingFunction,
 } from "../theme/animations.stylex";
+import { focusColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { primary, ui } from "../theme/semantic-color.stylex";
@@ -57,6 +58,12 @@ const styles = stylex.create({
     position: "relative",
     height: sizeSpace["md"],
     width: sizeSpace["md"],
+
+    outline: {
+      default: "none",
+      ":is([data-focus-visible] *)": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
 
     transitionDuration: animationDuration.fast,
     transitionProperty: {

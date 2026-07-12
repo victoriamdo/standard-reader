@@ -20,7 +20,7 @@ import { SizeContext } from "../context";
 import { Flex } from "../flex";
 import { Description, FieldErrorMessage, Label } from "../label";
 import { SuffixIcon } from "../suffix-icon";
-import { uiColor } from "../theme/color.stylex";
+import { focusColor, uiColor } from "../theme/color.stylex";
 import { ui } from "../theme/semantic-color.stylex";
 import {
   horizontalSpace,
@@ -120,6 +120,11 @@ const styles = stylex.create({
       default: uiColor.text2,
       ":disabled": uiColor.text1,
     },
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "-2px",
   },
   buttonLeft: {
     borderRightStyle: "solid",

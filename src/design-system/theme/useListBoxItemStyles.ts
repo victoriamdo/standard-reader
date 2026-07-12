@@ -16,7 +16,12 @@ import {
   typeramp,
 } from "../theme/typography.stylex";
 import { animationDuration } from "./animations.stylex";
-import { criticalColor, primaryColor, uiColor } from "./color.stylex";
+import {
+  criticalColor,
+  focusColor,
+  primaryColor,
+  uiColor,
+} from "./color.stylex";
 import type { Size } from "./types";
 
 const styles = stylex.create({
@@ -27,8 +32,9 @@ const styles = stylex.create({
 
     outline: {
       default: "none",
-      ":focus": "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
     },
+    outlineOffset: "-2px",
     boxSizing: "border-box",
     fontWeight: {
       default: fontWeight["normal"],
@@ -50,7 +56,7 @@ const styles = stylex.create({
     alignItems: "center",
     backgroundColor: {
       default: "transparent",
-      [":is([data-focused-visible]:not([data-disabled]) > *)"]:
+      [":is([data-focus-visible]:not([data-disabled]) > *)"]:
         uiColor.component2,
       [":is([data-react-aria-pressable=true]:not([data-disabled])[data-pressed=true] *)"]:
         uiColor.component3,

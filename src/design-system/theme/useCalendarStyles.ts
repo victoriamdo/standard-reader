@@ -6,7 +6,7 @@ import type {
 } from "react-aria-components";
 
 import { animationDuration } from "../theme/animations.stylex";
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
 import {
   gap,
@@ -41,6 +41,11 @@ const styles = stylex.create({
     opacity: {
       ":is([data-outside-visible-range],[data-unavailable])": 0.5,
     },
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "-2px",
     position: "relative",
     textAlign: "center",
     transitionDuration: animationDuration.fast,

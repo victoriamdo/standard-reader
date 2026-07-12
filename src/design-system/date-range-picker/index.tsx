@@ -22,7 +22,7 @@ import { Description, FieldErrorMessage, Label } from "../label";
 import type { RangeCalendarProps } from "../range-calendar";
 import { RangeCalendar } from "../range-calendar";
 import { SuffixIcon } from "../suffix-icon";
-import { uiColor } from "../theme/color.stylex";
+import { focusColor, uiColor } from "../theme/color.stylex";
 import {
   gap,
   horizontalSpace,
@@ -84,6 +84,11 @@ const styles = stylex.create({
     color: {
       ":is([data-placeholder])": uiColor.text1,
     },
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
   },
 });
 

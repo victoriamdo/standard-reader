@@ -8,6 +8,7 @@ import {
   ColorThumb as AriaColorThumb,
 } from "react-aria-components";
 
+import { focusColor } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
 import { size as sizeSpace } from "../theme/semantic-spacing.stylex";
 import type { StyleXComponentProps } from "../theme/types";
@@ -33,6 +34,11 @@ const styles = stylex.create({
     filter: {
       ":is([data-disabled])": "grayscale(1)",
     },
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     height: {
       default: sizeSpace["md"],
       ":is([data-focus-visible])": sizeSpace["xl"],

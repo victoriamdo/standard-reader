@@ -11,11 +11,11 @@ import type {
 import { animationDuration } from "./animations.stylex";
 import {
   criticalColor,
+  focusColor,
   successColor,
   uiColor,
   warningColor,
 } from "./color.stylex";
-import { blue } from "./colors/blue.stylex";
 import { radius } from "./radius.stylex";
 import { ui } from "./semantic-color.stylex";
 import {
@@ -124,7 +124,7 @@ const styles = stylex.create({
     borderColor: {
       default: uiColor.border1,
       ":is([data-focus-visible],:has([data-focused][data-focus-always-visible]))":
-        blue.border3,
+        focusColor.ring,
       ":is([data-hovered]:not(:has(:is([data-invalid]))))": uiColor.border2,
     },
     borderStyle: "solid",
@@ -147,7 +147,8 @@ const styles = stylex.create({
     borderColor: {
       default: criticalColor.border2,
       ":is([data-hovered])": criticalColor.border3,
-      ":focus": uiColor.solid1,
+      ":is([data-focus-visible],:has([data-focused][data-focus-always-visible]))":
+        focusColor.ring,
     },
     backgroundColor: {
       default: criticalColor.bgSubtle,
@@ -162,7 +163,8 @@ const styles = stylex.create({
     borderColor: {
       default: warningColor.border2,
       ":is([data-hovered])": warningColor.border3,
-      ":focus": uiColor.solid1,
+      ":is([data-focus-visible],:has([data-focused][data-focus-always-visible]))":
+        focusColor.ring,
     },
     backgroundColor: {
       default: warningColor.bgSubtle,
@@ -177,7 +179,8 @@ const styles = stylex.create({
     borderColor: {
       default: successColor.border2,
       ":is([data-hovered])": successColor.border3,
-      ":focus": uiColor.solid1,
+      ":is([data-focus-visible],:has([data-focused][data-focus-always-visible]))":
+        focusColor.ring,
     },
     backgroundColor: {
       default: successColor.bgSubtle,
@@ -192,7 +195,7 @@ const styles = stylex.create({
     borderColor: {
       default: uiColor.border1,
       ":is([data-focus-visible],:has([data-focused][data-focus-always-visible]))":
-        blue.border3,
+        focusColor.ring,
       ":is([data-hovered]:not(:has(:is([data-invalid]))))": uiColor.border2,
     },
     borderStyle: "solid",
@@ -250,7 +253,7 @@ const styles = stylex.create({
     borderColor: {
       default: "transparent",
       ":is([data-focus-visible],:has([data-focused][data-focus-always-visible]))":
-        blue.border3,
+        focusColor.ring,
       ":is([data-hovered]:not(:has(* [data-hovered])),:has(input[data-hovered])):not(:disabled)":
         uiColor.component2,
       ":is([data-pressed=true]):not(:disabled)": uiColor.component3,

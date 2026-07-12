@@ -30,7 +30,7 @@ import { Checkbox } from "../checkbox";
 import { SizeContext } from "../context";
 import { Flex } from "../flex";
 import { IconButton } from "../icon-button";
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import {
   horizontalSpace,
   size as sizeSpace,
@@ -52,6 +52,11 @@ const styles = stylex.create({
     cursor: {
       ":is([data-href])": "pointer",
     },
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "-2px",
   },
   column: {
     borderBottomColor: uiColor.border1,
@@ -61,6 +66,11 @@ const styles = stylex.create({
     paddingLeft: 0,
     paddingRight: 0,
     paddingTop: 0,
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "-2px",
   },
   columnHeader: {
     alignItems: "center",
@@ -87,6 +97,11 @@ const styles = stylex.create({
     height: {
       ":is([role=presentation] > [role=gridcell])": "100%",
     },
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "-2px",
   },
   cellContent: {
     boxSizing: "border-box",
@@ -154,6 +169,11 @@ const styles = stylex.create({
       ":is([data-table-size=md] *)": sizeSpace["4xl"],
     },
     width: sizeSpace["xxs"],
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
   },
   resizerLine: {
     backgroundColor: {

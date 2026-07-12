@@ -4,7 +4,7 @@ import { Switch as AriaSwitch } from "react-aria-components";
 
 import { useHaptics } from "../haptics";
 import { animationDuration } from "../theme/animations.stylex";
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import {
@@ -39,6 +39,11 @@ const styles = stylex.create({
       default: 1,
       ":is([data-disabled=true] *)": 0.5,
     },
+    outline: {
+      default: "none",
+      ":is([data-focus-visible] *)": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     position: "relative",
     transitionDuration: animationDuration.fast,
     transitionProperty: {

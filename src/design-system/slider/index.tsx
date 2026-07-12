@@ -8,7 +8,7 @@ import {
 } from "react-aria-components";
 
 import { Label } from "../label";
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
 import { shadow } from "../theme/shadow.stylex";
@@ -99,6 +99,11 @@ const styles = stylex.create({
     left: {
       ":is([data-orientation=vertical] *)": "50%",
     },
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     top: {
       ":is([data-orientation=horizontal] *)": "50%",
     },

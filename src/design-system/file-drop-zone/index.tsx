@@ -17,8 +17,7 @@ import {
   animationDuration,
   animationTimingFunction,
 } from "../theme/animations.stylex";
-import { primaryColor, uiColor } from "../theme/color.stylex";
-import { blue } from "../theme/colors/blue.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { ui } from "../theme/semantic-color.stylex";
@@ -96,7 +95,7 @@ const styles = stylex.create({
     borderColor: {
       default: uiColor.border3,
       ":is([data-drop-target])": primaryColor.solid1,
-      ":is([data-focus-visible])": blue.border3,
+      ":is([data-focus-visible])": focusColor.ring,
     },
     borderRadius: radius.lg,
     borderStyle: {

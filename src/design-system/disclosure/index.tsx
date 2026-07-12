@@ -14,7 +14,7 @@ import {
 
 import { SizeContext } from "../context";
 import { animationDuration } from "../theme/animations.stylex";
-import { uiColor } from "../theme/color.stylex";
+import { focusColor, uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
@@ -76,6 +76,11 @@ const styles = stylex.create({
     },
     transitionTimingFunction: "ease-in-out",
     width: "100%",
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "-2px",
   },
   titleDisabled: {
     opacity: 0.5,

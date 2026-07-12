@@ -2,10 +2,10 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { createContext, use, useEffect, useState } from "react";
-import { useHover } from "react-aria";
+import { useFocusRing, useHover } from "react-aria";
 
 import { animationDuration } from "../theme/animations.stylex";
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import {
   gap,
   horizontalSpace,
@@ -73,6 +73,11 @@ const styles = stylex.create({
     borderLeftStyle: "solid",
     borderLeftWidth: 1,
     height: sizeSpace["3xl"],
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
 
     "::before": {
       content: "''",
@@ -106,13 +111,16 @@ function TocItem({ id, value, children }: TocEntry) {
   const level = use(LevelContext);
   const activeHeaderId = use(ActiveHeaderIdContext);
   const { hoverProps, isHovered } = useHover({});
+  const { focusProps, isFocusVisible } = useFocusRing();
 
   return (
     <li key={id}>
       <a
         href={`#${id ?? ""}`}
         data-hovered={isHovered || undefined}
+        data-focus-visible={isFocusVisible || undefined}
         {...hoverProps}
+        {...focusProps}
         {...stylex.props(
           styles.item,
           styles.level(level),

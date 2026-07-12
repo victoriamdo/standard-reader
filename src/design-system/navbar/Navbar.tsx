@@ -10,7 +10,7 @@ import { Link } from "react-aria-components";
 import { SizeContext } from "../context";
 import { IconButton } from "../icon-button";
 import { Separator } from "../separator";
-import { primaryColor, uiColor } from "../theme/color.stylex";
+import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
 import { containerBreakpoints } from "../theme/media-queries.stylex";
 import { ui } from "../theme/semantic-color.stylex";
 import {
@@ -261,6 +261,11 @@ const styles = stylex.create({
     },
     fontFamily: fontFamily["sans"],
     fontWeight: fontWeight["normal"],
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     position: "relative",
     width: {
       default: "100%",

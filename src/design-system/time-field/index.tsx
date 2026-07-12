@@ -15,6 +15,7 @@ import { SizeContext } from "../context";
 import { Flex } from "../flex";
 import { Description, FieldErrorMessage, Label } from "../label";
 import { SuffixIcon } from "../suffix-icon";
+import { focusColor } from "../theme/color.stylex";
 import type {
   InputValidationState,
   InputVariant,
@@ -23,6 +24,16 @@ import type {
   StyleXComponentProps,
 } from "../theme/types";
 import { useInputStyles } from "../theme/useInputStyles";
+
+const styles = stylex.create({
+  segment: {
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
+  },
+});
 
 interface TimeFieldContentProps {
   label?: React.ReactNode;
@@ -72,7 +83,9 @@ function TimeFieldContent({
           <div {...stylex.props(inputStyles.addon)}>{prefix}</div>
         )}
         <DateInput {...stylex.props(inputStyles.input)} ref={inputRef}>
-          {(segment) => <DateSegment segment={segment} />}
+          {(segment) => (
+            <DateSegment segment={segment} {...stylex.props(styles.segment)} />
+          )}
         </DateInput>
         <SuffixIcon
           suffix={suffix}

@@ -7,6 +7,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { mergeProps, useLongPress } from "react-aria";
 import { TextField as AriaTextField, Input } from "react-aria-components";
 
+import { focusColor } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
 import {
   horizontalSpace,
@@ -38,11 +39,11 @@ const styles = stylex.create({
     textTransform: "inherit",
     minWidth: 0,
 
-    outlineColor: "blue",
+    outlineColor: focusColor.ring,
     outlineStyle: "solid",
     outlineWidth: {
       default: "0px",
-      ":focus": "1px",
+      ":is([data-focus-visible])": "1px",
     },
 
     marginBottom: `calc(${verticalSpace["xxs"]} * -1)`,

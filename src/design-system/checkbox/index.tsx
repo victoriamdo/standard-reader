@@ -14,6 +14,7 @@ import {
 import { SizeContext } from "../context";
 import { Flex } from "../flex";
 import { Description, FieldErrorMessage, Label } from "../label";
+import { focusColor } from "../theme/color.stylex";
 import { radius } from "../theme/radius.stylex";
 import { primary, ui } from "../theme/semantic-color.stylex";
 import { gap, size as sizeSpace } from "../theme/semantic-spacing.stylex";
@@ -46,6 +47,12 @@ const styles = stylex.create({
     cornerShape: "squircle",
     height: sizeSpace["md"],
     width: sizeSpace["md"],
+
+    outline: {
+      default: "none",
+      ":is([data-focus-visible] *)": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
   },
   checked: {
     color: "white",

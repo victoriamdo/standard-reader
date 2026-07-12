@@ -15,7 +15,7 @@ import {
 import { SizeContext } from "../context";
 import { useHaptics } from "../haptics";
 import { animationDuration } from "../theme/animations.stylex";
-import { uiColor } from "../theme/color.stylex";
+import { focusColor, uiColor } from "../theme/color.stylex";
 import { mediaQueries } from "../theme/media-queries.stylex";
 import { radius } from "../theme/radius.stylex";
 import {
@@ -74,6 +74,11 @@ const styles = stylex.create({
     display: "flex",
     flexGrow: 1,
     justifyContent: "center",
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "-2px",
     position: "relative",
     zIndex: {
       default: 1,

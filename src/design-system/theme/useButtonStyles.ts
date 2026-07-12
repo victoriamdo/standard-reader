@@ -7,7 +7,7 @@ import { ButtonGroupContext } from "../button/context";
 import { SizeContext } from "../context";
 import type { ButtonVariant, Size } from "../theme/types";
 import { animationDuration } from "./animations.stylex";
-import { uiColor } from "./color.stylex";
+import { focusColor, uiColor } from "./color.stylex";
 import { radius } from "./radius.stylex";
 import { critical, primary, ui } from "./semantic-color.stylex";
 import {
@@ -44,6 +44,11 @@ const styles = stylex.create({
     opacity: {
       ":disabled": 0.5,
     },
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     pointerEvents: {
       ":disabled": "none",
     },
