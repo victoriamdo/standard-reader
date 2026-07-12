@@ -1,56 +1,78 @@
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 
-import { reactNodePlainText } from "./react-node-text";
+import { reactNodeHasText, splitLeadingChar } from "./react-node-text";
 
-describe("reactNodePlainText", () => {
-  it("returns the string for plain string nodes", () => {
-    expect(reactNodePlainText("hello")).toBe("hello");
+describe("splitLeadingChar", () => {
+  it("splits the first character off a plain string", () => {
+    expect(splitLeadingChar("hello")).toEqual({ first: "h", rest: "ello" });
   });
 
-  it("returns the empty string for nullish/boolean nodes", () => {
-    const maybeMissing: string | undefined = undefined;
-    expect(reactNodePlainText(null)).toBe("");
-    expect(reactNodePlainText(maybeMissing)).toBe("");
-    expect(reactNodePlainText(true)).toBe("");
-    expect(reactNodePlainText(false)).toBe("");
+  it("splits by code point, not UTF-16 unit", () => {
+    // A drop cap on an emoji-led paragraph must not tear a surrogate pair.
+    expect(splitLeadingChar("😀 hi")).toEqual({ first: "😀", rest: " hi" });
   });
 
-  it("stringifies numbers", () => {
-    expect(reactNodePlainText(42)).toBe("42");
+  it("stringifies a leading number", () => {
+    expect(splitLeadingChar(42)).toEqual({ first: "4", rest: "2" });
   });
 
-  it("concatenates arrays of plain text", () => {
-    expect(reactNodePlainText(["foo", " ", "bar"])).toBe("foo bar");
+  it("returns null for empty or non-text nodes", () => {
+    const missing: string | undefined = undefined;
+    expect(splitLeadingChar("")).toBeNull();
+    expect(splitLeadingChar(null)).toBeNull();
+    expect(splitLeadingChar(missing)).toBeNull();
+    expect(splitLeadingChar(true)).toBeNull();
   });
 
-  it("returns null for a React element", () => {
+  it("returns null when the node opens with a React element", () => {
     const link = createElement("a", { href: "https://example.com" }, "link");
-    // Stringifying a React element yields "[object Object]" — the helper must
-    // signal that the node carries inline markup so callers skip the drop cap.
-    expect(reactNodePlainText(link)).toBeNull();
-    expect(String(link)).toBe("[object Object]");
+    expect(splitLeadingChar(link)).toBeNull();
+    // …and the same when that element leads an array.
+    expect(splitLeadingChar([link, " after"])).toBeNull();
   });
 
-  it("returns null for an array containing a React element", () => {
+  it("keeps trailing inline markup intact when the paragraph opens with text", () => {
+    // Regression: a paragraph that opens with a plain letter but then carries a
+    // link must still get its drop cap, with the link preserved in `rest`.
+    const link = createElement(
+      "a",
+      { href: "https://herrmontag.de/atproto" },
+      "ATProto",
+    );
+    const paragraph = ["Hallo ", link, " — weiter."];
+    const split = splitLeadingChar(paragraph);
+    expect(split?.first).toBe("H");
+    expect(split?.rest).toEqual(["allo ", link, " — weiter."]);
+  });
+
+  it("skips empty leading array entries", () => {
+    expect(splitLeadingChar([null, "", "hi"])).toEqual({
+      first: "h",
+      rest: ["i"],
+    });
+  });
+});
+
+describe("reactNodeHasText", () => {
+  it("is true for strings with visible characters and for numbers", () => {
+    expect(reactNodeHasText("hi")).toBe(true);
+    expect(reactNodeHasText(0)).toBe(true);
+  });
+
+  it("is false for whitespace-only, nullish, and boolean nodes", () => {
+    expect(reactNodeHasText("   ")).toBe(false);
+    expect(reactNodeHasText(null)).toBe(false);
+    expect(reactNodeHasText(false)).toBe(false);
+  });
+
+  it("descends into element children (a link paragraph has text)", () => {
     const link = createElement("a", { href: "https://example.com" }, "link");
-    expect(reactNodePlainText(["before ", link, " after"])).toBeNull();
+    expect(reactNodeHasText([link, " after"])).toBe(true);
   });
 
-  // Regression: the Standard Reader drop-cap handler used to call
-  // `String(children)` on the first paragraph. A markdown body that opens with
-  // a link (e.g. "[label](https://...) text") is parsed by react-markdown into
-  // a paragraph whose children include an `<a>` element, so the drop cap
-  // rendered "[object Object]" as the first block.
-  it("guards the drop-cap regression — a markdown-link paragraph is not plain text", () => {
-    const markdownLinkParagraph = [
-      createElement(
-        "a",
-        { href: "https://herrmontag.de/atproto" },
-        "herrmontag.de: ATProto",
-      ),
-      " — gefolgt von weiterem Text.",
-    ];
-    expect(reactNodePlainText(markdownLinkParagraph)).toBeNull();
+  it("is false for a media-only paragraph (a lone image)", () => {
+    const image = createElement("img", { src: "x.png", alt: "" });
+    expect(reactNodeHasText(image)).toBe(false);
   });
 });

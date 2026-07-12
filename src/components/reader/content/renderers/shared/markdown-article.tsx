@@ -31,7 +31,7 @@ import type { ContentRendererProps } from "../../types";
 import { ArticleBody } from "./article-body";
 import { CodeBlockView } from "./code-block";
 import { MarkdownIframeEmbed } from "./iframe-embed";
-import { reactNodePlainText } from "./react-node-text";
+import { reactNodeHasText, splitLeadingChar } from "./react-node-text";
 
 const markdownStyles = stylex.create({
   blockquote: {
@@ -137,8 +137,24 @@ function MarkdownImage({
 
 function useMarkdownComponents(
   codeHighlights: ContentRendererProps["codeHighlights"],
+  bodyText: string,
 ): Components {
-  const dropCapApplied = useRef(false);
+  // Which paragraph owns the drop cap, identified by its offset in the markdown
+  // source (`node.position.start.offset`). We key on that offset — not a
+  // one-shot boolean — because the same paragraph's render function runs more
+  // than once: React's dev double-invoke calls each `p` twice back to back, and
+  // any state change (e.g. `useReadingTypography` resolving) re-renders the
+  // whole body. A boolean flag flipped on the first pass makes every later pass
+  // start "already applied" and drop the cap entirely. Matching by offset makes
+  // the decision idempotent: the owning paragraph re-renders its cap, and no
+  // other paragraph ever claims it.
+  const dropCapOffset = useRef<number | null>(null);
+  const prevText = useRef<string | null>(null);
+  if (prevText.current !== bodyText) {
+    // New body (e.g. an in-place article swap): recompute from scratch.
+    prevText.current = bodyText;
+    dropCapOffset.current = null;
+  }
   const { preference } = useReadingTypography();
 
   return useMemo(
@@ -179,34 +195,45 @@ function useMarkdownComponents(
           { ...stylex.props(articleBodyStyles.heading2) },
           children,
         ),
-      p: ({ children }) => {
-        if (!dropCapApplied.current) {
-          // Only apply the drop cap when the paragraph is plain text. When the
-          // first paragraph contains inline markup (a link, bold, code, …)
-          // `String(children)` would stringify a React element to
-          // `"[object Object]"` and lose the formatting — skip the drop cap
-          // and render the children untouched instead.
-          const text = reactNodePlainText(children);
-          if (text !== null) {
-            const chars = [...text];
-            const firstChar = chars[0] ?? "";
-            const rest = chars.slice(1).join("");
-            if (firstChar) {
-              dropCapApplied.current = true;
-              return (
-                <p
-                  {...stylex.props(
-                    articleBodyStyles.paragraph,
-                    articleBodyStyles.dropCapParagraph,
-                  )}
-                >
-                  <span {...readingDropCapStyleProps(preference)} aria-hidden>
-                    {firstChar}
-                  </span>
-                  {rest}
-                </p>
-              );
-            }
+      p: ({ children, node }) => {
+        // The drop cap belongs on the first letter of the first prose paragraph,
+        // and nowhere else. A paragraph is eligible only when no other paragraph
+        // has claimed the slot, or when THIS paragraph is the one that claimed it
+        // (so re-renders and the dev double-invoke reproduce the same cap — see
+        // `dropCapOffset` above). `splitLeadingChar` lifts off the opening
+        // character even when the rest of the paragraph carries inline markup (a
+        // link, bold, …) so the formatting survives. A paragraph that opens with
+        // markup itself has no bare letter to enlarge — it still claims the slot
+        // (as long as it has text) so the cap never falls to a later paragraph.
+        // A media-only paragraph (a lone image) carries no text, so it leaves the
+        // slot for the first real prose that follows.
+        const offset = node?.position?.start?.offset ?? null;
+        const eligible =
+          dropCapOffset.current === null || dropCapOffset.current === offset;
+        if (eligible) {
+          const split = splitLeadingChar(children);
+          if (split && split.first.trim()) {
+            if (offset !== null) dropCapOffset.current = offset;
+            return (
+              <p
+                {...stylex.props(
+                  articleBodyStyles.paragraph,
+                  articleBodyStyles.dropCapParagraph,
+                )}
+              >
+                <span {...readingDropCapStyleProps(preference)} aria-hidden>
+                  {split.first}
+                </span>
+                {split.rest}
+              </p>
+            );
+          }
+          if (
+            dropCapOffset.current === null &&
+            offset !== null &&
+            reactNodeHasText(children)
+          ) {
+            dropCapOffset.current = offset;
           }
         }
         return <p {...stylex.props(articleBodyStyles.paragraph)}>{children}</p>;
@@ -358,7 +385,7 @@ export function MarkdownArticle({
   flavor?: "gfm" | "commonmark";
   enableMath?: boolean;
 }) {
-  const components = useMarkdownComponents(codeHighlights);
+  const components = useMarkdownComponents(codeHighlights, text);
 
   const remarkPlugins = useMemo(() => {
     const plugins = [];
