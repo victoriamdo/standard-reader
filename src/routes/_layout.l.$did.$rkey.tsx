@@ -609,7 +609,7 @@ function ListPage() {
               <IconButton
                 variant="primary"
                 size="lg"
-                label="Follow list"
+                label="Subscribe to list"
                 isPending={toggling}
                 onPress={() => saveMutation.mutate(list.uri)}
               >

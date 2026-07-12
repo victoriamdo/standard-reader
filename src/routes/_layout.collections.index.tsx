@@ -807,7 +807,7 @@ function CollectionsPage() {
 
           <Masthead
             title="Collections"
-            dek="Curated, magazine-rendered editions grouped into followable series — your special collections on the network."
+            dek="Curated, magazine-rendered editions grouped into series you can subscribe to — your special collections on the network."
             metaLabel="Series"
             metaValue={String(publications.length)}
             style={styles.mastheadAfterTopbar}

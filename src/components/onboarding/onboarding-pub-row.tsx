@@ -134,7 +134,7 @@ export function OnboardingPubRow({
       variant="tertiary"
       isSelected={selected}
       onChange={onToggle}
-      aria-label={`${selected ? "Unfollow" : "Follow"} ${pub.name}`}
+      aria-label={`${selected ? "Unsubscribe from" : "Subscribe to"} ${pub.name}`}
       style={styles.row}
     >
       <PublicationAvatar pub={pub} size="lg" />
@@ -159,7 +159,7 @@ export function OnboardingPubRow({
       </span>
       <span {...stylex.props(styles.action)}>
         {selected ? <Check size={13} /> : <Plus size={13} />}
-        {selected ? "Following" : "Follow"}
+        {selected ? "Subscribed" : "Subscribe"}
       </span>
     </ToggleButton>
   );

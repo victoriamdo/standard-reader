@@ -257,7 +257,7 @@ const followPublication = createServerFn({ method: "POST" })
       span.set("publicationUri", data.publicationUri);
       const session = await getAtprotoSessionForRequest(getRequest());
       if (!session) {
-        throw new Error("Sign in to follow publications.");
+        throw new Error("Sign in to subscribe to publications.");
       }
       span.set("did", session.did);
 
@@ -298,7 +298,7 @@ const followPublications = createServerFn({ method: "POST" })
       span.set("count", data.publicationUris.length);
       const session = await getAtprotoSessionForRequest(getRequest());
       if (!session) {
-        throw new Error("Sign in to follow publications.");
+        throw new Error("Sign in to subscribe to publications.");
       }
       span.set("did", session.did);
 
@@ -344,7 +344,7 @@ const unfollowPublication = createServerFn({ method: "POST" })
       span.set("publicationUri", data.publicationUri);
       const session = await getAtprotoSessionForRequest(getRequest());
       if (!session) {
-        throw new Error("Sign in to manage follows.");
+        throw new Error("Sign in to manage subscriptions.");
       }
       span.set("did", session.did);
 

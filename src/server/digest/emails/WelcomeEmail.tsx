@@ -52,8 +52,8 @@ export interface WelcomeEmailProps {
 
 const SECTIONS: Array<{ title: string; body: string }> = [
   {
-    title: "Best of your follows",
-    body: "The week's most-recommended pieces from the writers and publications you already follow.",
+    title: "Best of your subscriptions",
+    body: "The week's most-recommended pieces from the writers and publications you already subscribe to.",
   },
   {
     title: "Top on the network",

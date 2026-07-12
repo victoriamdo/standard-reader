@@ -555,7 +555,7 @@ export function SubscribeCard({
           }
           body={
             phase === "already"
-              ? `You're already following ${meta.name}. New posts will show up in your feed.`
+              ? `You're already subscribed to ${meta.name}. New posts will show up in your feed.`
               : `${meta.name} is in your feed. You'll see new writing as it publishes.`
           }
         />
@@ -592,7 +592,7 @@ export function SubscribeCard({
           </h1>
           <p {...stylex.props(styles.successBody)}>
             {phase === "already"
-              ? `You're already following ${meta.name}. New posts will show up in your feed.`
+              ? `You're already subscribed to ${meta.name}. New posts will show up in your feed.`
               : `${meta.name} is in your feed. You'll see new writing as it publishes.`}
           </p>
         </Flex>

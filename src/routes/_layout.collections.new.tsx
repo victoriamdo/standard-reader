@@ -124,7 +124,7 @@ function NewCollectionPage() {
           kicker="Collections"
           kickerIcon={<Layers size={14} aria-hidden />}
           title="Name your series"
-          dek="On your first collection we create one series to hold them — a followable special collection you can rename and theme later."
+          dek="On your first collection we create one series to hold them — a special collection you can subscribe to, rename, and theme later."
         />
         <Flex direction="column" gap="2xl">
           <TextField

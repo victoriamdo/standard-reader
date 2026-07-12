@@ -24,13 +24,13 @@ export const PAGE_OG_CARDS = {
   today: {
     path: "/",
     title: "Today",
-    tagline: "Fresh writing from the publications you follow, every day.",
+    tagline: "Fresh writing from the publications you subscribe to, every day.",
   },
   discover: {
     path: "/discover",
     title: "Discover",
     tagline:
-      "Browse and follow standard.site publications across the Atmosphere.",
+      "Browse and subscribe to standard.site publications across the Atmosphere.",
   },
   latest: {
     path: "/latest",
@@ -63,7 +63,7 @@ export const PAGE_OG_CARDS = {
     path: "/about",
     title: "A home for the writing you love",
     tagline:
-      "New writing from the standard.site publications you follow — calm, chronological, and yours to take anywhere.",
+      "New writing from the standard.site publications you subscribe to — calm, chronological, and yours to take anywhere.",
   },
   docsApi: {
     path: "/docs/api",
@@ -103,7 +103,7 @@ export const PAGE_OG_CARDS = {
   login: {
     path: "/login",
     title: "Sign in",
-    tagline: "Use your Atmosphere account to follow writers and save reads.",
+    tagline: "Use your Atmosphere account to subscribe to writers and save reads.",
   },
   feedback: {
     path: "/feedback",

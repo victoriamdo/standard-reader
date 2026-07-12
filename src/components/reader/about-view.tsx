@@ -62,7 +62,7 @@ const RSS_FEEDS = [
   "Everything by one author",
   "A topic or tag",
   "One of your saved lists",
-  "The latest across everyone you follow",
+  "The latest across everyone you subscribe to",
 ] as const;
 
 /** Exactly the prose shown in the mock reading card, for the Listen button. */
@@ -72,7 +72,7 @@ const READING_EXAMPLE =
 const INLINE_FEATS = [
   { icon: Sparkles, label: "Recommendations from real reading patterns" },
   { icon: Flame, label: "Trending this week" },
-  { icon: Users, label: "Followed by people you follow" },
+  { icon: Users, label: "Subscribed by people you follow" },
   { icon: Search, label: "Fast full-text search" },
 ] as const;
 
@@ -1216,7 +1216,7 @@ export function AboutView() {
         <SectionHead
           kicker="Discovery"
           title="Find the ones you didn't know you wanted"
-          dek={`Most readers stop at what you already follow. Standard Reader treats finding your next favourite as part of the job. Browse${
+          dek={`Most readers stop at what you already subscribe to. Standard Reader treats finding your next favourite as part of the job. Browse${
             countLabel ? ` all ${countLabel}` : " every"
           } publications on the network — not just the handful you've heard of.`}
         />
@@ -1286,7 +1286,7 @@ export function AboutView() {
             </div>
           </div>
 
-          <IntegrationCard icon={Heart} title="Save, like, follow — everywhere">
+          <IntegrationCard icon={Heart} title="Save, like, subscribe — everywhere">
             One tap from the reading view, on any device, instantly in sync.
             Your library is always where you left it.
           </IntegrationCard>

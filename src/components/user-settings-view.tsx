@@ -559,8 +559,8 @@ export function UserSettingsView() {
             label="Weekly digest email"
             description={
               digestEnabled && digestEmail
-                ? `On — delivered to ${digestEmail}. The best of the publications you follow, plus a couple worth discovering.`
-                : "A weekly email with the best of what you follow, plus a couple of publications worth discovering. Turning this on asks your PDS to share your email address."
+                ? `On — delivered to ${digestEmail}. The best of the publications you subscribe to, plus a couple worth discovering.`
+                : "A weekly email with the best of what you subscribe to, plus a couple of publications worth discovering. Turning this on asks your PDS to share your email address."
             }
           >
             <Flex align="center" gap="md">

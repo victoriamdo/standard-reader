@@ -335,7 +335,7 @@ export function AddPublicationModal({
             <div
               {...stylex.props(styles.disabledRow)}
               aria-disabled="true"
-              title="This account has documents but no publications to follow"
+              title="This account has documents but no publications to subscribe to"
             >
               <Avatar
                 size="lg"
@@ -366,7 +366,7 @@ export function AddPublicationModal({
                   key={account.did}
                   {...stylex.props(styles.disabledRow)}
                   aria-disabled="true"
-                  title="This account has documents but no publications to follow"
+                  title="This account has documents but no publications to subscribe to"
                 >
                   <Avatar
                     size="lg"

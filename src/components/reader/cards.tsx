@@ -781,7 +781,7 @@ export function FollowButton({
   const unfollowMutation = useMutation(
     readerApi.unfollowPublicationMutationOptions(),
   );
-  const followLabel = following ? "Following" : "Follow";
+  const followLabel = following ? "Subscribed" : "Subscribe";
   const mobileIconSize = 20;
   const icon = following ? (
     <Check size={mobileIconSize} aria-hidden />
@@ -816,7 +816,7 @@ export function FollowButton({
           to="/login"
           search={loginSearch}
           variant="secondary"
-          aria-label="Follow"
+          aria-label="Subscribe"
           style={styles.followResponsiveIcon}
           onClick={stopFollowBubble}
         >

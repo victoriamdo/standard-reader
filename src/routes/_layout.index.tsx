@@ -11,6 +11,7 @@ import { Suspense, useEffect } from "react";
 import { z } from "zod";
 
 import { ButtonLink } from "#/components/router-links";
+import { formatCount } from "#/lib/format-count";
 import { DEFAULT_TRACK_READING_HISTORY } from "#/lib/track-reading-history";
 
 import {
@@ -267,14 +268,14 @@ function homeFeedLabels({
   const unreadLabel = trackReading
     ? unreadCountPending || unreadCount == null
       ? undefined
-      : `${unreadCount} new`
+      : `${formatCount(unreadCount)} new`
     : "Fresh";
   const dek = personalized
     ? trackReading
       ? unreadCountPending
-        ? "The latest writing from the publications you follow."
-        : `${unreadCount ?? 0} unread across the publications you follow.`
-      : "The latest writing from the publications you follow."
+        ? "The latest writing from the publications you subscribe to."
+        : `${formatCount(unreadCount ?? 0)} unread across the publications you subscribe to.`
+      : "The latest writing from the publications you subscribe to."
     : "The latest long-form writing from across the network.";
 
   return {
@@ -485,7 +486,7 @@ function HomeFeed({
         <Masthead
           kicker="Your reading room"
           title="A quiet place to begin"
-          dek="Follow a few publications and their latest writing will collect here."
+          dek="Subscribe to a few publications and their latest writing will collect here."
         />
         <Flex direction="column" gap="2xl" style={styles.emptyCard}>
           <span {...stylex.props(styles.emptyTitle)}>Wander the directory</span>

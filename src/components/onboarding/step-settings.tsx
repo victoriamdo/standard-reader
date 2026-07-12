@@ -154,7 +154,7 @@ export function StepSettings() {
         <div {...stylex.props(styles.group)}>
           <Row
             label="Weekly digest email"
-            description="A weekly email with the best of what you follow, plus a couple of publications worth discovering."
+            description="A weekly email with the best of what you subscribe to, plus a couple of publications worth discovering."
           >
             <Tooltip text="Coming soon">
               <Pressable>

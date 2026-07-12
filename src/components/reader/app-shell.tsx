@@ -1054,7 +1054,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <SubscriptionsSkeleton />
             ) : following.length === 0 && !hasListGroups ? (
               <span {...stylex.props(styles.emptyNote)}>
-                {signedIn ? "Nothing yet — go discover." : "Sign in to follow."}
+                {signedIn ? "Nothing yet — go discover." : "Sign in to subscribe."}
               </span>
             ) : (
               ungrouped.map((pub) => <FollowRow key={pub.uri} pub={pub} />)

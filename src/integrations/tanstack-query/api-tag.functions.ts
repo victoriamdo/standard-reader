@@ -290,7 +290,7 @@ const followTagPublications = createServerFn({ method: "POST" })
 
       const session = await getAtprotoSessionForRequest(getRequest());
       if (!session) {
-        throw new Error("Sign in to follow publications.");
+        throw new Error("Sign in to subscribe to publications.");
       }
       span.set("did", session.did);
 

@@ -176,8 +176,8 @@ const STEP_COPY: Record<
     dek: "Pick a few topics — we'll suggest publications to match. Optional.",
   },
   follow: {
-    title: "Follow a few publications",
-    dek: "Your Home feed is built from follows. Three is a good start.",
+    title: "Subscribe to a few publications",
+    dek: "Your Home feed is built from subscriptions. Three is a good start.",
   },
   settings: {
     title: "A few preferences",
@@ -256,7 +256,7 @@ export function WelcomeWizard({
           {
             variant: "critical",
             title: "Couldn't save your follows",
-            description: "You can follow publications from Discover.",
+            description: "You can subscribe to publications from Discover.",
           },
           { timeout: 5000 },
         );
@@ -384,7 +384,7 @@ export function WelcomeWizard({
                   ? `You're following ${selected.size} publication${
                       selected.size === 1 ? "" : "s"
                     }. Their latest writing will collect on Home.`
-                  : "Your Home feed is empty for now — head to Discover whenever you're ready, and everything you follow will start collecting here."}
+                  : "Your Home feed is empty for now — head to Discover whenever you're ready, and everything you subscribe to will start collecting here."}
               </Body>
             </Flex>
           ) : null}

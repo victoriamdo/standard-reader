@@ -321,7 +321,7 @@ function ReadersAlsoFollowSection({
   return (
     <div {...stylex.props(styles.moreFrom, articleMeasureStyle(preference))}>
       <Flex direction="column">
-        <SectionHead kicker="Discover" title="You might follow" />
+        <SectionHead kicker="Discover" title="Worth subscribing to" />
         <div>
           {readersAlsoFollow.map((suggestedPub, i, pubs) => (
             <MiniPubRow

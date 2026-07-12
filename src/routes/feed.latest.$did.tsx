@@ -39,7 +39,7 @@ export const Route = createFileRoute("/feed/latest/$did")({
             title: `Your Latest · ${SITE_NAME}`,
             link: `${baseUrl}/latest`,
             description:
-              "The newest articles from the publications you follow.",
+              "The newest articles from the publications you subscribe to.",
             selfUrl: latestFeedUrl(baseUrl, did),
           },
           items,

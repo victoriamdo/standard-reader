@@ -857,7 +857,7 @@ function TagFollowAllButton({
   if (!signedIn) {
     return (
       <ButtonLink to="/login" search={loginSearch} variant="primary" size="md">
-        <Plus size={15} aria-hidden /> Follow all
+        <Plus size={15} aria-hidden /> Subscribe all
       </ButtonLink>
     );
   }
@@ -869,14 +869,14 @@ function TagFollowAllButton({
   if (followingAll) {
     return (
       <Button variant="secondary" size="md" isDisabled>
-        <Check size={15} aria-hidden /> Following all
+        <Check size={15} aria-hidden /> Subscribed
       </Button>
     );
   }
 
   const followAllLabel = (
     <>
-      <Plus size={15} aria-hidden /> Follow all
+      <Plus size={15} aria-hidden /> Subscribe all
     </>
   );
 
@@ -892,10 +892,10 @@ function TagFollowAllButton({
         }
       >
         <AlertDialogHeader>
-          Follow {formatCount(unfollowedCount)} publications?
+          Subscribe to {formatCount(unfollowedCount)} publications?
         </AlertDialogHeader>
         <AlertDialogDescription>
-          You&apos;re about to follow {formatCount(unfollowedCount)}{" "}
+          You&apos;re about to subscribe to {formatCount(unfollowedCount)}{" "}
           publications tagged {displayTag}. That&apos;s a lot to add to your
           feed — only continue if you really want them all.
         </AlertDialogDescription>

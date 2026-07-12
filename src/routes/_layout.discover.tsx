@@ -413,7 +413,7 @@ function DiscoverSocialProofSection({
 
   return (
     <div {...stylex.props(styles.section)}>
-      <SectionHead title="Followed by people you follow" />
+      <SectionHead title="Subscribed by people you follow" />
       {followedBy.length > 0 ? (
         <HorizontalRail pubs={followedBy} />
       ) : (

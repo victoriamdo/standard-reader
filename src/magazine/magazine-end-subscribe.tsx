@@ -109,7 +109,7 @@ function PublicationEndSubscribe({
 
   return (
     <SubscribeButton
-      label={following ? "Following" : "Subscribe"}
+      label={following ? "Subscribed" : "Subscribe"}
       pending={pending}
       following={following}
       onPress={onPress}
@@ -136,7 +136,7 @@ function ListEndSubscribe({
   const pending = saveMutation.isPending || unsaveMutation.isPending;
 
   if (!signedIn) {
-    return <LoginLink search={loginSearch}>Follow list</LoginLink>;
+    return <LoginLink search={loginSearch}>Subscribe to list</LoginLink>;
   }
 
   const onPress = () => {
@@ -149,7 +149,7 @@ function ListEndSubscribe({
 
   return (
     <SubscribeButton
-      label={saved ? "Following list" : "Follow list"}
+      label={saved ? "Subscribed to list" : "Subscribe to list"}
       pending={pending}
       following={saved}
       onPress={onPress}

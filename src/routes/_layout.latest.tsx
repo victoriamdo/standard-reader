@@ -614,7 +614,7 @@ function Latest() {
     <ReaderContent>
       <Masthead
         kicker={
-          isTrending || isNetwork ? "Across the network" : "From your follows"
+          isTrending || isNetwork ? "Across the network" : "From your subscriptions"
         }
         title={isTrending ? "Trending" : "Latest"}
         dek={
@@ -622,7 +622,7 @@ function Latest() {
             ? "Articles gaining attention across the network right now."
             : isNetwork
               ? "Everything published recently across the whole network."
-              : "Everything published recently across the publications you follow."
+              : "Everything published recently across the publications you subscribe to."
         }
         metaLabel={isTrending || isNetwork ? "On the network" : "In your feed"}
         metaValue={

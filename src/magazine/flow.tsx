@@ -207,7 +207,7 @@ export const EndCardFlow = forwardRef<HTMLElement, { issue: MagIssue }>(
             <p className="endcard-cta-dek">
               {subscribe.kind === "publication"
                 ? "Subscribe to get new writing in your feed."
-                : "Follow this list to read new articles from its publications."}
+                : "Subscribe to this list to read new articles from its publications."}
             </p>
             <MagazineEndSubscribe target={subscribe} />
           </div>

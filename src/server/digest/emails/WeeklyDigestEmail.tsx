@@ -419,7 +419,7 @@ export default function WeeklyDigestEmail({
         extraCss={`
             .lead-title { font-size:26px !important; }`}
       />
-      <Preview>The best of what you follow this week.</Preview>
+      <Preview>The best of what you subscribe to this week.</Preview>
 
       <Body
         className="d-bg"
@@ -430,7 +430,7 @@ export default function WeeklyDigestEmail({
 
           {/* ---- Best of your follows ---- */}
           <Section style={{ ...px, paddingTop: "22px" }}>
-            <SectionLabel>Best of your follows</SectionLabel>
+            <SectionLabel>Best of your subscriptions</SectionLabel>
           </Section>
           <Section style={px}>
             {articles.map((a, i) => (
