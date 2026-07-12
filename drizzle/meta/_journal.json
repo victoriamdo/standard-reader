@@ -36,6 +36,13 @@
       "when": 1783801540681,
       "tag": "0004_spooky_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783827138040,
+      "tag": "0005_melodic_patriot",
+      "breakpoints": true
     }
   ]
 }

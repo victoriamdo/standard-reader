@@ -84,6 +84,13 @@ export const user = pgTable("user", {
   weeklyDigestLastSentAt: timestamp("weekly_digest_last_sent_at", {
     withTimezone: true,
   }),
+  /** When the one-time digest welcome email was sent. Stays null until the
+   * reader first enables the digest and we've captured their email; the OAuth
+   * callback sends the welcome once and stamps this so it never repeats on
+   * subsequent logins. See `src/server/digest/welcome.server.ts`. */
+  weeklyDigestWelcomeSentAt: timestamp("weekly_digest_welcome_sent_at", {
+    withTimezone: true,
+  }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

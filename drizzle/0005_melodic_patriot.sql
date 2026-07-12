@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "weekly_digest_welcome_sent_at" timestamp with time zone;

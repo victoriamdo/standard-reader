@@ -22,6 +22,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { CHROME_STORE_URL, FIREFOX_STORE_URL } from "#/lib/extension-links";
 import { discoverApi } from "#/integrations/tanstack-query/api-discover.functions";
 import type { PublicationCard } from "#/integrations/tanstack-query/api-shapes";
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
@@ -67,13 +68,6 @@ const RSS_FEEDS = [
 /** Exactly the prose shown in the mock reading card, for the Listen button. */
 const READING_EXAMPLE =
   "There is a particular pleasure in reading something that was made to be read, and not to be measured. It asks nothing of you but your attention. The page gets quiet, and the sentence gets loud. So we built the reader we wanted: a column you can size, a font you can choose, and a margin wide enough to think in.";
-
-// Public store listings for the browser extension. Unverified canonical URLs —
-// confirm the Chrome item ID and Firefox slug once the listings are live.
-const CHROME_STORE_URL =
-  "https://chromewebstore.google.com/detail/standard-reader/hfjgpbpjjflnfeflkmbllecbbjiibnjp";
-const FIREFOX_STORE_URL =
-  "https://addons.mozilla.org/firefox/addon/standard-reader/";
 
 const INLINE_FEATS = [
   { icon: Sparkles, label: "Recommendations from real reading patterns" },

@@ -165,6 +165,38 @@ export async function handleAtprotoOAuthCallback(args: {
       }
     }
 
+    // One-time digest welcome email. The opt-in flow (`upgradeToWeeklyDigest`)
+    // flips `weeklyDigestEnabled` on before this re-auth round-trip, but the
+    // reader's email is only readable here — so this callback is the first
+    // moment we can both know they enabled the digest AND have somewhere to
+    // send. Guarded on a null `weeklyDigestWelcomeSentAt` so it fires exactly
+    // once, never on subsequent logins. Best-effort: a failed send leaves the
+    // stamp null and retries next login, and never breaks sign-in.
+    if (
+      accountEmail &&
+      priorUser?.weeklyDigestEnabled &&
+      !priorUser.weeklyDigestWelcomeSentAt
+    ) {
+      try {
+        const { sendDigestWelcomeEmail } = await import(
+          "#/server/digest/welcome.server"
+        );
+        const sent = await sendDigestWelcomeEmail({
+          userId,
+          email: accountEmail,
+          displayName,
+        });
+        if (sent) {
+          await db
+            .update(schema.user)
+            .set({ weeklyDigestWelcomeSentAt: new Date() })
+            .where(eq(schema.user.id, userId));
+        }
+      } catch (error) {
+        console.warn("Failed to send digest welcome email on callback:", error);
+      }
+    }
+
     const sessionToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
