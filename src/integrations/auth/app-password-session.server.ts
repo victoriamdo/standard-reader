@@ -50,15 +50,20 @@ export async function storeAppPasswordSession(
   const identifier = storeIdentifier(session.did);
   const expiresAt = new Date(Date.now() + ATP_SESSION_TTL_MS);
 
+  // Atomic upsert against the UNIQUE `verification.identifier` — see the
+  // matching note in atproto.ts `setStoreValue`.
   await db
-    .delete(schema.verification)
-    .where(eq(schema.verification.identifier, identifier));
-  await db.insert(schema.verification).values({
-    id: crypto.randomUUID(),
-    identifier,
-    value: JSON.stringify(session),
-    expiresAt,
-  });
+    .insert(schema.verification)
+    .values({
+      id: crypto.randomUUID(),
+      identifier,
+      value: JSON.stringify(session),
+      expiresAt,
+    })
+    .onConflictDoUpdate({
+      target: schema.verification.identifier,
+      set: { value: JSON.stringify(session), expiresAt, updatedAt: new Date() },
+    });
 }
 
 export async function restoreAppPasswordClient(

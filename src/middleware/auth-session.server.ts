@@ -1,10 +1,16 @@
 import type { Client } from "@atcute/client";
 import { isDid } from "@atcute/lexicons/syntax";
-import { getRequest } from "@tanstack/react-start/server";
+import { getRequest, setCookie } from "@tanstack/react-start/server";
 import { eq } from "drizzle-orm";
 import { cache } from "react";
 
+import type { db as DrizzleDb } from "#/db/index.server";
+import type * as DbSchema from "#/db/schema";
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
+import { logEvent } from "#/server/observability/log";
+
+type Db = typeof DrizzleDb;
+type Schema = typeof DbSchema;
 
 export type AtprotoSessionContext = {
   did: string;
@@ -58,6 +64,64 @@ interface SessionCacheEntry {
 }
 
 const sessionTokenCache = new Map<string, SessionCacheEntry>();
+
+/** Rolling app-session lifetime; mirrors the initial value in callback.server.ts. */
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+/** Extend at most once per session per day to keep this off the read hot path. */
+const SESSION_EXTEND_MIN_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Slide an active session's expiry forward so a still-used session never hits
+ * its fixed 30-day cap (the bug where logged-in users get kicked out after a
+ * few weeks). Throttled via `session.updatedAt` (bumped by the schema's
+ * `$onUpdate`) as a "last extended" stamp — no extra column needed. The DB
+ * write is fire-and-forget so it never lands on a read path's critical path,
+ * and the cookie is re-issued with a fresh Max-Age so the browser copy doesn't
+ * expire at the original 30-day mark either. Idle sessions (>30 days) still
+ * expire. Safe to call on every resolved session row; it self-throttles.
+ */
+function maybeExtendSession(
+  row: { id: string; token: string; updatedAt: Date; expiresAt: Date },
+  db: Db,
+  schema: Schema,
+): void {
+  const now = Date.now();
+  if (now - row.updatedAt.getTime() < SESSION_EXTEND_MIN_INTERVAL_MS) {
+    return;
+  }
+
+  void db
+    .update(schema.session)
+    .set({ expiresAt: new Date(now + SESSION_TTL_MS) })
+    .where(eq(schema.session.id, row.id))
+    .then(() => {
+      // Confirms sliding renewal is firing for active users (~once/day/session).
+      logEvent("auth.session.extended", { session_id: row.id });
+    })
+    .catch((error: unknown) => {
+      logEvent("auth.session.extend_failed", {
+        session_id: row.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+
+  // Best-effort cookie refresh: only possible inside an active request context
+  // (SSR loaders / server fns). When absent, the DB expiry is authoritative and
+  // the next request that has a context re-sets it. Attributes mirror
+  // callback.server.ts so this replaces the cookie rather than duplicating it.
+  try {
+    const isSecure = getRequest().url.startsWith("https://");
+    setCookie(AUTH_SESSION_TOKEN_COOKIE, row.token, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isSecure,
+      maxAge: SESSION_TTL_MS / 1000,
+    });
+  } catch {
+    // No active request context — DB expiry is authoritative.
+  }
+}
 
 /**
  * Lightweight DID-only cache. Read-only server fns (`getSaved`, `getLikes`,
@@ -165,6 +229,8 @@ export async function getReaderContextForRequest(
     return;
   }
 
+  maybeExtendSession(sessionRow, db, schema);
+
   const did = sessionRow.user?.did;
   const userId = sessionRow.user?.id;
   if (!did || !isDid(did) || !userId) {
@@ -232,6 +298,8 @@ async function resolveReaderDid(request: Request): Promise<string | undefined> {
     return;
   }
 
+  maybeExtendSession(sessionRow, db, schema);
+
   const did = sessionRow.user?.did;
   if (!did || !isDid(did)) {
     return;
@@ -270,6 +338,8 @@ async function resolveAtprotoSession(
   if (!sessionRow || sessionRow.expiresAt.getTime() <= Date.now()) {
     return;
   }
+
+  maybeExtendSession(sessionRow, db, schema);
 
   const userRow = sessionRow.user;
   const did = userRow?.did;

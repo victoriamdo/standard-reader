@@ -13,7 +13,14 @@
  * Shapes mirror `~/Documents/at-store` (Better Auth–compatible columns).
  */
 import { relations } from "drizzle-orm";
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 /** AT Proto OAuth / app identity (Better Auth–shaped rows). */
 export const user = pgTable("user", {
@@ -168,7 +175,9 @@ export const verification = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [index("verification_identifier_idx").on(table.identifier)],
+  // UNIQUE so `setStoreValue` / `storeAppPasswordSession` can upsert atomically
+  // (onConflictDoUpdate) instead of a race-prone delete-then-insert.
+  (table) => [uniqueIndex("verification_identifier_idx").on(table.identifier)],
 );
 
 export const userRelations = relations(user, ({ many }) => ({

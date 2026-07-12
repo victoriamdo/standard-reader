@@ -43,6 +43,13 @@
       "when": 1783827138040,
       "tag": "0005_melodic_patriot",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783840059554,
+      "tag": "0006_woozy_the_anarchist",
+      "breakpoints": true
     }
   ]
 }

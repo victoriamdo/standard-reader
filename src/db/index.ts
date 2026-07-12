@@ -47,10 +47,20 @@ function createPgPool(connectionString: string): Pool {
   });
 }
 
+/**
+ * True when the active driver is the Neon serverless HTTP driver, which has no
+ * transaction support (`db.transaction` throws). Callers that need real
+ * transactions — e.g. the advisory-lock refresh serializer in
+ * `src/integrations/auth/db-lock.server.ts` — branch on this. The app runs on
+ * the node-postgres pool (`DB_DRIVER=pg`) in dev and prod, so this is normally
+ * false; it only trips if someone forces the HTTP driver.
+ */
+export const isNeonHttpDriver: boolean = isNeonConnection(url);
+
 // Pin a single concrete type so downstream code has one stable `db` type. The
 // two drivers share the same query-builder API at runtime; the Neon branch is
 // cast to match (execute() results differ only in wrapper, both expose `rows`).
-export const db: NodePgDatabase<typeof schema> = isNeonConnection(url)
+export const db: NodePgDatabase<typeof schema> = isNeonHttpDriver
   ? (drizzleHttp({ client: neon(url), schema }) as unknown as NodePgDatabase<
       typeof schema
     >)

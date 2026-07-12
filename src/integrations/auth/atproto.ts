@@ -19,7 +19,9 @@ import { eq, like } from "drizzle-orm";
 
 import { db } from "#/db/index.server";
 import * as schema from "#/db/schema";
+import { logEvent } from "#/server/observability/log";
 
+import { dbRequestLock } from "./db-lock.server";
 import { atstoreReviewClientMetadataScope, clientMetadataScope } from "./scope";
 
 const OAUTH_STORE_PREFIX = "atproto-oauth";
@@ -111,15 +113,22 @@ async function setStoreValue<T>(
   expiresAt: Date,
 ): Promise<void> {
   const identifier = getStoreIdentifier(kind, key);
+  // Atomic upsert: a plain delete-then-insert lets a concurrent writer for the
+  // same key interleave (two inserts, or a delete landing between the other's
+  // delete and insert), which would leave duplicate rows or drop a just-written
+  // token set. `verification.identifier` is UNIQUE, so this collapses to one row.
   await db
-    .delete(schema.verification)
-    .where(eq(schema.verification.identifier, identifier));
-  await db.insert(schema.verification).values({
-    id: crypto.randomUUID(),
-    identifier,
-    value: JSON.stringify(value),
-    expiresAt,
-  });
+    .insert(schema.verification)
+    .values({
+      id: crypto.randomUUID(),
+      identifier,
+      value: JSON.stringify(value),
+      expiresAt,
+    })
+    .onConflictDoUpdate({
+      target: schema.verification.identifier,
+      set: { value: JSON.stringify(value), expiresAt, updatedAt: new Date() },
+    });
 }
 
 async function deleteStoreValue(
@@ -264,6 +273,7 @@ function createOAuthClient(
         scope: metadataScope,
       },
       stores: persistentOAuthStores,
+      requestLock: dbRequestLock,
       actorResolver: new LocalActorResolver({
         handleResolver: new CompositeHandleResolver({
           methods: {
@@ -290,6 +300,7 @@ function createOAuthClient(
     },
     keyset: [getPrivateKey()],
     stores: persistentOAuthStores,
+    requestLock: dbRequestLock,
     actorResolver: new LocalActorResolver({
       handleResolver: new CompositeHandleResolver({
         methods: {
@@ -307,18 +318,46 @@ function createOAuthClient(
   });
 }
 
+/**
+ * Emit OAuth session lifecycle telemetry. A `deleted` event means atcute
+ * dropped the stored session — which is exactly a user getting logged out.
+ * After the `requestLock` fix this should only happen on a genuine PDS-side
+ * revocation; a recurring stream of these in prod (especially correlated with a
+ * deploy) is the signal that refresh rotation is still racing and warrants
+ * investigation. This is the primary breadcrumb for the logout-on-deploy bug.
+ */
+function attachSessionEventLogging(
+  client: InstanceType<typeof OAuthClient>,
+  kind: AtprotoOAuthClientKind,
+): void {
+  client.addEventListener((event) => {
+    if (event.type === "deleted") {
+      logEvent("auth.oauth.session_deleted", {
+        client: kind,
+        did: event.sub,
+        cause:
+          event.cause instanceof Error
+            ? event.cause.message
+            : String(event.cause),
+      });
+    }
+  });
+}
+
 function getAtprotoOAuth(
   kind: AtprotoOAuthClientKind = "default",
 ): InstanceType<typeof OAuthClient> {
   if (kind === "review") {
     if (!_atprotoReviewOAuth) {
       _atprotoReviewOAuth = createOAuthClient("review");
+      attachSessionEventLogging(_atprotoReviewOAuth, "review");
     }
     return _atprotoReviewOAuth;
   }
 
   if (!_atprotoOAuth) {
     _atprotoOAuth = createOAuthClient("default");
+    attachSessionEventLogging(_atprotoOAuth, "default");
   }
   return _atprotoOAuth;
 }
