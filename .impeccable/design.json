@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-12T00:00:00Z",
+  "title": "Design System: Standard Reader",
+  "extensions": {
+    "colorMeta": {
+      "camel-solid": {
+        "role": "primary",
+        "displayName": "Camel",
+        "canonical": "#ad7f58",
+        "tonalRamp": ["#3e332e", "#815e46", "#a07553", "#ad7f58", "#cea37e", "#dcbc9f", "#e4cdb7", "#f6eee7"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Warm Ink",
+        "canonical": "oklch(0.245 0.012 60)",
+        "tonalRamp": ["oklch(0.245 0.012 60)", "oklch(0.40 0.012 60)", "oklch(0.56 0.012 65)", "oklch(0.72 0.016 68)", "oklch(0.80 0.014 70)", "oklch(0.88 0.012 75)", "oklch(0.945 0.012 83)", "oklch(0.985 0.007 85)"]
+      },
+      "page-bg": {
+        "role": "neutral",
+        "displayName": "Almanac Paper",
+        "canonical": "oklch(0.985 0.007 85)",
+        "tonalRamp": ["oklch(0.16 0.012 60)", "oklch(0.19 0.012 58)", "oklch(0.22 0.014 56)", "oklch(0.72 0.016 68)", "oklch(0.88 0.012 75)", "oklch(0.945 0.012 83)", "oklch(0.965 0.01 84)", "oklch(0.985 0.007 85)"]
+      },
+      "critical-solid": {
+        "role": "critical",
+        "displayName": "Critical Red",
+        "canonical": "#e5484d",
+        "tonalRamp": ["#641723", "#822025", "#aa2429", "#ce2c31", "#e5484d", "#eb8e90", "#f4a9aa", "#ffdbdc"]
+      },
+      "success-solid": {
+        "role": "success",
+        "displayName": "Success Green",
+        "canonical": "#30a46c",
+        "tonalRamp": ["#193b2d", "#1b543a", "#20573e", "#218358", "#30a46c", "#5bb98b", "#8eceaa", "#c4e8d1"]
+      },
+      "warning-solid": {
+        "role": "warning",
+        "displayName": "Warning Yellow",
+        "canonical": "#ffe629",
+        "tonalRamp": ["#473b1f", "#5c4d0f", "#8f7d0e", "#9e6c00", "#ffe629", "#f5e147", "#f9e68c", "#fdf8ba"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Article titles and editorial headlines (Newsreader serif)." },
+      "heading": { "displayName": "Heading", "purpose": "All screen/section headings h1–h5 (Newsreader serif)." },
+      "reading": { "displayName": "Reading", "purpose": "Long-form article prose (Newsreader), capped 65–75ch." },
+      "body": { "displayName": "Body", "purpose": "Running interface text (Atkinson Hyperlegible Next)." },
+      "label": { "displayName": "Label", "purpose": "Buttons, form labels, nav, chips (Atkinson, semibold)." },
+      "mono": { "displayName": "Mono", "purpose": "Counts, dates, handles/DIDs, code only (Spline Sans Mono)." }
+    },
+    "shadows": [
+      { "name": "xs-rest", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "The most a resting surface earns — buttons, occasional raised card." },
+      { "name": "lg-floating", "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", "purpose": "Popovers, menus, autocomplete — detached from flow. Stronger on dark." },
+      { "name": "xl-modal", "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", "purpose": "Dialogs and sheets over a warm dimmed backdrop." }
+    ],
+    "motion": [
+      { "name": "duration-fast", "value": "120ms", "purpose": "Default state transitions (button/input hover, focus)." },
+      { "name": "ease-standard", "value": "ease-in-out", "purpose": "Easing for color/state transitions — no bounce, no elastic." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one high-emphasis action per view — camel solid fill.",
+      "html": "<button class=\"ds-btn-primary\">Follow</button>",
+      "css": ".ds-btn-primary { font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; font-weight: 500; font-size: 0.85rem; color: #fff; background: #ad7f58; border: 1px solid #ad7f58; border-radius: 0.5rem; corner-shape: squircle; height: 1.75rem; padding: 0 0.75rem; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color 120ms ease-in-out, color 120ms ease-in-out; } .ds-btn-primary:hover { background: #a07553; } .ds-btn-primary:focus-visible { outline: 2px solid #815e46; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The default for everything that isn't the one primary action.",
+      "html": "<button class=\"ds-btn-secondary\">Save</button>",
+      "css": ".ds-btn-secondary { font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; font-weight: 500; font-size: 0.85rem; color: oklch(0.245 0.012 60); background: oklch(0.945 0.012 83); border: 1px solid oklch(0.88 0.012 75); border-radius: 0.5rem; corner-shape: squircle; height: 1.75rem; padding: 0 0.75rem; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color 120ms ease-in-out; } .ds-btn-secondary:hover { background: oklch(0.92 0.014 80); } .ds-btn-secondary:focus-visible { outline: 2px solid #815e46; outline-offset: 2px; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Publications, handles, topics, headlines — warm paper field, camel focus.",
+      "html": "<input class=\"ds-input-search\" type=\"text\" placeholder=\"Search publications, handles, topics\" />",
+      "css": ".ds-input-search { font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; font-size: 1rem; color: oklch(0.245 0.012 60); background: oklch(0.985 0.007 85); border: 1px solid oklch(0.8 0.014 70); border-radius: 0.5rem; corner-shape: squircle; height: 2.25rem; padding: 0 0.75rem; width: 100%; box-sizing: border-box; transition: border-color 120ms ease-in-out; } .ds-input-search::placeholder { color: oklch(0.56 0.012 65); } .ds-input-search:focus-visible { outline: none; border-color: #ad7f58; box-shadow: 0 0 0 2px color-mix(in oklch, #ad7f58 35%, transparent); }"
+    },
+    {
+      "name": "Topic Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Topic and filter tags — full-pill, neutral at rest, camel when selected.",
+      "html": "<button class=\"ds-chip\">Essays</button><button class=\"ds-chip ds-chip--selected\">Fiction</button>",
+      "css": ".ds-chip { font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; font-weight: 500; font-size: 0.8rem; color: oklch(0.56 0.012 65); background: oklch(0.945 0.012 83); border: 1px solid transparent; border-radius: calc(infinity * 1px); padding: 0.25rem 0.75rem; cursor: pointer; transition: color 120ms ease-in-out, background-color 120ms ease-in-out; } .ds-chip:hover { color: oklch(0.245 0.012 60); } .ds-chip--selected { color: #fff; background: #ad7f58; }"
+    },
+    {
+      "name": "Editorial Article Row",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "The recurring atom of the reading experience — Newsreader title, Atkinson metadata, restrained camel save affordance.",
+      "html": "<article class=\"ds-article-row\"><h3 class=\"ds-article-row__title\">The Quiet Return of the Personal Essay</h3><p class=\"ds-article-row__meta\">Marisol Vega · Field Notes · 6 min · 2d ago</p><button class=\"ds-article-row__save\" aria-label=\"Save\">Save</button></article>",
+      "css": ".ds-article-row { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 0.75rem 1rem; padding: 1rem 0; border-bottom: 1px solid oklch(0.88 0.012 75); } .ds-article-row__title { font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 1.25rem; line-height: 1.25; letter-spacing: -0.025em; color: oklch(0.245 0.012 60); margin: 0; grid-column: 1; } .ds-article-row:hover .ds-article-row__title { color: #815e46; } .ds-article-row__meta { font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; font-size: 0.8rem; color: oklch(0.56 0.012 65); margin: 0; grid-column: 1; } .ds-article-row__save { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; font-weight: 500; font-size: 0.8rem; color: #815e46; background: transparent; border: 1px solid oklch(0.8 0.014 70); border-radius: 0.5rem; corner-shape: squircle; padding: 0.25rem 0.625rem; cursor: pointer; transition: background-color 120ms ease-in-out; } .ds-article-row__save:hover { background: oklch(0.945 0.012 83); }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "button-secondary",
+      "description": "Left-sidebar navigation item — Atkinson label, camel marks the current view.",
+      "html": "<a class=\"ds-nav-item\" href=\"#\">Discover</a><a class=\"ds-nav-item ds-nav-item--current\" href=\"#\" aria-current=\"page\">Latest</a>",
+      "css": ".ds-nav-item { display: flex; align-items: center; font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; font-weight: 500; font-size: 0.9rem; color: oklch(0.56 0.012 65); text-decoration: none; padding: 0.375rem 0.625rem; border-radius: 0.5rem; corner-shape: squircle; transition: color 120ms ease-in-out, background-color 120ms ease-in-out; } .ds-nav-item:hover { color: oklch(0.245 0.012 60); background: oklch(0.945 0.012 83); } .ds-nav-item--current { color: #815e46; background: color-mix(in oklch, #ad7f58 12%, transparent); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Living Directory",
+    "overview": "Standard Reader is a warm, calm, editorial reader that is also a map of an entire network. It is a comfortable place to read long-form writing and a curator confidently surfacing publications you don't follow yet. The warmth is deliberate and physical — the Almanac palette (warm paper and warm ink in light, warm night-reading surfaces in dark) with a single earthen camel accent as the one lamp of emphasis. Crucially the warmth is disciplined: the paper is a warm off-white authored in OKLCH at a whisper of chroma, genuinely warm, never a loud cream or sand. Type is a serif/sans split on a display-vs-running-text axis: Newsreader carries every heading and all reading content; Atkinson Hyperlegible Next carries the running UI text, labels, and controls. Surfaces are flat at rest, separated by warm tonal borders; depth appears only where something genuinely floats. It rejects the algorithmic social feed, the cold SaaS dashboard, the cluttered old-RSS-reader, and the trendy AI-startup landing aesthetic. It is a reading room, not a control panel.",
+    "keyCharacteristics": [
+      "Warm paper + warm ink neutrals (the Almanac palette), theme-aware light/dark via light-dark().",
+      "Disciplined warmth: whisper-chroma OKLCH off-white, never pushed to loud cream/sand.",
+      "One earthen camel accent (#ad7f58), used on ≤10% of any screen: actions, selection, state.",
+      "Newsreader (serif) for headings + reading; Atkinson Hyperlegible Next (sans) for running UI text.",
+      "Flat by default; warm tonal borders do the separating, shadows only lift true overlays.",
+      "Squircle corners on interactive surfaces; radii stay modest (8–12px), never over-rounded."
+    ],
+    "rules": [
+      { "name": "The One Lamp Rule", "body": "The camel accent appears on ≤10% of any given screen. If two things on a screen are both camel, one of them is wrong. Emphasis beyond that is carried by weight, size, and whitespace — not more color.", "section": "colors" },
+      { "name": "The Disciplined Warmth Rule", "body": "The paper is warm on purpose, but at a whisper of chroma (C ≈ 0.007–0.014). The warmth is carried by the serif, the reading rhythm, and the earthen accent — never by widening the background into a loud cream, sand, or parchment. Warm off-white, not coffee stain.", "section": "colors" },
+      { "name": "The Serif-Sans Split Rule", "body": "Newsreader carries display, headings, and reading content (titles, prose, publication names). Atkinson carries running UI text, labels, buttons, counts, and metadata. If a heading renders in the sans, or a button renders in the serif, the split has been broken.", "section": "typography" },
+      { "name": "The Legible-Floor Rule", "body": "Body and reading text never drop below their tokened size for density's sake, and muted text never goes lighter than Ink Muted (oklch(0.56 0.012 65)). Reading comfort is the product.", "section": "typography" },
+      { "name": "The Float-To-Earn Rule", "body": "A surface gets a shadow only when it literally floats above another layer. If it lives in the page flow, it is flat and bordered. A resting card with a soft 16px+ drop shadow is prohibited — that is the 2014-app tell.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do carry warmth through Newsreader, reading rhythm, generous margins, and the earthen accent — the background stays a whisper-chroma warm off-white.",
+      "Do keep the paper at Almanac chroma (C ≈ 0.007–0.014, hue ~60–85); warm, never loud.",
+      "Do reserve camel (#ad7f58) for primary actions, current selection, and state — ≤10% of any screen. Use the deeper brown (#815e46) for accent text on light.",
+      "Do use Newsreader for headings and reading content, and Atkinson Hyperlegible Next for running UI text, labels, and controls — never cross them.",
+      "Do keep surfaces flat and bordered at rest; add shadow only to things that float.",
+      "Do keep muted text at or above Ink Muted (oklch(0.56 0.012 65)) and cap reading measure at 65–75ch.",
+      "Do honor prefers-reduced-motion with a crossfade or instant alternative for every transition."
+    ],
+    "donts": [
+      "Don't widen the warm paper into a loud cream, sand, parchment, or beige, or push its chroma past the Almanac whisper.",
+      "Don't design an algorithmic social feed: no engagement-bait, infinite-scroll dopamine mechanics, or dark patterns pushing time-on-site.",
+      "Don't turn it into a cold SaaS dashboard: no hero-metric card templates, no gray-and-blue console chrome, no big-number/small-label stat blocks.",
+      "Don't rebuild the cluttered old-RSS-reader: no toolbar walls, no triple-panel density, no sub-legible type.",
+      "Don't reach for the trendy AI-startup landing kit: no gradient text, no decorative glassmorphism, no tiny tracked uppercase eyebrows above every section.",
+      "Don't put a resting drop shadow of 16px+ on a card, or pair a 1px border with a wide soft shadow (the ghost-card tell).",
+      "Don't over-round: cards stay at 8–12px. Full-pill is for chips and toggles only, never cards or sections.",
+      "Don't let a second camel element compete on one screen, and don't spend the accent on decoration."
+    ]
+  }
+}
