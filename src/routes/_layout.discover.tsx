@@ -28,9 +28,7 @@ import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
 
 import {
-  PubCard,
   PubCardSkeleton,
-  PubDirectoryRow,
   PubDirectoryRowSkeleton,
 } from "../components/reader/cards";
 import { DiscoverTopicFilters } from "../components/reader/discover-topic-filters";
@@ -41,6 +39,7 @@ import {
   SectionDivider,
   SectionHead,
 } from "../components/reader/primitives";
+import { PubGridList } from "../components/reader/pub-grid-list";
 import { Flex } from "../design-system/flex";
 import { Grid } from "../design-system/grid";
 import { SearchField } from "../design-system/search-field";
@@ -51,7 +50,6 @@ import {
 import { Select, SelectItem } from "../design-system/select";
 import { Skeleton } from "../design-system/skeleton";
 import { uiColor } from "../design-system/theme/color.stylex";
-import { gap } from "../design-system/theme/semantic-spacing.stylex";
 import { spacing } from "../design-system/theme/spacing.stylex";
 import {
   fontFamily,
@@ -133,24 +131,6 @@ const styles = stylex.create({
   },
   railWrap: {
     marginTop: spacing["5"],
-  },
-  railScroll: {
-    scrollSnapType: "x mandatory",
-    alignItems: "stretch",
-    columnGap: gap["lg"],
-    display: "grid",
-    gridAutoColumns: {
-      default: "260px",
-      "@media (min-width: 40rem)": "300px",
-    },
-    gridAutoFlow: "column",
-    rowGap: gap["lg"],
-    // eslint-disable-next-line @stylexjs/valid-styles
-    scrollbarWidth: "thin",
-    marginTop: `calc(${spacing["3"]} * -1)`,
-    overflowX: "auto",
-    paddingBottom: spacing["2"],
-    paddingTop: spacing["3"],
   },
   directorySearch: {
     flexShrink: 0,
@@ -237,14 +217,21 @@ const SORT_OPTIONS = [
   { id: "az", label: "A–Z" },
 ] as const;
 
-function HorizontalRail({ pubs }: { pubs: Array<PublicationCard> }) {
+function HorizontalRail({
+  pubs,
+  "aria-label": ariaLabel,
+}: {
+  pubs: Array<PublicationCard>;
+  "aria-label": string;
+}) {
   return (
     <div {...stylex.props(styles.railWrap)}>
-      <div {...stylex.props(styles.railScroll)}>
-        {pubs.map((pub) => (
-          <PubCard key={pub.uri} pub={pub} rail />
-        ))}
-      </div>
+      <PubGridList
+        pubs={pubs}
+        layout="rail"
+        variant="card"
+        aria-label={ariaLabel}
+      />
     </div>
   );
 }
@@ -394,7 +381,7 @@ function DiscoverRecommendedSection({
     <div {...stylex.props(styles.section)}>
       <SectionHead title={recommendedTitle} />
       {recommended.length > 0 ? (
-        <HorizontalRail pubs={recommended} />
+        <HorizontalRail pubs={recommended} aria-label={recommendedTitle} />
       ) : (
         <p {...stylex.props(styles.emptyRail)}>
           Follow a few publications to unlock recommendations.
@@ -415,7 +402,10 @@ function DiscoverSocialProofSection({
     <div {...stylex.props(styles.section)}>
       <SectionHead title="Subscribed by people you follow" />
       {followedBy.length > 0 ? (
-        <HorizontalRail pubs={followedBy} />
+        <HorizontalRail
+          pubs={followedBy}
+          aria-label="Subscribed by people you follow"
+        />
       ) : (
         <p {...stylex.props(styles.emptyRail)}>
           Follow more publications to see what similar readers subscribe to.
@@ -472,16 +462,13 @@ function DiscoverTrendingSection() {
           />
         ))
       ) : trending.length > 0 ? (
-        <div>
-          {trending.map((pub, index) => (
-            <PubDirectoryRow
-              key={pub.uri}
-              pub={pub}
-              rank={index + 1}
-              isLast={index === trending.length - 1}
-            />
-          ))}
-        </div>
+        <PubGridList
+          pubs={trending}
+          layout="list"
+          variant="row"
+          showRank
+          aria-label="Trending publications"
+        />
       ) : (
         <p {...stylex.props(styles.emptyRail)}>No trending publications yet.</p>
       )}
@@ -726,21 +713,19 @@ function DiscoverDirectorySection({ signedIn }: { signedIn: boolean }) {
               : "No publications match this topic yet."}
         </p>
       ) : view === "grid" ? (
-        <Grid columnGap="lg" rowGap="lg" style={styles.directoryGrid}>
-          {visibleDirectoryItems.map((pub) => (
-            <PubCard key={pub.uri} pub={pub} />
-          ))}
-        </Grid>
+        <PubGridList
+          pubs={visibleDirectoryItems}
+          layout="grid"
+          variant="card"
+          aria-label="Publications"
+        />
       ) : (
-        <div>
-          {visibleDirectoryItems.map((pub, index) => (
-            <PubDirectoryRow
-              key={pub.uri}
-              pub={pub}
-              isLast={index === visibleDirectoryItems.length - 1}
-            />
-          ))}
-        </div>
+        <PubGridList
+          pubs={visibleDirectoryItems}
+          layout="list"
+          variant="row"
+          aria-label="Publications"
+        />
       )}
 
       {directoryItems.length > 0 && !isSearching ? (

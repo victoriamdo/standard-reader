@@ -1321,17 +1321,25 @@ function PublicationLink({
   children,
   extraStyles = [],
   onNavigate,
+  noLink = false,
 }: {
   pub: PublicationCard;
   children: React.ReactNode;
   extraStyles?: Array<stylex.StyleXStyles | false | undefined>;
   onNavigate?: () => void;
+  /**
+   * Render the card body only — no stretched navigation link. Used when an
+   * ancestor already provides the link/press target (e.g. a react-aria
+   * `GridListItem`), so the follow button becomes a normal in-row action
+   * instead of sitting above a stretched-link overlay.
+   */
+  noLink?: boolean;
 }) {
   const shell = stylex.props(styles.cardShell, ...extraStyles);
   const hasLinkTarget =
     publicationLinkParams(pub.uri) != null || Boolean(pub.url);
 
-  if (!hasLinkTarget) {
+  if (noLink || !hasLinkTarget) {
     return <div {...stylex.props(...extraStyles)}>{children}</div>;
   }
 
@@ -1838,6 +1846,7 @@ export function PubCard({
   hideTopic = false,
   tagPostCount,
   clampDescription = false,
+  noLink = false,
 }: {
   pub: PublicationCard;
   rail?: boolean;
@@ -1847,6 +1856,8 @@ export function PubCard({
   tagPostCount?: number;
   /** Cap the description at three lines (keeps preview grids tidy). */
   clampDescription?: boolean;
+  /** Render body only (no stretched link) — for use inside a GridListItem. */
+  noLink?: boolean;
 }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -1854,6 +1865,7 @@ export function PubCard({
   return (
     <PublicationLink
       pub={pub}
+      noLink={noLink}
       extraStyles={[styles.pubCard, rail && styles.pubCardRail]}
     >
       <Flex align="center" justify="between" style={styles.pubCardHead}>
@@ -1948,6 +1960,7 @@ export function PubDirectoryRow({
   isFirstInSection = false,
   hideTopic = false,
   tagPostCount,
+  noLink = false,
 }: {
   pub: PublicationCard;
   rank?: number;
@@ -1958,6 +1971,8 @@ export function PubDirectoryRow({
   hideTopic?: boolean;
   /** Tagged-post tally for tag directory rows. */
   tagPostCount?: number;
+  /** Render body only (no stretched link) — for use inside a GridListItem. */
+  noLink?: boolean;
 }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -1966,6 +1981,7 @@ export function PubDirectoryRow({
   return (
     <PublicationLink
       pub={pub}
+      noLink={noLink}
       extraStyles={[
         styles.pubDirRow,
         hasRank && styles.pubDirRowRanked,
