@@ -25,6 +25,14 @@ describe("leadingMarkupImageUrl", () => {
     ).toBe("https://cdn.example/hero.jpg");
   });
 
+  it("reads a leading image wrapped in a WordPress figure", () => {
+    expect(
+      leadingMarkupImageUrl(
+        '<figure class="wp-block-image"><img loading="lazy" src="https://cdn.example/hero.jpg" alt="A butterfly" class="wp-image-1"/><figcaption>Caption</figcaption></figure>\n<p>Body</p>',
+      ),
+    ).toBe("https://cdn.example/hero.jpg");
+  });
+
   it("ignores images that are not first", () => {
     expect(
       leadingMarkupImageUrl("Intro\n\n![Later](https://cdn.example/late.jpg)"),
@@ -39,6 +47,14 @@ describe("stripLeadingMarkupImage", () => {
         "![Alt](https://cdn.example/hero.jpg)\n\nFirst paragraph.",
       ),
     ).toBe("First paragraph.");
+  });
+
+  it("removes a leading WordPress figure image, caption included", () => {
+    expect(
+      stripLeadingMarkupImage(
+        '<figure class="wp-block-image"><img src="https://cdn.example/hero.jpg" alt=""/><figcaption>Caption</figcaption></figure>\n<p>First paragraph.</p>',
+      ),
+    ).toBe("<p>First paragraph.</p>");
   });
 });
 
@@ -72,6 +88,22 @@ describe("resolveArticleHeroImage", () => {
     expect(hero).toEqual({
       url: "https://cdn.example/cover.jpg",
       fromFirstBlock: false,
+    });
+  });
+
+  it("promotes a WordPress figure image over the stored cover", () => {
+    const hero = resolveArticleHeroImage({
+      ...author,
+      coverImageUrl: "https://cdn.example/cover.jpg",
+      contentFormat: "org.wordpress.html",
+      contentJson: {
+        $type: "org.wordpress.html",
+        html: '<figure class="wp-block-image"><img src="https://cdn.example/lead.jpg" alt=""/></figure><p>Body</p>',
+      },
+    });
+    expect(hero).toEqual({
+      url: "https://cdn.example/lead.jpg",
+      fromFirstBlock: true,
     });
   });
 

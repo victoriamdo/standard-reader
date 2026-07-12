@@ -47,13 +47,23 @@ function resolveContentType(
 const LEADING_MARKDOWN_IMAGE =
   /^\s*(?:<!--[\s\S]*?-->\s*)*!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)\s*/;
 
+// A leading `<img>` wrapped in a `<figure>` (optionally with a `<figcaption>`
+// and/or a link) — WordPress/Gutenberg `wp-block-image` and similar emit this,
+// so the bare-`<img>` pattern below never sees the tag it expects.
+const LEADING_HTML_FIGURE =
+  /^\s*(?:<!--[\s\S]*?-->\s*)*<figure\b[^>]*>\s*(?:<a\b[^>]*>\s*)?<img[^>]+src=["']([^"']+)["'][\s\S]*?<\/figure>\s*/i;
+
+// A bare leading `<img>`, optionally wrapped in a link.
 const LEADING_HTML_IMG =
-  /^\s*(?:<!--[\s\S]*?-->\s*)*<img[^>]+src=["']([^"']+)["'][^>]*>\s*/i;
+  /^\s*(?:<!--[\s\S]*?-->\s*)*(?:<a\b[^>]*>\s*)?<img[^>]+src=["']([^"']+)["'][^>]*>\s*(?:<\/a>\s*)?/i;
 
 /** First image URL in markdown/HTML when it opens the document body. */
 export function leadingMarkupImageUrl(text: string): string | null {
   const markdown = text.match(LEADING_MARKDOWN_IMAGE);
   if (markdown?.[1]) return markdown[1];
+
+  const figure = text.match(LEADING_HTML_FIGURE);
+  if (figure?.[1]) return figure[1];
 
   const html = text.match(LEADING_HTML_IMG);
   if (html?.[1]) return html[1];
@@ -65,6 +75,7 @@ export function leadingMarkupImageUrl(text: string): string | null {
 export function stripLeadingMarkupImage(text: string): string {
   return text
     .replace(LEADING_MARKDOWN_IMAGE, "")
+    .replace(LEADING_HTML_FIGURE, "")
     .replace(LEADING_HTML_IMG, "")
     .trimStart();
 }
