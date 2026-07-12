@@ -790,11 +790,9 @@ function navItemActive(pathname: string, to: string): boolean {
 function BottomNav({
   items,
   hasUnread,
-  hasSaved,
 }: {
   items: Array<NavLink>;
   hasUnread: boolean;
-  hasSaved: boolean;
 }) {
   const pathname = useRouterState({
     select: (s: { location: { pathname: string } }) => s.location.pathname,
@@ -860,13 +858,7 @@ function BottomNav({
               itemRefs.current[i] = el;
             }}
             isActive={i === activeIndex}
-            showBadgeDot={
-              item.to === "/latest"
-                ? hasUnread
-                : item.to === "/saved"
-                  ? hasSaved
-                  : false
-            }
+            showBadgeDot={item.to === "/latest" ? hasUnread : false}
           />
         ))}
       </div>
@@ -950,7 +942,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const unreadCount = sidebar?.unreadCount ?? null;
   const savedCount = sidebar?.savedCount ?? null;
   const hasUnread = unreadCount != null && unreadCount > 0;
-  const hasSaved = savedCount != null && savedCount > 0;
   const primaryNav = navWithSaved(signedIn);
   const [subsSheetOpen, setSubsSheetOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -1113,11 +1104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div {...stylex.props(styles.dock)}>
             <PageReaderBar />
-            <BottomNav
-              items={primaryNav}
-              hasUnread={hasUnread}
-              hasSaved={hasSaved}
-            />
+            <BottomNav items={primaryNav} hasUnread={hasUnread} />
           </div>
         </main>
 
