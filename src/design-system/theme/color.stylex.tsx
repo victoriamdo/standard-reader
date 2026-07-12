@@ -6,6 +6,17 @@ import { pink } from "./colors/pink.stylex";
 import { red } from "./colors/red.stylex";
 import { yellow } from "./colors/yellow.stylex";
 
+/**
+ * Focus-ring color. A high-visibility blue that reads against both the warm
+ * light paper and the dark reading surface — deliberately outside the warm
+ * editorial palette so keyboard focus is unmistakable (WCAG 2.4.7 / 1.4.11).
+ * Use `focusColor.ring` for focus outlines; adopt it across components
+ * incrementally in place of ad-hoc / browser-default rings.
+ */
+export const focusColor = stylex.defineVars({
+  ring: "light-dark(#0c66e4, #5aa2ff)",
+});
+
 export const uiColor = stylex.defineVars({
   overlayBackdrop: "light-dark(rgba(4, 1, 1, 0.5), rgba(0, 0, 0, 0.75))",
   bg: mauve.bg,

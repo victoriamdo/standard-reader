@@ -21,6 +21,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useFocusRing } from "react-aria";
 
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import {
@@ -42,8 +43,13 @@ import {
 import { Flex } from "../../design-system/flex";
 import { IconButton } from "../../design-system/icon-button";
 import { Skeleton } from "../../design-system/skeleton";
+import { SkipLink } from "../../design-system/skip-link";
 import { animationDuration } from "../../design-system/theme/animations.stylex";
-import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
+import {
+  focusColor,
+  primaryColor,
+  uiColor,
+} from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
 import {
   gap,
@@ -86,7 +92,6 @@ const styles = stylex.create({
     height: stylex.firstThatWorks("100dvh", "100vh"),
   },
   sidebar: {
-    overscrollBehavior: "contain",
     backgroundColor: uiColor.bgSubtle,
     boxSizing: "border-box",
     display: { [DESKTOP]: "flex", default: "none" },
@@ -97,19 +102,47 @@ const styles = stylex.create({
     borderRightStyle: "solid",
     borderRightWidth: 1,
     height: stylex.firstThatWorks("100dvh", "100vh"),
+    // The sidebar itself doesn't scroll; its inner region does, so the foot
+    // stays pinned outside the scrollport and content never hides behind it.
+    overflow: "hidden",
+    top: 0,
+    width: "264px",
+  },
+  sidebarScroll: {
+    overscrollBehavior: "contain",
+    display: "flex",
+    flexDirection: "column",
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 0,
     overflowY: "auto",
     paddingLeft: horizontalSpace["3xl"],
     paddingRight: horizontalSpace["3xl"],
     paddingTop: verticalSpace["8xl"],
-    top: 0,
-    width: "264px",
   },
   brandLink: {
     textDecoration: "none",
+    // Hug the wordmark so the focus ring is tight to it, not a full-width box
+    // wrapping empty space.
+    alignItems: "center",
+    alignSelf: "flex-start",
+    display: "inline-flex",
+    width: "fit-content",
+    borderRadius: radius.sm,
+    paddingTop: verticalSpace.xxs,
+    paddingBottom: verticalSpace.xxs,
+    paddingLeft: horizontalSpace.xs,
+    paddingRight: horizontalSpace.xs,
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
   },
   brandSidebar: {
-    paddingBottom: verticalSpace["7xl"],
-    paddingLeft: horizontalSpace.md,
+    // Margin, not padding — the separation below the logo must sit outside the
+    // focusable box so the focus ring hugs the wordmark.
+    marginBottom: verticalSpace["7xl"],
   },
   nav: {
     columnGap: gap.xxs,
@@ -125,6 +158,13 @@ const styles = stylex.create({
       default: "transparent",
       ":hover": uiColor.component2,
     },
+    // Inset ring: the sidebar scroll container clips an outset outline at its
+    // content edge, so draw the ring inside the row where it can't be cut off.
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "-2px",
     color: uiColor.text2,
     columnGap: gap.xl,
     display: "flex",
@@ -213,6 +253,12 @@ const styles = stylex.create({
       ":hover": "underline",
     },
     alignItems: "center",
+    borderRadius: radius.xs,
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "2px",
     color: {
       default: uiColor.text1,
       ":is([data-sidebar-label]:hover *)": uiColor.text2,
@@ -269,6 +315,11 @@ const styles = stylex.create({
       default: "transparent",
       ":hover": uiColor.component2,
     },
+    outline: {
+      default: "none",
+      ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
+    },
+    outlineOffset: "-2px",
     color: "inherit",
     columnGap: gap.lg,
     display: "flex",
@@ -324,13 +375,15 @@ const styles = stylex.create({
   },
   foot: {
     backgroundColor: uiColor.bgSubtle,
+    // A fixed footer pinned below the scroll region (not sticky/overlapping),
+    // so list content can never hide behind it.
     columnGap: gap.xl,
     display: "flex",
     flexDirection: "column",
-    position: "sticky",
+    flexShrink: 0,
     rowGap: gap.xl,
-    bottom: 0,
-    marginTop: "auto",
+    paddingLeft: horizontalSpace["3xl"],
+    paddingRight: horizontalSpace["3xl"],
     paddingBottom: verticalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
@@ -368,6 +421,9 @@ const styles = stylex.create({
     position: "relative",
     minHeight: 0,
     minWidth: 0,
+    // Focused only as the skip-link landing target (tabIndex={-1}); a ring
+    // around the whole content region would be noise, not a wayfinding cue.
+    outlineStyle: "none",
   },
   scroller: {
     // Reserve scrollbar width so content width stays stable when the list
@@ -567,6 +623,18 @@ function navWithSaved(signedIn: boolean): Array<NavLink> {
   });
 }
 
+/**
+ * Props to spread onto a plain anchor (e.g. a TanStack Router `<Link>`) to get
+ * react-aria's keyboard-only focus detection: `focusProps` wires the listeners
+ * and `data-focus-visible` is set only on keyboard focus. Style the ring via
+ * `":is([data-focus-visible])"` — never the `:focus-visible` pseudo, so focus
+ * rings stay consistent with the react-aria design system.
+ */
+function useFocusRingProps() {
+  const { isFocusVisible, focusProps } = useFocusRing();
+  return { ...focusProps, "data-focus-visible": isFocusVisible || undefined };
+}
+
 function SidebarNavItem({
   to,
   label,
@@ -574,10 +642,12 @@ function SidebarNavItem({
   count,
   compactCount = false,
 }: NavLink & { count?: number | null; compactCount?: boolean }) {
+  const focusRingProps = useFocusRingProps();
   return (
     <Link
       to={to}
       activeOptions={to === "/" ? { exact: true } : undefined}
+      {...focusRingProps}
       {...stylex.props(styles.navItem)}
       activeProps={stylex.props(styles.navItem, styles.navItemActive)}
     >
@@ -610,6 +680,8 @@ function FollowingAvatar({
 }
 
 function FollowRow({ pub }: { pub: FollowingPublication }) {
+  const focusRingProps = useFocusRingProps();
+  const rowProps = { ...focusRingProps, ...stylex.props(styles.followRow) };
   const params = publicationLinkParams(pub.uri);
   const avatar = (
     <FollowingAvatar
@@ -637,11 +709,7 @@ function FollowRow({ pub }: { pub: FollowingPublication }) {
 
   if (params) {
     return (
-      <Link
-        to="/p/$did/$rkey"
-        params={params}
-        {...stylex.props(styles.followRow)}
-      >
+      <Link to="/p/$did/$rkey" params={params} {...rowProps}>
         {content}
       </Link>
     );
@@ -655,30 +723,21 @@ function FollowRow({ pub }: { pub: FollowingPublication }) {
   const internal = parseInternalRoute(href);
   if (internal?.params) {
     return (
-      <Link
-        to={internal.to}
-        params={internal.params}
-        {...stylex.props(styles.followRow)}
-      >
+      <Link to={internal.to} params={internal.params} {...rowProps}>
         {content}
       </Link>
     );
   }
   if (internal) {
     return (
-      <Link to={internal.to} {...stylex.props(styles.followRow)}>
+      <Link to={internal.to} {...rowProps}>
         {content}
       </Link>
     );
   }
 
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      {...stylex.props(styles.followRow)}
-    >
+    <a href={href} target="_blank" rel="noreferrer" {...rowProps}>
       {content}
     </a>
   );
@@ -696,6 +755,7 @@ function SidebarList({
 }) {
   const link = listLinkParams(listUri);
   const unreadTotal = pubs.reduce((sum, pub) => sum + pub.unreadCount, 0);
+  const titleFocusRingProps = useFocusRingProps();
 
   return (
     <Disclosure defaultExpanded>
@@ -711,6 +771,7 @@ function SidebarList({
             to="/l/$did/$rkey"
             params={link}
             aria-label={`Open list ${name}`}
+            {...titleFocusRingProps}
             {...stylex.props(styles.listTitleLink)}
           >
             <span {...stylex.props(styles.listName)}>{name}</span>
@@ -873,8 +934,13 @@ function Brand({
   style?: stylex.StyleXStyles;
   to?: "/" | "/about";
 }) {
+  const focusRingProps = useFocusRingProps();
   return (
-    <Link to={to} {...stylex.props(styles.brandLink, style)}>
+    <Link
+      to={to}
+      {...focusRingProps}
+      {...stylex.props(styles.brandLink, style)}
+    >
       <BrandWordmark />
     </Link>
   );
@@ -1009,65 +1075,70 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <PageReaderProvider>
       <div {...stylex.props(styles.shell)} data-app-shell>
+        <SkipLink targetId="main-content" />
         <aside {...stylex.props(styles.sidebar)}>
-          <Brand style={styles.brandSidebar} to="/about" />
-          <nav {...stylex.props(styles.nav)}>
-            {primaryNav.map((item) => (
-              <SidebarNavItem
-                key={item.to}
-                {...item}
-                count={
-                  item.to === "/latest"
-                    ? unreadCount
-                    : item.to === "/saved"
-                      ? savedCount
-                      : null
-                }
-                compactCount={item.to === "/latest"}
+          <div {...stylex.props(styles.sidebarScroll)}>
+            <Brand style={styles.brandSidebar} to="/about" />
+            <nav {...stylex.props(styles.nav)}>
+              {primaryNav.map((item) => (
+                <SidebarNavItem
+                  key={item.to}
+                  {...item}
+                  count={
+                    item.to === "/latest"
+                      ? unreadCount
+                      : item.to === "/saved"
+                        ? savedCount
+                        : null
+                  }
+                  compactCount={item.to === "/latest"}
+                />
+              ))}
+            </nav>
+
+            <Flex
+              align="center"
+              justify="between"
+              data-sidebar-label="true"
+              style={styles.sideLabel}
+            >
+              <span>Subscriptions</span>
+              <div {...stylex.props(styles.sideLabelActions)}>
+                {signedIn ? (
+                  <IconButton
+                    aria-label="New list"
+                    size="sm"
+                    variant="tertiary"
+                    style={styles.headerIcon}
+                    onPress={() => setNewListOpen(true)}
+                  >
+                    <FolderPlus size={14} />
+                  </IconButton>
+                ) : null}
+              </div>
+            </Flex>
+            <div {...stylex.props(styles.followList)}>
+              {shellSubscriptionsLoading ? (
+                <SubscriptionsSkeleton />
+              ) : following.length === 0 && !hasListGroups ? (
+                <span {...stylex.props(styles.emptyNote)}>
+                  {signedIn
+                    ? "Nothing yet — go discover."
+                    : "Sign in to subscribe."}
+                </span>
+              ) : (
+                ungrouped.map((pub) => <FollowRow key={pub.uri} pub={pub} />)
+              )}
+            </div>
+            {listGroups.map((group) => (
+              <SidebarList
+                key={group.key}
+                name={group.name}
+                listUri={group.listUri}
+                pubs={group.pubs}
               />
             ))}
-          </nav>
-
-          <Flex
-            align="center"
-            justify="between"
-            data-sidebar-label="true"
-            style={styles.sideLabel}
-          >
-            <span>Subscriptions</span>
-            <div {...stylex.props(styles.sideLabelActions)}>
-              {signedIn ? (
-                <IconButton
-                  aria-label="New list"
-                  size="sm"
-                  variant="tertiary"
-                  style={styles.headerIcon}
-                  onPress={() => setNewListOpen(true)}
-                >
-                  <FolderPlus size={14} />
-                </IconButton>
-              ) : null}
-            </div>
-          </Flex>
-          <div {...stylex.props(styles.followList)}>
-            {shellSubscriptionsLoading ? (
-              <SubscriptionsSkeleton />
-            ) : following.length === 0 && !hasListGroups ? (
-              <span {...stylex.props(styles.emptyNote)}>
-                {signedIn ? "Nothing yet — go discover." : "Sign in to subscribe."}
-              </span>
-            ) : (
-              ungrouped.map((pub) => <FollowRow key={pub.uri} pub={pub} />)
-            )}
           </div>
-          {listGroups.map((group) => (
-            <SidebarList
-              key={group.key}
-              name={group.name}
-              listUri={group.listUri}
-              pubs={group.pubs}
-            />
-          ))}
 
           <Flex direction="column" gap="lg" style={styles.foot}>
             <NavbarAuth variant="sidebar" menuPlacement="right bottom" />
@@ -1081,7 +1152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Flex>
         </aside>
 
-        <main {...stylex.props(styles.main)}>
+        <main id="main-content" tabIndex={-1} {...stylex.props(styles.main)}>
           <div {...stylex.props(styles.scroller)} data-app-scroller>
             {staticPageTitle ? (
               <MobileStaticPageBar title={staticPageTitle} />
