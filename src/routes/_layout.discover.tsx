@@ -384,7 +384,7 @@ function DiscoverRecommendedSection({
         <HorizontalRail pubs={recommended} aria-label={recommendedTitle} />
       ) : (
         <p {...stylex.props(styles.emptyRail)}>
-          Follow a few publications to unlock recommendations.
+          Subscribe to a few publications to unlock recommendations.
         </p>
       )}
     </div>
@@ -400,15 +400,15 @@ function DiscoverSocialProofSection({
 
   return (
     <div {...stylex.props(styles.section)}>
-      <SectionHead title="Subscribed by people you follow" />
+      <SectionHead title="Subscribed to by people you follow" />
       {followedBy.length > 0 ? (
         <HorizontalRail
           pubs={followedBy}
-          aria-label="Subscribed by people you follow"
+          aria-label="Subscribed to by people you follow"
         />
       ) : (
         <p {...stylex.props(styles.emptyRail)}>
-          Follow more publications to see what similar readers subscribe to.
+          Subscribe to more publications to see what similar readers enjoy.
         </p>
       )}
     </div>
@@ -670,7 +670,7 @@ function DiscoverDirectorySection({ signedIn }: { signedIn: boolean }) {
             >
               <SegmentedControlItem id="all">All</SegmentedControlItem>
               <SegmentedControlItem id="not-following">
-                Not following
+                Not subscribed
               </SegmentedControlItem>
             </SegmentedControl>
           ) : null}
@@ -707,7 +707,7 @@ function DiscoverDirectorySection({ signedIn }: { signedIn: boolean }) {
       ) : visibleDirectoryItems.length === 0 ? (
         <p {...stylex.props(styles.emptyRail)}>
           {hideFollowing && directoryItems.length > 0
-            ? "You're following every publication on this page — scroll for more, or turn off the filter."
+            ? "You're subscribed to every publication on this page — scroll for more, or turn off the filter."
             : debouncedQ
               ? "No publications match your search."
               : "No publications match this topic yet."}
@@ -772,8 +772,8 @@ function DiscoverMastheadDek({
   if (knownPublicationCount <= 0) {
     return (
       <>
-        Every publication the network knows about — follow the ones worth your
-        mornings.
+        Every publication the network knows about — subscribe to the ones worth
+        your mornings.
       </>
     );
   }
@@ -781,8 +781,8 @@ function DiscoverMastheadDek({
   return (
     <>
       Every publication the network knows about —{" "}
-      {formatCount(knownPublicationCount)} and counting. Follow the ones worth
-      your mornings.
+      {formatCount(knownPublicationCount)} and counting. Subscribe to the ones
+      worth your mornings.
     </>
   );
 }

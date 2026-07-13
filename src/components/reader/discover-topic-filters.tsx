@@ -164,7 +164,7 @@ export function DiscoverTopicFilters({
       trigger={
         <AriaButton
           {...stylex.props(styles.filterTrigger, typeramp.label)}
-          aria-label={`Filter by tags: ${triggerLabel}`}
+          aria-label={`Filter by topic: ${triggerLabel}`}
         >
           <span {...stylex.props(styles.filterTriggerText)}>
             {triggerLabel}
@@ -174,7 +174,7 @@ export function DiscoverTopicFilters({
     >
       <div {...stylex.props(styles.popoverHeader)}>
         <Heading slot="title" {...stylex.props(styles.popoverTitle)}>
-          Filter by tags
+          Filter by topic
         </Heading>
         <IconButton label="Close" size="sm" variant="tertiary" slot="close">
           <X size={16} />
@@ -183,7 +183,7 @@ export function DiscoverTopicFilters({
 
       <div {...stylex.props(styles.popoverBody)}>
         <TagGroup
-          aria-label="Filter by tags"
+          aria-label="Filter by topic"
           selectionMode="single"
           selectedKeys={new Set([topicKey])}
           onSelectionChange={onPickerTopicChange}
