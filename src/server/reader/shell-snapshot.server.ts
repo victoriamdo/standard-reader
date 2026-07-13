@@ -9,6 +9,7 @@ import type {
   ListOwner,
   SavedList,
 } from "#/integrations/tanstack-query/api-lists.functions";
+import type { SidebarPref } from "#/integrations/tanstack-query/api-sidebar-prefs.functions";
 import type {
   Db,
   PublicationCard,
@@ -31,6 +32,41 @@ export interface ShellSnapshot {
   sidebar: SidebarData;
   lists: Array<SubscriptionList>;
   savedLists: Array<SavedList>;
+  sidebarPref: SidebarPref;
+}
+
+/** Reader sidebar preferences (list order + collapsed groups) from the DB
+ * mirror, with a one-time PDS backfill when no row exists yet. */
+export async function loadSidebarPref(did: string): Promise<SidebarPref> {
+  const { db } = await import("#/db/index.server");
+  const { sidebarPrefs } = await import("#/db/schema");
+  const { eq: eqPref } = await import("drizzle-orm");
+
+  const readRow = async () => {
+    const rows = await db
+      .select()
+      .from(sidebarPrefs)
+      .where(
+        and(eqPref(sidebarPrefs.ownerDid, did), eqPref(sidebarPrefs.deleted, false)),
+      )
+      .limit(1);
+    return rows[0];
+  };
+
+  let row = await readRow();
+  if (!row) {
+    // No row yet — backfill the singleton from the PDS and retry once.
+    const { backfillSidebarPrefFromRepo } = await import(
+      "#/server/ingest/handlers"
+    );
+    await backfillSidebarPrefFromRepo(did);
+    row = await readRow();
+  }
+
+  return {
+    listOrder: (row?.listOrder as Array<string>) ?? [],
+    collapsed: (row?.collapsed as Array<string>) ?? [],
+  };
 }
 
 /** Sidebar follows, unread badges, and saved-for-later count. */
@@ -261,10 +297,11 @@ export async function loadShellSnapshot(
     trackReading: boolean;
   },
 ): Promise<ShellSnapshot> {
-  const [sidebar, lists, savedLists] = await Promise.all([
+  const [sidebar, lists, savedLists, sidebarPref] = await Promise.all([
     loadSidebarData(db, schema, did, trackReading),
     loadOwnSubscriptionLists(null, did),
     loadSavedListsHydrated(db, schema, did),
+    loadSidebarPref(did),
   ]);
-  return { sidebar, lists, savedLists };
+  return { sidebar, lists, savedLists, sidebarPref };
 }

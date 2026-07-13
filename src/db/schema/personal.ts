@@ -1,4 +1,11 @@
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 /**
  * App-owned personal-state records, written back to the reader's own repo and
@@ -91,3 +98,34 @@ export const bookmarks = pgTable(
 
 export type Bookmark = typeof bookmarks.$inferSelect;
 export type NewBookmark = typeof bookmarks.$inferInsert;
+
+/**
+ * `app.standard-reader.sidebarPref` records — a reader's sidebar list ordering
+ * and collapsed-group preferences. A singleton per reader (rkey `self`), so
+ * this mirror is keyed by `ownerDid` rather than the record AT-URI.
+ */
+export const sidebarPrefs = pgTable("sidebar_prefs", {
+  /** DID of the reader (the repo that holds this record). */
+  ownerDid: text("owner_did").primaryKey(),
+  /** AT-URI of the sidebarPref record (`.../app.standard-reader.sidebarPref/self`). */
+  uri: text("uri").notNull(),
+  cid: text("cid"),
+  rkey: text("rkey").notNull(),
+
+  /** Ordered at-uris of the reader's list groups (own + saved). */
+  listOrder: jsonb("list_order").notNull().default([]),
+  /** At-uris of the list groups the reader has collapsed. */
+  collapsed: jsonb("collapsed").notNull().default([]),
+
+  /** `updatedAt` from the record. */
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
+
+  deleted: boolean("deleted").notNull().default(false),
+
+  indexedAt: timestamp("indexed_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type SidebarPref = typeof sidebarPrefs.$inferSelect;
+export type NewSidebarPref = typeof sidebarPrefs.$inferInsert;

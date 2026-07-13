@@ -33,6 +33,7 @@ export const Collections = {
   labelerService: APP_NSID.labelerService,
   list: APP_NSID.list,
   listSave: APP_NSID.listSave,
+  sidebarPref: APP_NSID.sidebarPref,
   userFollow: APP_NSID.graphFollow,
 } as const;
 

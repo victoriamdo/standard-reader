@@ -29,6 +29,7 @@ import {
   publications,
   reads,
   recommends,
+  sidebarPrefs,
   subscriptions,
   userFollows,
 } from "../../db/schema.ts";
@@ -54,6 +55,7 @@ import type {
   PublicationThemeRecord,
   ReadRecord,
   RecommendRecord,
+  SidebarPrefRecord,
   SubscriptionRecord,
   TapIdentityPayload,
   UserFollowRecord,
@@ -846,6 +848,44 @@ export async function upsertListSave(
   await ensureTracked(did, "reader");
 }
 
+/**
+ * `app.standard-reader.sidebarPref` — a reader's sidebar list ordering and
+ * collapsed-group preferences. Singleton per reader, mirrored to `sidebar_prefs`
+ * keyed by owner DID so the shell snapshot reads it without PDS I/O.
+ */
+export async function upsertSidebarPref(
+  uri: string,
+  did: string,
+  rkey: string,
+  cid: string | undefined,
+  record: SidebarPrefRecord,
+): Promise<void> {
+  const listOrder = Array.isArray(record.listOrder)
+    ? record.listOrder.filter((item): item is string => typeof item === "string")
+    : [];
+  const collapsed = Array.isArray(record.collapsed)
+    ? record.collapsed.filter((item): item is string => typeof item === "string")
+    : [];
+
+  const values = {
+    ownerDid: did,
+    uri,
+    cid: cid ?? null,
+    rkey,
+    listOrder,
+    collapsed,
+    updatedAt: parseDate(record.updatedAt),
+    deleted: false,
+  };
+
+  await db
+    .insert(sidebarPrefs)
+    .values(values)
+    .onConflictDoUpdate({ target: sidebarPrefs.ownerDid, set: values });
+
+  await ensureTracked(did, "reader");
+}
+
 export async function upsertBskyProfile(
   uri: string,
   did: string,
@@ -1092,6 +1132,10 @@ export async function deleteRecord(
       await db.delete(listSaves).where(eq(listSaves.uri, uri));
       return;
     }
+    case Collections.sidebarPref: {
+      await db.delete(sidebarPrefs).where(eq(sidebarPrefs.uri, uri));
+      return;
+    }
     default: {
       // Unknown / profile deletes: nothing to remove from the read-model.
       return;
@@ -1198,6 +1242,35 @@ export async function backfillListsFromRepo(
   ]);
 
   return { lists: listCount, listSaves: listSaveCount };
+}
+
+/** Pull the reader's `app.standard-reader.sidebarPref` singleton from their PDS
+ * into `sidebar_prefs` (first visit / pre-sync gap). Best-effort. */
+export async function backfillSidebarPrefFromRepo(did: string): Promise<void> {
+  const identity = await resolveIdentity(did);
+  if (!identity.pds) {
+    return;
+  }
+  try {
+    const { records } = await listRepoRecords(
+      did,
+      Collections.sidebarPref,
+      identity.pds,
+    );
+    for (const record of records) {
+      const rkey = record.uri.slice(record.uri.lastIndexOf("/") + 1);
+      if (!record.value) continue;
+      await upsertSidebarPref(
+        record.uri,
+        did,
+        rkey,
+        record.cid,
+        record.value as unknown as SidebarPrefRecord,
+      );
+    }
+  } catch (error: unknown) {
+    console.warn(`[ingest] sidebarPref backfill failed for ${did}`, error);
+  }
 }
 
 /**

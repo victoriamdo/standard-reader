@@ -5,7 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  ArrowUpDown,
   Bookmark,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Compass,
   FolderPlus,
   Home,
@@ -35,6 +38,7 @@ import { PageReaderProvider } from "#/lib/page-reader/page-reader-provider";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
+import { ButtonGroup } from "../../design-system/button-group";
 import {
   Disclosure,
   DisclosurePanel,
@@ -79,11 +83,13 @@ import { BrandWordmark } from "./brand-wordmark";
 import { initials, listLinkParams, publicationLinkParams } from "./format";
 import { ListEditModal } from "./list-edit-modal";
 import { PageReaderBar } from "./page-reader-bar";
+import { ReorderListsModal } from "./reorder-lists-modal";
 import type { SubscriptionListGroup } from "./subscriptions-sheet";
 import {
   SubscriptionsSheet,
   SubscriptionsSwitcher,
 } from "./subscriptions-sheet";
+import { orderGroups, useSidebarPref } from "./use-sidebar-pref";
 
 const DESKTOP = "@media (min-width: 60rem)";
 
@@ -216,9 +222,7 @@ const styles = stylex.create({
   },
   sideLabelActions: {
     alignItems: "center",
-    columnGap: gap.sm,
     display: "flex",
-    rowGap: gap.sm,
   },
   listLabel: {
     alignItems: "center",
@@ -274,6 +278,8 @@ const styles = stylex.create({
   },
   /** Header icons: muted until the header row is hovered. */
   headerIcon: {
+    // No divider between grouped icon buttons.
+    borderRightColor: "transparent",
     color: {
       default: uiColor.text1,
       ":is([data-sidebar-label]:hover *)": uiColor.text2,
@@ -774,12 +780,17 @@ function SidebarList({
   listUri,
   pubs,
   users,
+  isExpanded,
+  onExpandedChange,
 }: {
   name: string;
   /** AT-URI of the list; links the group to its public `/l/$did/$rkey` page. */
   listUri: string;
   pubs: Array<FollowingPublication>;
   users: Array<FollowingUser>;
+  /** Controlled expansion so "collapse all" can drive every group at once. */
+  isExpanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
 }) {
   const link = listLinkParams(listUri);
   const unreadTotal =
@@ -788,7 +799,7 @@ function SidebarList({
   const titleFocusRingProps = useFocusRingProps();
 
   return (
-    <Disclosure defaultExpanded>
+    <Disclosure isExpanded={isExpanded} onExpandedChange={onExpandedChange}>
       <Flex
         align="center"
         justify="between"
@@ -1102,6 +1113,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       users: groupUsers(saved.list.users),
     })),
   ];
+  // Apply the reader's saved group order (own + saved interleaved); new lists
+  // fall to the bottom until moved.
+  const sidebarPref = useSidebarPref(signedIn);
+  const orderedGroups = orderGroups(listGroups, sidebarPref.order);
+  const groupUris = orderedGroups.map((group) => group.listUri);
+  const allCollapsed =
+    groupUris.length > 0 &&
+    groupUris.every((uri) => sidebarPref.isCollapsed(uri));
   const hasListGroups = listGroups.length > 0;
   // Subscriptions already shown in a list group stay out of the flat list.
   const groupedUris = new Set(
@@ -1122,6 +1141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
   // Creation only — editing lives on the list's own page.
   const [newListOpen, setNewListOpen] = useState(false);
+  const [reorderOpen, setReorderOpen] = useState(false);
 
   const openAddPublication = () => {
     setSubsSheetOpen(false);
@@ -1131,6 +1151,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const openNewList = () => {
     setSubsSheetOpen(false);
     setNewListOpen(true);
+  };
+
+  const openReorder = () => {
+    setSubsSheetOpen(false);
+    setReorderOpen(true);
+  };
+
+  const toggleAllGroups = () => {
+    sidebarPref.setAllCollapsed(groupUris, !allCollapsed);
   };
 
   return (
@@ -1164,8 +1193,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               style={styles.sideLabel}
             >
               <span>Subscriptions</span>
-              <div {...stylex.props(styles.sideLabelActions)}>
-                {signedIn ? (
+              {signedIn ? (
+                <ButtonGroup
+                  aria-label="Subscription list actions"
+                  style={styles.sideLabelActions}
+                >
+                  {hasListGroups ? (
+                    <IconButton
+                      aria-label="Reorder lists"
+                      size="sm"
+                      variant="tertiary"
+                      style={styles.headerIcon}
+                      onPress={openReorder}
+                    >
+                      <ArrowUpDown size={14} />
+                    </IconButton>
+                  ) : null}
                   <IconButton
                     aria-label="New list"
                     size="sm"
@@ -1175,8 +1218,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     <FolderPlus size={14} />
                   </IconButton>
-                ) : null}
-              </div>
+                  {hasListGroups ? (
+                    <IconButton
+                      aria-label={
+                        allCollapsed ? "Expand all lists" : "Collapse all lists"
+                      }
+                      size="sm"
+                      variant="tertiary"
+                      style={styles.headerIcon}
+                      onPress={toggleAllGroups}
+                    >
+                      {allCollapsed ? (
+                        <ChevronsUpDown size={14} />
+                      ) : (
+                        <ChevronsDownUp size={14} />
+                      )}
+                    </IconButton>
+                  ) : null}
+                </ButtonGroup>
+              ) : null}
             </Flex>
             <div {...stylex.props(styles.followList)}>
               {shellSubscriptionsLoading ? (
@@ -1205,13 +1265,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </>
               )}
             </div>
-            {listGroups.map((group) => (
+            {orderedGroups.map((group) => (
               <SidebarList
                 key={group.key}
                 name={group.name}
                 listUri={group.listUri}
                 pubs={group.pubs}
                 users={group.users}
+                isExpanded={!sidebarPref.isCollapsed(group.listUri)}
+                onExpandedChange={(expanded) =>
+                  sidebarPref.setCollapsed(group.listUri, !expanded)
+                }
               />
             ))}
           </div>
@@ -1260,9 +1324,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onOpenChange={setSubsSheetOpen}
           following={following}
           ungrouped={ungrouped}
-          groups={listGroups}
+          groups={orderedGroups}
           onAddPublication={openAddPublication}
           onNewList={signedIn ? openNewList : undefined}
+          onReorder={signedIn && hasListGroups ? openReorder : undefined}
+          allCollapsed={allCollapsed}
+          onToggleAll={hasListGroups ? toggleAllGroups : undefined}
+          isCollapsed={sidebarPref.isCollapsed}
+          onSetCollapsed={sidebarPref.setCollapsed}
         />
         <AddPublicationModal
           isOpen={addModalOpen}
@@ -1275,6 +1344,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           list={null}
           following={following}
           followingUsers={followingUsers}
+        />
+        <ReorderListsModal
+          isOpen={reorderOpen}
+          onOpenChange={setReorderOpen}
+          groups={orderedGroups.map((group) => ({
+            listUri: group.listUri,
+            name: group.name,
+          }))}
+          onSave={sidebarPref.saveOrder}
         />
         <AtstoreReviewPrompt />
         <FeedbackDialog isOpen={feedbackOpen} onOpenChange={setFeedbackOpen} />

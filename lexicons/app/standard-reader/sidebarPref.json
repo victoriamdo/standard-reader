@@ -1,0 +1,40 @@
+{
+  "lexicon": 1,
+  "id": "app.standard-reader.sidebarPref",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A reader's personal sidebar preferences: the display order of their subscription list groups and which groups are collapsed. A singleton record (rkey `self`).",
+      "key": "literal:self",
+      "record": {
+        "type": "object",
+        "required": ["updatedAt"],
+        "properties": {
+          "listOrder": {
+            "type": "array",
+            "maxLength": 1000,
+            "items": {
+              "type": "string",
+              "format": "at-uri"
+            },
+            "description": "Ordered AT URIs of the reader's list groups (own + saved) as shown top-to-bottom in the sidebar. Groups not present are appended in their default order."
+          },
+          "collapsed": {
+            "type": "array",
+            "maxLength": 1000,
+            "items": {
+              "type": "string",
+              "format": "at-uri"
+            },
+            "description": "AT URIs of the list groups the reader has collapsed in the sidebar."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When these preferences were last changed."
+          }
+        }
+      }
+    }
+  }
+}

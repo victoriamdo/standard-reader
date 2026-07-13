@@ -26,6 +26,7 @@ export const APP_NSID = {
   bookmark: "app.standard-reader.bookmark",
   list: "app.standard-reader.list",
   listSave: "app.standard-reader.listSave",
+  sidebarPref: "app.standard-reader.sidebarPref",
   collection: "app.standard-reader.collection",
   collectionsPublication: "app.standard-reader.collectionsPublication",
   publicationTheme: "app.standard-reader.publicationTheme",

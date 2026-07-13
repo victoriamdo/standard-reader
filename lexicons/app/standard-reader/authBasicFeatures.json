@@ -17,7 +17,8 @@
             "app.standard-reader.labeler.subscription",
             "app.standard-reader.list",
             "app.standard-reader.listSave",
-            "app.standard-reader.read"
+            "app.standard-reader.read",
+            "app.standard-reader.sidebarPref"
           ]
         }
       ]

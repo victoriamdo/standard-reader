@@ -2,7 +2,15 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Compass, FolderPlus, Plus } from "lucide-react";
+import {
+  ArrowUpDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Compass,
+  FolderPlus,
+  Plus,
+} from "lucide-react";
 import { Button as AriaButton } from "react-aria-components";
 
 import { AuthorProfileLink } from "#/components/reader/author-profile-link";
@@ -10,6 +18,7 @@ import { formatSidebarUnreadCount } from "#/lib/format-count";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
+import { ButtonGroup } from "../../design-system/button-group";
 import {
   Disclosure,
   DisclosurePanel,
@@ -21,6 +30,7 @@ import {
   DrawerDescription,
   DrawerHeader,
 } from "../../design-system/drawer";
+import { IconButton } from "../../design-system/icon-button";
 import { animationDuration } from "../../design-system/theme/animations.stylex";
 import { primaryColor, uiColor } from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
@@ -103,6 +113,15 @@ const styles = stylex.create({
     flexBasis: "0%",
     flexGrow: 1,
     flexShrink: 1,
+  },
+  /** Right-aligned reorder / collapse-all actions above the list groups. */
+  groupToolbar: {
+    justifyContent: "flex-end",
+    marginTop: verticalSpace.sm,
+  },
+  /** No divider between grouped icon buttons. */
+  toolbarIcon: {
+    borderRightColor: "transparent",
   },
   list: {
     display: "flex",
@@ -436,9 +455,13 @@ function SheetUserRow({
 function SheetListGroup({
   group,
   onNavigate,
+  isExpanded,
+  onExpandedChange,
 }: {
   group: SubscriptionListGroup;
   onNavigate: () => void;
+  isExpanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
 }) {
   const link = listLinkParams(group.listUri);
   const unreadTotal =
@@ -446,7 +469,7 @@ function SheetListGroup({
     group.users.reduce((sum, person) => sum + (person.unreadCount ?? 0), 0);
 
   return (
-    <Disclosure defaultExpanded>
+    <Disclosure isExpanded={isExpanded} onExpandedChange={onExpandedChange}>
       <div {...stylex.props(styles.groupLabel)}>
         {link ? (
           <Link
@@ -506,6 +529,11 @@ export function SubscriptionsSheet({
   groups,
   onAddPublication,
   onNewList,
+  onReorder,
+  allCollapsed = false,
+  onToggleAll,
+  isCollapsed,
+  onSetCollapsed,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -516,6 +544,16 @@ export function SubscriptionsSheet({
   onAddPublication: () => void;
   /** Opens the new-list modal; omit when signed out. */
   onNewList?: () => void;
+  /** Opens the reorder-lists dialog; omit when unavailable (signed out / no lists). */
+  onReorder?: () => void;
+  /** Whether every list group is currently collapsed (drives the toggle icon). */
+  allCollapsed?: boolean;
+  /** Collapse or expand every group at once; omit when there are no groups. */
+  onToggleAll?: () => void;
+  /** Whether a given group (by list AT-URI) is collapsed. */
+  isCollapsed?: (listUri: string) => boolean;
+  /** Persist a single group's collapsed state. */
+  onSetCollapsed?: (listUri: string, collapsed: boolean) => void;
 }) {
   const navigate = useNavigate();
   const countLabel = `${following.length} publication${following.length === 1 ? "" : "s"}`;
@@ -572,8 +610,51 @@ export function SubscriptionsSheet({
             ))
           )}
         </div>
+        {groups.length > 0 && (onToggleAll || onReorder) ? (
+          <ButtonGroup
+            aria-label="Subscription list actions"
+            style={styles.groupToolbar}
+          >
+            {onReorder ? (
+              <IconButton
+                aria-label="Reorder lists"
+                size="sm"
+                variant="tertiary"
+                style={styles.toolbarIcon}
+                onPress={onReorder}
+              >
+                <ArrowUpDown size={16} />
+              </IconButton>
+            ) : null}
+            {onToggleAll ? (
+              <IconButton
+                aria-label={
+                  allCollapsed ? "Expand all lists" : "Collapse all lists"
+                }
+                size="sm"
+                variant="tertiary"
+                style={styles.toolbarIcon}
+                onPress={onToggleAll}
+              >
+                {allCollapsed ? (
+                  <ChevronsUpDown size={16} />
+                ) : (
+                  <ChevronsDownUp size={16} />
+                )}
+              </IconButton>
+            ) : null}
+          </ButtonGroup>
+        ) : null}
         {groups.map((group) => (
-          <SheetListGroup key={group.key} group={group} onNavigate={close} />
+          <SheetListGroup
+            key={group.key}
+            group={group}
+            onNavigate={close}
+            isExpanded={isCollapsed ? !isCollapsed(group.listUri) : true}
+            onExpandedChange={(expanded) =>
+              onSetCollapsed?.(group.listUri, !expanded)
+            }
+          />
         ))}
 
         <AriaButton

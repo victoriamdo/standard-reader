@@ -71,6 +71,13 @@
       "when": 1783923145449,
       "tag": "0009_exotic_albert_cleary",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783925971131,
+      "tag": "0010_perfect_kate_bishop",
+      "breakpoints": true
     }
   ]
 }

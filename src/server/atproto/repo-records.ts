@@ -587,6 +587,33 @@ export async function deleteListSaveRecord(
   });
 }
 
+/** Singleton rkey for the reader's `app.standard-reader.sidebarPref` record. */
+export const SIDEBAR_PREF_RKEY = "self";
+
+/** Create or replace the reader's sidebar preferences (list order + collapsed
+ * groups). One record per reader, keyed `self`. */
+export async function putSidebarPrefRecord(
+  client: Client,
+  repo: string,
+  pref: {
+    listOrder: Array<string>;
+    collapsed: Array<string>;
+    updatedAt: string;
+  },
+): Promise<{ uri: string; cid: string }> {
+  return repoPutRecord(client, {
+    repo,
+    collection: COLLECTION.sidebarPref,
+    rkey: SIDEBAR_PREF_RKEY,
+    record: {
+      $type: COLLECTION.sidebarPref,
+      listOrder: pref.listOrder,
+      collapsed: pref.collapsed,
+      updatedAt: pref.updatedAt,
+    },
+  });
+}
+
 // ── Collections (reuse site.standard.publication / .document) ───────────────
 
 /** New TID rkey for a collection's publication or document (creation-sortable). */

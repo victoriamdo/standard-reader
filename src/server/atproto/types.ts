@@ -213,6 +213,17 @@ export interface ListSaveRecord {
   createdAt?: string;
 }
 
+/** `app.standard-reader.sidebarPref` — a reader's sidebar list ordering and
+ * collapsed-group preferences. Singleton (rkey `self`). */
+export interface SidebarPrefRecord {
+  $type?: string;
+  /** Ordered at-uris of the reader's list groups (own + saved). */
+  listOrder?: Array<string>;
+  /** At-uris of the list groups the reader has collapsed. */
+  collapsed?: Array<string>;
+  updatedAt?: string;
+}
+
 /** `app.bsky.actor.profile`. */
 export interface BskyProfileRecord {
   $type?: string;

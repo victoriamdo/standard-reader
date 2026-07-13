@@ -3,6 +3,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { feedApi } from "./api-feed.functions";
 import { listApi } from "./api-lists.functions";
 import { shellApi } from "./api-shell.functions";
+import { sidebarPrefApi } from "./api-sidebar-prefs.functions";
 
 /** Sidebar + list metadata — refresh in the background, not on every child nav. */
 export const SHELL_QUERY_STALE_TIME_MS = 5 * 60_000;
@@ -22,6 +23,10 @@ export function savedListsQueryOptions() {
   return listApi.getSavedListsQueryOptions();
 }
 
+export function sidebarPrefQueryOptions() {
+  return sidebarPrefApi.getSidebarPrefQueryOptions();
+}
+
 /** Seed sidebar + list queries from a single snapshot when bootstrap did not. */
 async function ensureShellSnapshot(queryClient: QueryClient): Promise<void> {
   const sidebarOpts = sidebarQueryOptions();
@@ -39,6 +44,10 @@ async function ensureShellSnapshot(queryClient: QueryClient): Promise<void> {
   queryClient.setQueryData(
     savedListsQueryOptions().queryKey,
     snapshot.savedLists,
+  );
+  queryClient.setQueryData(
+    sidebarPrefQueryOptions().queryKey,
+    snapshot.sidebarPref,
   );
 }
 

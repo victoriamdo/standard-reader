@@ -16,6 +16,7 @@ import type {
   PublicationThemeRecord,
   ReadRecord,
   RecommendRecord,
+  SidebarPrefRecord,
   SubscriptionRecord,
   TapEvent,
   TapRecordPayload,
@@ -39,6 +40,7 @@ import {
   upsertPublicationTheme,
   upsertRead,
   upsertRecommend,
+  upsertSidebarPref,
   upsertSubscription,
   upsertUserFollow,
 } from "./handlers.ts";
@@ -196,6 +198,16 @@ async function handleRecord(payload: TapRecordPayload): Promise<void> {
         rkey,
         cid,
         record as unknown as ListSaveRecord,
+      );
+      return;
+    }
+    case Collections.sidebarPref: {
+      await upsertSidebarPref(
+        uri,
+        did,
+        rkey,
+        cid,
+        record as unknown as SidebarPrefRecord,
       );
       return;
     }
