@@ -72,7 +72,7 @@ const READING_EXAMPLE =
 const INLINE_FEATS = [
   { icon: Sparkles, label: "Recommendations from real reading patterns" },
   { icon: Flame, label: "Trending this week" },
-  { icon: Users, label: "Subscribed by people you follow" },
+  { icon: Users, label: "Subscribed to by people you follow" },
   { icon: Search, label: "Fast full-text search" },
 ] as const;
 
@@ -1095,7 +1095,7 @@ export function AboutView() {
           A home for the writing you love
         </h1>
         <p {...stylex.props(styles.lede)}>
-          Follow the publications on{" "}
+          Subscribe to the publications on{" "}
           <a
             href="https://standard.site"
             target="_blank"
@@ -1113,7 +1113,7 @@ export function AboutView() {
             Sign in
           </CtaButton>
           <CtaButton to="/discover" variant="primary" trailingArrow>
-            Explore Discover
+            Start exploring
           </CtaButton>
         </div>
         {countLabel ? (
@@ -1147,11 +1147,11 @@ export function AboutView() {
               its work.
             </p>
             <p {...stylex.props(styles.splitPara, styles.splitParaLast)}>
-              And it never feels sealed off. We connect articles to the
-              conversation all throughout the Atmosphere — the Bluesky posts and
-              replies talking about a piece, the notes left in its margins, the
-              other writing that cites it — gathered quietly beneath what
-              you&rsquo;re reading.
+              And it never feels sealed off. We connect each article to the
+              conversation happening across the Atmosphere — the open network
+              beyond this app — gathering the Bluesky posts and replies about a
+              piece, the notes left in its margins, and the other writing that
+              cites it, quietly beneath what you&rsquo;re reading.
             </p>
           </div>
 
@@ -1244,7 +1244,7 @@ export function AboutView() {
 
         <div {...stylex.props(styles.discoverCta)}>
           <CtaButton to="/discover" variant="ink" trailingArrow>
-            Open Discover
+            Browse publications
           </CtaButton>
         </div>
       </section>
@@ -1270,7 +1270,7 @@ export function AboutView() {
                 Save from anywhere you browse
               </h4>
               <p {...stylex.props(styles.intDesc)}>
-                A lightweight browser extension lets you follow and save
+                A lightweight browser extension lets you save and subscribe to
                 publications while you’re out on the web — with subtle badges on
                 bsky.app and a one-click overlay on any page you land on. Your
                 reading list fills itself.
@@ -1344,7 +1344,7 @@ export function AboutView() {
               <div {...stylex.props(styles.mailBody)}>
                 <div {...stylex.props(styles.mailKicker)}>Your week</div>
                 <h3 {...stylex.props(styles.mailTitle)}>
-                  The best of what you follow
+                  The best of what you subscribe to
                 </h3>
                 <div {...stylex.props(styles.mailItem)}>
                   <div {...stylex.props(styles.mailSrc)}>
@@ -1386,7 +1386,7 @@ export function AboutView() {
               </h2>
               <p {...stylex.props(styles.panelPara, styles.panelParaSpaced)}>
                 Don’t want another app to check? Opt into a weekly email with
-                the best of the publications you follow, plus a couple worth
+                the best of the publications you subscribe to, plus a couple worth
                 discovering. One email, one click to leave — and you can preview
                 exactly what it looks like before you ever turn it on.
               </p>
@@ -1407,7 +1407,7 @@ export function AboutView() {
                 <Kicker>Plays nice with the open web</Kicker>
               </div>
               <h2 {...stylex.props(styles.splitTitle, styles.h2Panel)}>
-                Every feed has a real RSS feed
+                Take any of it as RSS
               </h2>
               <p {...stylex.props(styles.panelPara)}>
                 Standard Reader doesn’t trap your reading inside one app. Any
@@ -1444,16 +1444,13 @@ export function AboutView() {
           Start with a single publication
         </h2>
         <p {...stylex.props(styles.closeDek)}>
-          Read without an account. Sign in with Bluesky when you want to follow,
-          like, and save — and take all of it with you, wherever you choose to
-          read next.
+          Read without an account. Sign in with Bluesky when you want to
+          subscribe, like, and save — and take all of it with you, wherever you
+          choose to read next.
         </p>
         <div {...stylex.props(styles.ctaRow, styles.heroCtaRow)}>
-          <CtaButton to="/login" variant="ghost">
-            Sign in
-          </CtaButton>
           <CtaButton to="/discover" variant="primary" trailingArrow>
-            Explore Discover
+            Get started
           </CtaButton>
         </div>
       </section>
