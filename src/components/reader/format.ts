@@ -185,11 +185,26 @@ export function formatReadingTime(
   return stats.text;
 }
 
+const graphemeSegmenter = new Intl.Segmenter(undefined, {
+  granularity: "grapheme",
+});
+
+/**
+ * First user-perceived character. Indexing with `[0]` would return half a
+ * surrogate pair for emoji/astral names (e.g. "🎌" -> "\ud83c", which renders
+ * as tofu).
+ */
+function firstGrapheme(text: string | undefined): string {
+  if (!text) return "";
+  for (const { segment } of graphemeSegmenter.segment(text)) return segment;
+  return "";
+}
+
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
-  if (parts.length === 1) return (parts[0]?.[0] ?? "?").toUpperCase();
-  return `${parts[0]?.[0] ?? ""}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
+  if (parts.length === 1) return (firstGrapheme(parts[0]) || "?").toUpperCase();
+  return `${firstGrapheme(parts[0])}${firstGrapheme(parts.at(-1))}`.toUpperCase();
 }
 
 export function formatReaders(n: number): string {

@@ -30,10 +30,11 @@ function parseGoogleFontCss(css: string): Array<FontFaceSpec> {
   return faces;
 }
 
-async function fetchFontCss(family: string): Promise<string> {
+async function fetchFontCss(family: string, text?: string): Promise<string> {
   const param = encodeURIComponent(family.trim()).replaceAll("%20", "+");
+  const textParam = text ? `&text=${encodeURIComponent(text)}` : "";
   const response = await fetch(
-    `https://fonts.googleapis.com/css2?family=${param}&display=swap`,
+    `https://fonts.googleapis.com/css2?family=${param}${textParam}&display=swap`,
     {
       headers: { "User-Agent": TTF_UA },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -70,6 +71,32 @@ async function loadFace(
   } catch {
     return null;
   }
+}
+
+/**
+ * Load a `text=`-subsetted 400/normal face of a Google Font family. Used for
+ * per-segment glyph fallback, so the download is only the handful of glyphs in
+ * `text`. Returns the raw font bytes (the caller names the satori font), or
+ * null when the family doesn't cover the requested text or the fetch fails.
+ */
+export async function loadGoogleFontSubset(
+  family: string,
+  text: string,
+): Promise<Font["data"] | null> {
+  let css: string;
+  try {
+    css = await fetchFontCss(family, text);
+  } catch {
+    return null;
+  }
+
+  const face = parseGoogleFontCss(css).find(
+    (candidate) => candidate.weight === 400 && candidate.style === "normal",
+  );
+  if (!face) return null;
+
+  const loaded = await loadFace(family, face);
+  return loaded?.data ?? null;
 }
 
 /** Load one or more weights/styles for a Google Font family (cached). */
