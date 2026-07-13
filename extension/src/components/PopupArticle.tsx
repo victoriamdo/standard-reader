@@ -257,7 +257,7 @@ export function PopupArticle({
           <IconButton
             variant="secondary"
             size="lg"
-            label={result.isRecommended ? "Liked" : "Like article"}
+            label={result.isRecommended ? "Recommended" : "Recommend article"}
             onPress={onLike}
             isDisabled={likeBusy}
             style={result.isRecommended ? styles.likeActive : undefined}

@@ -22,7 +22,7 @@ export interface ReaderQueueRowItem {
   documentUri: string;
   article: ArticleCard | null;
   timestamp: string | null;
-  /** Past-tense verb prefix, e.g. "Saved", "Liked", "Read". */
+  /** Past-tense verb prefix, e.g. "Saved", "Recommended", "Read". */
   actionLabel: string;
 }
 

@@ -50,7 +50,7 @@ export const user = pgTable("user", {
   /** Comma-separated author-profile tab ids the owner has hidden from their
    * public profile (`posts,publications,...`); `null`/empty = all visible. */
   profileHiddenTabs: text("profile_hidden_tabs"),
-  /** `true` shows the opt-in "Likes" tab on the public profile; `null`/`false`
+  /** `true` shows the opt-in "Recommendations" tab on the public profile; `null`/`false`
    * keeps it hidden (the tab is disabled by default). */
   profileShowLikes: boolean("profile_show_likes"),
   /** `true` enables collections authoring (requests the collections OAuth scope

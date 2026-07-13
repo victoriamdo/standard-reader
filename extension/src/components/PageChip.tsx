@@ -563,7 +563,7 @@ export function PageChip({
                   styles.actionIconOnly,
                   liked ? styles.actionLikeActive : styles.actionOpen,
                 )}
-                aria-label={liked ? "Liked" : "Like article"}
+                aria-label={liked ? "Recommended" : "Recommend article"}
                 disabled={busy}
                 onClick={() => {
                   void toggleLike();
@@ -632,7 +632,7 @@ export function PageChip({
                   styles.actionIconOnly,
                   liked ? styles.actionLikeActive : styles.actionOpen,
                 )}
-                aria-label={liked ? "Liked" : "Like article"}
+                aria-label={liked ? "Recommended" : "Recommend article"}
               >
                 <Heart
                   size={12}

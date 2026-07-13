@@ -183,7 +183,7 @@ export function PopupShell({
       });
     } catch (error) {
       setResult(previous);
-      setLoadError(error instanceof Error ? error.message : "Like failed");
+      setLoadError(error instanceof Error ? error.message : "Recommend failed");
     } finally {
       setLikeBusy(false);
     }

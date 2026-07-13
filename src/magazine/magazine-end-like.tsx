@@ -38,7 +38,7 @@ export function MagazineEndLike({
           strokeWidth={2}
           fill={recommended ? "currentColor" : "none"}
         />
-        <span>{recommended ? "Liked" : "Like this issue"}</span>
+        <span>{recommended ? "Recommended" : "Recommend this issue"}</span>
         <span className="endcard-like-divider" aria-hidden />
         <span className="endcard-like-count">
           {formatReaders(recommendCount)}

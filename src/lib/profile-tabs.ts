@@ -6,8 +6,8 @@
  *
  * - `profile_hidden_tabs` — default-visible tabs the owner has opted OUT of. A
  *   comma-separated list of {@link HideableTabId} (`null`/empty = none hidden).
- * - `profile_show_likes` — the "Likes" tab is opt-IN: hidden by default and only
- *   shown when the owner explicitly enables it.
+ * - `profile_show_likes` — the "Recommendations" tab (id `likes`) is opt-IN:
+ *   hidden by default and only shown when the owner explicitly enables it.
  */
 import { z } from "zod";
 
@@ -48,7 +48,7 @@ export const PROFILE_TAB_LABELS: Record<ProfileTabId, string> = {
   subscriptions: "Subscriptions",
   readers: "Readers",
   lists: "Lists",
-  likes: "Likes",
+  likes: "Recommendations",
 };
 
 const HIDEABLE_TAB_ID_SET = new Set<string>(HIDEABLE_TAB_IDS);

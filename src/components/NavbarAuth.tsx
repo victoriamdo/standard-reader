@@ -218,8 +218,8 @@ export function NavbarAuth({
             Reading history
           </MenuItemLink>
         ) : null}
-        <MenuItemLink to="/likes" suffix={<Heart />}>
-          Liked articles
+        <MenuItemLink to="/recommended" suffix={<Heart />}>
+          Recommended articles
         </MenuItemLink>
         <MenuItemLink to="/feedback" suffix={<MessageSquareText />}>
           Feedback

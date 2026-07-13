@@ -491,6 +491,9 @@ const styles = stylex.create({
   likeButtonHeart: {
     color: criticalColor.solid1,
     flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   likeButtonLabel: {
     color: uiColor.text2,
@@ -577,10 +580,10 @@ function ArticleLikePrompt({
   return (
     <div {...stylex.props(styles.likePrompt)}>
       <h2 {...stylex.props(styles.likePromptTitle)}>
-        Did this enjoy this document?
+        Did you enjoy this article?
       </h2>
       <p {...stylex.props(styles.likePromptSubtext)}>
-        Give it a heart — Standard Reader surfaces well-loved writing to more
+        Recommend it — Standard Reader surfaces well-loved writing to more
         readers across the network.
       </p>
       <Button
@@ -597,7 +600,7 @@ function ArticleLikePrompt({
           />
         </span>
         <span {...stylex.props(styles.likeButtonLabel)}>
-          {recommended ? "Liked" : "Like this article"}
+          {recommended ? "Recommended" : "Recommend this article"}
         </span>
         <span aria-hidden {...stylex.props(styles.likeButtonDivider)} />
         <span {...stylex.props(styles.likeButtonCount)}>

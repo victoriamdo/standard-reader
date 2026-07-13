@@ -267,7 +267,7 @@ export function MetaLine({ children }: { children: React.ReactNode }) {
 
 const ENGAGEMENT_ICON_SIZE = { sm: 14, xs: 12 } as const;
 
-/** Network like count with a heart icon; renders nothing when `count` is zero. */
+/** Network recommendation count with a heart icon; renders nothing when `count` is zero. */
 export function LikeCount({
   count,
   size = "xs",
@@ -313,7 +313,7 @@ export function CommentCount({
   );
 }
 
-/** Likes + Bluesky comment counts for article cards and bylines. */
+/** Recommendation + Bluesky comment counts for article cards and bylines. */
 export function ArticleEngagement({
   recommendCount,
   commentCount,

@@ -461,7 +461,7 @@ export const API_DOCS_CATALOG: Array<ApiDocsCatalogEntry> = [
   p(
     "app.standard-reader.recommendDocument",
     "Write procedures",
-    "Like an article on the network.",
+    "Recommend an article on the network.",
     [{ name: "document", type: "at-uri", required: true }],
     {
       autoRun: false,
@@ -471,7 +471,7 @@ export const API_DOCS_CATALOG: Array<ApiDocsCatalogEntry> = [
   p(
     "app.standard-reader.unrecommendDocument",
     "Write procedures",
-    "Remove a network like from an article.",
+    "Remove your recommendation from an article on the network.",
     [{ name: "document", type: "at-uri", required: true }],
     {
       autoRun: false,

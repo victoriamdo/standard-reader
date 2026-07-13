@@ -156,7 +156,7 @@ export async function fetchRecommend(
     throw new Error("unauthorized");
   }
   if (!response.ok) {
-    throw new Error("Like failed");
+    throw new Error("Recommend failed");
   }
 }
 

@@ -516,7 +516,8 @@ function AuthorProfileContent({
     let nextHidden = hiddenTabs;
     let nextShowLikes = showLikes;
     if (tabId === "likes") {
-      // "Likes" is opt-in, tracked separately from the opt-out hidden list.
+      // The "Recommendations" tab (id "likes") is opt-in, tracked separately
+      // from the opt-out hidden list.
       nextShowLikes = visible;
       setShowLikes(visible);
     } else {
@@ -568,7 +569,8 @@ function AuthorProfileContent({
     stats.recommendationCount > 0 && ("likes" as const),
   ].filter((id): id is AuthorTab => id !== false);
   const visibleTabs = candidateTabs.filter((id) => {
-    // "Likes" is opt-in (default off); the rest are opt-out (default on).
+    // "Recommendations" (id "likes") is opt-in (default off); the rest are
+    // opt-out (default on).
     if (id === "likes") return showLikes;
     return !hiddenTabs.includes(id);
   });
@@ -766,7 +768,7 @@ function AuthorProfileContent({
               ) : null}
               {visibleTabs.includes("likes") ? (
                 <Tab id="likes">
-                  Likes
+                  Recommendations
                   <Badge size="sm" style={styles.tabCount}>
                     {stats.recommendationCount}
                   </Badge>

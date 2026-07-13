@@ -43,10 +43,10 @@ export const PAGE_OG_CARDS = {
     tagline:
       "Articles you've saved for later — in your repo, synced across devices.",
   },
-  likes: {
-    path: "/likes",
-    title: "Liked articles",
-    tagline: "Articles you've liked across the network.",
+  recommended: {
+    path: "/recommended",
+    title: "Recommended articles",
+    tagline: "Articles you've recommended across the network.",
   },
   history: {
     path: "/history",

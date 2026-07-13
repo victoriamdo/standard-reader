@@ -87,7 +87,7 @@ export interface AuthorProfile {
   documentsNextOffset: number | null;
   /** Default-visible tab ids the profile owner has hidden from their profile. */
   hiddenTabs: Array<HideableTabId>;
-  /** Whether the opt-in "Likes" tab is enabled on this profile. */
+  /** Whether the opt-in "Recommendations" tab is enabled on this profile. */
   showLikes: boolean;
 }
 
