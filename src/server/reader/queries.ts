@@ -578,6 +578,30 @@ export async function selectFollowUris(
   return rows.map((row) => row.uri);
 }
 
+/**
+ * Cheap boolean: does the reader have any follows at all — a subscription, a
+ * followed user, or a saved list? One round trip of indexed `EXISTS` probes,
+ * for gates (the welcome-redirect) that only need the boolean, not the full
+ * (expensive) sidebar computation.
+ */
+export async function readerHasAnyFollows(
+  db: Db,
+  schema: Schema,
+  did: string,
+): Promise<boolean> {
+  const sub = schema.subscriptions;
+  const uf = schema.userFollows;
+  const ls = schema.listSaves;
+  const result = await db.execute(sql`
+    select (
+      exists(select 1 from ${sub} where ${sub.subscriberDid} = ${did} and ${sub.deleted} = false)
+      or exists(select 1 from ${uf} where ${uf.followerDid} = ${did} and ${uf.deleted} = false)
+      or exists(select 1 from ${ls} where ${ls.saverDid} = ${did} and ${ls.deleted} = false)
+    ) as has
+  `);
+  return executeRows<{ has: boolean }>(result)[0]?.has ?? false;
+}
+
 /** Distinct DIDs of the users a reader currently follows (active records). */
 export async function selectFollowedUserDids(
   db: Db,

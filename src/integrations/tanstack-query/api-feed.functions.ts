@@ -27,6 +27,7 @@ import {
   countNetworkDocuments,
   countTrendingDocuments,
   popularPublications,
+  readerHasAnyFollows,
   recommendedPublications,
   selectArticleCards,
   trendingArticles,
@@ -207,6 +208,24 @@ const getSidebar = createServerFn({ method: "GET" })
       }
 
       return loadSidebarData(db, schema, did, trackReading);
+    }),
+  );
+
+/** Cheap "does the reader follow anything" check — for the welcome-redirect
+ * gate, which only needs the boolean, not the full (expensive) sidebar. */
+const getHasFollows = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .handler(
+    observe("feed.getHasFollows", async ({ context }, span) => {
+      const { db, schema } = context;
+      const did = await attachReaderSpanContext(span, getRequest());
+      if (!did) {
+        return { hasFollows: false };
+      }
+      span.set("did", did);
+      const hasFollows = await readerHasAnyFollows(db, schema, did);
+      span.set("hasFollows", hasFollows);
+      return { hasFollows };
     }),
   );
 
@@ -742,6 +761,14 @@ function getSidebarQueryOptions() {
   });
 }
 
+function getHasFollowsQueryOptions() {
+  return queryOptions({
+    queryKey: ["feed", "hasFollows"] as const,
+    queryFn: async () => getHasFollows(),
+    staleTime: 5 * 60_000,
+  });
+}
+
 export const feedApi = {
   getHomeFeed,
   getHomeFeedQueryOptions,
@@ -754,4 +781,6 @@ export const feedApi = {
   getLatestFeedQueryOptions,
   getSidebar,
   getSidebarQueryOptions,
+  getHasFollows,
+  getHasFollowsQueryOptions,
 };

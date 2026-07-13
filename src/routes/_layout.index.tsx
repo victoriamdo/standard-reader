@@ -39,7 +39,6 @@ import {
 import type { HomeScope } from "../integrations/tanstack-query/api-feed.functions";
 import { feedApi } from "../integrations/tanstack-query/api-feed.functions";
 import { user } from "../integrations/tanstack-query/api-user.functions";
-import { sidebarQueryOptions } from "../integrations/tanstack-query/shell-queries";
 import { getPublicUrlClient } from "../lib/public-url";
 import { latestFeedUrl, pageSocialMeta } from "../lib/site-metadata";
 import { useHomeScope } from "../lib/use-home-scope";
@@ -61,10 +60,12 @@ export const Route = createFileRoute("/_layout/")({
     if (!session?.user || session.onboardingCompleted) {
       return;
     }
-    const sidebar = await context.queryClient.ensureQueryData(
-      sidebarQueryOptions(),
+    // Only need the boolean here — a cheap EXISTS check, not the full sidebar
+    // computation (which the app shell fetches client-side after paint).
+    const { hasFollows } = await context.queryClient.ensureQueryData(
+      feedApi.getHasFollowsQueryOptions(),
     );
-    if (!sidebar.hasFollows) {
+    if (!hasFollows) {
       throw redirect({ to: "/welcome" });
     }
   },
