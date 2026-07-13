@@ -36,7 +36,6 @@ import {
   Kicker,
   PublicationAvatar,
   ReaderContent,
-  SectionHead,
   Topic,
 } from "../components/reader/primitives";
 import { PublicationSocialProofLine } from "../components/reader/publication-social-proof";
@@ -506,7 +505,6 @@ function PublicationPostsSkeleton() {
       aria-busy="true"
       aria-label="Loading recent writing"
     >
-      <SectionHead kicker="Latest" title="Recent writing" />
       <div>
         <PublicationFeatureSkeleton />
         {Array.from({ length: PUBLICATION_SKELETON_ROWS - 1 }, (_, index) => (
