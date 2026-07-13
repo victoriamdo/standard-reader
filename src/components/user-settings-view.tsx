@@ -541,7 +541,7 @@ export function UserSettingsView() {
           <Separator />
           <SettingRow
             label="Track reading history"
-            description="When on, articles you open are recorded as public read records in your AT Protocol repository."
+            description="When on, articles you open are recorded as public read records in your account."
           >
             <Switch
               isSelected={trackReading}
@@ -787,7 +787,7 @@ export function UserSettingsView() {
         <h2 {...stylex.props(styles.sectionHeading)}>Personal data</h2>
         <p {...stylex.props(styles.deletionIntro)}>
           Permanently remove data stored in your account. These actions delete
-          records from your AT Protocol repository and cannot be undone.
+          records from your account and cannot be undone.
         </p>
         <div {...stylex.props(styles.settingGroup)}>
           <DataDeletionRow

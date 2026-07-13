@@ -22,8 +22,7 @@ import {
 import { Separator } from "#/design-system/separator";
 import { TextArea } from "#/design-system/text-area";
 import { TextField } from "#/design-system/text-field";
-import { criticalColor, uiColor } from "#/design-system/theme/color.stylex";
-import { horizontalSpace } from "#/design-system/theme/semantic-spacing.stylex";
+import { criticalColor } from "#/design-system/theme/color.stylex";
 import { fontFamily, fontSize } from "#/design-system/theme/typography.stylex";
 import { toasts } from "#/design-system/toast";
 import { auth } from "#/integrations/tanstack-query/api-auth.functions";
@@ -42,15 +41,6 @@ const styles = stylex.create({
   },
   fieldGroup: {
     width: "100%",
-  },
-  footerNote: {
-    alignItems: "center",
-    color: uiColor.text1,
-    display: "flex",
-    flexGrow: 1,
-    fontFamily: fontFamily.sans,
-    fontSize: fontSize.sm,
-    paddingRight: horizontalSpace.lg,
   },
   error: {
     color: criticalColor.text2,
@@ -269,9 +259,6 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
         </Flex>
       </DialogBody>
       <DialogFooter>
-        <span {...stylex.props(styles.footerNote)}>
-          Create posts to your AT Protocol repo.
-        </span>
         <Button
           variant="primary"
           isDisabled={title.trim().length === 0}

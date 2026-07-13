@@ -127,7 +127,7 @@ export function StepSettings() {
         <div {...stylex.props(styles.group)}>
           <Row
             label="Keep reading history"
-            description="Marks what you've read for unread counts. Written as public records on your AT Protocol account — turn off to read privately."
+            description="Marks what you've read for unread counts. Stored publicly on your account — turn off to read privately."
           >
             <Switch
               isSelected={trackReading}
