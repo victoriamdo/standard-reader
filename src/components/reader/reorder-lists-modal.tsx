@@ -2,7 +2,7 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { GripVertical } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Key } from "react-aria-components";
 import { DropIndicator, useDragAndDrop } from "react-aria-components";
 
@@ -165,6 +165,24 @@ function ReorderForm({
 }) {
   const [items, setItems] = useState<Array<ReorderableGroup>>(groups);
   const nameByUri = new Map(groups.map((group) => [group.listUri, group.name]));
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // Whether the in-progress drag was started by pointer (vs keyboard). react-aria
+  // force-sets keyboard modality after any drop when selectionMode is "none", so a
+  // mouse drop leaves a focus ring on the landed item; we clear it for pointer drops.
+  const pointerDragRef = useRef(false);
+
+  const clearPointerFocusRing = () => {
+    if (!pointerDragRef.current) {
+      return;
+    }
+    // Run after react-aria's post-drop focus effect so the blur wins.
+    requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && bodyRef.current?.contains(active)) {
+        active.blur();
+      }
+    });
+  };
 
   const { dragAndDropHooks } = useDragAndDrop({
     getItems: (keys) => [...keys].map((key) => ({ "text/plain": String(key) })),
@@ -177,6 +195,7 @@ function ReorderForm({
           event.target.dropPosition,
         ),
       );
+      clearPointerFocusRing();
     },
     renderDragPreview(dragItems) {
       const first = dragItems[0]?.["text/plain"];
@@ -209,7 +228,19 @@ function ReorderForm({
 
   return (
     <>
-      <div {...stylex.props(styles.body)}>
+      <div
+        ref={bodyRef}
+        // Track how the drag was initiated so we only clear the focus ring for
+        // pointer drops: a keyboard drop fires keydown (Enter) right before the
+        // reorder; a mouse drag's last capture event is the pointerdown.
+        onPointerDownCapture={() => {
+          pointerDragRef.current = true;
+        }}
+        onKeyDownCapture={() => {
+          pointerDragRef.current = false;
+        }}
+        {...stylex.props(styles.body)}
+      >
         <ListBox
           aria-label="Sidebar lists"
           size="lg"
