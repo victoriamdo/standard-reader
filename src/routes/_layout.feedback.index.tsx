@@ -14,6 +14,8 @@ import {
   Bug,
   CheckCircle2,
   ExternalLink,
+  Eye,
+  EyeOff,
   HelpCircle,
   Lightbulb,
   MessageSquarePlus,
@@ -26,6 +28,7 @@ import { ReaderContent } from "#/components/reader/primitives";
 import { Avatar } from "#/design-system/avatar";
 import { Button } from "#/design-system/button";
 import { Flex } from "#/design-system/flex";
+import { IconButton } from "#/design-system/icon-button";
 import { Link } from "#/design-system/link";
 import { SearchField } from "#/design-system/search-field";
 import {
@@ -234,6 +237,9 @@ const styles = stylex.create({
     },
   },
   toolbarSort: {
+    flexShrink: 0,
+  },
+  toolbarToggle: {
     flexShrink: 0,
   },
 
@@ -782,6 +788,9 @@ function FeedbackDiscussions({ signedIn }: { signedIn: boolean }) {
   const [tagFilter, setTagFilter] = useState<TagFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("top");
   const [search, setSearch] = useState("");
+  // Hide discussions the space owner has marked "implemented" by default so the
+  // list surfaces open feedback first; the toolbar toggle reveals them.
+  const [hideImplemented, setHideImplemented] = useState(true);
   const queryClient = useQueryClient();
   const { data } = useSuspenseQuery(
     userinputApi.getFeedbackDiscussionsQueryOptions({ limit: 50 }),
@@ -910,6 +919,9 @@ function FeedbackDiscussions({ signedIn }: { signedIn: boolean }) {
   let discussions = allDiscussions;
   if (tagFilter !== "all") {
     discussions = discussions.filter((d) => tagFor(d) === tagFilter);
+  }
+  if (hideImplemented) {
+    discussions = discussions.filter((d) => d.status !== "implemented");
   }
   if (q) {
     discussions = discussions.filter((d) => {
@@ -1065,6 +1077,19 @@ function FeedbackDiscussions({ signedIn }: { signedIn: boolean }) {
               New
             </SegmentedControlItem>
           </SegmentedControl>
+          <IconButton
+            size="lg"
+            variant="secondary"
+            label={hideImplemented ? "Show implemented" : "Hide implemented"}
+            style={styles.toolbarToggle}
+            onPress={() => setHideImplemented((v) => !v)}
+          >
+            {hideImplemented ? (
+              <EyeOff size={16} strokeWidth={2} />
+            ) : (
+              <Eye size={16} strokeWidth={2} />
+            )}
+          </IconButton>
         </div>
       )}
 
