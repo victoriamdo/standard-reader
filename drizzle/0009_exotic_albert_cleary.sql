@@ -1,0 +1,1 @@
+ALTER TABLE "user_follows" ADD COLUMN "excluded_publications" jsonb DEFAULT '[]'::jsonb NOT NULL;

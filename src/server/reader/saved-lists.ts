@@ -21,7 +21,10 @@ import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 import { APP_NSID } from "#/lib/atproto/nsids";
 import { fetchRepoRecordWithFallback } from "#/server/atproto/fetch-record";
 import { resolveIdentity } from "#/server/atproto/identity";
-import { selectFollowUris } from "#/server/reader/queries";
+import {
+  selectFollowUris,
+  selectFollowedUserDids,
+} from "#/server/reader/queries";
 
 const RECORD_FETCH_TIMEOUT_MS = 8000;
 /** How long a reader's resolved saved lists are reused across feed queries. */
@@ -39,6 +42,8 @@ export interface SubscriptionList {
   description: string | null;
   /** Ordered at-uris of the `site.standard.publication` records in the list. */
   publications: Array<string>;
+  /** Ordered DIDs of the users (authors) in the list. */
+  users: Array<string>;
   createdAt: string | null;
 }
 
@@ -76,6 +81,9 @@ export function toSubscriptionList(
     publications: record.publications.filter(
       (item): item is string => typeof item === "string",
     ),
+    users: Array.isArray(record.users)
+      ? record.users.filter((item): item is string => typeof item === "string")
+      : [],
     createdAt: typeof record.createdAt === "string" ? record.createdAt : null,
   };
 }
@@ -120,6 +128,7 @@ export async function readList(
       name: row.name,
       description: row.description,
       publications: (row.publications as Array<string>) ?? [],
+      users: (row.users as Array<string>) ?? [],
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
     };
   }
@@ -211,6 +220,7 @@ function mapJoinedRows(
     name: string | null;
     description: string | null;
     publications: unknown;
+    users: unknown;
     createdAt: Date | null;
   }>,
   readerDid: string,
@@ -237,6 +247,7 @@ function mapJoinedRows(
         name: row.name,
         description: row.description,
         publications: (row.publications as Array<string>) ?? [],
+        users: (row.users as Array<string>) ?? [],
         createdAt: row.createdAt ? row.createdAt.toISOString() : null,
       }),
     );
@@ -276,6 +287,7 @@ export async function savedListsForReader(
         name: lists.name,
         description: lists.description,
         publications: lists.publications,
+        users: lists.users,
         createdAt: lists.createdAt,
       })
       .from(listSaves)
@@ -319,6 +331,16 @@ export async function savedListPublicationUris(
   return [...new Set(resolvedLists.flatMap((list) => list.publications))];
 }
 
+/** Distinct user DIDs contributed by the reader's saved lists — saving a list
+ * that contains users acts like following those users. */
+export async function savedListUserDids(
+  db: Db,
+  did: string,
+): Promise<Array<string>> {
+  const resolvedLists = await savedListsForReader(db, did);
+  return [...new Set(resolvedLists.flatMap((list) => list.users))];
+}
+
 async function effectiveFollowUrisImpl(
   dbArg: Db,
   schema: Schema,
@@ -337,3 +359,33 @@ async function effectiveFollowUrisImpl(
  * unread counts operate on — saving a list acts like following its members.
  */
 export const effectiveFollowUris = reactCache(effectiveFollowUrisImpl);
+
+export interface EffectiveFollowSets {
+  /** Publication AT-URIs (subscriptions + saved-list publications). */
+  publicationUris: Array<string>;
+  /** DIDs of followed users (app.standard-reader.graph.follow). */
+  userDids: Array<string>;
+}
+
+async function effectiveFollowSetsImpl(
+  dbArg: Db,
+  schema: Schema,
+  did: string,
+): Promise<EffectiveFollowSets> {
+  const [publicationUris, followedUserDids, savedListUsers] = await Promise.all(
+    [
+      effectiveFollowUris(dbArg, schema, did),
+      selectFollowedUserDids(dbArg, schema, did),
+      savedListUserDids(dbArg, did),
+    ],
+  );
+  const userDids = [...new Set([...followedUserDids, ...savedListUsers])];
+  return { publicationUris, userDids };
+}
+
+/**
+ * The reader's effective follow set for the home/latest feed: publication URIs
+ * (subscriptions + saved lists) plus the DIDs of users they follow. One call so
+ * feed paths resolve both dimensions together.
+ */
+export const effectiveFollowSets = reactCache(effectiveFollowSetsImpl);

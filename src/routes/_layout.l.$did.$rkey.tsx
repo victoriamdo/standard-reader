@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
+import type { ListOwner } from "#/integrations/tanstack-query/api-lists.functions";
 import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import type {
   ArticleCard,
@@ -33,7 +34,9 @@ import {
 } from "#/lib/site-metadata";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 
+import { AuthorProfileLink } from "../components/reader/author-profile-link";
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
+import { initials } from "../components/reader/format";
 import { ListEditModal } from "../components/reader/list-edit-modal";
 import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
 import { RssFeedButton } from "../components/reader/rss-feed-button";
@@ -46,6 +49,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
 } from "../design-system/alert-dialog";
+import { Avatar } from "../design-system/avatar";
 import { IconButton } from "../design-system/icon-button";
 import { Tab, TabList, TabPanel, Tabs } from "../design-system/tabs";
 import { uiColor } from "../design-system/theme/color.stylex";
@@ -65,7 +69,7 @@ const PAGE_SIZE = 20;
 const MAGAZINE_LIMIT = 12;
 
 const listSearchSchema = z.object({
-  view: z.enum(["feed", "publications"]).default("feed"),
+  view: z.enum(["feed", "publications", "users"]).default("feed"),
 });
 
 type ListView = z.infer<typeof listSearchSchema>["view"];
@@ -245,6 +249,36 @@ const styles = stylex.create({
     paddingBottom: spacing["8"],
     paddingTop: spacing["8"],
   },
+  userRow: {
+    alignItems: "center",
+    borderTopColor: uiColor.border1,
+    borderTopStyle: "solid",
+    borderTopWidth: 1,
+    columnGap: spacing["3"],
+    display: "flex",
+    paddingBottom: spacing["3"],
+    paddingTop: spacing["3"],
+  },
+  userRowFirst: {
+    borderTopWidth: 0,
+    paddingTop: spacing["0"],
+  },
+  userAvatar: {
+    flexShrink: 0,
+  },
+  userLink: {
+    color: "inherit",
+    textDecoration: { default: "none", ":hover": "underline" },
+  },
+  userName: {
+    color: uiColor.text2,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+  },
+  userHandle: {
+    marginTop: spacing["0.5"],
+  },
   loadSentinel: {
     height: 1,
     marginTop: spacing["6"],
@@ -263,12 +297,12 @@ const styles = stylex.create({
 function ListFeedPanel({
   did,
   rkey,
-  hasPublications,
+  hasMembers,
   isOwner,
 }: {
   did: string;
   rkey: string;
-  hasPublications: boolean;
+  hasMembers: boolean;
   isOwner: boolean;
 }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
@@ -336,11 +370,11 @@ function ListFeedPanel({
     return () => observer.disconnect();
   }, [loadMore, nextOffset]);
 
-  if (!hasPublications) {
+  if (!hasMembers) {
     return (
       <div {...stylex.props(styles.emptyNote)}>
         This list is empty
-        {isOwner ? " — add some publications to it." : "."}
+        {isOwner ? " — add publications or people to it." : "."}
       </div>
     );
   }
@@ -348,7 +382,7 @@ function ListFeedPanel({
   if (items.length === 0) {
     return (
       <div {...stylex.props(styles.emptyNote)}>
-        No articles indexed from these publications yet.
+        No articles from this list&apos;s publications or people yet.
       </div>
     );
   }
@@ -394,8 +428,8 @@ function ListPublicationsPanel({
   if (publications.length === 0) {
     return (
       <div {...stylex.props(styles.emptyNote)}>
-        This list is empty
-        {isOwner ? " — add some publications to it." : "."}
+        No publications in this list
+        {isOwner ? " — add some from the edit dialog." : "."}
       </div>
     );
   }
@@ -415,6 +449,64 @@ function ListPublicationsPanel({
   );
 }
 
+function ListPeoplePanel({
+  users,
+  isOwner,
+}: {
+  users: Array<ListOwner>;
+  isOwner: boolean;
+}) {
+  if (users.length === 0) {
+    return (
+      <div {...stylex.props(styles.emptyNote)}>
+        No people in this list
+        {isOwner ? " — add some from the edit dialog." : "."}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {users.map((member, index) => {
+        const name =
+          member.displayName?.trim() || member.handle || member.did;
+        return (
+          <div
+            key={member.did}
+            {...stylex.props(styles.userRow, index === 0 && styles.userRowFirst)}
+          >
+            <AuthorProfileLink
+              authorRef={member.did}
+              linkStyle={styles.userLink}
+            >
+              <Avatar
+                size="md"
+                src={member.avatarUrl ?? undefined}
+                fallback={initials(name)}
+                alt={name}
+                style={styles.userAvatar}
+              />
+            </AuthorProfileLink>
+            <div>
+              <AuthorProfileLink
+                authorRef={member.did}
+                linkStyle={styles.userLink}
+              >
+                <span {...stylex.props(styles.userName)}>{name}</span>
+              </AuthorProfileLink>
+              {member.handle ? (
+                <div>
+                  <Handle style={styles.userHandle}>@{member.handle}</Handle>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ListPage() {
   const { did, rkey } = Route.useParams();
   const { view } = Route.useSearch();
@@ -427,6 +519,7 @@ function ListPage() {
   const signedIn = Boolean(session?.user);
   const { data: sidebar } = useQuery(feedApi.getSidebarQueryOptions());
   const following = sidebar?.following ?? [];
+  const followingUsers = sidebar?.followingUsers ?? [];
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -499,7 +592,17 @@ function ListPage() {
     );
   }
 
-  const { list, owner, publications, viewer } = page;
+  const { list, owner, publications, users, viewer } = page;
+
+  const hasPublications = list.publications.length > 0;
+  const hasUsers = list.users.length > 0;
+  // Only Articles + the populated member tabs are shown; if the URL points at a
+  // tab this list doesn't have, fall back to Articles.
+  const selectedView =
+    (view === "publications" && !hasPublications) ||
+    (view === "users" && !hasUsers)
+      ? "feed"
+      : view;
 
   const pageUrl = `${getPublicUrlClient()}/l/${did}/${rkey}`;
 
@@ -522,12 +625,24 @@ function ListPage() {
                 <Handle>by @{owner.handle}</Handle>
               </Link>
             ) : null}
-            <span>
-              <span {...stylex.props(styles.statValue)}>
-                {list.publications.length}
+            {list.publications.length > 0 ? (
+              <span>
+                <span {...stylex.props(styles.statValue)}>
+                  {list.publications.length}
+                </span>
+                {list.publications.length === 1
+                  ? "publication"
+                  : "publications"}
               </span>
-              {list.publications.length === 1 ? "publication" : "publications"}
-            </span>
+            ) : null}
+            {list.users.length > 0 ? (
+              <span>
+                <span {...stylex.props(styles.statValue)}>
+                  {list.users.length}
+                </span>
+                {list.users.length === 1 ? "user" : "users"}
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -621,7 +736,7 @@ function ListPage() {
       </div>
 
       <Tabs
-        selectedKey={view}
+        selectedKey={selectedView}
         onSelectionChange={onViewChange}
         style={styles.tabs}
       >
@@ -629,7 +744,10 @@ function ListPage() {
           <div {...stylex.props(styles.tabBarInner)}>
             <TabList aria-label="List views" style={styles.tabList}>
               <Tab id="feed">Articles</Tab>
-              <Tab id="publications">Publications</Tab>
+              {hasPublications ? (
+                <Tab id="publications">Publications</Tab>
+              ) : null}
+              {hasUsers ? <Tab id="users">Users</Tab> : null}
             </TabList>
           </div>
           <div {...stylex.props(styles.tabRule)} aria-hidden />
@@ -640,16 +758,23 @@ function ListPage() {
             <ListFeedPanel
               did={did}
               rkey={rkey}
-              hasPublications={list.publications.length > 0}
+              hasMembers={hasPublications || hasUsers}
               isOwner={viewer.isOwner}
             />
           </TabPanel>
-          <TabPanel id="publications" style={styles.tabPanel}>
-            <ListPublicationsPanel
-              publications={publications}
-              isOwner={viewer.isOwner}
-            />
-          </TabPanel>
+          {hasPublications ? (
+            <TabPanel id="publications" style={styles.tabPanel}>
+              <ListPublicationsPanel
+                publications={publications}
+                isOwner={viewer.isOwner}
+              />
+            </TabPanel>
+          ) : null}
+          {hasUsers ? (
+            <TabPanel id="users" style={styles.tabPanel}>
+              <ListPeoplePanel users={users} isOwner={viewer.isOwner} />
+            </TabPanel>
+          ) : null}
         </ReaderContent>
       </Tabs>
 
@@ -659,6 +784,7 @@ function ListPage() {
           onOpenChange={setEditOpen}
           list={list}
           following={following}
+          followingUsers={followingUsers}
           onDeleted={leaveAfterDelete}
         />
       ) : null}

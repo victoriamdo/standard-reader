@@ -145,6 +145,14 @@ export const XRPC_REGISTRY = new Map<string, XrpcRegistryEntry>([
     },
   ],
   [
+    "app.standard-reader.getUserFollowStatus",
+    {
+      method: "query",
+      auth: "optional-did",
+      handler: reader.handleGetUserFollowStatus,
+    },
+  ],
+  [
     "app.standard-reader.getReadStatus",
     {
       method: "query",
@@ -202,6 +210,24 @@ export const XRPC_REGISTRY = new Map<string, XrpcRegistryEntry>([
       auth: "required",
       scopes: [XRPC_WRITE_SCOPES.subscription],
       handler: writes.handleUnfollowPublication,
+    },
+  ],
+  [
+    "app.standard-reader.followUser",
+    {
+      method: "procedure",
+      auth: "required",
+      scopes: [XRPC_WRITE_SCOPES.userFollow],
+      handler: writes.handleFollowUser,
+    },
+  ],
+  [
+    "app.standard-reader.unfollowUser",
+    {
+      method: "procedure",
+      auth: "required",
+      scopes: [XRPC_WRITE_SCOPES.userFollow],
+      handler: writes.handleUnfollowUser,
     },
   ],
   [

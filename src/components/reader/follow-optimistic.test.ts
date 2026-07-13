@@ -31,6 +31,7 @@ const emptySidebar: SidebarData = {
   signedIn: true,
   hasFollows: false,
   following: [],
+  followingUsers: [],
   unreadCount: 0,
   savedCount: 0,
 };

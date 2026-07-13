@@ -11,6 +11,7 @@ import {
   deleteReadRecord,
   deleteRecommendRecord,
   deleteSubscriptionRecords,
+  deleteUserFollowRecords,
   newListRkey,
   putBookmarkRecord,
   putLabelerSubscriptionRecord,
@@ -18,13 +19,16 @@ import {
   putListSaveRecord,
   putRecommendRecord,
   putSubscriptionRecord,
+  putUserFollowRecord,
   subjectRkey,
 } from "#/server/atproto/repo-records";
 import { Collections, buildAtUri } from "#/server/atproto/uri";
 import {
+  backfillFollowedUserContent,
   deleteRecord,
   upsertLabelerSubscription,
   upsertSubscription,
+  upsertUserFollow,
 } from "#/server/ingest/handlers";
 import { markDocumentsRead } from "#/server/reader/mark-documents-read";
 import { selectUnreadDocumentUris } from "#/server/reader/queries";
@@ -172,6 +176,64 @@ export async function handleUnfollowPublication(ctx: XrpcRequestContext) {
       deleteRecord(
         buildAtUri(auth.did, Collections.subscription, rkey),
         Collections.subscription,
+      ),
+    ),
+  );
+  return {};
+}
+
+export async function handleFollowUser(ctx: XrpcRequestContext) {
+  const auth = requireAuthClient(ctx);
+  requireScopes(auth, [XRPC_WRITE_SCOPES.userFollow]);
+  const subjectDid = requireBodyField(ctx.body, "did");
+  if (subjectDid === auth.did) {
+    throw new Error("You can't follow yourself.");
+  }
+  const createdAt = new Date().toISOString();
+  const { uri, cid } = await putUserFollowRecord(
+    auth.client,
+    auth.did,
+    subjectDid,
+    createdAt,
+  );
+  await upsertUserFollow(uri, auth.did, subjectRkey(subjectDid), cid, {
+    subject: subjectDid,
+    createdAt,
+  });
+  // Best-effort direct backfill so the feed isn't empty until tap catches up.
+  void backfillFollowedUserContent(subjectDid).catch(() => {});
+  return {};
+}
+
+export async function handleUnfollowUser(ctx: XrpcRequestContext) {
+  const auth = requireAuthClient(ctx);
+  requireScopes(auth, [XRPC_WRITE_SCOPES.userFollow]);
+  const subjectDid = requireBodyField(ctx.body, "did");
+  const uf = ctx.schema.userFollows;
+  const rows = await ctx.db
+    .select({ rkey: uf.rkey })
+    .from(uf)
+    .where(
+      and(
+        eq(uf.followerDid, auth.did),
+        eq(uf.subjectDid, subjectDid),
+        eq(uf.deleted, false),
+      ),
+    );
+
+  await deleteUserFollowRecords(
+    auth.client,
+    auth.did,
+    subjectDid,
+    rows.map((row) => row.rkey),
+  );
+
+  const rkeys = new Set([subjectRkey(subjectDid), ...rows.map((r) => r.rkey)]);
+  await Promise.all(
+    [...rkeys].map((rkey) =>
+      deleteRecord(
+        buildAtUri(auth.did, Collections.userFollow, rkey),
+        Collections.userFollow,
       ),
     ),
   );

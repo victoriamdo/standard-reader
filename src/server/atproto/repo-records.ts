@@ -255,6 +255,54 @@ export async function deleteSubscriptionRecords(
   );
 }
 
+/** Write an `app.standard-reader.graph.follow` (a user follow) for `subjectDid`.
+ *  `excludedPublications` are the followed user's publications the reader opted
+ *  out of (following a user subscribes to all their publications except these). */
+export async function putUserFollowRecord(
+  client: Client,
+  repo: string,
+  subjectDid: string,
+  createdAt: string,
+  excludedPublications: Array<string> = [],
+): Promise<{ uri: string; cid: string }> {
+  return repoPutRecord(client, {
+    repo,
+    collection: COLLECTION.graphFollow,
+    rkey: subjectRkey(subjectDid),
+    record: {
+      $type: COLLECTION.graphFollow,
+      subject: subjectDid,
+      ...(excludedPublications.length > 0
+        ? { excludedPublications }
+        : {}),
+      createdAt,
+    },
+  });
+}
+
+/**
+ * Delete every follow record for `subjectDid` — the deterministic
+ * `subjectRkey` plus any TID-rkey records other clients may have written for the
+ * same pair (mirrors {@link deleteSubscriptionRecords}).
+ */
+export async function deleteUserFollowRecords(
+  client: Client,
+  repo: string,
+  subjectDid: string,
+  knownRkeys: Array<string> = [],
+): Promise<void> {
+  const rkeys = new Set([subjectRkey(subjectDid), ...knownRkeys]);
+  await Promise.all(
+    [...rkeys].map((rkey) =>
+      repoDeleteRecord(client, {
+        repo,
+        collection: COLLECTION.graphFollow,
+        rkey,
+      }),
+    ),
+  );
+}
+
 /** Write an `app.standard-reader.labeler.subscription` (V2) for `labelerDid`.
  *  V2 is the nested-NSID successor to the flat `labelerSubscription`; new writes
  *  go here. Reads accept both until per-reader migration completes. */
@@ -473,6 +521,7 @@ export async function putListRecord(
     name: string;
     description?: string;
     publications: Array<string>;
+    users?: Array<string>;
     createdAt: string;
   },
 ): Promise<{ uri: string; cid: string }> {
@@ -485,6 +534,7 @@ export async function putListRecord(
       name: list.name,
       ...(list.description ? { description: list.description } : {}),
       publications: list.publications,
+      ...(list.users && list.users.length > 0 ? { users: list.users } : {}),
       createdAt: list.createdAt,
     },
   });

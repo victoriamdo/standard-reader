@@ -31,6 +31,15 @@
             },
             "description": "Ordered AT URIs of the site.standard.publication records in this list."
           },
+          "users": {
+            "type": "array",
+            "maxLength": 500,
+            "items": {
+              "type": "string",
+              "format": "did"
+            },
+            "description": "Ordered DIDs of the users (authors) in this list. Optional; a list may hold publications, users, or both."
+          },
           "createdAt": {
             "type": "string",
             "format": "datetime",

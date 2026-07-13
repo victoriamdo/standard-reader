@@ -37,7 +37,10 @@ import {
   fontWeight,
   tracking,
 } from "../../design-system/theme/typography.stylex";
-import type { FollowingPublication } from "../../integrations/tanstack-query/api-feed.functions";
+import type {
+  FollowingPublication,
+  FollowingUser,
+} from "../../integrations/tanstack-query/api-feed.functions";
 import { parseInternalRoute } from "../../lib/internal-route";
 import { initials, listLinkParams, publicationLinkParams } from "./format";
 import { Handle } from "./primitives";
@@ -49,6 +52,8 @@ export interface SubscriptionListGroup {
   /** AT-URI of the list; links the group to its public `/l/$did/$rkey` page. */
   listUri: string;
   pubs: Array<FollowingPublication>;
+  /** Followed users in this list (the people-in-lists grouping). */
+  users: Array<FollowingUser>;
 }
 
 const styles = stylex.create({
@@ -391,6 +396,43 @@ function SheetPubRow({
   );
 }
 
+function SheetUserRow({
+  user: followed,
+  onNavigate,
+}: {
+  user: FollowingUser;
+  onNavigate: () => void;
+}) {
+  const navigate = useNavigate();
+  const name =
+    followed.displayName ??
+    (followed.handle ? `@${followed.handle}` : followed.did);
+  return (
+    <AriaButton
+      {...stylex.props(styles.pubRow)}
+      onPress={() => {
+        onNavigate();
+        void navigate({ to: "/u/$did", params: { did: followed.did } });
+      }}
+    >
+      <FollowingAvatar name={name} iconUrl={followed.avatarUrl} />
+      <div {...stylex.props(styles.pubInfo)}>
+        <div {...stylex.props(styles.pubName)}>{name}</div>
+        {followed.handle ? <Handle>@{followed.handle}</Handle> : null}
+      </div>
+      {(followed.unreadCount ?? 0) > 0 ? (
+        <span
+          {...stylex.props(styles.pubUnread)}
+          aria-label={`${followed.unreadCount} unread`}
+        >
+          {formatSidebarUnreadCount(followed.unreadCount ?? 0)}
+        </span>
+      ) : null}
+      <ChevronRight aria-hidden size={16} {...stylex.props(styles.chevron)} />
+    </AriaButton>
+  );
+}
+
 function SheetListGroup({
   group,
   onNavigate,
@@ -399,7 +441,9 @@ function SheetListGroup({
   onNavigate: () => void;
 }) {
   const link = listLinkParams(group.listUri);
-  const unreadTotal = group.pubs.reduce((sum, pub) => sum + pub.unreadCount, 0);
+  const unreadTotal =
+    group.pubs.reduce((sum, pub) => sum + pub.unreadCount, 0) +
+    group.users.reduce((sum, person) => sum + (person.unreadCount ?? 0), 0);
 
   return (
     <Disclosure defaultExpanded>
@@ -431,12 +475,21 @@ function SheetListGroup({
       </div>
       <DisclosurePanel contentStyle={styles.groupPanelContent}>
         <div {...stylex.props(styles.list)}>
-          {group.pubs.length === 0 ? (
+          {group.pubs.length === 0 && group.users.length === 0 ? (
             <span {...stylex.props(styles.groupEmpty)}>Empty list.</span>
           ) : (
-            group.pubs.map((pub) => (
-              <SheetPubRow key={pub.uri} pub={pub} onNavigate={onNavigate} />
-            ))
+            <>
+              {group.pubs.map((pub) => (
+                <SheetPubRow key={pub.uri} pub={pub} onNavigate={onNavigate} />
+              ))}
+              {group.users.map((person) => (
+                <SheetUserRow
+                  key={person.did}
+                  user={person}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </>
           )}
         </div>
         <div {...stylex.props(styles.groupSpacer)} aria-hidden />

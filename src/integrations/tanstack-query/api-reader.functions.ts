@@ -18,19 +18,30 @@ import {
   deleteReadRecord,
   deleteRecommendRecord,
   deleteSubscriptionRecords,
+  deleteUserFollowRecords,
   putBookmarkRecord,
   putReadRecord,
   putRecommendRecord,
   putSubscriptionRecord,
+  putUserFollowRecord,
   subjectRkey,
 } from "#/server/atproto/repo-records";
-import { Collections, buildAtUri } from "#/server/atproto/uri";
-import { deleteRecord, upsertSubscription } from "#/server/ingest/handlers";
+import { Collections, buildAtUri, didFromAtUri } from "#/server/atproto/uri";
+import {
+  backfillFollowedUserContent,
+  deleteRecord,
+  upsertSubscription,
+  upsertUserFollow,
+} from "#/server/ingest/handlers";
 import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
 import { markDocumentsRead } from "#/server/reader/mark-documents-read";
+import {
+  syncFollowedPublications,
+  unsubscribeFollowedPublications,
+} from "#/server/reader/followed-publications-sync.server";
 import { selectUnreadDocumentUris } from "#/server/reader/queries";
-import { effectiveFollowUris } from "#/server/reader/saved-lists";
+import { effectiveFollowSets } from "#/server/reader/saved-lists";
 
 import type { ArticleCard } from "./api-shapes";
 import { articleQueueCardColumns, toArticleCard } from "./api-shapes";
@@ -47,6 +58,10 @@ import { dbMiddleware } from "./db-middleware";
 
 const publicationInput = z.object({
   publicationUri: z.string().min(1),
+});
+
+const userFollowInput = z.object({
+  did: z.string().startsWith("did:"),
 });
 
 const documentInput = z.object({
@@ -336,6 +351,59 @@ const followPublications = createServerFn({ method: "POST" })
     }),
   );
 
+/**
+ * When a reader unsubscribes from a publication owned by someone they follow,
+ * record the opt-out on the follow's `excludedPublications` so the periodic
+ * reconcile (see followed-publications-sync) doesn't re-subscribe them. Reads +
+ * rewrites the `graph.follow` record for the pair; best-effort (never blocks the
+ * unsubscribe). No-op when the publication's owner isn't a followed user.
+ */
+async function excludePublicationFromFollow(
+  client: Parameters<typeof putUserFollowRecord>[0],
+  readerDid: string,
+  publicationUri: string,
+): Promise<void> {
+  const ownerDid = didFromAtUri(publicationUri);
+  if (!ownerDid) return;
+
+  const { db } = await import("#/db/index.server");
+  const { userFollows } = await import("#/db/schema");
+  const [row] = await db
+    .select({
+      excluded: userFollows.excludedPublications,
+      createdAt: userFollows.createdAt,
+    })
+    .from(userFollows)
+    .where(
+      and(
+        eq(userFollows.followerDid, readerDid),
+        eq(userFollows.subjectDid, ownerDid),
+        eq(userFollows.deleted, false),
+      ),
+    )
+    .limit(1);
+  if (!row) return; // owner isn't followed — a plain unsubscribe
+
+  const excluded = new Set((row.excluded as Array<string>) ?? []);
+  if (excluded.has(publicationUri)) return;
+  excluded.add(publicationUri);
+  const list = [...excluded];
+  const createdAt = row.createdAt?.toISOString() ?? new Date().toISOString();
+
+  const { uri, cid } = await putUserFollowRecord(
+    client,
+    readerDid,
+    ownerDid,
+    createdAt,
+    list,
+  );
+  await upsertUserFollow(uri, readerDid, subjectRkey(ownerDid), cid, {
+    subject: ownerDid,
+    excludedPublications: list,
+    createdAt,
+  });
+}
+
 const unfollowPublication = createServerFn({ method: "POST" })
   .middleware([dbMiddleware])
   .validator(publicationInput)
@@ -383,6 +451,174 @@ const unfollowPublication = createServerFn({ method: "POST" })
           ),
         ),
       );
+      // If this publication belongs to a followed user, remember the opt-out so
+      // reconcile won't re-subscribe. Best-effort.
+      try {
+        await excludePublicationFromFollow(
+          session.client,
+          session.did,
+          data.publicationUri,
+        );
+      } catch (error) {
+        console.warn("[reader] exclude-from-follow failed", error);
+      }
+      return { ok: true as const };
+    }),
+  );
+
+// ── Follow user (app.standard-reader.graph.follow) ──────────────────────────
+
+/**
+ * Followed subjects we've already kicked a PDS content backfill for this
+ * process. Once a subject is tracked, tap keeps their recommends/documents
+ * fresh, so the direct backfill is a one-shot catch-up so the follower's feed
+ * isn't empty until tap catches up (see {@link backfillFollowedUserContent}).
+ */
+const followBackfillAttempted = new Set<string>();
+
+/** Fire the followed-user content backfill in the background, at most once per
+ * process per subject. Never awaited — the follow write must not block on
+ * listing the subject's repo. */
+function scheduleFollowedUserBackfill(subjectDid: string): void {
+  if (followBackfillAttempted.has(subjectDid)) return;
+  followBackfillAttempted.add(subjectDid);
+  void (async () => {
+    try {
+      await backfillFollowedUserContent(subjectDid);
+    } catch (error) {
+      followBackfillAttempted.delete(subjectDid);
+      console.warn(
+        `[reader] followed-user backfill failed for ${subjectDid}`,
+        error,
+      );
+    }
+  })();
+}
+
+const getUserFollowStatus = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .validator(userFollowInput)
+  .handler(
+    observe("reader.getUserFollowStatus", async ({ data, context }, span) => {
+      span.set("subjectDid", data.did);
+      const did = await getReaderDidForRequest(getRequest());
+      if (!did) {
+        return { isFollowing: false } satisfies FollowStatus;
+      }
+      span.set("did", did);
+
+      const uf = context.schema.userFollows;
+      const [row] = await context.db
+        .select({ uri: uf.uri })
+        .from(uf)
+        .where(
+          and(
+            eq(uf.followerDid, did),
+            eq(uf.subjectDid, data.did),
+            eq(uf.deleted, false),
+          ),
+        )
+        .limit(1);
+
+      return { isFollowing: Boolean(row) } satisfies FollowStatus;
+    }),
+  );
+
+const followUser = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
+  .validator(userFollowInput)
+  .handler(
+    observe("reader.followUser", async ({ data }, span) => {
+      span.set("subjectDid", data.did);
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) {
+        throw new Error("Sign in to follow people.");
+      }
+      span.set("did", session.did);
+      if (session.did === data.did) {
+        throw new Error("You can't follow yourself.");
+      }
+
+      const createdAt = new Date().toISOString();
+      const { uri, cid } = await putUserFollowRecord(
+        session.client,
+        session.did,
+        data.did,
+        createdAt,
+      );
+      await upsertUserFollow(uri, session.did, subjectRkey(data.did), cid, {
+        subject: data.did,
+        createdAt,
+      });
+      await trackReaderRepo(session.did);
+      scheduleFollowedUserBackfill(data.did);
+      // Materialize real subscriptions to the followed user's publications so
+      // the author keeps portable subscribers. Fire-and-forget — the follow
+      // shouldn't block on writing N subscription records to the PDS.
+      void syncFollowedPublications(session.client, session.did, data.did).catch(
+        (error) => {
+          console.warn("[reader] follow publication sync failed", error);
+        },
+      );
+      return { ok: true as const };
+    }),
+  );
+
+const unfollowUser = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
+  .validator(userFollowInput)
+  .handler(
+    observe("reader.unfollowUser", async ({ data, context }, span) => {
+      span.set("subjectDid", data.did);
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) {
+        throw new Error("Sign in to manage who you follow.");
+      }
+      span.set("did", session.did);
+
+      // Follows written by other clients may live at TID rkeys — collect every
+      // record the read-model knows about for this pair so they all get deleted.
+      const uf = context.schema.userFollows;
+      const rows = await context.db
+        .select({ rkey: uf.rkey })
+        .from(uf)
+        .where(
+          and(
+            eq(uf.followerDid, session.did),
+            eq(uf.subjectDid, data.did),
+            eq(uf.deleted, false),
+          ),
+        );
+      span.set("records", rows.length);
+
+      await deleteUserFollowRecords(
+        session.client,
+        session.did,
+        data.did,
+        rows.map((row) => row.rkey),
+      );
+
+      const rkeys = new Set([
+        subjectRkey(data.did),
+        ...rows.map((row) => row.rkey),
+      ]);
+      await Promise.all(
+        [...rkeys].map((rkey) =>
+          deleteRecord(
+            buildAtUri(session.did, Collections.userFollow, rkey),
+            Collections.userFollow,
+          ),
+        ),
+      );
+      // Tear down the subscriptions this follow created (symmetric with the
+      // sync on follow). Fire-and-forget.
+      void unsubscribeFollowedPublications(
+        session.client,
+        session.did,
+        data.did,
+      ).catch((error) => {
+        console.warn("[reader] follow publication teardown failed", error);
+      });
       return { ok: true as const };
     }),
   );
@@ -950,8 +1186,9 @@ const markFollowsAllUnreadRead = createServerFn({ method: "POST" })
 
       const trackReading = context.trackReadingEnabled;
 
-      // Effective follows: subscriptions plus saved-list publications.
-      const followUris = await effectiveFollowUris(
+      // Effective follows: subscriptions + saved-list publications + followed
+      // users (authored + recommended) — matches the follow feed.
+      const { publicationUris, userDids } = await effectiveFollowSets(
         context.db,
         context.schema,
         session.did,
@@ -959,7 +1196,8 @@ const markFollowsAllUnreadRead = createServerFn({ method: "POST" })
       const documentUris = trackReading
         ? await selectUnreadDocumentUris(context.db, context.schema, {
             readerDid: session.did,
-            publicationUris: followUris,
+            publicationUris,
+            followedUserDids: userDids,
           })
         : [];
       span.set("count", documentUris.length);
@@ -978,6 +1216,13 @@ function getFollowStatusQueryOptions(publicationUri: string) {
   return queryOptions({
     queryKey: ["reader", "followStatus", publicationUri] as const,
     queryFn: async () => getFollowStatus({ data: { publicationUri } }),
+  });
+}
+
+function getUserFollowStatusQueryOptions(did: string) {
+  return queryOptions({
+    queryKey: ["reader", "userFollowStatus", did] as const,
+    queryFn: async () => getUserFollowStatus({ data: { did } }),
   });
 }
 
@@ -1060,6 +1305,20 @@ function unfollowPublicationMutationOptions() {
     mutationKey: ["reader", "unfollowPublication"] as const,
     mutationFn: async (publicationUri: string) =>
       unfollowPublication({ data: { publicationUri } }),
+  });
+}
+
+function followUserMutationOptions() {
+  return mutationOptions({
+    mutationKey: ["reader", "followUser"] as const,
+    mutationFn: async (did: string) => followUser({ data: { did } }),
+  });
+}
+
+function unfollowUserMutationOptions() {
+  return mutationOptions({
+    mutationKey: ["reader", "unfollowUser"] as const,
+    mutationFn: async (did: string) => unfollowUser({ data: { did } }),
   });
 }
 
@@ -1154,6 +1413,13 @@ export const readerApi = {
   followPublications,
   unfollowPublication,
   unfollowPublicationMutationOptions,
+  // follow user (app.standard-reader.graph.follow)
+  getUserFollowStatus,
+  getUserFollowStatusQueryOptions,
+  followUser,
+  followUserMutationOptions,
+  unfollowUser,
+  unfollowUserMutationOptions,
   // like (site.standard.graph.recommend)
   getRecommendStatus,
   getRecommendStatusQueryOptions,

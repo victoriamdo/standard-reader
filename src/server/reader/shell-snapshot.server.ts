@@ -1,7 +1,10 @@
 import type { Client } from "@atcute/client";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
-import type { SidebarData } from "#/integrations/tanstack-query/api-feed.functions";
+import type {
+  FollowingUser,
+  SidebarData,
+} from "#/integrations/tanstack-query/api-feed.functions";
 import type {
   ListOwner,
   SavedList,
@@ -11,14 +14,16 @@ import type {
   PublicationCard,
   Schema,
 } from "#/integrations/tanstack-query/api-shapes";
+import { scheduleFollowedPublicationReconcile } from "#/server/reader/followed-publications-sync.server";
 import {
   countFollowedDocuments,
+  countUnreadByFollowedUser,
   countUnreadByPublication,
   followedPublications,
 } from "#/server/reader/queries";
 import type { SubscriptionList } from "#/server/reader/saved-lists";
 import {
-  effectiveFollowUris,
+  effectiveFollowSets,
   savedListsForReader,
 } from "#/server/reader/saved-lists";
 
@@ -40,6 +45,7 @@ export async function loadSidebarData(
       signedIn: false,
       hasFollows: false,
       following: [],
+      followingUsers: [],
       unreadCount: null,
       savedCount: null,
     };
@@ -52,19 +58,39 @@ export async function loadSidebarData(
     .from(b)
     .where(and(eq(b.ownerDid, did), eq(b.deleted, false)));
 
-  const followUris = await effectiveFollowUris(db, schema, did);
-  const hasFollows = followUris.length > 0;
-  const [following, counts, unreadByPublication, savedCountRow] =
-    await Promise.all([
-      followedPublications(db, schema, followUris),
-      trackReading && followUris.length > 0
-        ? countFollowedDocuments(db, schema, followUris, did)
-        : Promise.resolve(null),
-      trackReading && followUris.length > 0
-        ? countUnreadByPublication(db, schema, followUris, did)
-        : Promise.resolve(new Map<string, number>()),
-      savedCountPromise,
-    ]);
+  const followingUsersPromise = loadFollowingUsers(db, schema, did);
+
+  const { publicationUris: followUris, userDids: followedUserDids } =
+    await effectiveFollowSets(db, schema, did);
+  const hasFollows = followUris.length > 0 || followedUserDids.length > 0;
+
+  // Following a user auto-subscribes to their publications; reconcile picks up
+  // any they've published since this reader's last active session. Background,
+  // throttled once per process per reader.
+  if (followedUserDids.length > 0) {
+    scheduleFollowedPublicationReconcile(did);
+  }
+  const [
+    following,
+    counts,
+    unreadByPublication,
+    unreadByUser,
+    savedCountRow,
+    followingUsers,
+  ] = await Promise.all([
+    followedPublications(db, schema, followUris),
+    trackReading && hasFollows
+      ? countFollowedDocuments(db, schema, followUris, did, followedUserDids)
+      : Promise.resolve(null),
+    trackReading && followUris.length > 0
+      ? countUnreadByPublication(db, schema, followUris, did)
+      : Promise.resolve(new Map<string, number>()),
+    trackReading && followedUserDids.length > 0
+      ? countUnreadByFollowedUser(db, schema, followedUserDids, did)
+      : Promise.resolve(new Map<string, number>()),
+    savedCountPromise,
+    followingUsersPromise,
+  ]);
 
   return {
     signedIn: true,
@@ -73,9 +99,36 @@ export async function loadSidebarData(
       ...pub,
       unreadCount: trackReading ? (unreadByPublication.get(pub.uri) ?? 0) : 0,
     })),
+    followingUsers: followingUsers.map((person) => ({
+      ...person,
+      unreadCount: trackReading ? (unreadByUser.get(person.did) ?? 0) : 0,
+    })),
     unreadCount: trackReading ? (counts?.unread ?? null) : 0,
     savedCount: savedCountRow[0]?.count ?? 0,
   };
+}
+
+/** Followed users for the sidebar "People" section, most recently followed
+ * first, joined to profiles for the byline (handle / name / avatar). */
+async function loadFollowingUsers(
+  db: Db,
+  schema: Schema,
+  did: string,
+): Promise<Array<FollowingUser>> {
+  const uf = schema.userFollows;
+  const pr = schema.profiles;
+  const rows = await db
+    .select({
+      did: uf.subjectDid,
+      handle: pr.handle,
+      displayName: pr.displayName,
+      avatarUrl: pr.avatarUrl,
+    })
+    .from(uf)
+    .leftJoin(pr, eq(pr.did, uf.subjectDid))
+    .where(and(eq(uf.followerDid, did), eq(uf.deleted, false)))
+    .orderBy(sql`${uf.createdAt} desc nulls last`);
+  return rows;
 }
 
 /** Own publication lists from the reader's repo (sidebar folders). */
@@ -103,6 +156,7 @@ export async function loadOwnSubscriptionLists(
         name: row.name,
         description: row.description,
         publications: (row.publications as Array<string>) ?? [],
+        users: (row.users as Array<string>) ?? [],
         createdAt: row.createdAt ? row.createdAt.toISOString() : null,
       }),
     );
@@ -125,6 +179,7 @@ export async function loadOwnSubscriptionLists(
       name: row.name,
       description: row.description,
       publications: (row.publications as Array<string>) ?? [],
+      users: (row.users as Array<string>) ?? [],
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
     }),
   );

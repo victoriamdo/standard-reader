@@ -30,6 +30,7 @@ import {
   followedPublications,
   selectArticleCards,
 } from "#/server/reader/queries";
+import { attachRecommendedByToArticles } from "#/server/reader/recommended-by";
 import type { SubscriptionList } from "#/server/reader/saved-lists";
 import {
   hasSavedListDb,
@@ -64,8 +65,15 @@ const putListInput = z.object({
   name: z.string().trim().min(1).max(64),
   description: z.string().trim().max(300).optional(),
   publications: z.array(z.string().min(1)).max(500),
+  users: z.array(z.string().startsWith("did:")).max(500).default([]),
   /** Preserved across edits; defaults to now for new lists. */
   createdAt: z.iso.datetime().optional(),
+});
+
+/** Toggle a single user's membership in one of the reader's lists. */
+const listMembershipInput = z.object({
+  rkey: z.string().min(1),
+  did: z.string().startsWith("did:"),
 });
 
 const rkeyInput = z.object({
@@ -113,6 +121,8 @@ export interface ListPage {
   owner: ListOwner | null;
   /** Hydrated cards in list order (uris missing from the read-model are omitted). */
   publications: Array<PublicationCard>;
+  /** Hydrated user members in list order (byline identity for each DID). */
+  users: Array<ListOwner>;
   viewer: { signedIn: boolean; isOwner: boolean; isSaved: boolean };
 }
 
@@ -206,6 +216,7 @@ const putList = createServerFn({ method: "POST" })
 
       const rkey = data.rkey ?? newListRkey();
       span.set("rkey", rkey);
+      span.set("users", data.users.length);
       const createdAt = data.createdAt ?? new Date().toISOString();
       const { uri, cid } = await putListRecord(
         session.client,
@@ -215,6 +226,7 @@ const putList = createServerFn({ method: "POST" })
           name: data.name,
           description: data.description || undefined,
           publications: data.publications,
+          users: data.users,
           createdAt,
         },
       );
@@ -224,9 +236,90 @@ const putList = createServerFn({ method: "POST" })
         name: data.name,
         description: data.description || undefined,
         publications: data.publications,
+        users: data.users,
         createdAt,
       });
       return { ok: true as const, rkey };
+    }),
+  );
+
+/** Read one of the reader's own lists (from the DB mirror) for a membership
+ * edit; throws if it isn't theirs or doesn't exist. */
+async function readOwnListForEdit(db: Db, ownerDid: string, rkey: string) {
+  const list = await readList(db, ownerDid, rkey);
+  if (!list) {
+    throw new Error("List not found.");
+  }
+  return list;
+}
+
+/** Persist a mutated member set back to the reader's list record + mirror. */
+async function writeListMembers(
+  session: { client: Parameters<typeof putListRecord>[0]; did: string },
+  rkey: string,
+  list: SubscriptionList,
+  next: { publications: Array<string>; users: Array<string> },
+): Promise<void> {
+  const createdAt = list.createdAt ?? new Date().toISOString();
+  const record = {
+    name: list.name,
+    description: list.description || undefined,
+    publications: next.publications,
+    users: next.users,
+    createdAt,
+  };
+  const { uri, cid } = await putListRecord(
+    session.client,
+    session.did,
+    rkey,
+    record,
+  );
+  await upsertList(uri, session.did, rkey, cid, record);
+}
+
+const addUserToList = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
+  .validator(listMembershipInput)
+  .handler(
+    observe("lists.addUserToList", async ({ data, context }, span) => {
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) {
+        throw new Error("Sign in to manage lists.");
+      }
+      span.set("did", session.did);
+      span.set("rkey", data.rkey);
+      const list = await readOwnListForEdit(context.db, session.did, data.rkey);
+      if (list.users.includes(data.did)) {
+        return { ok: true as const };
+      }
+      await writeListMembers(session, data.rkey, list, {
+        publications: list.publications,
+        users: [...list.users, data.did],
+      });
+      return { ok: true as const };
+    }),
+  );
+
+const removeUserFromList = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
+  .validator(listMembershipInput)
+  .handler(
+    observe("lists.removeUserFromList", async ({ data, context }, span) => {
+      const session = await getAtprotoSessionForRequest(getRequest());
+      if (!session) {
+        throw new Error("Sign in to manage lists.");
+      }
+      span.set("did", session.did);
+      span.set("rkey", data.rkey);
+      const list = await readOwnListForEdit(context.db, session.did, data.rkey);
+      if (!list.users.includes(data.did)) {
+        return { ok: true as const };
+      }
+      await writeListMembers(session, data.rkey, list, {
+        publications: list.publications,
+        users: list.users.filter((u) => u !== data.did),
+      });
+      return { ok: true as const };
     }),
   );
 
@@ -316,6 +409,7 @@ const getList = createServerFn({ method: "GET" })
           list: null,
           owner: null,
           publications: [],
+          users: [],
           viewer: {
             signedIn: Boolean(session),
             isOwner: false,
@@ -325,9 +419,14 @@ const getList = createServerFn({ method: "GET" })
       }
       const [publications, owners] = await Promise.all([
         hydrateInListOrder(db, schema, list.publications),
-        lookupOwners(db, schema, [data.did]),
+        lookupOwners(db, schema, [data.did, ...list.users]),
       ]);
       span.set("count", publications.length);
+      span.set("users", list.users.length);
+
+      const users = list.users
+        .map((memberDid) => owners.get(memberDid))
+        .filter((owner): owner is ListOwner => owner != null);
 
       return {
         list,
@@ -338,6 +437,7 @@ const getList = createServerFn({ method: "GET" })
           avatarUrl: null,
         },
         publications,
+        users,
         viewer: { signedIn: Boolean(session), isOwner, isSaved },
       } satisfies ListPage;
     }),
@@ -354,7 +454,7 @@ const getListFeed = createServerFn({ method: "GET" })
 
       const { db, schema, trackReadingEnabled } = context;
       const list = await readList(db, data.did, data.rkey);
-      if (!list || list.publications.length === 0) {
+      if (!list || (list.publications.length === 0 && list.users.length === 0)) {
         span.set("count", 0);
         return {
           items: [],
@@ -367,6 +467,7 @@ const getListFeed = createServerFn({ method: "GET" })
 
       const items = await selectArticleCards(db, schema, {
         publicationUris: list.publications,
+        followedUserDids: list.users,
         readForDid: trackReading ? session?.did : undefined,
         limit: data.limit,
         offset: data.offset,
@@ -379,9 +480,18 @@ const getListFeed = createServerFn({ method: "GET" })
         schema,
         normalized,
       );
+      const attributed =
+        list.users.length > 0
+          ? await attachRecommendedByToArticles(
+              db,
+              schema,
+              list.users,
+              enriched,
+            )
+          : enriched;
 
       return {
-        items: enriched,
+        items: attributed,
         nextOffset:
           items.length === data.limit ? data.offset + data.limit : null,
       } satisfies ListFeed;
@@ -538,6 +648,22 @@ function deleteListMutationOptions() {
   });
 }
 
+function addUserToListMutationOptions() {
+  return mutationOptions({
+    mutationKey: ["reader", "addUserToList"] as const,
+    mutationFn: async (input: z.input<typeof listMembershipInput>) =>
+      addUserToList({ data: input }),
+  });
+}
+
+function removeUserFromListMutationOptions() {
+  return mutationOptions({
+    mutationKey: ["reader", "removeUserFromList"] as const,
+    mutationFn: async (input: z.input<typeof listMembershipInput>) =>
+      removeUserFromList({ data: input }),
+  });
+}
+
 function deleteAllListsMutationOptions() {
   return mutationOptions({
     mutationKey: ["reader", "deleteAllLists"] as const,
@@ -570,6 +696,10 @@ export const listApi = {
   deleteListMutationOptions,
   deleteAllLists,
   deleteAllListsMutationOptions,
+  addUserToList,
+  addUserToListMutationOptions,
+  removeUserFromList,
+  removeUserFromListMutationOptions,
   // public page
   getList,
   getListQueryOptions,

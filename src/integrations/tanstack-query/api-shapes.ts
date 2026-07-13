@@ -122,6 +122,21 @@ export interface ArticleCard {
    * `attachSubscribedLabels`) so rows render badges without a client round-trip.
    */
   labels?: Array<ArticleCardLabel>;
+  /**
+   * Followed users who recommended this article — the reason it surfaced in the
+   * home feed. Drives the "Recommended by @handle" attribution line. Attached
+   * server-side (see `attachRecommendedByToArticles`); absent for cards that
+   * reached the feed as an author's own post or a subscribed publication's.
+   */
+  recommendedBy?: Array<ArticleCardRecommender>;
+}
+
+/** A followed user who recommended an article (for feed attribution). */
+export interface ArticleCardRecommender {
+  did: string;
+  handle: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
 }
 
 /** A label from a subscribed labeler, as carried on an {@link ArticleCard}. */

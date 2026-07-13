@@ -16,6 +16,7 @@ import { Dialog, DialogFooter, DialogHeader } from "../../design-system/dialog";
 import { Flex } from "../../design-system/flex";
 import { IconButton } from "../../design-system/icon-button";
 import { ListBox, ListBoxItem } from "../../design-system/listbox";
+import { Select, SelectItem } from "../../design-system/select";
 import { TextField } from "../../design-system/text-field";
 import { uiColor } from "../../design-system/theme/color.stylex";
 import { radius } from "../../design-system/theme/radius.stylex";
@@ -29,7 +30,10 @@ import {
   fontWeight,
   tracking,
 } from "../../design-system/theme/typography.stylex";
-import type { FollowingPublication } from "../../integrations/tanstack-query/api-feed.functions";
+import type {
+  FollowingPublication,
+  FollowingUser,
+} from "../../integrations/tanstack-query/api-feed.functions";
 import type { SubscriptionList } from "../../integrations/tanstack-query/api-lists.functions";
 import { initials } from "./format";
 
@@ -83,29 +87,51 @@ const styles = stylex.create({
   footerSpacer: {
     flexGrow: 1,
   },
+  addRow: {
+    width: "100%",
+  },
+  addCombo: {
+    flexGrow: 1,
+    minWidth: 0,
+  },
+  addSelect: {
+    flexShrink: 0,
+  },
 });
 
-interface MemberItem {
+/** A list member: a subscribed publication (`pub`, id = at-uri) or a followed
+ * user (`user`, id = did). Ids are unique across kinds. */
+type MemberKind = "pub" | "user";
+interface Member {
+  kind: MemberKind;
   id: string;
+}
+
+interface MemberItem extends Member {
   name: string;
   iconUrl: string | null;
 }
 
-/** Reorder `uris` per a react-aria drop event (move `keys` before/after target). */
-function reorderUris(
-  uris: Array<string>,
+/** Display name for a followed user (display name, else handle, else DID). */
+function userName(u: FollowingUser): string {
+  return u.displayName ?? (u.handle ? `@${u.handle}` : u.did);
+}
+
+/** Reorder `members` per a react-aria drop event (move `keys` before/after target). */
+function reorderMembers(
+  members: Array<Member>,
   keys: Set<Key>,
   targetKey: Key,
   dropPosition: "before" | "after" | "on",
-): Array<string> {
+): Array<Member> {
   if (dropPosition === "on" || keys.has(targetKey)) {
-    return uris;
+    return members;
   }
-  const moving = uris.filter((uri) => keys.has(uri));
-  const remaining = uris.filter((uri) => !keys.has(uri));
-  const targetIndex = remaining.indexOf(String(targetKey));
+  const moving = members.filter((member) => keys.has(member.id));
+  const remaining = members.filter((member) => !keys.has(member.id));
+  const targetIndex = remaining.findIndex((m) => m.id === String(targetKey));
   if (targetIndex === -1 || moving.length === 0) {
-    return uris;
+    return members;
   }
   const insertAt = dropPosition === "after" ? targetIndex + 1 : targetIndex;
   return [
@@ -118,18 +144,26 @@ function reorderUris(
 function ListEditForm({
   list,
   following,
+  followingUsers,
   close,
   onDeleted,
 }: {
   list: SubscriptionList | null;
   following: Array<FollowingPublication>;
+  followingUsers: Array<FollowingUser>;
   close: () => void;
   onDeleted?: () => void;
 }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState(list?.name ?? "");
   const [description, setDescription] = useState(list?.description ?? "");
-  const [uris, setUris] = useState<Array<string>>(list?.publications ?? []);
+  const [members, setMembers] = useState<Array<Member>>(() => [
+    ...(list?.publications ?? []).map(
+      (uri): Member => ({ kind: "pub", id: uri }),
+    ),
+    ...(list?.users ?? []).map((did): Member => ({ kind: "user", id: did })),
+  ]);
+  const [mode, setMode] = useState<MemberKind>("pub");
   const [search, setSearch] = useState("");
 
   const saveMutation = useMutation(listApi.putListMutationOptions());
@@ -137,24 +171,46 @@ function ListEditForm({
   const busy = saveMutation.isPending || deleteMutation.isPending;
 
   const pubByUri = new Map(following.map((pub) => [pub.uri, pub]));
-  const inList = new Set(uris);
-  const items: Array<MemberItem> = uris.map((uri) => {
-    const pub = pubByUri.get(uri);
+  const userByDid = new Map(followingUsers.map((u) => [u.did, u]));
+
+  const items: Array<MemberItem> = members.map((member) => {
+    if (member.kind === "user") {
+      const u = userByDid.get(member.id);
+      // A list can reference someone the reader has since unfollowed — keep it
+      // listed (so it can be removed) under its bare DID.
+      return {
+        ...member,
+        name: u ? userName(u) : member.id,
+        iconUrl: u?.avatarUrl ?? null,
+      };
+    }
+    const pub = pubByUri.get(member.id);
     return {
-      id: uri,
-      // A list can reference a publication the reader has since unfollowed —
-      // keep it listed (so it can be removed) under its bare at-uri.
-      name: pub?.name ?? uri.replace("at://", ""),
+      ...member,
+      name: pub?.name ?? member.id.replace("at://", ""),
       iconUrl: pub?.iconUrl ?? pub?.ownerAvatarUrl ?? null,
     };
   });
-  const candidates: Array<MemberItem> = following
-    .filter((pub) => !inList.has(pub.uri))
-    .map((pub) => ({
-      id: pub.uri,
-      name: pub.name,
-      iconUrl: pub.iconUrl ?? pub.ownerAvatarUrl,
-    }));
+
+  const memberIds = new Set(members.map((member) => member.id));
+  const candidates: Array<MemberItem> =
+    mode === "pub"
+      ? following
+          .filter((pub) => !memberIds.has(pub.uri))
+          .map((pub) => ({
+            kind: "pub",
+            id: pub.uri,
+            name: pub.name,
+            iconUrl: pub.iconUrl ?? pub.ownerAvatarUrl,
+          }))
+      : followingUsers
+          .filter((u) => !memberIds.has(u.did))
+          .map((u) => ({
+            kind: "user",
+            id: u.did,
+            name: userName(u),
+            iconUrl: u.avatarUrl,
+          }));
 
   const { contains } = useFilter({ sensitivity: "base" });
   // The input is controlled, so the combobox doesn't filter on its own.
@@ -162,8 +218,8 @@ function ListEditForm({
   const { dragAndDropHooks } = useDragAndDrop({
     getItems: (keys) => [...keys].map((key) => ({ "text/plain": String(key) })),
     onReorder(event) {
-      setUris((current) =>
-        reorderUris(
+      setMembers((current) =>
+        reorderMembers(
           current,
           event.keys,
           event.target.key,
@@ -173,12 +229,16 @@ function ListEditForm({
     },
   });
 
-  const removeUri = (uri: string) => {
-    setUris((current) => current.filter((item) => item !== uri));
+  const removeMember = (id: string) => {
+    setMembers((current) => current.filter((member) => member.id !== id));
   };
 
-  const addUri = (uri: string) => {
-    setUris((current) => (current.includes(uri) ? current : [...current, uri]));
+  const addMember = (kind: MemberKind, id: string) => {
+    setMembers((current) =>
+      current.some((member) => member.id === id)
+        ? current
+        : [...current, { kind, id }],
+    );
     setSearch("");
   };
 
@@ -196,8 +256,13 @@ function ListEditForm({
       {
         rkey: list?.rkey,
         name: trimmed,
+        publications: members
+          .filter((member) => member.kind === "pub")
+          .map((member) => member.id),
+        users: members
+          .filter((member) => member.kind === "user")
+          .map((member) => member.id),
         description: description.trim() || undefined,
-        publications: uris,
         createdAt: list?.createdAt ?? undefined,
       },
       { onSuccess: close, onSettled },
@@ -225,6 +290,7 @@ function ListEditForm({
         <Flex direction="column" gap="2xl">
           <TextField
             label="Name"
+            size="lg"
             placeholder="e.g. Tech, Friends, Cooking"
             value={name}
             onChange={setName}
@@ -233,20 +299,22 @@ function ListEditForm({
 
           <TextField
             label="Description"
+            size="lg"
             placeholder="What this list is about (shown on its public page)"
             value={description}
             onChange={setDescription}
           />
 
           <ListBox
-            aria-label="Publications in list"
+            aria-label="List members"
+            size="lg"
             items={items}
             selectionMode="none"
             dragAndDropHooks={dragAndDropHooks}
             style={styles.list}
             renderEmptyState={() => (
               <span {...stylex.props(styles.emptyList)}>
-                No publications yet — add one below.
+                Nothing added yet — add publications or people below.
               </span>
             )}
           >
@@ -274,7 +342,7 @@ function ListEditForm({
                     aria-label={`Remove ${item.name} from list`}
                     size="sm"
                     variant="tertiary"
-                    onPress={() => removeUri(item.id)}
+                    onPress={() => removeMember(item.id)}
                   >
                     <X />
                   </IconButton>
@@ -285,46 +353,74 @@ function ListEditForm({
             )}
           </ListBox>
 
-          <ComboBox
-            label="Add a subscription"
-            placeholder="Search your subscriptions"
-            items={matches}
-            inputValue={search}
-            onInputChange={setSearch}
-            // Permanently unselected: picking an item adds it to the list and
-            // the input resets, like a tag picker.
-            selectedKey={null}
-            onSelectionChange={(key) => {
-              if (key != null) {
-                addUri(String(key));
+          <Flex align="end" gap="lg" style={styles.addRow}>
+            <ComboBox
+              aria-label="Choose an item to add to the list"
+              size="lg"
+              placeholder={
+                mode === "pub"
+                  ? "Search your subscriptions"
+                  : "Search people you follow"
               }
-            }}
-            allowsEmptyCollection
-            renderEmptyState={() => (
-              <span {...stylex.props(styles.emptyList)}>
-                {candidates.length === 0
-                  ? "All subscriptions are in this list."
-                  : "No matching subscriptions."}
-              </span>
-            )}
-          >
-            {(item) => (
-              <ListBoxItem
-                id={item.id}
-                textValue={item.name}
-                prefix={
-                  <Avatar
-                    size="sm"
-                    src={item.iconUrl ?? undefined}
-                    fallback={initials(item.name)}
-                    alt={item.name}
-                  />
+              items={matches}
+              inputValue={search}
+              onInputChange={setSearch}
+              // Permanently unselected: picking an item adds it to the list and
+              // the input resets, like a tag picker.
+              selectedKey={null}
+              onSelectionChange={(key) => {
+                if (key != null) {
+                  addMember(mode, String(key));
                 }
-              >
-                {item.name}
-              </ListBoxItem>
-            )}
-          </ComboBox>
+              }}
+              allowsEmptyCollection
+              style={styles.addCombo}
+              renderEmptyState={() => (
+                <span {...stylex.props(styles.emptyList)}>
+                  {candidates.length === 0
+                    ? mode === "pub"
+                      ? "All subscriptions are in this list."
+                      : "Everyone you follow is in this list."
+                    : mode === "pub"
+                      ? "No matching subscriptions."
+                      : "No matching people."}
+                </span>
+              )}
+            >
+              {(item) => (
+                <ListBoxItem
+                  id={item.id}
+                  textValue={item.name}
+                  prefix={
+                    <Avatar
+                      size="sm"
+                      src={item.iconUrl ?? undefined}
+                      fallback={initials(item.name)}
+                      alt={item.name}
+                    />
+                  }
+                >
+                  {item.name}
+                </ListBoxItem>
+              )}
+            </ComboBox>
+            <Select
+              size="lg"
+              aria-label="Member type to add"
+              selectedKey={mode}
+              onSelectionChange={(key) => {
+                setMode(String(key) as MemberKind);
+                setSearch("");
+              }}
+              style={styles.addSelect}
+              items={[
+                { id: "pub", label: "Subscriptions" },
+                { id: "user", label: "Follows" },
+              ]}
+            >
+              {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
+            </Select>
+          </Flex>
 
           {error ? (
             <span {...stylex.props(styles.errorNote)}>
@@ -367,6 +463,7 @@ export function ListEditModal({
   onOpenChange,
   list,
   following,
+  followingUsers = [],
   onDeleted,
 }: {
   isOpen: boolean;
@@ -374,6 +471,7 @@ export function ListEditModal({
   /** Null creates a new list. */
   list: SubscriptionList | null;
   following: Array<FollowingPublication>;
+  followingUsers?: Array<FollowingUser>;
   /** Called after a list is deleted (e.g. navigate away from its public page). */
   onDeleted?: () => void;
 }) {
@@ -394,6 +492,7 @@ export function ListEditModal({
         key={list?.uri ?? "new"}
         list={list}
         following={following}
+        followingUsers={followingUsers}
         close={() => onOpenChange(false)}
         onDeleted={onDeleted}
       />

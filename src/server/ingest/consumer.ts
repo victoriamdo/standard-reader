@@ -19,6 +19,7 @@ import type {
   SubscriptionRecord,
   TapEvent,
   TapRecordPayload,
+  UserFollowRecord,
 } from "../atproto/types.ts";
 import { Collections, buildAtUri } from "../atproto/uri.ts";
 import { logEvent } from "../observability/log.ts";
@@ -39,6 +40,7 @@ import {
   upsertRead,
   upsertRecommend,
   upsertSubscription,
+  upsertUserFollow,
 } from "./handlers.ts";
 
 const STREAM_ID = "tap";
@@ -102,6 +104,16 @@ async function handleRecord(payload: TapRecordPayload): Promise<void> {
         rkey,
         cid,
         record as unknown as RecommendRecord,
+      );
+      return;
+    }
+    case Collections.userFollow: {
+      await upsertUserFollow(
+        uri,
+        did,
+        rkey,
+        cid,
+        record as unknown as UserFollowRecord,
       );
       return;
     }

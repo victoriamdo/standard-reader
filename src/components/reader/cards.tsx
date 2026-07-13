@@ -3,7 +3,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, BookOpen, Bookmark, Check, Plus } from "lucide-react";
+import { ArrowRight, BookOpen, Bookmark, Check, Heart, Plus } from "lucide-react";
 import { Fragment, useCallback } from "react";
 
 import { AuthorProfileLink } from "#/components/reader/author-profile-link";
@@ -124,6 +124,16 @@ const styles = stylex.create({
     color: uiColor.text1,
     fontFamily: fontFamily.sans,
     fontSize: fontSize.xs,
+  },
+  recommendedByLine: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
+  },
+  recommendedByName: {
+    color: uiColor.text2,
+    textDecoration: "none",
   },
   feature: {
     alignItems: "center",
@@ -902,6 +912,43 @@ function OwnerHandleLink({ did, handle }: { did: string; handle: string }) {
   );
 }
 
+/* ── Recommended-by attribution ─────────────────────────────────────────── */
+
+/**
+ * "Recommended by @handle" line shown above the byline in the home/latest feed
+ * when an article surfaced because followed users recommended it. A single line
+ * covers all recommenders ("+N others") — the article is one collapsed card.
+ */
+function RecommendedByLine({ article }: { article: ArticleCard }) {
+  const recommenders = article.recommendedBy;
+  if (!recommenders || recommenders.length === 0) {
+    return null;
+  }
+  const first = recommenders[0];
+  const firstName =
+    first.displayName ?? (first.handle ? `@${first.handle}` : "Someone");
+  const others = recommenders.length - 1;
+
+  return (
+    <Flex align="center" gap="sm" style={styles.recommendedByLine}>
+      <Heart size={13} aria-hidden fill="currentColor" />
+      <span>
+        Recommended by{" "}
+        <AuthorProfileLink
+          authorRef={first.did}
+          linkStyle={styles.recommendedByName}
+          nested
+        >
+          {firstName}
+        </AuthorProfileLink>
+        {others > 0
+          ? ` and ${others} ${others === 1 ? "other" : "others"}`
+          : null}
+      </span>
+    </Flex>
+  );
+}
+
 /* ── Byline ─────────────────────────────────────────────────────────────── */
 
 function Byline({
@@ -1455,6 +1502,7 @@ export function FeatureArticle({
   if (showByline) {
     return (
       <div {...stylex.props(styles.featureShell)}>
+        <RecommendedByLine article={article} />
         <Byline article={article} includeDate />
         <ArticleLink article={article} extraStyles={featureGridStyles}>
           {articleBody}
@@ -1566,7 +1614,14 @@ export function ArticleRow({
 
   const bylineHeader = (
     <Flex align="center" gap="2xl" style={styles.rowHeader}>
-      {showByline ? <Byline article={article} includeDate /> : <span />}
+      {showByline ? (
+        <Flex direction="column" gap="sm">
+          <RecommendedByLine article={article} />
+          <Byline article={article} includeDate />
+        </Flex>
+      ) : (
+        <span />
+      )}
       {saveBesideMedia ? null : saveButton}
     </Flex>
   );

@@ -486,7 +486,7 @@ function HomeFeed({
         <Masthead
           kicker="Your reading room"
           title="A quiet place to begin"
-          dek="Subscribe to a few publications and their latest writing will collect here."
+          dek="Subscribe to a few publications or follow some people, and their latest writing and recommendations will collect here."
         />
         <Flex direction="column" gap="2xl" style={styles.emptyCard}>
           <span {...stylex.props(styles.emptyTitle)}>Wander the directory</span>

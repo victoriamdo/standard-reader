@@ -171,6 +171,27 @@ export async function handleGetFollowStatus(ctx: XrpcRequestContext) {
   return { active: Boolean(row) };
 }
 
+export async function handleGetUserFollowStatus(ctx: XrpcRequestContext) {
+  const subject = requireParam(ctx.params, "subject");
+  const did = subjectDid(ctx);
+  if (!did) return { active: false };
+
+  const uf = ctx.schema.userFollows;
+  const [row] = await ctx.db
+    .select({ uri: uf.uri })
+    .from(uf)
+    .where(
+      and(
+        eq(uf.followerDid, did),
+        eq(uf.subjectDid, subject),
+        eq(uf.deleted, false),
+      ),
+    )
+    .limit(1);
+
+  return { active: Boolean(row) };
+}
+
 export async function handleGetReadStatus(ctx: XrpcRequestContext) {
   const documentUri = requireParam(ctx.params, "document");
   const did = subjectDid(ctx);

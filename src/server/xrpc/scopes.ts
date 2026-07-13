@@ -28,4 +28,7 @@ export const XRPC_WRITE_SCOPES = {
     // the lazy per-reader migration (which deletes legacy records) is allowed.
     collection: [APP_NSID.labelerSubscription, APP_NSID.labelerSubscriptionV2],
   }),
+  userFollow: atprotoScope.repo({
+    collection: [APP_NSID.graphFollow],
+  }),
 } as const;

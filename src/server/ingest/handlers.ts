@@ -30,6 +30,7 @@ import {
   reads,
   recommends,
   subscriptions,
+  userFollows,
 } from "../../db/schema.ts";
 import { blobCid, bskyImageUrl, getBlobUrl } from "../atproto/blob.ts";
 import { listRepoRecords } from "../atproto/fetch-record.ts";
@@ -55,6 +56,7 @@ import type {
   RecommendRecord,
   SubscriptionRecord,
   TapIdentityPayload,
+  UserFollowRecord,
 } from "../atproto/types.ts";
 import {
   Collections,
@@ -498,6 +500,64 @@ export async function upsertSubscription(
   }
 }
 
+/**
+ * Mirror an `app.standard-reader.graph.follow` record — the follower
+ * (`did`) follows another user (`record.subject`). Tracking the followed
+ * subject is what makes their recommends and documents start flowing from tap
+ * (both collections are already in `TAP_COLLECTION_FILTERS`); a follow request
+ * also kicks a direct PDS backfill so the feed fills in before tap catches up.
+ */
+export async function upsertUserFollow(
+  uri: string,
+  did: string,
+  rkey: string,
+  cid: string | undefined,
+  record: UserFollowRecord,
+): Promise<void> {
+  // Required lexicon field; skip malformed records and defensive self-follows.
+  if (
+    typeof record.subject !== "string" ||
+    !record.subject.startsWith("did:") ||
+    record.subject === did
+  ) {
+    return;
+  }
+
+  const excludedPublications = Array.isArray(record.excludedPublications)
+    ? record.excludedPublications.filter(
+        (item): item is string => typeof item === "string",
+      )
+    : [];
+
+  const values = {
+    uri,
+    cid: cid ?? null,
+    followerDid: did,
+    rkey,
+    subjectDid: record.subject,
+    excludedPublications,
+    createdAt: parseDate(record.createdAt),
+    deleted: false,
+    updatedAt: sql`now()`,
+  };
+
+  await db
+    .insert(userFollows)
+    .values(values)
+    .onConflictDoUpdate({ target: userFollows.uri, set: values });
+
+  // Guarantee a profile row for the followed user so the sidebar + "Recommended
+  // by" attribution have a byline immediately; tap enriches it (avatar, display
+  // name) once the subject's repo is tracked and backfilled.
+  await ensureProfileStub(
+    record.subject,
+    getCachedIdentity(record.subject)?.handle,
+  );
+
+  await ensureTracked(did, "reader");
+  await ensureTracked(record.subject, "followed");
+}
+
 export async function upsertLabelerSubscription(
   uri: string,
   did: string,
@@ -723,6 +783,9 @@ export async function upsertList(
         (item): item is string => typeof item === "string",
       )
     : [];
+  const userDids = Array.isArray(record.users)
+    ? record.users.filter((item): item is string => typeof item === "string")
+    : [];
 
   const values = {
     uri,
@@ -733,6 +796,7 @@ export async function upsertList(
     description:
       typeof record.description === "string" ? record.description : null,
     publications: publicationUris,
+    users: userDids,
     createdAt: parseDate(record.createdAt),
     deleted: false,
     updatedAt: sql`now()`,
@@ -945,6 +1009,10 @@ export async function deleteRecord(
       await db.delete(recommends).where(eq(recommends.uri, uri));
       return;
     }
+    case Collections.userFollow: {
+      await db.delete(userFollows).where(eq(userFollows.uri, uri));
+      return;
+    }
     case Collections.labelerSubscription:
     case Collections.labelerSubscriptionV2: {
       await db
@@ -1130,4 +1198,97 @@ export async function backfillListsFromRepo(
   ]);
 
   return { lists: listCount, listSaves: listSaveCount };
+}
+
+/**
+ * Pull a followed user's feed-relevant records straight from their PDS into
+ * Neon so the follower's home feed has content before tap backfill catches up.
+ * Fetches their recommends (likes surfaced with attribution), documents (loose
+ * docs + authored-anywhere posts), and collection sidecars (so curated
+ * collections render as collections). Best-effort — a failure in one collection
+ * doesn't block the others.
+ */
+export async function backfillFollowedUserContent(
+  subjectDid: string,
+): Promise<{ recommends: number; documents: number; collections: number }> {
+  const identity = await resolveIdentity(subjectDid);
+  if (!identity.pds) {
+    return { recommends: 0, documents: 0, collections: 0 };
+  }
+  const pds = identity.pds;
+
+  async function backfillCollection<T>(
+    collection: string,
+    upsert: (
+      uri: string,
+      did: string,
+      rkey: string,
+      cid: string | undefined,
+      record: T,
+    ) => Promise<void>,
+  ): Promise<number> {
+    try {
+      const { records } = await listRepoRecords(subjectDid, collection, pds);
+      let count = 0;
+      for (const record of records) {
+        const rkey = record.uri.slice(record.uri.lastIndexOf("/") + 1);
+        if (!record.value) continue;
+        await upsert(
+          record.uri,
+          subjectDid,
+          rkey,
+          record.cid,
+          record.value as unknown as T,
+        );
+        count += 1;
+      }
+      return count;
+    } catch (error: unknown) {
+      console.warn(
+        `[ingest] followed-user ${collection} backfill failed for ${subjectDid}`,
+        error,
+      );
+      return 0;
+    }
+  }
+
+  async function backfillCollectionSidecars(): Promise<number> {
+    try {
+      const { records } = await listRepoRecords(
+        subjectDid,
+        Collections.collection,
+        pds,
+      );
+      let count = 0;
+      for (const record of records) {
+        const rkey = record.uri.slice(record.uri.lastIndexOf("/") + 1);
+        if (!record.value) continue;
+        await upsertCollectionSidecar(
+          subjectDid,
+          rkey,
+          record.value as unknown as CollectionSidecarRecord,
+        );
+        count += 1;
+      }
+      return count;
+    } catch (error: unknown) {
+      console.warn(
+        `[ingest] followed-user collection backfill failed for ${subjectDid}`,
+        error,
+      );
+      return 0;
+    }
+  }
+
+  const [recommendCount, documentCount, collectionCount] = await Promise.all([
+    backfillCollection<RecommendRecord>(Collections.recommend, upsertRecommend),
+    backfillCollection<DocumentRecord>(Collections.document, upsertDocument),
+    backfillCollectionSidecars(),
+  ]);
+
+  return {
+    recommends: recommendCount,
+    documents: documentCount,
+    collections: collectionCount,
+  };
 }

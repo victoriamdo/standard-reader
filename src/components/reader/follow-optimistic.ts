@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import type {
   FollowingPublication,
+  FollowingUser,
   SidebarData,
 } from "../../integrations/tanstack-query/api-feed.functions";
 import type { FollowStatus } from "../../integrations/tanstack-query/api-reader.functions";
@@ -126,6 +127,93 @@ export function rollbackFollowOptimisticUpdate(
 export function invalidateFollowQueries(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: ["feed"] });
   void queryClient.invalidateQueries({ queryKey: ["discover"] });
+}
+
+// ── User follow (app.standard-reader.graph.follow) ──────────────────────────
+
+export interface UserFollowOptimisticContext {
+  prevFollow: FollowStatus | undefined;
+  following: boolean;
+  /** Captured when unfollowing so rollback can restore the removed row. */
+  removedUser?: FollowingUser;
+}
+
+/** Optimistically flip user-follow state in the cache (status + sidebar People). */
+export function applyUserFollowOptimisticUpdate(
+  queryClient: QueryClient,
+  {
+    did,
+    user,
+    following,
+  }: {
+    did: string;
+    user?: FollowingUser;
+    following: boolean;
+  },
+): UserFollowOptimisticContext {
+  const followKey = ["reader", "userFollowStatus", did] as const;
+  const sidebarKey = ["feed", "sidebar"] as const;
+
+  const prevFollow = queryClient.getQueryData<FollowStatus>(followKey);
+  let removedUser: FollowingUser | undefined;
+
+  queryClient.setQueryData<FollowStatus>(followKey, { isFollowing: following });
+
+  queryClient.setQueryData<SidebarData>(sidebarKey, (prevSidebar) => {
+    if (!prevSidebar) return prevSidebar;
+    const current = prevSidebar.followingUsers ?? [];
+    if (following) {
+      return {
+        ...prevSidebar,
+        followingUsers: [
+          ...(user ? [user] : []),
+          ...current.filter((item) => item.did !== did),
+        ],
+      };
+    }
+    removedUser = current.find((item) => item.did === did);
+    return {
+      ...prevSidebar,
+      followingUsers: current.filter((item) => item.did !== did),
+    };
+  });
+
+  return { prevFollow, following, removedUser };
+}
+
+export function rollbackUserFollowOptimisticUpdate(
+  queryClient: QueryClient,
+  did: string,
+  context: UserFollowOptimisticContext,
+) {
+  const followKey = ["reader", "userFollowStatus", did] as const;
+  const sidebarKey = ["feed", "sidebar"] as const;
+
+  if (context.prevFollow) {
+    queryClient.setQueryData(followKey, context.prevFollow);
+  } else {
+    queryClient.removeQueries({ queryKey: followKey });
+  }
+
+  queryClient.setQueryData<SidebarData>(sidebarKey, (sidebar) => {
+    if (!sidebar) return sidebar;
+    if (context.following) {
+      return {
+        ...sidebar,
+        followingUsers: sidebar.followingUsers.filter(
+          (item) => item.did !== did,
+        ),
+      };
+    }
+    if (!context.removedUser) return sidebar;
+    if (sidebar.followingUsers.some((item) => item.did === did)) {
+      return sidebar;
+    }
+    return {
+      ...sidebar,
+      followingUsers: [context.removedUser, ...sidebar.followingUsers],
+    };
+  });
 }
 
 export interface BulkFollowOptimisticContext {

@@ -137,6 +137,16 @@ export interface RecommendRecord {
   createdAt?: string;
 }
 
+/** `app.standard-reader.graph.follow` — follows another user by DID. */
+export interface UserFollowRecord {
+  $type?: string;
+  subject: string;
+  /** Publications of the followed user the reader has opted out of (following a
+   * user subscribes to all their publications except these). */
+  excludedPublications?: Array<string>;
+  createdAt?: string;
+}
+
 /** `app.standard-reader.read` — an article the reader has read. */
 export interface ReadRecord {
   $type?: string;
@@ -191,6 +201,8 @@ export interface ListRecord {
   description?: string;
   /** Ordered at-uris of the `site.standard.publication` records in the list. */
   publications: Array<string>;
+  /** Ordered DIDs of the users (authors) in the list. Optional. */
+  users?: Array<string>;
   createdAt?: string;
 }
 

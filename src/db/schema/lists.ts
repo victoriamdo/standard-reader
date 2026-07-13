@@ -37,6 +37,8 @@ export const lists = pgTable(
     description: text("description"),
     /** Ordered at-uris of `site.standard.publication` records in the list. */
     publications: jsonb("publications").notNull().default([]),
+    /** Ordered DIDs of the users (authors) in the list. */
+    users: jsonb("users").notNull().default([]),
 
     /** `createdAt` from the record. */
     createdAt: timestamp("created_at", { withTimezone: true }),

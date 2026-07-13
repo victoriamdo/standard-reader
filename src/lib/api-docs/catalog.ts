@@ -316,6 +316,20 @@ export const API_DOCS_CATALOG: Array<ApiDocsCatalogEntry> = [
     },
   ),
   q(
+    "app.standard-reader.getUserFollowStatus",
+    "Reader state",
+    "Whether the subject reader follows a user.",
+    "optional-did",
+    [
+      { name: "did", type: "did" },
+      { name: "subject", type: "did", required: true },
+    ],
+    {
+      autoRun: false,
+      params: (f) => ({ did: f.readerDid, subject: f.readerDid }),
+    },
+  ),
+  q(
     "app.standard-reader.getReadStatus",
     "Reader state",
     "Whether the subject reader has read a document.",
@@ -422,6 +436,26 @@ export const API_DOCS_CATALOG: Array<ApiDocsCatalogEntry> = [
     {
       autoRun: false,
       body: (f) => ({ publication: f.publicationUri }),
+    },
+  ),
+  p(
+    "app.standard-reader.followUser",
+    "Write procedures",
+    "Follow another user by DID.",
+    [{ name: "did", type: "did", required: true }],
+    {
+      autoRun: false,
+      body: (f) => ({ did: f.readerDid }),
+    },
+  ),
+  p(
+    "app.standard-reader.unfollowUser",
+    "Write procedures",
+    "Unfollow a user by DID.",
+    [{ name: "did", type: "did", required: true }],
+    {
+      autoRun: false,
+      body: (f) => ({ did: f.readerDid }),
     },
   ),
   p(

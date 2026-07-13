@@ -17,6 +17,7 @@ export type TrackReason =
   | "subscriber"
   | "recommender"
   | "reader"
+  | "followed"
   | "manual";
 
 function basicAuthHeader(): Record<string, string> {

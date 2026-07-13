@@ -117,6 +117,12 @@ export const documents = pgTable(
   },
   (table) => [
     index("documents_did_idx").on(table.did),
+    // Follow-feed's authored-by-followed-user branch: newest-first within an
+    // author's documents (`did IN (…followed)` ordered by published_at). NULLS
+    // LAST + `deleted = false` match the feed query's ORDER BY and predicate.
+    index("documents_did_published_idx")
+      .on(table.did, sql`${table.publishedAt} desc nulls last`)
+      .where(sql`deleted = false`),
     // Feed / "more from publication": newest-first within a publication.
     index("documents_publication_published_idx").on(
       table.publicationUri,

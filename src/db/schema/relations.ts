@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 
 import { documentContributors, documents } from "./documents.ts";
-import { recommends, subscriptions } from "./graph.ts";
+import { recommends, subscriptions, userFollows } from "./graph.ts";
 import { bookmarks, reads } from "./personal.ts";
 import { profiles } from "./profiles.ts";
 import { publications } from "./publications.ts";
@@ -97,6 +97,17 @@ export const recommendsRelations = relations(recommends, ({ one }) => ({
   }),
   recommender: one(profiles, {
     fields: [recommends.recommenderDid],
+    references: [profiles.did],
+  }),
+}));
+
+export const userFollowsRelations = relations(userFollows, ({ one }) => ({
+  follower: one(profiles, {
+    fields: [userFollows.followerDid],
+    references: [profiles.did],
+  }),
+  subject: one(profiles, {
+    fields: [userFollows.subjectDid],
     references: [profiles.did],
   }),
 }));

@@ -66,7 +66,10 @@ import {
   tracking,
 } from "../../design-system/theme/typography.stylex";
 import { ToastRegion } from "../../design-system/toast";
-import type { FollowingPublication } from "../../integrations/tanstack-query/api-feed.functions";
+import type {
+  FollowingPublication,
+  FollowingUser,
+} from "../../integrations/tanstack-query/api-feed.functions";
 import { FeedbackDialog } from "../feedback/feedback-dialog";
 import { NavbarAuth } from "../NavbarAuth";
 import { SiteFooter } from "../site-footer";
@@ -743,18 +746,45 @@ function FollowRow({ pub }: { pub: FollowingPublication }) {
   );
 }
 
+function FollowUserRow({ user: followed }: { user: FollowingUser }) {
+  const focusRingProps = useFocusRingProps();
+  const rowProps = { ...focusRingProps, ...stylex.props(styles.followRow) };
+  const name =
+    followed.displayName ??
+    (followed.handle ? `@${followed.handle}` : followed.did);
+  const unread = followed.unreadCount ?? 0;
+  return (
+    <Link to="/u/$did" params={{ did: followed.did }} {...rowProps}>
+      <FollowingAvatar name={name} iconUrl={followed.avatarUrl} />
+      <span {...stylex.props(styles.followName)}>{name}</span>
+      {unread > 0 ? (
+        <span
+          {...stylex.props(styles.followUnread)}
+          aria-label={`${unread} unread`}
+        >
+          {formatSidebarUnreadCount(unread)}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
 function SidebarList({
   name,
   listUri,
   pubs,
+  users,
 }: {
   name: string;
   /** AT-URI of the list; links the group to its public `/l/$did/$rkey` page. */
   listUri: string;
   pubs: Array<FollowingPublication>;
+  users: Array<FollowingUser>;
 }) {
   const link = listLinkParams(listUri);
-  const unreadTotal = pubs.reduce((sum, pub) => sum + pub.unreadCount, 0);
+  const unreadTotal =
+    pubs.reduce((sum, pub) => sum + pub.unreadCount, 0) +
+    users.reduce((sum, person) => sum + (person.unreadCount ?? 0), 0);
   const titleFocusRingProps = useFocusRingProps();
 
   return (
@@ -794,10 +824,17 @@ function SidebarList({
       </Flex>
       <DisclosurePanel contentStyle={styles.listPanelContent}>
         <div {...stylex.props(styles.followList)}>
-          {pubs.length === 0 ? (
+          {pubs.length === 0 && users.length === 0 ? (
             <span {...stylex.props(styles.listEmpty)}>Empty list.</span>
           ) : (
-            pubs.map((pub) => <FollowRow key={pub.uri} pub={pub} />)
+            <>
+              {pubs.map((pub) => (
+                <FollowRow key={pub.uri} pub={pub} />
+              ))}
+              {users.map((person) => (
+                <FollowUserRow key={person.did} user={person} />
+              ))}
+            </>
           )}
         </div>
         <div {...stylex.props(styles.listGroupSpacer)} aria-hidden />
@@ -1005,6 +1042,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
   const following = sidebar?.following ?? [];
+  const followingUsers = sidebar?.followingUsers ?? [];
   const unreadCount = sidebar?.unreadCount ?? null;
   const savedCount = sidebar?.savedCount ?? null;
   const hasUnread = unreadCount != null && unreadCount > 0;
@@ -1032,6 +1070,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       listsData === undefined ||
       savedListsData === undefined);
   const followingByUri = new Map(following.map((pub) => [pub.uri, pub]));
+  const followingUsersByDid = new Map(
+    followingUsers.map((person) => [person.did, person]),
+  );
+  // A list member only shows in its group if you also follow them — mirrors how
+  // publications only render when they're in `following`.
+  const groupUsers = (dids: Array<string>) =>
+    dids
+      .map((did) => followingUsersByDid.get(did))
+      .filter((person): person is FollowingUser => person != null);
   // Own + saved lists as render-ready groups (shared by sidebar and sheet).
   const listGroups: Array<SubscriptionListGroup> = [
     ...lists.map((list) => ({
@@ -1041,6 +1088,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       pubs: list.publications
         .map((uri) => followingByUri.get(uri))
         .filter((pub): pub is FollowingPublication => pub != null),
+      users: groupUsers(list.users),
     })),
     ...savedLists.map((saved) => ({
       key: saved.list.uri,
@@ -1051,6 +1099,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       pubs: saved.publications.map(
         (pub) => followingByUri.get(pub.uri) ?? { ...pub, unreadCount: 0 },
       ),
+      users: groupUsers(saved.list.users),
     })),
   ];
   const hasListGroups = listGroups.length > 0;
@@ -1058,7 +1107,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const groupedUris = new Set(
     listGroups.flatMap((group) => group.pubs.map((pub) => pub.uri)),
   );
-  const ungrouped = following.filter((pub) => !groupedUris.has(pub.uri));
+  const groupedUserDids = new Set(
+    listGroups.flatMap((group) => group.users.map((person) => person.did)),
+  );
+  // Publications owned by a followed user are represented by that person's row
+  // (following a user subscribes to all their publications), so keep them out of
+  // the flat list — unless the reader explicitly filed one into a list group.
+  const followedUserDids = new Set(followingUsers.map((person) => person.did));
+  const ungrouped = following.filter(
+    (pub) => !groupedUris.has(pub.uri) && !followedUserDids.has(pub.did),
+  );
+  const ungroupedUsers = followingUsers.filter(
+    (person) => !groupedUserDids.has(person.did),
+  );
   // Creation only — editing lives on the list's own page.
   const [newListOpen, setNewListOpen] = useState(false);
 
@@ -1120,14 +1181,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div {...stylex.props(styles.followList)}>
               {shellSubscriptionsLoading ? (
                 <SubscriptionsSkeleton />
-              ) : following.length === 0 && !hasListGroups ? (
+              ) : following.length === 0 &&
+                !hasListGroups &&
+                followingUsers.length === 0 ? (
                 <span {...stylex.props(styles.emptyNote)}>
                   {signedIn
                     ? "Nothing yet — go discover."
                     : "Sign in to subscribe."}
                 </span>
               ) : (
-                ungrouped.map((pub) => <FollowRow key={pub.uri} pub={pub} />)
+                <>
+                  {ungrouped.map((pub) => (
+                    <FollowRow key={pub.uri} pub={pub} />
+                  ))}
+                  {/* People live under Subscriptions too — one grouping keeps
+                      the sidebar's information architecture simple, even though
+                      "subscribing" (publications) and "following" (people) are
+                      technically different graph edges. People sorted into a
+                      list render under that list group instead (see below). */}
+                  {ungroupedUsers.map((followed) => (
+                    <FollowUserRow key={followed.did} user={followed} />
+                  ))}
+                </>
               )}
             </div>
             {listGroups.map((group) => (
@@ -1136,6 +1211,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 name={group.name}
                 listUri={group.listUri}
                 pubs={group.pubs}
+                users={group.users}
               />
             ))}
           </div>
@@ -1198,6 +1274,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onOpenChange={setNewListOpen}
           list={null}
           following={following}
+          followingUsers={followingUsers}
         />
         <AtstoreReviewPrompt />
         <FeedbackDialog isOpen={feedbackOpen} onOpenChange={setFeedbackOpen} />

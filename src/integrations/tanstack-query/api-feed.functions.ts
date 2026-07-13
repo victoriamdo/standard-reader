@@ -34,7 +34,11 @@ import {
   trendingPublications,
 } from "#/server/reader/queries";
 import { rotationSeed } from "#/server/reader/rail-rotation";
-import { effectiveFollowUris } from "#/server/reader/saved-lists";
+import { attachRecommendedByToArticles } from "#/server/reader/recommended-by";
+import {
+  effectiveFollowSets,
+  effectiveFollowUris,
+} from "#/server/reader/saved-lists";
 import { loadSidebarData } from "#/server/reader/shell-snapshot.server";
 
 import type { ArticleCard, Db, PublicationCard, Schema } from "./api-shapes";
@@ -163,6 +167,16 @@ export interface LatestFeed {
 
 export type FollowingPublication = PublicationCard & { unreadCount: number };
 
+export interface FollowingUser {
+  did: string;
+  handle: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  /** Unread documents this user contributes (authored or recommended). 0 when
+   * read-tracking is off or the reader has read everything. */
+  unreadCount?: number;
+}
+
 export interface SidebarData {
   /** Whether the reader is signed in (drives empty-state copy + auth chrome). */
   signedIn: boolean;
@@ -170,6 +184,8 @@ export interface SidebarData {
   hasFollows: boolean;
   /** Followed publications (most recent activity first) for the sidebar list. */
   following: Array<FollowingPublication>;
+  /** Followed users (most recently followed first) — the "People" section. */
+  followingUsers: Array<FollowingUser>;
   /** Unread count across follows (null when signed out / no follows). */
   unreadCount: number | null;
   /** Saved-for-later count (null when signed out). */
@@ -208,17 +224,21 @@ async function resolveHomeFeedContext(
   const trackReading =
     trackReadingOverride ?? (did ? (trackReadingEnabled ?? false) : false);
 
-  const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
-  const hasFollows = followUris.length > 0;
+  const { publicationUris: followUris, userDids: followedUserDids } = did
+    ? await effectiveFollowSets(db, schema, did)
+    : { publicationUris: [], userDids: [] };
+  const hasFollows = followUris.length > 0 || followedUserDids.length > 0;
   const isTrending = scope === "trending";
   const personalized = hasFollows && scope === "follows";
   span.set("follows", followUris.length);
+  span.set("followedUsers", followedUserDids.length);
   span.set("scope", scope);
   span.set("personalized", personalized);
 
   const rowQuery = personalized
     ? {
         publicationUris: followUris,
+        followedUserDids,
         ...(trackReading && did ? { readForDid: did, unreadForDid: did } : {}),
       }
     : { discoverOnly: true };
@@ -226,6 +246,7 @@ async function resolveHomeFeedContext(
   return {
     did,
     followUris,
+    followedUserDids,
     trackReading,
     hasFollows,
     isTrending,
@@ -339,7 +360,18 @@ async function buildHomeFeedCritical(
     ctx.did,
     withCounts,
   );
-  const byUri = new Map(enriched.map((article) => [article.uri, article]));
+  const enrichedWithRecs =
+    ctx.followedUserDids.length > 0
+      ? await attachRecommendedByToArticles(
+          db,
+          schema,
+          ctx.followedUserDids,
+          enriched,
+        )
+      : enriched;
+  const byUri = new Map(
+    enrichedWithRecs.map((article) => [article.uri, article]),
+  );
 
   return {
     featured: featured ? (byUri.get(featured.uri) ?? featured) : null,
@@ -521,8 +553,11 @@ async function loadLatestFeedCritical(
   span.set("filter", data.filter);
   span.set("offset", data.offset);
 
-  const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
+  const { publicationUris: followUris, userDids: followedUserDids } = did
+    ? await effectiveFollowSets(db, schema, did)
+    : { publicationUris: [], userDids: [] };
   span.set("follows", followUris.length);
+  span.set("followedUsers", followedUserDids.length);
   const trackReading = did == null ? false : trackReadingEnabled;
 
   const trendingLimit =
@@ -544,6 +579,7 @@ async function loadLatestFeedCritical(
             ? { discoverOnly: true }
             : {
                 publicationUris: followUris,
+                followedUserDids,
                 unreadForDid:
                   trackReading && data.filter === "unread" ? did : undefined,
               }),
@@ -567,9 +603,20 @@ async function loadLatestFeedCritical(
     did,
     enrichedItems,
   );
+  // "Recommended by" attribution for followed-user rows (skips the "all" /
+  // signed-out / trending paths, which have no followed-user context).
+  const attributedItems =
+    did && data.filter !== "all" && followedUserDids.length > 0
+      ? await attachRecommendedByToArticles(
+          db,
+          schema,
+          followedUserDids,
+          labeledItems,
+        )
+      : labeledItems;
 
   return {
-    items: labeledItems,
+    items: attributedItems,
     counts: null,
     nextOffset:
       data.filter === "trending"
@@ -587,13 +634,16 @@ async function loadLatestFeedCounts(
   span: Span,
   trackReadingEnabled: boolean,
 ): Promise<LatestFeedCounts> {
-  const followUris = did ? await effectiveFollowUris(db, schema, did) : [];
+  const { publicationUris: followUris, userDids: followedUserDids } = did
+    ? await effectiveFollowSets(db, schema, did)
+    : { publicationUris: [], userDids: [] };
   span.set("follows", followUris.length);
+  span.set("followedUsers", followedUserDids.length);
   const trackReading = did == null ? false : trackReadingEnabled;
 
   const [followCounts, networkCount, trendingCount] = await Promise.all([
     did
-      ? countFollowedDocuments(db, schema, followUris, did)
+      ? countFollowedDocuments(db, schema, followUris, did, followedUserDids)
       : Promise.resolve({ all: 0, unread: 0 }),
     countNetworkDocuments(db, schema),
     did ? countTrendingDocuments(db, schema, "page") : Promise.resolve(0),

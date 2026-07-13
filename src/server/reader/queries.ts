@@ -89,6 +89,14 @@ export interface ArticleCardQuery {
   tag?: string;
   /** Restrict to documents authored by this DID (loose + publication-bound). */
   did?: string;
+  /**
+   * Followed-user DIDs. When present (even alongside `publicationUris`), the
+   * query switches to "follow-feed union" mode: it returns documents authored
+   * by these users OR recommended by them OR belonging to `publicationUris`,
+   * ordered by a computed `feedAt` (the document's `publishedAt` for the first
+   * two sources, the latest followed-user recommend `createdAt` for the third).
+   */
+  followedUserDids?: Array<string>;
   limit: number;
   offset?: number;
 }
@@ -129,18 +137,189 @@ function documentUnreadWhere(schema: Schema, readForDid: string): SQL {
 }
 
 /**
+ * The follow-feed source set as an index-friendly `UNION` of two subqueries,
+ * each producing `(uri, published_at)`:
+ *   1. Direct sources — documents in a followed publication OR authored by a
+ *      followed user (served by the publication/author/published indexes).
+ *   2. Recommend-sourced — documents recommended by a followed user (a tiny
+ *      aggregate over `recommends`, filtered to followed recommenders).
+ *
+ * Shared by the feed page, the follow counts, and the unread-uri list. Kept as a
+ * `UNION` (not an `OR ... EXISTS` predicate) because the OR form forces Postgres
+ * to seq-scan `documents` and evaluate a correlated `EXISTS` per row (~1–2s on a
+ * large corpus); the union lets each branch use its index. Callers wrap this in
+ * a CTE and add their own read-state join / ordering / limit.
+ */
+function followFeedUnionSql(
+  schema: Schema,
+  publicationUris: Array<string>,
+  followedUserDids: Array<string>,
+): SQL {
+  const d = schema.documents;
+  const rec = schema.recommends;
+  const directParts: Array<SQL> = [inArray(d.did, followedUserDids)];
+  if (publicationUris.length > 0) {
+    directParts.push(inArray(d.publicationUri, publicationUris));
+  }
+  const directOr = or(...directParts) ?? sql`false`;
+  const base = and(eq(d.deleted, false), documentPublishedNotInFuture(d));
+  return sql`(
+    select ${d.uri} as uri, ${d.publishedAt} as published_at
+    from ${d}
+    where ${base} and (${directOr})
+    union
+    select ${d.uri} as uri, ${d.publishedAt} as published_at
+    from ${d}
+    join (
+      select ${rec.documentUri} as document_uri
+      from ${rec}
+      where ${inArray(rec.recommenderDid, followedUserDids)} and ${eq(rec.deleted, false)}
+      group by ${rec.documentUri}
+    ) fr on fr.document_uri = ${d.uri}
+    where ${base}
+  )`;
+}
+
+/** Read rows off a drizzle `db.execute` result (array or `{ rows }`). */
+function executeRows<T>(result: unknown): Array<T> {
+  if (Array.isArray(result)) return result as Array<T>;
+  return ((result as { rows?: Array<T> }).rows ?? []) as Array<T>;
+}
+
+/**
+ * Ordered page of document URIs for the follow-feed union, computed cheaply.
+ *
+ * The naive union — `WHERE pub OR author OR recommended ORDER BY <computed feedAt>`
+ * — is unindexable on the sort key, so Postgres materializes and sorts every
+ * matching row (100k+ for an active reader). Instead we union two index-friendly
+ * branches and take the top of each:
+ *   1. Direct sources (followed publications OR authored-by-followed) ordered by
+ *      `published_at` — served by the published/publication/author indexes.
+ *   2. Recommend-sourced — a tiny aggregate over `recommends` (followed
+ *      recommenders only) ordered by the recommend time.
+ * Merging two `limit+offset`-capped branches sorts at most `2·(limit+offset)`
+ * rows, turning a ~2s scan into a ~100ms keyset read. `feedAt` = the doc's
+ * publish time for direct sources, the latest followed recommend time otherwise.
+ */
+async function selectFollowFeedCandidateUris(
+  db: Db,
+  schema: Schema,
+  opts: {
+    publicationUris: Array<string>;
+    followedUserDids: Array<string>;
+    featuredOnly?: boolean;
+    unreadForDid?: string;
+    limit: number;
+    offset: number;
+  },
+): Promise<Array<string>> {
+  const d = schema.documents;
+  const rec = schema.recommends;
+  const { publicationUris, followedUserDids } = opts;
+  const k = opts.limit + opts.offset;
+
+  const base: Array<SQL> = [
+    eq(d.deleted, false),
+    documentPublishedNotInFuture(d),
+  ];
+  if (opts.featuredOnly) base.push(eq(d.featured, true));
+  if (opts.unreadForDid) base.push(documentUnreadWhere(schema, opts.unreadForDid));
+  const baseWhere = and(...base) ?? sql`true`;
+
+  const directParts: Array<SQL> = [inArray(d.did, followedUserDids)];
+  if (publicationUris.length > 0) {
+    directParts.push(inArray(d.publicationUri, publicationUris));
+  }
+  const directOr = or(...directParts) ?? sql`false`;
+
+  // `union all` + `distinct on (uri)` de-dupes by document (a doc that is both a
+  // direct source and recommended by a followed user would otherwise appear
+  // twice, since its two rows carry different `feed_at`). `src=0` (direct) sorts
+  // before `src=1` (recommend), so a doc that is both keeps its publish time.
+  const rows = await db.execute<{ uri: string }>(sql`
+    select deduped.uri from (
+      select distinct on (u.uri) u.uri as uri, u.feed_at as feed_at
+      from (
+        (
+          select ${d.uri} as uri, ${d.publishedAt} as feed_at, 0 as src
+          from ${d}
+          where ${baseWhere} and (${directOr})
+          order by ${d.publishedAt} desc nulls last, ${d.uri} desc
+          limit ${k}
+        )
+        union all
+        (
+          select ${d.uri} as uri, fr.rec_at as feed_at, 1 as src
+          from ${d}
+          join (
+            select ${rec.documentUri} as document_uri, max(${rec.createdAt}) as rec_at
+            from ${rec}
+            where ${inArray(rec.recommenderDid, followedUserDids)} and ${eq(rec.deleted, false)}
+            group by ${rec.documentUri}
+          ) fr on fr.document_uri = ${d.uri}
+          where ${baseWhere}
+          order by fr.rec_at desc nulls last
+          limit ${k}
+        )
+      ) u
+      order by u.uri, u.src asc
+    ) deduped
+    order by deduped.feed_at desc nulls last, deduped.uri desc
+    limit ${opts.limit} offset ${opts.offset}
+  `);
+
+  return executeRows<{ uri: string }>(rows).map((row) => row.uri);
+}
+
+/**
  * Newest-first {@link ArticleCard}s, filtered to follows / unread / featured /
  * discover-eligible as requested. Excludes posts whose `publishedAt` is still in
  * the future. Returns `[]` when `publicationUris` is set but empty (a reader with
  * no follows), avoiding an `IN ()` that can never match.
+ *
+ * When `followedUserDids` is non-empty the query runs in follow-feed union mode:
+ * publication-sourced + author-sourced + recommend-sourced documents merged and
+ * ordered by a computed `feedAt` (publish time for direct sources; latest
+ * followed-user recommend time for recommend-sourced rows).
  */
 export async function selectArticleCards(
   db: Db,
   schema: Schema,
   opts: ArticleCardQuery,
 ): Promise<Array<ArticleCard>> {
-  if (opts.publicationUris && opts.publicationUris.length === 0) {
+  const followedUserDids = opts.followedUserDids ?? [];
+  const hasFollowedUsers = followedUserDids.length > 0;
+  // A follows query with no publications AND no followed users has no sources —
+  // short-circuit (an empty `IN ()` can never match). In union mode an empty
+  // publication set is fine as long as there are followed users.
+  if (
+    opts.publicationUris &&
+    opts.publicationUris.length === 0 &&
+    !hasFollowedUsers
+  ) {
     return [];
+  }
+
+  const pubUris = opts.publicationUris ?? [];
+
+  // Follow-feed union mode: documents authored by a followed user, OR in a
+  // followed publication, OR recommended by a followed user. Resolve the page's
+  // URIs with the cheap index-friendly union first, then hydrate display columns
+  // for just that page — avoids sorting the whole (huge) match set by a
+  // non-indexable computed timestamp.
+  if (hasFollowedUsers) {
+    const candidateUris = await selectFollowFeedCandidateUris(db, schema, {
+      publicationUris: pubUris,
+      followedUserDids,
+      featuredOnly: opts.featuredOnly,
+      unreadForDid: opts.unreadForDid,
+      limit: opts.limit,
+      offset: opts.offset ?? 0,
+    });
+    const pageUris = [...new Set(candidateUris)]; // defensive: never render a doc twice
+    return selectArticleCardsByUris(db, schema, pageUris, {
+      readForDid: opts.readForDid,
+    });
   }
 
   const d = schema.documents;
@@ -150,6 +329,7 @@ export async function selectArticleCards(
   const r = schema.reads;
 
   const conds = [eq(d.deleted, false), documentPublishedNotInFuture(d)];
+
   if (opts.publicationUris) {
     conds.push(inArray(d.publicationUri, opts.publicationUris));
   }
@@ -293,23 +473,42 @@ export async function selectPublicationArticleCards(
   );
 }
 
-/** Unread document AT-URIs for a reader, optionally scoped to publications. */
+/** Unread document AT-URIs for a reader, optionally scoped to publications
+ * and/or followed users (union — matches the follow feed). */
 export async function selectUnreadDocumentUris(
   db: Db,
   schema: Schema,
   opts: {
     readerDid: string;
     publicationUris?: Array<string>;
+    followedUserDids?: Array<string>;
     limit?: number;
   },
 ): Promise<Array<string>> {
-  const { readerDid, publicationUris, limit = 100 } = opts;
-  if (publicationUris && publicationUris.length === 0) {
+  const { readerDid, publicationUris, followedUserDids, limit = 100 } = opts;
+  const hasFollowedUsers = (followedUserDids?.length ?? 0) > 0;
+  if (publicationUris && publicationUris.length === 0 && !hasFollowedUsers) {
     return [];
   }
 
   const d = schema.documents;
   const r = schema.reads;
+
+  // Union mode: unread URIs from the index-friendly source union (avoids the
+  // correlated OR ... EXISTS scan).
+  if (hasFollowedUsers) {
+    const rows = await db.execute(sql`
+      with cand as ${followFeedUnionSql(schema, publicationUris ?? [], followedUserDids ?? [])}
+      select cand.uri
+      from cand
+      left join ${r} on ${r.documentUri} = cand.uri
+        and ${r.ownerDid} = ${readerDid} and ${r.deleted} = false
+      where ${r.uri} is null
+      order by cand.published_at desc nulls last, cand.uri desc
+      limit ${limit}
+    `);
+    return executeRows<{ uri: string }>(rows).map((row) => row.uri);
+  }
 
   const conds = [eq(d.deleted, false), documentPublishedNotInFuture(d)];
   if (publicationUris) {
@@ -379,38 +578,73 @@ export async function selectFollowUris(
   return rows.map((row) => row.uri);
 }
 
-/** Count of unread documents across a reader's follows (for the Latest filter). */
+/** Distinct DIDs of the users a reader currently follows (active records). */
+export async function selectFollowedUserDids(
+  db: Db,
+  schema: Schema,
+  did: string,
+): Promise<Array<string>> {
+  const uf = schema.userFollows;
+  const rows = await db
+    .selectDistinct({ did: uf.subjectDid })
+    .from(uf)
+    .where(and(eq(uf.followerDid, did), eq(uf.deleted, false)));
+  return rows.map((row) => row.did);
+}
+
+/** Count of unread documents across a reader's follows (for the Latest filter).
+ * Union of followed publications + followed users (authored + recommended), so
+ * the badge matches the follow feed. A document recommended by several followed
+ * users is counted once (`count(*)` over one row per document). */
 export async function countFollowedDocuments(
   db: Db,
   schema: Schema,
   publicationUris: Array<string>,
   did: string,
+  followedUserDids: Array<string> = [],
 ): Promise<{ all: number; unread: number }> {
-  if (publicationUris.length === 0) {
+  if (publicationUris.length === 0 && followedUserDids.length === 0) {
     return { all: 0, unread: 0 };
   }
-  const d = schema.documents;
   const r = schema.reads;
-  const [row] = await db
-    .select({
-      all: sql<number>`count(*)`.mapWith(Number),
-      unread: sql<number>`count(*) filter (where ${r.uri} is null)`.mapWith(
-        Number,
-      ),
-    })
-    .from(d)
-    .leftJoin(
-      r,
-      and(eq(r.documentUri, d.uri), eq(r.ownerDid, did), eq(r.deleted, false)),
-    )
-    .where(
-      and(
-        eq(d.deleted, false),
-        documentPublishedNotInFuture(d),
-        inArray(d.publicationUri, publicationUris),
-      ),
-    );
 
+  // No followed users → the fast publication-only path (indexed `IN`).
+  if (followedUserDids.length === 0) {
+    const d = schema.documents;
+    const [row] = await db
+      .select({
+        all: sql<number>`count(*)`.mapWith(Number),
+        unread: sql<number>`count(*) filter (where ${r.uri} is null)`.mapWith(
+          Number,
+        ),
+      })
+      .from(d)
+      .leftJoin(
+        r,
+        and(eq(r.documentUri, d.uri), eq(r.ownerDid, did), eq(r.deleted, false)),
+      )
+      .where(
+        and(
+          eq(d.deleted, false),
+          documentPublishedNotInFuture(d),
+          inArray(d.publicationUri, publicationUris),
+        ),
+      );
+    return { all: row?.all ?? 0, unread: row?.unread ?? 0 };
+  }
+
+  // Union mode: count distinct documents from the index-friendly source union,
+  // joining reads for the unread tally (avoids the correlated OR ... EXISTS scan).
+  const result = await db.execute(sql`
+    with cand as ${followFeedUnionSql(schema, publicationUris, followedUserDids)}
+    select
+      count(*)::int as all,
+      count(*) filter (where ${r.uri} is null)::int as unread
+    from cand
+    left join ${r} on ${r.documentUri} = cand.uri
+      and ${r.ownerDid} = ${did} and ${r.deleted} = false
+  `);
+  const [row] = executeRows<{ all: number; unread: number }>(result);
   return { all: row?.all ?? 0, unread: row?.unread ?? 0 };
 }
 
@@ -473,6 +707,54 @@ export async function countUnreadByPublication(
     rows.flatMap((row) =>
       row.publicationUri ? [[row.publicationUri, row.unread]] : [],
     ),
+  );
+}
+
+/**
+ * Unread document counts keyed by followed-user DID — the sidebar "People"
+ * badges. A user contributes a document if they authored it OR recommended it;
+ * `(did, uri)` pairs are de-duped so a user's own recommend of their own post
+ * counts once. Bounded by the followed users' content, so cheap.
+ */
+export async function countUnreadByFollowedUser(
+  db: Db,
+  schema: Schema,
+  followedUserDids: Array<string>,
+  did: string,
+): Promise<Map<string, number>> {
+  if (followedUserDids.length === 0) {
+    return new Map();
+  }
+  const d = schema.documents;
+  const rec = schema.recommends;
+  const r = schema.reads;
+  const base = and(eq(d.deleted, false), documentPublishedNotInFuture(d));
+
+  const result = await db.execute(sql`
+    with contrib as (
+      select ${d.did} as contributor, ${d.uri} as uri
+      from ${d}
+      where ${base} and ${inArray(d.did, followedUserDids)}
+      union
+      select ${rec.recommenderDid} as contributor, ${d.uri} as uri
+      from ${rec}
+      join ${d} on ${d.uri} = ${rec.documentUri}
+      where ${base} and ${inArray(rec.recommenderDid, followedUserDids)}
+        and ${eq(rec.deleted, false)}
+    )
+    select contrib.contributor as contributor, count(*)::int as unread
+    from contrib
+    left join ${r} on ${r.documentUri} = contrib.uri
+      and ${r.ownerDid} = ${did} and ${r.deleted} = false
+    where ${r.uri} is null
+    group by contrib.contributor
+  `);
+
+  return new Map(
+    executeRows<{ contributor: string; unread: number }>(result).map((row) => [
+      row.contributor,
+      row.unread,
+    ]),
   );
 }
 
@@ -1834,7 +2116,7 @@ export async function selectArticleCardsByUris(
    * compose) avoid pulling full essay bodies into the payload + SSR dehydration.
    * Reading-time labels go blank for these rows, which those surfaces don't show.
    */
-  opts?: { lite?: boolean },
+  opts?: { lite?: boolean; readForDid?: string },
 ): Promise<Array<ArticleCard>> {
   if (uris.length === 0) {
     return [];
@@ -1844,10 +2126,14 @@ export async function selectArticleCardsByUris(
   const p = schema.publications;
   const pr = schema.profiles;
   const pa = alias(schema.profiles, "pa");
+  const baseColumns = opts?.lite
+    ? articleQueueCardColumns(schema)
+    : articleCardColumns(schema);
+  const selection = opts?.readForDid
+    ? { ...baseColumns, isRead: documentReadExistsColumn(schema, opts.readForDid) }
+    : baseColumns;
   const rows = await db
-    .select(
-      opts?.lite ? articleQueueCardColumns(schema) : articleCardColumns(schema),
-    )
+    .select(selection)
     .from(d)
     .leftJoin(p, eq(p.uri, d.publicationUri))
     .leftJoin(pr, eq(pr.did, p.did))

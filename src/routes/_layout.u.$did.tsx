@@ -43,6 +43,8 @@ import {
 
 import { AuthorProfileLink } from "../components/reader/author-profile-link";
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
+import { AddToListButton } from "../components/reader/add-to-list-button";
+import { FollowUserButton } from "../components/reader/follow-user-button";
 import { LinkifiedText } from "../components/reader/linkified-text";
 import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
 import { ProfileTabsSettingsModal } from "../components/reader/profile-tabs-settings-modal";
@@ -634,7 +636,21 @@ function AuthorProfileContent({
                 >
                   <Settings size={15} />
                 </IconButton>
-              ) : null}
+              ) : (
+                <>
+                  {session?.user?.did ? <AddToListButton did={did} /> : null}
+                  <FollowUserButton
+                    did={did}
+                    signedIn={session?.user?.did != null}
+                    user={{
+                      did,
+                      handle: profile.handle,
+                      displayName: profile.displayName ?? null,
+                      avatarUrl: profile.avatarUrl ?? null,
+                    }}
+                  />
+                </>
+              )}
             </div>
           </div>
 
@@ -681,7 +697,21 @@ function AuthorProfileContent({
               >
                 <Settings size={15} />
               </IconButton>
-            ) : null}
+            ) : (
+              <>
+                {session?.user?.did ? <AddToListButton did={did} /> : null}
+                <FollowUserButton
+                  did={did}
+                  signedIn={session?.user?.did != null}
+                  user={{
+                    did,
+                    handle: profile.handle,
+                    displayName: profile.displayName ?? null,
+                    avatarUrl: profile.avatarUrl ?? null,
+                  }}
+                />
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -571,6 +571,7 @@ function Latest() {
       name="Unread"
       count={counts.unread}
       pending={countsPending}
+      formatCountValue={formatCount}
     />
   );
   const subscriptionsLabel = (
@@ -578,6 +579,7 @@ function Latest() {
       name="Subscriptions"
       count={counts.subscriptions}
       pending={countsPending}
+      formatCountValue={formatCount}
     />
   );
   const allLabel = (
@@ -605,8 +607,8 @@ function Latest() {
     : isNetwork
       ? `${formatCount(counts.all)} articles`
       : filter === "unread"
-        ? `${counts.unread} unread`
-        : `${counts.subscriptions} articles`;
+        ? `${formatCount(counts.unread)} unread`
+        : `${formatCount(counts.subscriptions)} articles`;
 
   const skeletonRows = Math.min(pageSize, SKELETON_ROWS);
 
