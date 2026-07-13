@@ -73,6 +73,11 @@ import {
   tracking,
 } from "../design-system/theme/typography.stylex";
 import type { ArticleCard } from "../integrations/tanstack-query/api-shapes";
+import type {
+  PublicationEmbedMeta,
+  PublicationHeader,
+  PublicationSocialProof,
+} from "#/integrations/tanstack-query/api-publication.functions";
 
 /** Documents loaded with the profile (page 0) before infinite scroll kicks in. */
 const PUBLICATION_RECENT_LIMIT = 12;
@@ -577,7 +582,156 @@ function PublicationProfile() {
     );
   }
 
+  return (
+    <PublicationProfileContent
+      header={header}
+      uri={uri}
+      did={did}
+      rkey={rkey}
+      signedIn={signedIn}
+      embedMeta={embedMeta}
+      socialProof={socialProof}
+    />
+  );
+}
+
+function PublicationProfileContent({
+  header,
+  uri,
+  did,
+  rkey,
+  signedIn,
+  embedMeta,
+  socialProof,
+}: {
+  header: PublicationHeader;
+  uri: string;
+  did: string;
+  rkey: string;
+  signedIn: boolean;
+  embedMeta: PublicationEmbedMeta | null | undefined;
+  socialProof: PublicationSocialProof | undefined;
+}) {
   const { publication: pub, owner } = header;
+  const queryClient = useQueryClient();
+  const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
+  const readerScope = user.readerQueryScope(session);
+  const { data: initialPage } = useSuspenseQuery(
+    publicationApi.getPublicationDocumentsQueryOptions(uri, {
+      limit: PUBLICATION_RECENT_LIMIT,
+      offset: 0,
+      readerScope,
+    }),
+  );
+
+  const [documents, setDocuments] = useState<Array<ArticleCard>>(
+    () => initialPage.items,
+  );
+  const [nextOffset, setNextOffset] = useState<number | null>(
+    () => initialPage.nextOffset,
+  );
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+  const [markAllReadCloseSignal, setMarkAllReadCloseSignal] = useState(0);
+
+  useEffect(() => {
+    setDocuments(initialPage.items);
+    setNextOffset(initialPage.nextOffset);
+  }, [initialPage]);
+
+  const { enabled: trackReading } = useTrackReadingHistory();
+  const isUnread = (article: ArticleCard) =>
+    isArticleUnreadForReader(queryClient, article, {
+      trackReading,
+      signedIn,
+    });
+  const unreadDocumentUris = useMemo(
+    () =>
+      documents
+        .filter((doc) =>
+          isArticleUnreadForReader(queryClient, doc, {
+            trackReading,
+            signedIn,
+          }),
+        )
+        .map((doc) => doc.uri),
+    [documents, queryClient, trackReading, signedIn],
+  );
+
+  const { mutate: markAllRead, isPending: markingAllRead } = useMutation({
+    ...readerApi.markPublicationAllReadMutationOptions(),
+    onMutate: () => {
+      applyMarkReadManyOptimisticUpdate(queryClient, unreadDocumentUris, {
+        publicationUri: uri,
+      });
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          unreadDocumentUris.includes(doc.uri) ? { ...doc, isRead: true } : doc,
+        ),
+      );
+    },
+    onSuccess: () => {
+      setMarkAllReadCloseSignal((count) => count + 1);
+    },
+    onError: () => {
+      invalidateReadQueries(queryClient);
+    },
+  });
+
+  const showMarkAllRead = signedIn && unreadDocumentUris.length > 0;
+  const markAllReadButton = showMarkAllRead ? (
+    <MarkAllReadButton
+      isPending={markingAllRead}
+      closeSignal={markAllReadCloseSignal}
+      onConfirm={() => markAllRead(uri)}
+    />
+  ) : null;
+
+  const loadMore = useCallback(async () => {
+    if (nextOffset == null || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const page = await publicationApi.getPublicationDocuments({
+        data: {
+          publicationUri: uri,
+          limit: PUBLICATION_PAGE_SIZE,
+          offset: nextOffset,
+        },
+      });
+      setDocuments((prev) => {
+        const seen = new Set(prev.map((doc) => doc.uri));
+        return [...prev, ...page.items.filter((doc) => !seen.has(doc.uri))];
+      });
+      setNextOffset(page.nextOffset);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [nextOffset, uri]);
+
+  useEffect(() => {
+    if (nextOffset == null) return;
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel) return;
+
+    const root = sentinel.closest("[data-app-scroller]");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadMore();
+        }
+      },
+      { root, rootMargin: "1200px 0px", threshold: 0 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [nextOffset, loadMore]);
+
+  const lead = documents[0];
+  const rest = documents.slice(1);
 
   return (
     <div>
@@ -607,6 +761,7 @@ function PublicationProfile() {
             </div>
 
             <div {...stylex.props(styles.heroActs)}>
+              {markAllReadButton}
               <ShareMenu
                 variant="icon"
                 pageUrl={`${getPublicUrlClient()}/p/${did}/${rkey}`}
@@ -673,6 +828,7 @@ function PublicationProfile() {
               />
             </div>
             <div {...stylex.props(styles.heroActsMobileSecondary)}>
+              {markAllReadButton}
               <AddToListButton
                 publicationUri={pub.uri}
                 signedIn={signedIn}
@@ -707,210 +863,94 @@ function PublicationProfile() {
       </div>
 
       <ReaderContent>
-        <PublicationRecentWriting uri={uri} signedIn={signedIn} />
+        <Flex direction="column" gap="6xl" style={styles.writing}>
+          {documents.length === 0 ? (
+            <div {...stylex.props(styles.emptyNote)}>
+              No posts indexed from this publication yet.
+            </div>
+          ) : (
+            <div>
+              {lead ? (
+                <FeatureArticle
+                  article={lead}
+                  showByline={false}
+                  unread={isUnread(lead)}
+                />
+              ) : null}
+              {rest.map((article) => (
+                <ArticleRow
+                  key={article.uri}
+                  article={article}
+                  showByline={false}
+                  showSaveButton={false}
+                  unread={isUnread(article)}
+                />
+              ))}
+            </div>
+          )}
+          {documents.length > 0 ? (
+            <div>
+              <div
+                ref={loadMoreSentinelRef}
+                aria-hidden
+                {...stylex.props(styles.loadSentinel)}
+              />
+              {loadingMore ? (
+                <div {...stylex.props(styles.endNote)}>Loading more…</div>
+              ) : nextOffset == null ? (
+                <div {...stylex.props(styles.endNote)}>
+                  You&apos;ve reached the end.
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </Flex>
       </ReaderContent>
     </div>
   );
 }
 
-function PublicationRecentWriting({
-  uri,
-  signedIn,
+function MarkAllReadButton({
+  isPending,
+  closeSignal,
+  onConfirm,
 }: {
-  uri: string;
-  signedIn: boolean;
+  isPending: boolean;
+  /** Bumped by the parent when the mutation succeeds so the dialog closes. */
+  closeSignal: number;
+  onConfirm: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
-  const readerScope = user.readerQueryScope(session);
-  const { data: initialPage } = useSuspenseQuery(
-    publicationApi.getPublicationDocumentsQueryOptions(uri, {
-      limit: PUBLICATION_RECENT_LIMIT,
-      offset: 0,
-      readerScope,
-    }),
-  );
-
-  const [documents, setDocuments] = useState<Array<ArticleCard>>(
-    () => initialPage.items,
-  );
-  const [nextOffset, setNextOffset] = useState<number | null>(
-    () => initialPage.nextOffset,
-  );
-  const [loadingMore, setLoadingMore] = useState(false);
-  const loadingMoreRef = useRef(false);
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
-  const [markAllReadOpen, setMarkAllReadOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    setDocuments(initialPage.items);
-    setNextOffset(initialPage.nextOffset);
-  }, [initialPage]);
-
-  const { enabled: trackReading } = useTrackReadingHistory();
-  const isUnread = (article: ArticleCard) =>
-    isArticleUnreadForReader(queryClient, article, {
-      trackReading,
-      signedIn,
-    });
-  const unreadDocumentUris = useMemo(
-    () =>
-      documents
-        .filter((doc) =>
-          isArticleUnreadForReader(queryClient, doc, {
-            trackReading,
-            signedIn,
-          }),
-        )
-        .map((doc) => doc.uri),
-    [documents, queryClient, trackReading, signedIn],
-  );
-
-  const { mutate: markAllRead, isPending: markingAllRead } = useMutation({
-    ...readerApi.markPublicationAllReadMutationOptions(),
-    onMutate: () => {
-      applyMarkReadManyOptimisticUpdate(queryClient, unreadDocumentUris, {
-        publicationUri: uri,
-      });
-      setDocuments((prev) =>
-        prev.map((doc) =>
-          unreadDocumentUris.includes(doc.uri) ? { ...doc, isRead: true } : doc,
-        ),
-      );
-    },
-    onSuccess: () => {
-      setMarkAllReadOpen(false);
-    },
-    onError: () => {
-      invalidateReadQueries(queryClient);
-    },
-  });
-
-  const loadMore = useCallback(async () => {
-    if (nextOffset == null || loadingMoreRef.current) return;
-    loadingMoreRef.current = true;
-    setLoadingMore(true);
-    try {
-      const page = await publicationApi.getPublicationDocuments({
-        data: {
-          publicationUri: uri,
-          limit: PUBLICATION_PAGE_SIZE,
-          offset: nextOffset,
-        },
-      });
-      setDocuments((prev) => {
-        const seen = new Set(prev.map((doc) => doc.uri));
-        return [...prev, ...page.items.filter((doc) => !seen.has(doc.uri))];
-      });
-      setNextOffset(page.nextOffset);
-    } finally {
-      loadingMoreRef.current = false;
-      setLoadingMore(false);
-    }
-  }, [nextOffset, uri]);
-
-  useEffect(() => {
-    if (nextOffset == null) return;
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel) return;
-
-    const root = sentinel.closest("[data-app-scroller]");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void loadMore();
-        }
-      },
-      { root, rootMargin: "1200px 0px", threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [nextOffset, loadMore]);
-
-  const lead = documents[0];
-  const rest = documents.slice(1);
+    setOpen(false);
+  }, [closeSignal]);
 
   return (
-    <Flex direction="column" gap="6xl" style={styles.writing}>
-      <SectionHead
-        kicker="Latest"
-        title="Recent writing"
-        stackOnMobile={false}
-        action={
-          signedIn && unreadDocumentUris.length > 0 ? (
-            <AlertDialog
-              isOpen={markAllReadOpen}
-              onOpenChange={setMarkAllReadOpen}
-              trigger={
-                <IconButton
-                  variant="secondary"
-                  size="md"
-                  label="Mark all as read"
-                >
-                  <CheckCheck size={18} />
-                </IconButton>
-              }
-            >
-              <AlertDialogHeader>Mark all as read?</AlertDialogHeader>
-              <AlertDialogDescription>
-                Every unread article from this publication will be marked read.
-                This can’t be undone.
-              </AlertDialogDescription>
-              <AlertDialogFooter>
-                <AlertDialogCancelButton isDisabled={markingAllRead} />
-                <AlertDialogActionButton
-                  closeOnPress={false}
-                  isPending={markingAllRead}
-                  onPress={() => markAllRead(uri)}
-                >
-                  Mark all as read
-                </AlertDialogActionButton>
-              </AlertDialogFooter>
-            </AlertDialog>
-          ) : undefined
-        }
-      />
-      {documents.length === 0 ? (
-        <div {...stylex.props(styles.emptyNote)}>
-          No posts indexed from this publication yet.
-        </div>
-      ) : (
-        <div>
-          {lead ? (
-            <FeatureArticle
-              article={lead}
-              showByline={false}
-              unread={isUnread(lead)}
-            />
-          ) : null}
-          {rest.map((article) => (
-            <ArticleRow
-              key={article.uri}
-              article={article}
-              showByline={false}
-              showSaveButton={false}
-              unread={isUnread(article)}
-            />
-          ))}
-        </div>
-      )}
-      {documents.length > 0 ? (
-        <div>
-          <div
-            ref={loadMoreSentinelRef}
-            aria-hidden
-            {...stylex.props(styles.loadSentinel)}
-          />
-          {loadingMore ? (
-            <div {...stylex.props(styles.endNote)}>Loading more…</div>
-          ) : nextOffset == null ? (
-            <div {...stylex.props(styles.endNote)}>
-              You&apos;ve reached the end.
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </Flex>
+    <AlertDialog
+      isOpen={open}
+      onOpenChange={setOpen}
+      trigger={
+        <IconButton variant="secondary" size="md" label="Mark all as read">
+          <CheckCheck size={18} />
+        </IconButton>
+      }
+    >
+      <AlertDialogHeader>Mark all as read?</AlertDialogHeader>
+      <AlertDialogDescription>
+        Every unread article from this publication will be marked read. This
+        can’t be undone.
+      </AlertDialogDescription>
+      <AlertDialogFooter>
+        <AlertDialogCancelButton isDisabled={isPending} />
+        <AlertDialogActionButton
+          closeOnPress={false}
+          isPending={isPending}
+          onPress={onConfirm}
+        >
+          Mark all as read
+        </AlertDialogActionButton>
+      </AlertDialogFooter>
+    </AlertDialog>
   );
 }
