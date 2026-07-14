@@ -67,7 +67,10 @@ export async function dispatchXrpc(request: Request): Promise<Response> {
   }
 
   try {
-    const [{ db, schema, trackReadingEnabled }, auth] = await Promise.all([
+    const [
+      { db, schema, trackReadingEnabled, countOldPostsAsUnreadEnabled },
+      auth,
+    ] = await Promise.all([
       getXrpcDbContext(),
       resolveAuth(request, nsid, entry.auth),
     ]);
@@ -95,6 +98,7 @@ export async function dispatchXrpc(request: Request): Promise<Response> {
       db,
       schema,
       trackReadingEnabled,
+      countOldPostsAsUnreadEnabled,
       params,
       body: body ?? null,
     };

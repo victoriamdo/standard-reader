@@ -9,12 +9,12 @@ import type {
   ListOwner,
   SavedList,
 } from "#/integrations/tanstack-query/api-lists.functions";
-import type { SidebarPref } from "#/integrations/tanstack-query/api-sidebar-prefs.functions";
 import type {
   Db,
   PublicationCard,
   Schema,
 } from "#/integrations/tanstack-query/api-shapes";
+import type { SidebarPref } from "#/integrations/tanstack-query/api-sidebar-prefs.functions";
 import { scheduleFollowedPublicationReconcile } from "#/server/reader/followed-publications-sync.server";
 import {
   countFollowedDocuments,
@@ -47,7 +47,10 @@ export async function loadSidebarPref(did: string): Promise<SidebarPref> {
       .select()
       .from(sidebarPrefs)
       .where(
-        and(eqPref(sidebarPrefs.ownerDid, did), eqPref(sidebarPrefs.deleted, false)),
+        and(
+          eqPref(sidebarPrefs.ownerDid, did),
+          eqPref(sidebarPrefs.deleted, false),
+        ),
       )
       .limit(1);
     return rows[0];
@@ -56,9 +59,8 @@ export async function loadSidebarPref(did: string): Promise<SidebarPref> {
   let row = await readRow();
   if (!row) {
     // No row yet — backfill the singleton from the PDS and retry once.
-    const { backfillSidebarPrefFromRepo } = await import(
-      "#/server/ingest/handlers"
-    );
+    const { backfillSidebarPrefFromRepo } =
+      await import("#/server/ingest/handlers");
     await backfillSidebarPrefFromRepo(did);
     row = await readRow();
   }
@@ -75,6 +77,7 @@ export async function loadSidebarData(
   schema: Schema,
   did: string | null,
   trackReading: boolean,
+  countOldPostsAsUnread = true,
 ): Promise<SidebarData> {
   if (!did) {
     return {
@@ -116,13 +119,19 @@ export async function loadSidebarData(
   ] = await Promise.all([
     followedPublications(db, schema, followUris),
     trackReading && hasFollows
-      ? countFollowedDocuments(db, schema, followUris, did, followedUserDids)
+      ? countFollowedDocuments(db, schema, followUris, did, followedUserDids, {
+          countOldPostsAsUnread,
+        })
       : Promise.resolve(null),
     trackReading && followUris.length > 0
-      ? countUnreadByPublication(db, schema, followUris, did)
+      ? countUnreadByPublication(db, schema, followUris, did, {
+          countOldPostsAsUnread,
+        })
       : Promise.resolve(new Map<string, number>()),
     trackReading && followedUserDids.length > 0
-      ? countUnreadByFollowedUser(db, schema, followedUserDids, did)
+      ? countUnreadByFollowedUser(db, schema, followedUserDids, did, {
+          countOldPostsAsUnread,
+        })
       : Promise.resolve(new Map<string, number>()),
     savedCountPromise,
     followingUsersPromise,
@@ -291,14 +300,16 @@ export async function loadShellSnapshot(
   {
     did,
     trackReading,
+    countOldPostsAsUnread = true,
   }: {
     did: string;
     client?: Client;
     trackReading: boolean;
+    countOldPostsAsUnread?: boolean;
   },
 ): Promise<ShellSnapshot> {
   const [sidebar, lists, savedLists, sidebarPref] = await Promise.all([
-    loadSidebarData(db, schema, did, trackReading),
+    loadSidebarData(db, schema, did, trackReading, countOldPostsAsUnread),
     loadOwnSubscriptionLists(null, did),
     loadSavedListsHydrated(db, schema, did),
     loadSidebarPref(did),

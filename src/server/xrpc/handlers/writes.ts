@@ -292,6 +292,7 @@ export async function handleMarkAllRead(ctx: XrpcRequestContext) {
     ? await selectUnreadDocumentUris(ctx.db, ctx.schema, {
         readerDid: auth.did,
         publicationUris: followUris,
+        countOldPostsAsUnread: ctx.countOldPostsAsUnreadEnabled,
       })
     : [];
   return markDocumentsRead({
@@ -310,6 +311,7 @@ export async function handleMarkPublicationAllRead(ctx: XrpcRequestContext) {
     ? await selectUnreadDocumentUris(ctx.db, ctx.schema, {
         readerDid: auth.did,
         publicationUris: [publicationUri],
+        countOldPostsAsUnread: ctx.countOldPostsAsUnreadEnabled,
       })
     : [];
   return markDocumentsRead({

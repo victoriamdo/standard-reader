@@ -10,6 +10,14 @@ import { revokeAtprotoSession } from "#/integrations/auth/atproto";
 import { AUTH_SESSION_TOKEN_COOKIE } from "#/integrations/auth/constants";
 import { hasEmailScope } from "#/integrations/auth/scope";
 import {
+  COUNT_OLD_POSTS_AS_UNREAD_COOKIE,
+  COUNT_OLD_POSTS_AS_UNREAD_COOKIE_MAX_AGE_SECONDS,
+  countOldPostsAsUnreadToCookieValue,
+  countOldPostsAsUnreadToDbValue,
+  dbValueToCountOldPostsAsUnread,
+  parseCountOldPostsAsUnreadCookie,
+} from "#/lib/count-old-posts-as-unread";
+import {
   HOME_SCOPE_COOKIE,
   HOME_SCOPE_COOKIE_MAX_AGE_SECONDS,
   dbValueToHomeScope,
@@ -275,6 +283,7 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
             updatedAt: true,
             themeMode: true,
             trackReadingHistory: true,
+            countOldPostsAsUnread: true,
             homeScope: true,
             readerVoice: true,
             openLinksExternally: true,
@@ -310,6 +319,9 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
     const trackReading = dbValueToTrackReadingHistory(
       userRow.trackReadingHistory,
     );
+    const countOldPostsAsUnread = dbValueToCountOldPostsAsUnread(
+      userRow.countOldPostsAsUnread ?? null,
+    );
 
     // Phase 2: shell snapshot (DB-only, no PDS I/O) runs in parallel with a
     // lightweight profile handle lookup. The PDS client restore and PLC
@@ -325,6 +337,7 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
       loadShellSnapshot(db, schema, {
         did: userRow.did,
         trackReading,
+        countOldPostsAsUnread,
       }),
     ]);
 
@@ -812,6 +825,57 @@ const setTrackReadingHistoryPreference = createServerFn({ method: "POST" })
     return { enabled: data.enabled };
   });
 
+const getCountOldPostsAsUnreadPreference = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .handler(async ({ context }): Promise<{ enabled: boolean }> => {
+    const session = context?.session;
+    if (session?.user) {
+      return {
+        enabled: dbValueToCountOldPostsAsUnread(
+          session.user.countOldPostsAsUnread ?? null,
+        ),
+      };
+    }
+
+    return {
+      enabled: parseCountOldPostsAsUnreadCookie(
+        getCookie(COUNT_OLD_POSTS_AS_UNREAD_COOKIE),
+      ),
+    };
+  });
+
+const getCountOldPostsAsUnreadPreferenceQueryOptions = queryOptions({
+  queryKey: ["countOldPostsAsUnreadPreference"] as const,
+  queryFn: () => getCountOldPostsAsUnreadPreference(),
+  staleTime: Number.POSITIVE_INFINITY,
+});
+
+const setCountOldPostsAsUnreadPreference = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .validator(z.object({ enabled: z.boolean() }))
+  .handler(async ({ data, context }): Promise<{ enabled: boolean }> => {
+    setCookie(
+      COUNT_OLD_POSTS_AS_UNREAD_COOKIE,
+      countOldPostsAsUnreadToCookieValue(data.enabled),
+      {
+        path: "/",
+        sameSite: "lax",
+        maxAge: COUNT_OLD_POSTS_AS_UNREAD_COOKIE_MAX_AGE_SECONDS,
+      },
+    );
+
+    if (context?.session?.user) {
+      await context.db
+        .update(context.schema.user)
+        .set({
+          countOldPostsAsUnread: countOldPostsAsUnreadToDbValue(data.enabled),
+        })
+        .where(eq(context.schema.user.id, context.session.user.id));
+    }
+
+    return { enabled: data.enabled };
+  });
+
 const homeScopeInput = z.object({
   scope: z.enum(["follows", "trending"]),
 });
@@ -1009,6 +1073,9 @@ export const user = {
   getTrackReadingHistoryPreference,
   getTrackReadingHistoryPreferenceQueryOptions,
   setTrackReadingHistoryPreference,
+  getCountOldPostsAsUnreadPreference,
+  getCountOldPostsAsUnreadPreferenceQueryOptions,
+  setCountOldPostsAsUnreadPreference,
   getHomeScopePreference,
   getHomeScopePreferenceQueryOptions,
   setHomeScopePreference,

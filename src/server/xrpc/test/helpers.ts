@@ -10,6 +10,7 @@ export function mockXrpcContext(
     db: {} as XrpcRequestContext["db"],
     schema: {} as XrpcRequestContext["schema"],
     trackReadingEnabled: false,
+    countOldPostsAsUnreadEnabled: true,
     params: {},
     body: null,
     ...partial,

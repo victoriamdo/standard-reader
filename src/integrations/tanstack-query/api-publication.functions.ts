@@ -235,11 +235,18 @@ const getPublicationProfile = createServerFn({ method: "GET" })
     observe(
       "publication.getProfile",
       async ({ data, context }, span): Promise<PublicationProfile | null> => {
-        const { db, schema, trackReadingEnabled } = context;
+        const {
+          db,
+          schema,
+          trackReadingEnabled,
+          countOldPostsAsUnreadEnabled,
+        } = context;
         span.set("publicationUri", data.publicationUri);
         const did = await attachReaderSpanContext(span, getRequest());
         const trackReading = did == null ? false : trackReadingEnabled;
         const readForDid = trackReading && did ? did : undefined;
+        const countOldPostsAsUnread =
+          did == null ? true : countOldPostsAsUnreadEnabled;
 
         const [header, recentDocuments] = await Promise.all([
           selectPublicationHeader(db, schema, data.publicationUri),
@@ -247,6 +254,7 @@ const getPublicationProfile = createServerFn({ method: "GET" })
             publicationUri: data.publicationUri,
             limit: data.recentLimit,
             readForDid,
+            countOldPostsAsUnread,
           }),
         ]);
 
@@ -277,18 +285,26 @@ const getPublicationDocuments = createServerFn({ method: "GET" })
     observe(
       "publication.getDocuments",
       async ({ data, context }, span): Promise<PublicationDocumentsPage> => {
-        const { db, schema, trackReadingEnabled } = context;
+        const {
+          db,
+          schema,
+          trackReadingEnabled,
+          countOldPostsAsUnreadEnabled,
+        } = context;
         span.set("publicationUri", data.publicationUri);
         span.set("offset", data.offset);
         const did = await attachReaderSpanContext(span, getRequest());
         const trackReading = did == null ? false : trackReadingEnabled;
         const readForDid = trackReading && did ? did : undefined;
+        const countOldPostsAsUnread =
+          did == null ? true : countOldPostsAsUnreadEnabled;
 
         const documents = await selectPublicationArticleCards(db, schema, {
           publicationUri: data.publicationUri,
           limit: data.limit,
           offset: data.offset,
           readForDid,
+          countOldPostsAsUnread,
         });
         const items = await attachCommentCountsToArticles(
           db,

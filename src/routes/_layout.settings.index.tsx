@@ -37,6 +37,9 @@ export const Route = createFileRoute("/_layout/settings/")({
       context.queryClient.ensureQueryData(
         user.getTrackReadingHistoryPreferenceQueryOptions,
       ),
+      context.queryClient.ensureQueryData(
+        user.getCountOldPostsAsUnreadPreferenceQueryOptions,
+      ),
       context.queryClient.prefetchQuery(
         googleFontsApi.getGoogleFontFamiliesQueryOptions,
       ),

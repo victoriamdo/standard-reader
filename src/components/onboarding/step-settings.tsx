@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Pressable } from "react-aria";
 
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { useCountOldPostsAsUnread } from "#/lib/use-count-old-posts-as-unread";
 import { useOpenLinks } from "#/lib/use-open-links";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 
@@ -114,6 +115,8 @@ export function StepSettings() {
   const { openExternally, setOpenExternally } = useOpenLinks();
   const { enabled: trackReading, setEnabled: setTrackReading } =
     useTrackReadingHistory();
+  const { enabled: countOldAsUnread, setEnabled: setCountOldAsUnread } =
+    useCountOldPostsAsUnread();
 
   const digestStatusQuery = useQuery(user.getWeeklyDigestStatusQueryOptions);
   const digestEnabled = Boolean(
@@ -144,6 +147,17 @@ export function StepSettings() {
               isSelected={openExternally}
               onChange={setOpenExternally}
               aria-label="Open posts on their original site"
+            />
+          </Row>
+          <Separator />
+          <Row
+            label="Mark old posts as unread"
+            description="When on, a publication's whole back catalogue counts as unread when you subscribe. Turn off to only see posts published after you subscribe as new."
+          >
+            <Switch
+              isSelected={countOldAsUnread}
+              onChange={setCountOldAsUnread}
+              aria-label="Mark old posts as unread"
             />
           </Row>
         </div>

@@ -43,6 +43,7 @@ export async function handleGetHomeFeed(ctx: XrpcRequestContext) {
   const rowQuery = personalized
     ? {
         publicationUris: followUris,
+        countOldPostsAsUnread: ctx.countOldPostsAsUnreadEnabled,
         ...(trackReading ? { readForDid: did, unreadForDid: did } : {}),
       }
     : { discoverOnly: true as const };

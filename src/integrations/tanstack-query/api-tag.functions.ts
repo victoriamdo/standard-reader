@@ -97,12 +97,15 @@ const getArticles = createServerFn({ method: "GET" })
   .validator(articlesPageInput)
   .handler(
     observe("tag.getArticles", async ({ data, context }, span) => {
-      const { db, schema, trackReadingEnabled } = context;
+      const { db, schema, trackReadingEnabled, countOldPostsAsUnreadEnabled } =
+        context;
       const did = await attachReaderSpanContext(span, getRequest());
       span.set("tag", data.tag);
       span.set("offset", data.offset);
 
       const trackReading = did == null ? false : trackReadingEnabled;
+      const countOldPostsAsUnread =
+        did == null ? true : countOldPostsAsUnreadEnabled;
 
       const rows = await selectArticleCards(db, schema, {
         tag: data.tag,
@@ -110,6 +113,7 @@ const getArticles = createServerFn({ method: "GET" })
         limit: data.limit,
         offset: data.offset,
         readForDid: trackReading && did ? did : undefined,
+        countOldPostsAsUnread,
       });
 
       const withCounts = await attachCommentCountsToArticles(db, schema, rows);
@@ -182,7 +186,8 @@ const getTagPage = createServerFn({ method: "GET" })
   .validator(tagPageInput)
   .handler(
     observe("tag.getPage", async ({ data, context }, span) => {
-      const { db, schema, trackReadingEnabled } = context;
+      const { db, schema, trackReadingEnabled, countOldPostsAsUnreadEnabled } =
+        context;
       const did = await attachReaderSpanContext(span, getRequest());
       span.set("tag", data.tag);
       span.set("view", data.view);
@@ -192,6 +197,8 @@ const getTagPage = createServerFn({ method: "GET" })
       }
 
       const trackReading = did == null ? false : trackReadingEnabled;
+      const countOldPostsAsUnread =
+        did == null ? true : countOldPostsAsUnreadEnabled;
 
       const [articleCount, publicationCount, content] = await Promise.all([
         countTagArticles(db, schema, data.tag),
@@ -203,6 +210,7 @@ const getTagPage = createServerFn({ method: "GET" })
               limit: data.limit,
               offset: data.offset,
               readForDid: trackReading && did ? did : undefined,
+              countOldPostsAsUnread,
             }).then((rows) => attachCommentCountsToArticles(db, schema, rows))
           : tagDirectoryPublications(db, schema, {
               tag: data.tag,

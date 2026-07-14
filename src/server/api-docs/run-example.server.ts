@@ -153,7 +153,8 @@ async function runWithSessionAuth(
         });
 
   try {
-    const { db, schema, trackReadingEnabled } = await getXrpcDbContext();
+    const { db, schema, trackReadingEnabled, countOldPostsAsUnreadEnabled } =
+      await getXrpcDbContext();
     const auth: XrpcAuthContext = {
       did: session.did as Did,
       client: session.client,
@@ -166,6 +167,7 @@ async function runWithSessionAuth(
       db,
       schema,
       trackReadingEnabled,
+      countOldPostsAsUnreadEnabled,
       params,
       body: body ?? null,
     });

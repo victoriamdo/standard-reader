@@ -28,6 +28,8 @@ export async function handleGetLatestFeed(ctx: XrpcRequestContext) {
   const { offset, limit } = paginationFromCursor(ctx.params, 20, 50);
   const subjectDid = optionalParam(ctx.params, "did") ?? ctx.auth?.did;
   const trackReading = subjectDid == null ? false : ctx.trackReadingEnabled;
+  const countOldPostsAsUnread =
+    subjectDid == null ? true : ctx.countOldPostsAsUnreadEnabled;
   const followUris = subjectDid
     ? await effectiveFollowUris(ctx.db, ctx.schema, subjectDid)
     : [];
@@ -55,6 +57,7 @@ export async function handleGetLatestFeed(ctx: XrpcRequestContext) {
                   trackReading && filter === "unread" ? subjectDid : undefined,
               }),
           readForDid: trackReading && subjectDid ? subjectDid : undefined,
+          countOldPostsAsUnread,
           limit,
           offset,
         });
@@ -128,6 +131,7 @@ export async function handleGetTagFeed(ctx: XrpcRequestContext) {
     limit,
     offset,
     readForDid,
+    countOldPostsAsUnread: ctx.auth ? ctx.countOldPostsAsUnreadEnabled : true,
   });
   const items = await enrichDocuments(ctx, rows, readForDid);
   return {
@@ -188,6 +192,7 @@ export async function handleGetListFeed(ctx: XrpcRequestContext) {
   const items = await selectArticleCards(ctx.db, ctx.schema, {
     publicationUris: list.publications,
     readForDid,
+    countOldPostsAsUnread: ctx.auth ? ctx.countOldPostsAsUnreadEnabled : true,
     limit,
     offset,
   });

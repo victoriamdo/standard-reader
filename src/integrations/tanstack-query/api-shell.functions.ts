@@ -2,6 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 
+import { dbValueToCountOldPostsAsUnread } from "#/lib/count-old-posts-as-unread";
 import { dbValueToTrackReadingHistory } from "#/lib/track-reading-history";
 import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import { observe } from "#/server/observability/log";
@@ -26,11 +27,15 @@ const getShellSnapshot = createServerFn({ method: "GET" }).handler(
       const trackReading = dbValueToTrackReadingHistory(
         session.session.user.trackReadingHistory ?? null,
       );
+      const countOldPostsAsUnread = dbValueToCountOldPostsAsUnread(
+        session.session.user.countOldPostsAsUnread ?? null,
+      );
 
       return loadShellSnapshot(db, schema, {
         did: session.did,
         client: session.client,
         trackReading,
+        countOldPostsAsUnread,
       });
     },
   ),

@@ -97,48 +97,137 @@ export interface ArticleCardQuery {
    * two sources, the latest followed-user recommend `createdAt` for the third).
    */
   followedUserDids?: Array<string>;
+  /**
+   * When false, suppress unread state (dot + `unreadForDid` filter) for
+   * documents published before the reader subscribed to their source. Defaults
+   * to today's behaviour. See {@link UnreadCutoffOpts}.
+   */
+  countOldPostsAsUnread?: boolean;
   limit: number;
   offset?: number;
 }
 
 /**
+ * Options controlling subscription-cutoff suppression of unread state. When
+ * `countOldPostsAsUnread` is false, a document published *before* the reader
+ * subscribed to its source (publication subscription or author follow) is
+ * treated as read — no dot, not counted — without any read record being written
+ * (turning the preference back on restores the dot). See
+ * `#/lib/count-old-posts-as-unread`. Defaults to today's behaviour: everything
+ * a source ever posted counts as unread until read.
+ */
+export interface UnreadCutoffOpts {
+  countOldPostsAsUnread?: boolean;
+}
+
+/**
+ * Scalar subquery: the earliest moment a source the reader follows began
+ * surfacing a document — `min(coalesce(created_at, indexed_at))` across the
+ * reader's active subscription to `pubUriExpr` and active user-follow of
+ * `authorDidExpr`. `NULL` when the reader follows no source that surfaces the
+ * document (e.g. a discover card), so callers treat `NULL` as "no cutoff" and
+ * leave the document's unread state unchanged. `pubUriExpr` / `authorDidExpr`
+ * are the outer publication-uri / author-did column expressions to correlate on
+ * (e.g. `"documents"."publication_uri"`, or a CTE's `cand.publication_uri`).
+ */
+function readerSourceCutoffSql(
+  schema: Schema,
+  readerDid: string,
+  pubUriExpr: SQL,
+  authorDidExpr: SQL,
+): SQL {
+  const sub = schema.subscriptions;
+  const uf = schema.userFollows;
+  return sql`(
+    select min(cutoff) from (
+      select min(coalesce(${sub.createdAt}, ${sub.indexedAt})) as cutoff
+      from ${sub}
+      where ${sub.subscriberDid} = ${readerDid}
+        and ${sub.publicationUri} = ${pubUriExpr}
+        and ${sub.deleted} = false
+      union all
+      select min(coalesce(${uf.createdAt}, ${uf.indexedAt})) as cutoff
+      from ${uf}
+      where ${uf.followerDid} = ${readerDid}
+        and ${uf.subjectDid} = ${authorDidExpr}
+        and ${uf.deleted} = false
+    ) c
+  )`;
+}
+
+/**
  * Inline `isRead` for a reader. Qualifies the outer `documents.uri` — unqualified
- * `${d.uri}` in a subquery compiles to `"uri"` and breaks correlation.
+ * `${d.uri}` in a subquery compiles to `"uri"` and breaks correlation. When
+ * `countOldPostsAsUnread` is false, also reports pre-subscription posts as read
+ * (see {@link UnreadCutoffOpts}).
  */
 function documentReadExistsColumn(
   schema: Schema,
   readForDid: string,
+  opts?: UnreadCutoffOpts,
 ): SQL<boolean> {
   const r = schema.reads;
-  return sql<boolean>`exists(
-    select 1
-    from ${r}
-    where ${r.documentUri} = "documents"."uri"
-      and ${r.ownerDid} = ${readForDid}
-      and ${r.deleted} = false
-  )`.mapWith(Boolean);
-}
-
-/**
- * `NOT EXISTS` predicate excluding documents this reader has already read.
- * Same correlated subquery as {@link documentReadExistsColumn} but as a WHERE
- * condition — used by the weekly digest so it never re-surfaces read articles.
- * A no-op for readers who don't track reading history (no `reads` rows exist).
- */
-function documentUnreadWhere(schema: Schema, readForDid: string): SQL {
-  const r = schema.reads;
-  return sql`not exists(
+  const readExists = sql`exists(
     select 1
     from ${r}
     where ${r.documentUri} = "documents"."uri"
       and ${r.ownerDid} = ${readForDid}
       and ${r.deleted} = false
   )`;
+  if (opts?.countOldPostsAsUnread === false) {
+    const cutoff = readerSourceCutoffSql(
+      schema,
+      readForDid,
+      sql`"documents"."publication_uri"`,
+      sql`"documents"."did"`,
+    );
+    return sql<boolean>`(${readExists} or (
+      ${cutoff} is not null and "documents"."published_at" < ${cutoff}
+    ))`.mapWith(Boolean);
+  }
+  return sql<boolean>`${readExists}`.mapWith(Boolean);
+}
+
+/**
+ * `NOT EXISTS` predicate excluding documents this reader has already read (and,
+ * when `countOldPostsAsUnread` is false, documents published before the reader
+ * subscribed to their source). Same correlated subquery as
+ * {@link documentReadExistsColumn} but as a WHERE condition — used by the weekly
+ * digest so it never re-surfaces read articles. A no-op for readers who don't
+ * track reading history (no `reads` rows exist).
+ */
+function documentUnreadWhere(
+  schema: Schema,
+  readForDid: string,
+  opts?: UnreadCutoffOpts,
+): SQL {
+  const r = schema.reads;
+  const notRead = sql`not exists(
+    select 1
+    from ${r}
+    where ${r.documentUri} = "documents"."uri"
+      and ${r.ownerDid} = ${readForDid}
+      and ${r.deleted} = false
+  )`;
+  if (opts?.countOldPostsAsUnread === false) {
+    const cutoff = readerSourceCutoffSql(
+      schema,
+      readForDid,
+      sql`"documents"."publication_uri"`,
+      sql`"documents"."did"`,
+    );
+    return sql`(${notRead} and (
+      ${cutoff} is null or "documents"."published_at" >= ${cutoff}
+    ))`;
+  }
+  return notRead;
 }
 
 /**
  * The follow-feed source set as an index-friendly `UNION` of two subqueries,
- * each producing `(uri, published_at)`:
+ * each producing `(uri, published_at, publication_uri, did)` (the latter two let
+ * callers correlate the reader's subscription cutoff — see
+ * {@link readerSourceCutoffSql}):
  *   1. Direct sources — documents in a followed publication OR authored by a
  *      followed user (served by the publication/author/published indexes).
  *   2. Recommend-sourced — documents recommended by a followed user (a tiny
@@ -164,11 +253,13 @@ function followFeedUnionSql(
   const directOr = or(...directParts) ?? sql`false`;
   const base = and(eq(d.deleted, false), documentPublishedNotInFuture(d));
   return sql`(
-    select ${d.uri} as uri, ${d.publishedAt} as published_at
+    select ${d.uri} as uri, ${d.publishedAt} as published_at,
+           ${d.publicationUri} as publication_uri, ${d.did} as did
     from ${d}
     where ${base} and (${directOr})
     union
-    select ${d.uri} as uri, ${d.publishedAt} as published_at
+    select ${d.uri} as uri, ${d.publishedAt} as published_at,
+           ${d.publicationUri} as publication_uri, ${d.did} as did
     from ${d}
     join (
       select ${rec.documentUri} as document_uri
@@ -209,6 +300,7 @@ async function selectFollowFeedCandidateUris(
     followedUserDids: Array<string>;
     featuredOnly?: boolean;
     unreadForDid?: string;
+    countOldPostsAsUnread?: boolean;
     limit: number;
     offset: number;
   },
@@ -223,7 +315,12 @@ async function selectFollowFeedCandidateUris(
     documentPublishedNotInFuture(d),
   ];
   if (opts.featuredOnly) base.push(eq(d.featured, true));
-  if (opts.unreadForDid) base.push(documentUnreadWhere(schema, opts.unreadForDid));
+  if (opts.unreadForDid)
+    base.push(
+      documentUnreadWhere(schema, opts.unreadForDid, {
+        countOldPostsAsUnread: opts.countOldPostsAsUnread,
+      }),
+    );
   const baseWhere = and(...base) ?? sql`true`;
 
   const directParts: Array<SQL> = [inArray(d.did, followedUserDids)];
@@ -313,12 +410,14 @@ export async function selectArticleCards(
       followedUserDids,
       featuredOnly: opts.featuredOnly,
       unreadForDid: opts.unreadForDid,
+      countOldPostsAsUnread: opts.countOldPostsAsUnread,
       limit: opts.limit,
       offset: opts.offset ?? 0,
     });
     const pageUris = [...new Set(candidateUris)]; // defensive: never render a doc twice
     return selectArticleCardsByUris(db, schema, pageUris, {
       readForDid: opts.readForDid,
+      countOldPostsAsUnread: opts.countOldPostsAsUnread,
     });
   }
 
@@ -354,7 +453,9 @@ export async function selectArticleCards(
   const selection = opts.readForDid
     ? {
         ...columns,
-        isRead: documentReadExistsColumn(schema, opts.readForDid),
+        isRead: documentReadExistsColumn(schema, opts.readForDid, {
+          countOldPostsAsUnread: opts.countOldPostsAsUnread,
+        }),
       }
     : columns;
 
@@ -376,6 +477,15 @@ export async function selectArticleCards(
       ),
     );
     conds.push(isNull(r.uri));
+    if (opts.countOldPostsAsUnread === false) {
+      const cutoff = readerSourceCutoffSql(
+        schema,
+        opts.unreadForDid,
+        sql`${d.publicationUri}`,
+        sql`${d.did}`,
+      );
+      conds.push(sql`(${cutoff} is null or ${d.publishedAt} >= ${cutoff})`);
+    }
   }
 
   const rows = await query
@@ -401,6 +511,9 @@ export async function selectPublicationArticleCards(
     offset?: number;
     /** Inline read flag for the requesting reader (see {@link ArticleCardQuery.readForDid}). */
     readForDid?: string;
+    /** When false, treat posts published before the reader subscribed to this
+     * publication as read (see {@link UnreadCutoffOpts}). */
+    countOldPostsAsUnread?: boolean;
   },
 ): Promise<Array<ArticleCard>> {
   const d = schema.documents;
@@ -433,7 +546,9 @@ export async function selectPublicationArticleCards(
   const selection = opts.readForDid
     ? {
         ...baseSelection,
-        isRead: documentReadExistsColumn(schema, opts.readForDid),
+        isRead: documentReadExistsColumn(schema, opts.readForDid, {
+          countOldPostsAsUnread: opts.countOldPostsAsUnread,
+        }),
       }
     : baseSelection;
 
@@ -482,10 +597,17 @@ export async function selectUnreadDocumentUris(
     readerDid: string;
     publicationUris?: Array<string>;
     followedUserDids?: Array<string>;
+    countOldPostsAsUnread?: boolean;
     limit?: number;
   },
 ): Promise<Array<string>> {
-  const { readerDid, publicationUris, followedUserDids, limit = 100 } = opts;
+  const {
+    readerDid,
+    publicationUris,
+    followedUserDids,
+    countOldPostsAsUnread,
+    limit = 100,
+  } = opts;
   const hasFollowedUsers = (followedUserDids?.length ?? 0) > 0;
   if (publicationUris && publicationUris.length === 0 && !hasFollowedUsers) {
     return [];
@@ -497,13 +619,18 @@ export async function selectUnreadDocumentUris(
   // Union mode: unread URIs from the index-friendly source union (avoids the
   // correlated OR ... EXISTS scan).
   if (hasFollowedUsers) {
+    const cutoffFilter =
+      countOldPostsAsUnread === false
+        ? sql`and (${readerSourceCutoffSql(schema, readerDid, sql`cand.publication_uri`, sql`cand.did`)} is null
+            or cand.published_at >= ${readerSourceCutoffSql(schema, readerDid, sql`cand.publication_uri`, sql`cand.did`)})`
+        : sql``;
     const rows = await db.execute(sql`
       with cand as ${followFeedUnionSql(schema, publicationUris ?? [], followedUserDids ?? [])}
       select cand.uri
       from cand
       left join ${r} on ${r.documentUri} = cand.uri
         and ${r.ownerDid} = ${readerDid} and ${r.deleted} = false
-      where ${r.uri} is null
+      where ${r.uri} is null ${cutoffFilter}
       order by cand.published_at desc nulls last, cand.uri desc
       limit ${limit}
     `);
@@ -513,6 +640,15 @@ export async function selectUnreadDocumentUris(
   const conds = [eq(d.deleted, false), documentPublishedNotInFuture(d)];
   if (publicationUris) {
     conds.push(inArray(d.publicationUri, publicationUris));
+  }
+  if (countOldPostsAsUnread === false) {
+    const cutoff = readerSourceCutoffSql(
+      schema,
+      readerDid,
+      sql`${d.publicationUri}`,
+      sql`${d.did}`,
+    );
+    conds.push(sql`(${cutoff} is null or ${d.publishedAt} >= ${cutoff})`);
   }
 
   const rows = await db
@@ -626,47 +762,82 @@ export async function countFollowedDocuments(
   publicationUris: Array<string>,
   did: string,
   followedUserDids: Array<string> = [],
+  opts?: UnreadCutoffOpts,
 ): Promise<{ all: number; unread: number }> {
   if (publicationUris.length === 0 && followedUserDids.length === 0) {
     return { all: 0, unread: 0 };
   }
   const r = schema.reads;
+  const suppressOld = opts?.countOldPostsAsUnread === false;
+  const sub = schema.subscriptions;
+  const uf = schema.userFollows;
 
-  // No followed users → the fast publication-only path (indexed `IN`).
+  // No followed users → the fast publication-only path (indexed `IN`). When
+  // suppressing old posts, left-join the per-publication subscription cutoff so
+  // the unread tally excludes posts published before the reader subscribed.
   if (followedUserDids.length === 0) {
     const d = schema.documents;
-    const [row] = await db
-      .select({
-        all: sql<number>`count(*)`.mapWith(Number),
-        unread: sql<number>`count(*) filter (where ${r.uri} is null)`.mapWith(
-          Number,
-        ),
-      })
-      .from(d)
-      .leftJoin(
-        r,
-        and(eq(r.documentUri, d.uri), eq(r.ownerDid, did), eq(r.deleted, false)),
-      )
-      .where(
-        and(
-          eq(d.deleted, false),
-          documentPublishedNotInFuture(d),
-          inArray(d.publicationUri, publicationUris),
-        ),
-      );
+    const cutoffJoin = suppressOld
+      ? sql`left join (
+          select ${sub.publicationUri} as publication_uri,
+                 min(coalesce(${sub.createdAt}, ${sub.indexedAt})) as cutoff
+          from ${sub}
+          where ${sub.subscriberDid} = ${did} and ${sub.deleted} = false
+          group by ${sub.publicationUri}
+        ) sc on sc.publication_uri = ${d.publicationUri}`
+      : sql``;
+    const cutoffPred = suppressOld
+      ? sql`and (sc.cutoff is null or ${d.publishedAt} >= sc.cutoff)`
+      : sql``;
+    const result = await db.execute(sql`
+      select
+        count(*)::int as all,
+        count(*) filter (where ${r.uri} is null ${cutoffPred})::int as unread
+      from ${d}
+      left join ${r} on ${r.documentUri} = ${d.uri}
+        and ${r.ownerDid} = ${did} and ${r.deleted} = false
+      ${cutoffJoin}
+      where ${d.deleted} = false
+        and ${documentPublishedNotInFuture(d)}
+        and ${inArray(d.publicationUri, publicationUris)}
+    `);
+    const [row] = executeRows<{ all: number; unread: number }>(result);
     return { all: row?.all ?? 0, unread: row?.unread ?? 0 };
   }
 
   // Union mode: count distinct documents from the index-friendly source union,
   // joining reads for the unread tally (avoids the correlated OR ... EXISTS scan).
+  // When suppressing old posts, take the earliest of the publication-subscription
+  // and author-follow cutoffs (`least` ignores nulls) as the document's cutoff.
+  const cutoffJoins = suppressOld
+    ? sql`left join (
+        select ${sub.publicationUri} as publication_uri,
+               min(coalesce(${sub.createdAt}, ${sub.indexedAt})) as cutoff
+        from ${sub}
+        where ${sub.subscriberDid} = ${did} and ${sub.deleted} = false
+        group by ${sub.publicationUri}
+      ) sc on sc.publication_uri = cand.publication_uri
+      left join (
+        select ${uf.subjectDid} as subject_did,
+               min(coalesce(${uf.createdAt}, ${uf.indexedAt})) as cutoff
+        from ${uf}
+        where ${uf.followerDid} = ${did} and ${uf.deleted} = false
+        group by ${uf.subjectDid}
+      ) uc on uc.subject_did = cand.did`
+    : sql``;
+  const cutoffPred = suppressOld
+    ? sql`and (least(sc.cutoff, uc.cutoff) is null
+        or cand.published_at >= least(sc.cutoff, uc.cutoff))`
+    : sql``;
   const result = await db.execute(sql`
     with cand as ${followFeedUnionSql(schema, publicationUris, followedUserDids)}
     select
       count(*)::int as all,
-      count(*) filter (where ${r.uri} is null)::int as unread
+      count(*) filter (where ${r.uri} is null ${cutoffPred})::int as unread
     from cand
     left join ${r} on ${r.documentUri} = cand.uri
       and ${r.ownerDid} = ${did} and ${r.deleted} = false
+    ${cutoffJoins}
   `);
   const [row] = executeRows<{ all: number; unread: number }>(result);
   return { all: row?.all ?? 0, unread: row?.unread ?? 0 };
@@ -693,43 +864,57 @@ export async function countNetworkDocuments(
   return row?.count ?? 0;
 }
 
-/** Unread document counts keyed by publication AT-URI for a reader's follows. */
+/** Unread document counts keyed by publication AT-URI for a reader's follows.
+ * When `countOldPostsAsUnread` is false, posts published before the reader
+ * subscribed to a publication are excluded from its tally. */
 export async function countUnreadByPublication(
   db: Db,
   schema: Schema,
   publicationUris: Array<string>,
   did: string,
+  opts?: UnreadCutoffOpts,
 ): Promise<Map<string, number>> {
   if (publicationUris.length === 0) {
     return new Map();
   }
   const d = schema.documents;
   const r = schema.reads;
-  const rows = await db
-    .select({
-      publicationUri: d.publicationUri,
-      unread: sql<number>`count(*) filter (where ${r.uri} is null)`.mapWith(
-        Number,
-      ),
-    })
-    .from(d)
-    .leftJoin(
-      r,
-      and(eq(r.documentUri, d.uri), eq(r.ownerDid, did), eq(r.deleted, false)),
-    )
-    .where(
-      and(
-        eq(d.deleted, false),
-        documentPublishedNotInFuture(d),
-        inArray(d.publicationUri, publicationUris),
-        isNotNull(d.publicationUri),
-      ),
-    )
-    .groupBy(d.publicationUri);
+  const sub = schema.subscriptions;
+  const suppressOld = opts?.countOldPostsAsUnread === false;
+
+  const cutoffJoin = suppressOld
+    ? sql`left join (
+        select ${sub.publicationUri} as publication_uri,
+               min(coalesce(${sub.createdAt}, ${sub.indexedAt})) as cutoff
+        from ${sub}
+        where ${sub.subscriberDid} = ${did} and ${sub.deleted} = false
+          and ${inArray(sub.publicationUri, publicationUris)}
+        group by ${sub.publicationUri}
+      ) sc on sc.publication_uri = ${d.publicationUri}`
+    : sql``;
+  const cutoffPred = suppressOld
+    ? sql`and (sc.cutoff is null or ${d.publishedAt} >= sc.cutoff)`
+    : sql``;
+
+  const result = await db.execute(sql`
+    select ${d.publicationUri} as publication_uri,
+      count(*) filter (where ${r.uri} is null ${cutoffPred})::int as unread
+    from ${d}
+    left join ${r} on ${r.documentUri} = ${d.uri}
+      and ${r.ownerDid} = ${did} and ${r.deleted} = false
+    ${cutoffJoin}
+    where ${d.deleted} = false
+      and ${documentPublishedNotInFuture(d)}
+      and ${inArray(d.publicationUri, publicationUris)}
+      and ${d.publicationUri} is not null
+    group by ${d.publicationUri}
+  `);
 
   return new Map(
-    rows.flatMap((row) =>
-      row.publicationUri ? [[row.publicationUri, row.unread]] : [],
+    executeRows<{ publication_uri: string | null; unread: number }>(
+      result,
+    ).flatMap((row) =>
+      row.publication_uri ? [[row.publication_uri, row.unread]] : [],
     ),
   );
 }
@@ -745,6 +930,7 @@ export async function countUnreadByFollowedUser(
   schema: Schema,
   followedUserDids: Array<string>,
   did: string,
+  opts?: UnreadCutoffOpts,
 ): Promise<Map<string, number>> {
   if (followedUserDids.length === 0) {
     return new Map();
@@ -752,15 +938,34 @@ export async function countUnreadByFollowedUser(
   const d = schema.documents;
   const rec = schema.recommends;
   const r = schema.reads;
+  const uf = schema.userFollows;
   const base = and(eq(d.deleted, false), documentPublishedNotInFuture(d));
+  const suppressOld = opts?.countOldPostsAsUnread === false;
+
+  // When suppressing old posts, the cutoff for a contributor is when the reader
+  // followed them (documents from before that count as caught-up).
+  const cutoffJoin = suppressOld
+    ? sql`left join (
+        select ${uf.subjectDid} as subject_did,
+               min(coalesce(${uf.createdAt}, ${uf.indexedAt})) as cutoff
+        from ${uf}
+        where ${uf.followerDid} = ${did} and ${uf.deleted} = false
+        group by ${uf.subjectDid}
+      ) uc on uc.subject_did = contrib.contributor`
+    : sql``;
+  const cutoffPred = suppressOld
+    ? sql`and (uc.cutoff is null or contrib.published_at >= uc.cutoff)`
+    : sql``;
 
   const result = await db.execute(sql`
     with contrib as (
-      select ${d.did} as contributor, ${d.uri} as uri
+      select ${d.did} as contributor, ${d.uri} as uri,
+             ${d.publishedAt} as published_at
       from ${d}
       where ${base} and ${inArray(d.did, followedUserDids)}
       union
-      select ${rec.recommenderDid} as contributor, ${d.uri} as uri
+      select ${rec.recommenderDid} as contributor, ${d.uri} as uri,
+             ${d.publishedAt} as published_at
       from ${rec}
       join ${d} on ${d.uri} = ${rec.documentUri}
       where ${base} and ${inArray(rec.recommenderDid, followedUserDids)}
@@ -770,7 +975,8 @@ export async function countUnreadByFollowedUser(
     from contrib
     left join ${r} on ${r.documentUri} = contrib.uri
       and ${r.ownerDid} = ${did} and ${r.deleted} = false
-    where ${r.uri} is null
+    ${cutoffJoin}
+    where ${r.uri} is null ${cutoffPred}
     group by contrib.contributor
   `);
 
@@ -2140,7 +2346,11 @@ export async function selectArticleCardsByUris(
    * compose) avoid pulling full essay bodies into the payload + SSR dehydration.
    * Reading-time labels go blank for these rows, which those surfaces don't show.
    */
-  opts?: { lite?: boolean; readForDid?: string },
+  opts?: {
+    lite?: boolean;
+    readForDid?: string;
+    countOldPostsAsUnread?: boolean;
+  },
 ): Promise<Array<ArticleCard>> {
   if (uris.length === 0) {
     return [];
@@ -2154,7 +2364,12 @@ export async function selectArticleCardsByUris(
     ? articleQueueCardColumns(schema)
     : articleCardColumns(schema);
   const selection = opts?.readForDid
-    ? { ...baseColumns, isRead: documentReadExistsColumn(schema, opts.readForDid) }
+    ? {
+        ...baseColumns,
+        isRead: documentReadExistsColumn(schema, opts.readForDid, {
+          countOldPostsAsUnread: opts.countOldPostsAsUnread,
+        }),
+      }
     : baseColumns;
   const rows = await db
     .select(selection)

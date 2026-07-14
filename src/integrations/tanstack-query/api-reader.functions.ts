@@ -35,11 +35,11 @@ import {
 } from "#/server/ingest/handlers";
 import { ensureTracked } from "#/server/ingest/tap-client";
 import { observe } from "#/server/observability/log";
-import { markDocumentsRead } from "#/server/reader/mark-documents-read";
 import {
   syncFollowedPublications,
   unsubscribeFollowedPublications,
 } from "#/server/reader/followed-publications-sync.server";
+import { markDocumentsRead } from "#/server/reader/mark-documents-read";
 import { selectUnreadDocumentUris } from "#/server/reader/queries";
 import { effectiveFollowSets } from "#/server/reader/saved-lists";
 
@@ -555,11 +555,13 @@ const followUser = createServerFn({ method: "POST" })
       // Materialize real subscriptions to the followed user's publications so
       // the author keeps portable subscribers. Fire-and-forget — the follow
       // shouldn't block on writing N subscription records to the PDS.
-      void syncFollowedPublications(session.client, session.did, data.did).catch(
-        (error) => {
-          console.warn("[reader] follow publication sync failed", error);
-        },
-      );
+      void syncFollowedPublications(
+        session.client,
+        session.did,
+        data.did,
+      ).catch((error) => {
+        console.warn("[reader] follow publication sync failed", error);
+      });
       return { ok: true as const };
     }),
   );
@@ -1161,6 +1163,7 @@ const markPublicationAllRead = createServerFn({ method: "POST" })
           ? await selectUnreadDocumentUris(context.db, context.schema, {
               readerDid: session.did,
               publicationUris: [data.publicationUri],
+              countOldPostsAsUnread: context.countOldPostsAsUnreadEnabled,
             })
           : [];
         span.set("count", documentUris.length);
@@ -1198,6 +1201,7 @@ const markFollowsAllUnreadRead = createServerFn({ method: "POST" })
             readerDid: session.did,
             publicationUris,
             followedUserDids: userDids,
+            countOldPostsAsUnread: context.countOldPostsAsUnreadEnabled,
           })
         : [];
       span.set("count", documentUris.length);

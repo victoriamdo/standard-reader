@@ -28,6 +28,7 @@ import {
 } from "#/lib/reading-typography";
 import type { ThemeMode } from "#/lib/theme";
 import { isThemeMode } from "#/lib/theme";
+import { useCountOldPostsAsUnread } from "#/lib/use-count-old-posts-as-unread";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { useOpenLinks } from "#/lib/use-open-links";
 import { useReaderVoice } from "#/lib/use-reader-voice";
@@ -389,6 +390,8 @@ export function UserSettingsView() {
   const { openInMagazine, setOpenInMagazine } = useOpenCollectionsInMagazine();
   const { enabled: trackReading, setEnabled: setTrackReading } =
     useTrackReadingHistory();
+  const { enabled: countOldAsUnread, setEnabled: setCountOldAsUnread } =
+    useCountOldPostsAsUnread();
 
   const deleteHistoryMutation = useMutation(
     readerApi.deleteAllReadHistoryMutationOptions(),
@@ -547,6 +550,17 @@ export function UserSettingsView() {
               isSelected={trackReading}
               onChange={setTrackReading}
               aria-label="Track reading history"
+            />
+          </SettingRow>
+          <Separator />
+          <SettingRow
+            label="Mark old posts as unread"
+            description="When on, everything a publication has ever posted counts as unread the moment you subscribe. Turn off to only mark posts published after you subscribe as new — older posts stay unread but lose their dot."
+          >
+            <Switch
+              isSelected={countOldAsUnread}
+              onChange={setCountOldAsUnread}
+              aria-label="Mark old posts as unread"
             />
           </SettingRow>
         </div>

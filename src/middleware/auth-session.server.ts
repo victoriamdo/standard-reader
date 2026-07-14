@@ -26,6 +26,7 @@ export type AtprotoSessionContext = {
       isAdmin: boolean;
       homeScope: string | null;
       trackReadingHistory: boolean | null;
+      countOldPostsAsUnread: boolean | null;
       collectionsAuthoringEnabled: boolean | null;
       userinputFeedbackEnabled: boolean | null;
       marginSaveEnabled: boolean | null;

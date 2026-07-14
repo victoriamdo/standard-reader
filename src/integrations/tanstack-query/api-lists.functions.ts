@@ -452,9 +452,13 @@ const getListFeed = createServerFn({ method: "GET" })
       span.set("rkey", data.rkey);
       span.set("offset", data.offset);
 
-      const { db, schema, trackReadingEnabled } = context;
+      const { db, schema, trackReadingEnabled, countOldPostsAsUnreadEnabled } =
+        context;
       const list = await readList(db, data.did, data.rkey);
-      if (!list || (list.publications.length === 0 && list.users.length === 0)) {
+      if (
+        !list ||
+        (list.publications.length === 0 && list.users.length === 0)
+      ) {
         span.set("count", 0);
         return {
           items: [],
@@ -464,11 +468,14 @@ const getListFeed = createServerFn({ method: "GET" })
 
       const session = await getAtprotoSessionForRequest(getRequest());
       const trackReading = session == null ? false : trackReadingEnabled;
+      const countOldPostsAsUnread =
+        session == null ? true : countOldPostsAsUnreadEnabled;
 
       const items = await selectArticleCards(db, schema, {
         publicationUris: list.publications,
         followedUserDids: list.users,
         readForDid: trackReading ? session?.did : undefined,
+        countOldPostsAsUnread,
         limit: data.limit,
         offset: data.offset,
       });

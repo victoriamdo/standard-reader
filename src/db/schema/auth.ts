@@ -45,6 +45,13 @@ export const user = pgTable("user", {
   readingTypography: text("reading_typography"),
   /** `false` disables read tracking and unread UI; `null` = on (default). */
   trackReadingHistory: boolean("track_reading_history"),
+  /** `true` counts everything a source ever posted as unread on subscribe (dots
+   * + counts); `null`/`false` = off (default for new users) — posts published
+   * before you subscribed are suppressed from unread dots/counts (dots return if
+   * flipped back on — no read records are written). Backfilled to `true` for
+   * users that existed before this preference shipped, to preserve their current
+   * behaviour. */
+  countOldPostsAsUnread: boolean("count_old_posts_as_unread"),
   /** `network` shows the whole-network home feed; `null` = follows (default). */
   homeScope: text("home_scope"),
   /** Comma-separated author-profile tab ids the owner has hidden from their

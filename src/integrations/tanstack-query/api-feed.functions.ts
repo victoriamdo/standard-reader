@@ -197,7 +197,8 @@ const getSidebar = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
   .handler(
     observe("feed.getSidebar", async ({ context }, span) => {
-      const { db, schema, trackReadingEnabled } = context;
+      const { db, schema, trackReadingEnabled, countOldPostsAsUnreadEnabled } =
+        context;
       const did = await attachReaderSpanContext(span, getRequest());
 
       const trackReading = did ? trackReadingEnabled : false;
@@ -207,7 +208,13 @@ const getSidebar = createServerFn({ method: "GET" })
         span.set("follows", followUris.length);
       }
 
-      return loadSidebarData(db, schema, did, trackReading);
+      return loadSidebarData(
+        db,
+        schema,
+        did,
+        trackReading,
+        countOldPostsAsUnreadEnabled,
+      );
     }),
   );
 
@@ -238,10 +245,18 @@ async function resolveHomeFeedContext(
   {
     trackReading: trackReadingOverride,
     trackReadingEnabled,
-  }: { trackReading?: boolean; trackReadingEnabled?: boolean } = {},
+    countOldPostsAsUnreadEnabled,
+  }: {
+    trackReading?: boolean;
+    trackReadingEnabled?: boolean;
+    countOldPostsAsUnreadEnabled?: boolean;
+  } = {},
 ) {
   const trackReading =
     trackReadingOverride ?? (did ? (trackReadingEnabled ?? false) : false);
+  const countOldPostsAsUnread = did
+    ? (countOldPostsAsUnreadEnabled ?? true)
+    : true;
 
   const { publicationUris: followUris, userDids: followedUserDids } = did
     ? await effectiveFollowSets(db, schema, did)
@@ -258,6 +273,7 @@ async function resolveHomeFeedContext(
     ? {
         publicationUris: followUris,
         followedUserDids,
+        countOldPostsAsUnread,
         ...(trackReading && did ? { readForDid: did, unreadForDid: did } : {}),
       }
     : { discoverOnly: true };
@@ -456,7 +472,11 @@ async function loadHomeFeedCritical(
   did: string | null | undefined,
   scope: HomeScope,
   span: Span,
-  options: { trackReading?: boolean; trackReadingEnabled?: boolean } = {},
+  options: {
+    trackReading?: boolean;
+    trackReadingEnabled?: boolean;
+    countOldPostsAsUnreadEnabled?: boolean;
+  } = {},
 ): Promise<HomeFeed> {
   const ctx = await resolveHomeFeedContext(
     db,
@@ -475,7 +495,11 @@ async function loadHomeFeedExtras(
   did: string | null | undefined,
   scope: HomeScope,
   span: Span,
-  options: { trackReading?: boolean; trackReadingEnabled?: boolean } = {},
+  options: {
+    trackReading?: boolean;
+    trackReadingEnabled?: boolean;
+    countOldPostsAsUnreadEnabled?: boolean;
+  } = {},
 ): Promise<HomeFeedExtras> {
   const ctx = await resolveHomeFeedContext(
     db,
@@ -493,10 +517,12 @@ const getHomeFeed = createServerFn({ method: "GET" })
   .validator(homeInput)
   .handler(
     observe("feed.getHomeFeed", async ({ data, context }, span) => {
-      const { db, schema, trackReadingEnabled } = context;
+      const { db, schema, trackReadingEnabled, countOldPostsAsUnreadEnabled } =
+        context;
       const did = await attachReaderSpanContext(span, getRequest());
       return loadHomeFeedCritical(db, schema, did, data.scope, span, {
         trackReadingEnabled,
+        countOldPostsAsUnreadEnabled,
       });
     }),
   );
@@ -512,7 +538,7 @@ const getHomePage = createServerFn({ method: "GET" })
   .validator(homePageInput)
   .handler(
     observe("feed.getHomePage", async ({ data, context }, span) => {
-      const { db, schema } = context;
+      const { db, schema, countOldPostsAsUnreadEnabled } = context;
       const did = await attachReaderSpanContext(span, getRequest());
       const reader = did
         ? await getReaderContextForRequest(getRequest())
@@ -530,14 +556,10 @@ const getHomePage = createServerFn({ method: "GET" })
           ? undefined
           : dbValueToTrackReadingHistory(reader.trackReadingHistory ?? null);
 
-      const feed = await loadHomeFeedCritical(
-        db,
-        schema,
-        did,
-        scope,
-        span,
-        trackReading === undefined ? {} : { trackReading },
-      );
+      const feed = await loadHomeFeedCritical(db, schema, did, scope, span, {
+        countOldPostsAsUnreadEnabled,
+        ...(trackReading === undefined ? {} : { trackReading }),
+      });
       return {
         scope,
         readerScope: did ?? "guest",
@@ -552,11 +574,13 @@ const getHomeExtras = createServerFn({ method: "GET" })
   .validator(homeExtrasInput)
   .handler(
     observe("feed.getHomeExtras", async ({ data, context }, span) => {
-      const { db, schema, trackReadingEnabled } = context;
+      const { db, schema, trackReadingEnabled, countOldPostsAsUnreadEnabled } =
+        context;
       const did = await attachReaderSpanContext(span, getRequest());
 
       return loadHomeFeedExtras(db, schema, did, data.scope, span, {
         trackReadingEnabled,
+        countOldPostsAsUnreadEnabled,
       });
     }),
   );
@@ -568,6 +592,7 @@ async function loadLatestFeedCritical(
   data: z.infer<typeof latestInput>,
   span: Span,
   trackReadingEnabled: boolean,
+  countOldPostsAsUnreadEnabled = true,
 ): Promise<LatestFeed> {
   span.set("filter", data.filter);
   span.set("offset", data.offset);
@@ -578,6 +603,8 @@ async function loadLatestFeedCritical(
   span.set("follows", followUris.length);
   span.set("followedUsers", followedUserDids.length);
   const trackReading = did == null ? false : trackReadingEnabled;
+  const countOldPostsAsUnread =
+    did == null ? true : countOldPostsAsUnreadEnabled;
 
   const trendingLimit =
     data.filter === "trending"
@@ -603,6 +630,7 @@ async function loadLatestFeedCritical(
                   trackReading && data.filter === "unread" ? did : undefined,
               }),
           readForDid: trackReading && did ? did : undefined,
+          countOldPostsAsUnread,
           limit: data.limit,
           offset: data.offset,
         });
@@ -652,6 +680,7 @@ async function loadLatestFeedCounts(
   did: string | null | undefined,
   span: Span,
   trackReadingEnabled: boolean,
+  countOldPostsAsUnreadEnabled = true,
 ): Promise<LatestFeedCounts> {
   const { publicationUris: followUris, userDids: followedUserDids } = did
     ? await effectiveFollowSets(db, schema, did)
@@ -659,10 +688,14 @@ async function loadLatestFeedCounts(
   span.set("follows", followUris.length);
   span.set("followedUsers", followedUserDids.length);
   const trackReading = did == null ? false : trackReadingEnabled;
+  const countOldPostsAsUnread =
+    did == null ? true : countOldPostsAsUnreadEnabled;
 
   const [followCounts, networkCount, trendingCount] = await Promise.all([
     did
-      ? countFollowedDocuments(db, schema, followUris, did, followedUserDids)
+      ? countFollowedDocuments(db, schema, followUris, did, followedUserDids, {
+          countOldPostsAsUnread,
+        })
       : Promise.resolve({ all: 0, unread: 0 }),
     countNetworkDocuments(db, schema),
     did ? countTrendingDocuments(db, schema, "page") : Promise.resolve(0),
@@ -681,7 +714,8 @@ const getLatestFeed = createServerFn({ method: "GET" })
   .validator(latestInput)
   .handler(
     observe("feed.getLatestFeed", async ({ data, context }, span) => {
-      const { db, schema, trackReadingEnabled } = context;
+      const { db, schema, trackReadingEnabled, countOldPostsAsUnreadEnabled } =
+        context;
       const did = await attachReaderSpanContext(span, getRequest());
       return loadLatestFeedCritical(
         db,
@@ -690,6 +724,7 @@ const getLatestFeed = createServerFn({ method: "GET" })
         data,
         span,
         trackReadingEnabled,
+        countOldPostsAsUnreadEnabled,
       );
     }),
   );
@@ -699,9 +734,17 @@ const getLatestFeedCounts = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
   .handler(
     observe("feed.getLatestFeedCounts", async ({ context }, span) => {
-      const { db, schema, trackReadingEnabled } = context;
+      const { db, schema, trackReadingEnabled, countOldPostsAsUnreadEnabled } =
+        context;
       const did = await attachReaderSpanContext(span, getRequest());
-      return loadLatestFeedCounts(db, schema, did, span, trackReadingEnabled);
+      return loadLatestFeedCounts(
+        db,
+        schema,
+        did,
+        span,
+        trackReadingEnabled,
+        countOldPostsAsUnreadEnabled,
+      );
     }),
   );
 

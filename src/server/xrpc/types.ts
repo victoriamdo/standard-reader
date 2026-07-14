@@ -12,6 +12,7 @@ export type XrpcRequestContext = {
   db: Db;
   schema: Schema;
   trackReadingEnabled: boolean;
+  countOldPostsAsUnreadEnabled: boolean;
   /** Parsed query-string parameters (queries only). */
   params: XrpcQueryParams;
   /** Parsed JSON body (procedures only). */
