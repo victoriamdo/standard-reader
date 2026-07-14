@@ -88,6 +88,9 @@ export function PublicationNameLink({
               !event.shiftKey &&
               !event.altKey
             ) {
+              // Cancel the enclosing article link's native navigation so a
+              // click on the pub name only opens the pub, not the article too.
+              event.preventDefault();
               goToPublication();
             }
           }}

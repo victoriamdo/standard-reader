@@ -66,7 +66,17 @@ export function AuthorProfileLink({
         onClick={(event) => {
           event.stopPropagation();
           onClick?.(event as unknown as React.MouseEvent<HTMLAnchorElement>);
-          if (event.button === 0) {
+          if (
+            !event.defaultPrevented &&
+            event.button === 0 &&
+            !event.metaKey &&
+            !event.ctrlKey &&
+            !event.shiftKey &&
+            !event.altKey
+          ) {
+            // Cancel the enclosing article link's native navigation so a click
+            // on the author only opens the profile, not the article too.
+            event.preventDefault();
             goToProfile();
           }
         }}
