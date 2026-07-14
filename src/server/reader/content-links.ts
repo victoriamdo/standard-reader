@@ -6,6 +6,7 @@ import {
 } from "#/components/reader/format";
 import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 import { publicationDisplayName } from "#/integrations/tanstack-query/api-shapes";
+import { isAppOriginHref } from "#/lib/app-origin";
 import { actorLinkIdent } from "#/lib/leaflet/publication-mentions";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { linkTargetVariants } from "#/lib/link-target-variants";
@@ -99,6 +100,11 @@ export async function resolveContentLinkTargets(
     }
 
     if (/^https?:\/\//i.test(href)) {
+      // A link to our own app is either an internal route (already handled
+      // above) or app navigation — never a third-party publication/document.
+      // Skip the off-site `url`/`canonical_url` match so a record that happens
+      // to carry our domain doesn't get surfaced for it.
+      if (isAppOriginHref(href, appOrigin)) continue;
       for (const variant of linkTargetVariants(href)) {
         if (!variantToHref.has(variant)) variantToHref.set(variant, href);
       }

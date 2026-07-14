@@ -2,6 +2,7 @@ import { and, eq, inArray, or, sql } from "drizzle-orm";
 
 import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 import { publicationDisplayName } from "#/integrations/tanstack-query/api-shapes";
+import { isAppOriginHref } from "#/lib/app-origin";
 import type {
   ActorMentionMap,
   DocumentMentionMap,
@@ -13,6 +14,7 @@ import {
   mentionUrlKey,
   normalizeMentionUrl,
 } from "#/lib/leaflet/publication-mentions";
+import { getPublicUrl } from "#/lib/public-url";
 import { cdnImageUrl } from "#/server/atproto/blob";
 
 async function resolvePublications(
@@ -22,8 +24,16 @@ async function resolvePublications(
   urls: Array<string>,
 ): Promise<PublicationMentionMap> {
   const p = schema.publications;
+  // A homepage `#link` pointing at our own app is app navigation, not a
+  // third-party publication — drop it so a record carrying our domain as its
+  // `url` isn't surfaced as that link's mention.
+  const appOrigin = getPublicUrl();
   const normalizedUrls = [
-    ...new Set(urls.map((url) => normalizeMentionUrl(url))),
+    ...new Set(
+      urls
+        .filter((url) => !isAppOriginHref(url, appOrigin))
+        .map((url) => normalizeMentionUrl(url)),
+    ),
   ];
 
   const predicates = [];
