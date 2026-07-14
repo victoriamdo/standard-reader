@@ -1,4 +1,5 @@
 import { STANDARD_NSID } from "#/lib/atproto/nsids";
+import { normalizeAuthorRef } from "#/lib/author-profile";
 
 /**
  * A Standard Reader publication resolved for an inline Leaflet reference — a
@@ -101,6 +102,58 @@ export function mentionUrlKey(url: string): string {
   return `url:${normalizeMentionUrl(url)}`;
 }
 
+const BSKY_PROFILE_HOSTS = new Set(["bsky.app", "staging.bsky.app"]);
+
+/**
+ * If a `#link` facet's target is a *user profile*, return the user's ident
+ * (handle or DID) so the segment can render as an actor mention (avatar chip +
+ * hovercard, linking in-app to `/u/$did`) instead of a bare off-site link.
+ * Recognizes an in-app author path (`/u/<handle-or-did>`, relative) and a
+ * Bluesky profile or post link (`bsky.app/profile/<handle-or-did>[/post/…]`).
+ * Returns null for any other link.
+ */
+export function actorLinkIdent(uri: string): string | null {
+  const trimmed = uri.trim();
+  if (!trimmed) return null;
+
+  let host: string | null = null;
+  let pathname = trimmed;
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      host = url.hostname.toLowerCase();
+      pathname = url.pathname;
+    } catch {
+      return null;
+    }
+  } else {
+    // Relative path: drop any query/hash before matching.
+    pathname = trimmed.split(/[?#]/)[0] ?? trimmed;
+  }
+
+  if (host && BSKY_PROFILE_HOSTS.has(host)) {
+    // ONLY a bare profile or a post counts as a person reference. A list
+    // (`/profile/<ident>/lists/…`), a feed (`/profile/<ident>/feed/…`), or any
+    // other sub-resource is about that object, not a mention of its owner.
+    const match = /^\/profile\/([^/]+)(?:\/post\/[^/]+)?\/?$/.exec(pathname);
+    if (match?.[1]) {
+      const ident = normalizeAuthorRef(decodeURIComponent(match[1]));
+      // A handle needs a dot; a DID is taken verbatim. Guards against
+      // `/profile/` junk resolving to a bogus mention.
+      if (ident.startsWith("did:") || ident.includes(".")) return ident;
+    }
+    return null;
+  }
+
+  // Only trust a relative `/u/<ident>` path (single segment) — a full off-site
+  // URL that happens to carry a `/u/` segment is not our profile route.
+  if (host === null) {
+    const match = /^\/u\/([^/]+)\/?$/.exec(pathname);
+    if (match?.[1]) return normalizeAuthorRef(decodeURIComponent(match[1])) || null;
+  }
+  return null;
+}
+
 /** An actor (user) resolved for an inline `#didMention` facet. */
 export interface ResolvedActorMention {
   did: string;
@@ -122,6 +175,8 @@ export interface ResolvedDocumentMention {
   did: string;
   rkey: string;
   title: string;
+  /** Owning publication's icon (owner avatar fallback), shown beside the title. */
+  iconUrl: string | null;
 }
 
 /** Resolved document mentions keyed by canonical document AT-URI. */
@@ -132,12 +187,20 @@ export interface InlineMentions {
   publications: PublicationMentionMap;
   documents: DocumentMentionMap;
   actors: ActorMentionMap;
+  /**
+   * Actors referenced by a `#link` facet pointing at a user profile (in-app or
+   * Bluesky), keyed by the ident ({@link actorLinkIdent}) — DID or handle — so
+   * the chip can show an avatar. Separate from {@link actors} (keyed by DID from
+   * `#didMention` facets) because these are keyed by whatever the link carried.
+   */
+  actorLinks: ActorMentionMap;
 }
 
 export const EMPTY_INLINE_MENTIONS: InlineMentions = {
   publications: {},
   documents: {},
   actors: {},
+  actorLinks: {},
 };
 
 /** References an inline facet may point at, gathered from a document's content. */
@@ -150,6 +213,8 @@ export interface InlineMentionRefs {
   documentAtUris: Array<string>;
   /** Actor DIDs from `#didMention` / `#mention` facets. */
   actorDids: Array<string>;
+  /** User idents (handle or DID) from `#link` facets targeting a profile. */
+  actorLinks: Array<string>;
 }
 
 /** True when there is at least one reference worth resolving. */
@@ -158,7 +223,8 @@ export function hasInlineMentionRefs(refs: InlineMentionRefs): boolean {
     refs.publicationAtUris.length > 0 ||
     refs.publicationUrls.length > 0 ||
     refs.documentAtUris.length > 0 ||
-    refs.actorDids.length > 0
+    refs.actorDids.length > 0 ||
+    refs.actorLinks.length > 0
   );
 }
 
@@ -174,6 +240,7 @@ export function collectInlineMentionRefs(content: unknown): InlineMentionRefs {
   const publicationUrls = new Set<string>();
   const documentAtUris = new Set<string>();
   const actorDids = new Set<string>();
+  const actorLinks = new Set<string>();
 
   const walk = (node: unknown): void => {
     if (Array.isArray(node)) {
@@ -195,7 +262,11 @@ export function collectInlineMentionRefs(content: unknown): InlineMentionRefs {
           const docKey = documentMentionKey(feature.atURI);
           if (docKey) documentAtUris.add(docKey);
         } else if (kind === "link" && typeof feature.uri === "string") {
-          publicationUrls.add(feature.uri);
+          // A `#link` to a user profile is an actor mention; anything else is a
+          // candidate publication homepage.
+          const ident = actorLinkIdent(feature.uri);
+          if (ident) actorLinks.add(ident);
+          else publicationUrls.add(feature.uri);
         } else if (
           (kind === "didMention" || kind === "mention") &&
           typeof feature.did === "string"
@@ -214,6 +285,7 @@ export function collectInlineMentionRefs(content: unknown): InlineMentionRefs {
     publicationUrls: [...publicationUrls],
     documentAtUris: [...documentAtUris],
     actorDids: [...actorDids],
+    actorLinks: [...actorLinks],
   };
 }
 
@@ -231,6 +303,29 @@ export function lookupActorMention(
     ) {
       const hit = actors[feature.did];
       if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+/**
+ * If a facet segment carries a `#link` to a user profile, return its ident
+ * ({@link actorLinkIdent}) plus the resolved actor when available. The ident is
+ * returned even before resolution so the segment can render as a mention link
+ * immediately; the avatar fills in once `actorLinks` resolves.
+ */
+export function lookupActorLinkMention(
+  features: ReadonlyArray<unknown>,
+  actorLinks: ActorMentionMap,
+): { ident: string; actor: ResolvedActorMention | null } | null {
+  for (const feature of features) {
+    if (!isRecord(feature)) continue;
+    if (
+      facetKind(feature.$type) === "link" &&
+      typeof feature.uri === "string"
+    ) {
+      const ident = actorLinkIdent(feature.uri);
+      if (ident) return { ident, actor: actorLinks[ident] ?? null };
     }
   }
   return null;

@@ -12,7 +12,7 @@ import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
-import { AppLink } from "#/components/reader/app-link";
+import { SmartArticleLink } from "#/components/reader/content/smart-article-link";
 import { Lightbox } from "#/design-system/lightbox";
 import {
   LIGHTBOX_IMAGE_TRANSITION_NAME,
@@ -240,9 +240,9 @@ function useMarkdownComponents(
       },
       a: ({ href, children }) =>
         href ? (
-          <AppLink href={href} linkStyle={articleBodyStyles.facetLink}>
+          <SmartArticleLink href={href} linkStyle={articleBodyStyles.facetLink}>
             {children}
-          </AppLink>
+          </SmartArticleLink>
         ) : (
           <>{children}</>
         ),

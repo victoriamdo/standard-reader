@@ -27,6 +27,8 @@ import type { ArticleDetailSourceRow } from "#/server/reader/article-detail-buil
 import { buildArticleDetail } from "#/server/reader/article-detail-build";
 import type { CollectionMagazineData } from "#/server/reader/collection-magazine";
 import { loadCollectionMagazine } from "#/server/reader/collection-magazine";
+import type { ContentLinkTargets } from "#/server/reader/content-links";
+import { resolveContentLinkTargets } from "#/server/reader/content-links";
 import { attachCommentCountsToArticles } from "#/server/reader/document-comments";
 import { selectPublicationHeader } from "#/server/reader/publication-header";
 import { resolveInlineMentions } from "#/server/reader/publication-mentions";
@@ -35,6 +37,7 @@ import {
   publicationFollowedByCoReaders,
   relatedArticles,
   selectArticleCards,
+  selectArticleCardsByUris,
   selectPublicationArticleCards,
 } from "#/server/reader/queries";
 import { themeModeForRequest } from "#/server/theme-preference";
@@ -96,10 +99,19 @@ const inlineMentionsInput = z.object({
   publicationUrls: z.array(z.string()).default([]),
   documentAtUris: z.array(z.string()).default([]),
   actorDids: z.array(z.string()).default([]),
+  actorLinks: z.array(z.string()).default([]),
 });
 
 const embedInput = z.object({
   publicationUri: z.string().min(1),
+});
+
+const articleCardInput = z.object({
+  documentUri: z.string().min(1),
+});
+
+const contentLinksInput = z.object({
+  hrefs: z.array(z.string()).default([]),
 });
 
 /** Publication identity + stats for the profile hero (no document list). */
@@ -708,6 +720,34 @@ const getArticleExtras = createServerFn({ method: "GET" })
     ),
   );
 
+/**
+ * A single {@link ArticleCard} for inline document-mention hovercards. Reuses
+ * the batched card projection in `lite` mode (drops the essay body), so the
+ * card carries title, excerpt, byline, cover, and recommend count without
+ * pulling full content the way `getArticle` does. Returns `null` when the
+ * document isn't indexed (or is deleted / future-dated).
+ */
+const getArticleCard = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .validator(articleCardInput)
+  .handler(
+    observe(
+      "publication.getArticleCard",
+      async ({ data, context }, span): Promise<ArticleCard | null> => {
+        const { db, schema } = context;
+        span.set("documentUri", data.documentUri);
+        const [card] = await selectArticleCardsByUris(
+          db,
+          schema,
+          [data.documentUri],
+          { lite: true },
+        );
+        span.set("found", card != null);
+        return card ?? null;
+      },
+    ),
+  );
+
 // POST (not GET): a content-heavy article can reference dozens of link URLs,
 // which would overflow a GET query string. Still side-effect-free; TanStack
 // Query caches by queryKey client-side regardless of method.
@@ -723,10 +763,39 @@ const getInlineMentions = createServerFn({ method: "POST" })
         span.set("publicationUrls", data.publicationUrls.length);
         span.set("documentAtUris", data.documentAtUris.length);
         span.set("actorDids", data.actorDids.length);
+        span.set("actorLinks", data.actorLinks.length);
         return resolveInlineMentions(db, schema, data);
       },
     ),
   );
+
+// POST: an article can carry many links, which overflow a GET query string.
+// Side-effect-free; TanStack Query caches by queryKey client-side regardless.
+const getContentLinkTargets = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware])
+  .validator(contentLinksInput)
+  .handler(
+    observe(
+      "publication.getContentLinkTargets",
+      async ({ data, context }, span): Promise<ContentLinkTargets> => {
+        const { db, schema } = context;
+        span.set("hrefs", data.hrefs.length);
+        const targets = await resolveContentLinkTargets(db, schema, data.hrefs);
+        span.set("resolved", Object.keys(targets).length);
+        return targets;
+      },
+    ),
+  );
+
+function getContentLinkTargetsQueryOptions(hrefs: Array<string>) {
+  // Stable key regardless of link order; the resolution is content-derived.
+  const key = [...hrefs].toSorted();
+  return queryOptions({
+    queryKey: ["contentLinks", key] as const,
+    queryFn: async () => getContentLinkTargets({ data: { hrefs } }),
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 function getInlineMentionsQueryOptions(refs: InlineMentionRefs) {
   // Stable key across render order; the resolved map is content-derived and
@@ -736,6 +805,7 @@ function getInlineMentionsQueryOptions(refs: InlineMentionRefs) {
     ...refs.publicationUrls,
     ...refs.documentAtUris,
     ...refs.actorDids,
+    ...refs.actorLinks,
   ].toSorted();
   return queryOptions({
     queryKey: ["inlineMentions", key] as const,
@@ -802,6 +872,14 @@ function getArticleQueryOptions(documentUri: string) {
   });
 }
 
+function getArticleCardQueryOptions(documentUri: string) {
+  return queryOptions({
+    queryKey: ["article", "card", documentUri] as const,
+    queryFn: async () => getArticleCard({ data: { documentUri } }),
+    staleTime: 300_000,
+  });
+}
+
 function getCollectionQueryOptions(documentUri: string) {
   return queryOptions({
     queryKey: ["collection", documentUri] as const,
@@ -851,10 +929,14 @@ export const publicationApi = {
   getPublicationSocialProofQueryOptions,
   getArticle,
   getArticleQueryOptions,
+  getArticleCard,
+  getArticleCardQueryOptions,
   getCollection,
   getCollectionQueryOptions,
   getArticleExtras,
   getArticleExtrasQueryOptions,
   getInlineMentions,
   getInlineMentionsQueryOptions,
+  getContentLinkTargets,
+  getContentLinkTargetsQueryOptions,
 };

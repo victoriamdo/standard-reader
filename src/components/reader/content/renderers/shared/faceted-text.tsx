@@ -1,13 +1,21 @@
 "use client";
 
 import * as stylex from "@stylexjs/stylex";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Fragment } from "react";
-import { useHover } from "react-aria";
 
-import { AppLink } from "#/components/reader/app-link";
+import { SmartArticleLink } from "#/components/reader/content/smart-article-link";
 import { initials } from "#/components/reader/format";
+import {
+  DocumentHoverCardBody,
+  EntityHoverCard,
+  PublicationHoverCardBody,
+  UserHoverCardBody,
+} from "#/components/reader/mention-hover-card";
 import { PublicationAvatar } from "#/components/reader/primitives";
+import { authorApi } from "#/integrations/tanstack-query/api-author.functions";
+import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import {
   DropCapChar,
   QuoteShareMark,
@@ -24,6 +32,7 @@ import type {
   ResolvedPublicationMention,
 } from "#/lib/leaflet/publication-mentions";
 import {
+  lookupActorLinkMention,
   lookupActorMention,
   lookupDocumentMention,
   lookupPublicationMention,
@@ -65,24 +74,47 @@ function PublicationMentionChip({
   mention: ResolvedPublicationMention;
   children: React.ReactNode;
 }) {
+  const queryClient = useQueryClient();
   return (
-    <Link
-      to="/p/$did/$rkey"
-      params={{ did: mention.did, rkey: mention.rkey }}
-      {...stylex.props(
-        articleBodyStyles.publicationBylineLink,
-        styles.mentionChip,
-      )}
-    >
-      {mention.iconUrl ? (
-        <PublicationAvatar
-          pub={{ name: mention.name, iconUrl: mention.iconUrl }}
-          size="sm"
-          style={styles.mentionAvatar}
+    <EntityHoverCard
+      onIntent={() =>
+        queryClient.prefetchQuery(
+          publicationApi.getPublicationHeaderQueryOptions(mention.atUri),
+        )
+      }
+      card={
+        <PublicationHoverCardBody
+          publicationUri={mention.atUri}
+          did={mention.did}
+          rkey={mention.rkey}
+          fallbackName={mention.name}
+          fallbackIconUrl={mention.iconUrl}
         />
-      ) : null}
-      {children}
-    </Link>
+      }
+    >
+      {({ triggerRef, triggerProps, isHovered }) => (
+        <Link
+          ref={triggerRef}
+          to="/p/$did/$rkey"
+          params={{ did: mention.did, rkey: mention.rkey }}
+          {...triggerProps}
+          data-hovered={isHovered || undefined}
+          {...stylex.props(
+            articleBodyStyles.facetMentionLink,
+            styles.mentionChip,
+          )}
+        >
+          {mention.iconUrl ? (
+            <PublicationAvatar
+              pub={{ name: mention.name, iconUrl: mention.iconUrl }}
+              size="sm"
+              style={styles.mentionAvatar}
+            />
+          ) : null}
+          {children}
+        </Link>
+      )}
+    </EntityHoverCard>
   );
 }
 
@@ -99,14 +131,48 @@ function DocumentMentionChip({
   mention: ResolvedDocumentMention;
   children: React.ReactNode;
 }) {
+  const queryClient = useQueryClient();
   return (
-    <Link
-      to="/a/$did/$rkey"
-      params={{ did: mention.did, rkey: mention.rkey }}
-      {...stylex.props(articleBodyStyles.facetLink, styles.mentionChip)}
+    <EntityHoverCard
+      onIntent={() =>
+        queryClient.prefetchQuery(
+          publicationApi.getArticleCardQueryOptions(mention.atUri),
+        )
+      }
+      card={
+        <DocumentHoverCardBody
+          documentUri={mention.atUri}
+          did={mention.did}
+          rkey={mention.rkey}
+          fallbackTitle={mention.title}
+        />
+      }
     >
-      {children}
-    </Link>
+      {({ triggerRef, triggerProps, isHovered }) => (
+        <Link
+          ref={triggerRef}
+          to="/a/$did/$rkey"
+          params={{ did: mention.did, rkey: mention.rkey }}
+          {...triggerProps}
+          data-hovered={isHovered || undefined}
+          {...stylex.props(
+            articleBodyStyles.facetMentionLink,
+            styles.mentionChip,
+          )}
+        >
+          {mention.iconUrl ? (
+            <Avatar
+              size="sm"
+              src={mention.iconUrl}
+              alt=""
+              fallback={initials(mention.title)}
+              style={styles.mentionAvatar}
+            />
+          ) : null}
+          {children}
+        </Link>
+      )}
+    </EntityHoverCard>
   );
 }
 
@@ -127,26 +193,108 @@ function ActorMentionChip({
   // Only swap the leading `@` for an avatar once the actor resolves; until then
   // keep the original `@handle` so there is no flash of bare text.
   const label = actor ? text.replace(/^@/, "") : text;
-  const { isHovered, hoverProps } = useHover({});
+  const queryClient = useQueryClient();
   return (
-    <Link
-      to="/u/$did"
-      params={{ did }}
-      {...stylex.props(articleBodyStyles.facetMentionLink, styles.mentionChip)}
-      data-hovered={isHovered || undefined}
-      {...hoverProps}
-    >
-      {actor ? (
-        <Avatar
-          size="sm"
-          src={actor.avatarUrl ?? undefined}
-          fallback={initials(actor.handle ?? label)}
-          alt={actor.handle ?? ""}
-          style={styles.mentionAvatar}
+    <EntityHoverCard
+      onIntent={() =>
+        queryClient.prefetchQuery(authorApi.getAuthorSummaryQueryOptions(did))
+      }
+      card={
+        <UserHoverCardBody
+          did={did}
+          fallbackLabel={label}
+          fallbackHandle={actor?.handle ?? null}
+          fallbackAvatarUrl={actor?.avatarUrl ?? null}
         />
-      ) : null}
-      {label}
-    </Link>
+      }
+    >
+      {({ triggerRef, triggerProps, isHovered }) => (
+        <Link
+          ref={triggerRef}
+          to="/u/$did"
+          params={{ did }}
+          {...triggerProps}
+          data-hovered={isHovered || undefined}
+          {...stylex.props(
+            articleBodyStyles.facetMentionLink,
+            styles.mentionChip,
+          )}
+        >
+          {actor ? (
+            <Avatar
+              size="sm"
+              src={actor.avatarUrl ?? undefined}
+              fallback={initials(actor.handle ?? label)}
+              alt={actor.handle ?? ""}
+              style={styles.mentionAvatar}
+            />
+          ) : null}
+          {label}
+        </Link>
+      )}
+    </EntityHoverCard>
+  );
+}
+
+/**
+ * A user mention authored as a `#link` facet — an in-app `/u/…` link (e.g. a
+ * display-name link like "Tim Disney") or a Bluesky profile/post link (e.g.
+ * `@handle`). Upgraded to a full mention chip: the actor's avatar inline (once
+ * resolved) plus the same hovercard as `#didMention` chips, linking in-app to
+ * `/u/$did`. `ident` is a handle or DID; `getAuthorSummary` resolves either.
+ */
+function LinkedActorChip({
+  ident,
+  actor,
+  text,
+}: {
+  ident: string;
+  actor: ResolvedActorMention | null;
+  text: string;
+}) {
+  const queryClient = useQueryClient();
+  const label = actor && text.startsWith("@") ? text.replace(/^@/, "") : text;
+  return (
+    <EntityHoverCard
+      onIntent={() =>
+        queryClient.prefetchQuery(
+          authorApi.getAuthorSummaryQueryOptions(ident),
+        )
+      }
+      card={
+        <UserHoverCardBody
+          did={ident}
+          fallbackLabel={label}
+          fallbackHandle={actor?.handle ?? (ident.startsWith("did:") ? null : ident)}
+          fallbackAvatarUrl={actor?.avatarUrl ?? null}
+        />
+      }
+    >
+      {({ triggerRef, triggerProps, isHovered }) => (
+        <Link
+          ref={triggerRef}
+          to="/u/$did"
+          params={{ did: ident }}
+          {...triggerProps}
+          data-hovered={isHovered || undefined}
+          {...stylex.props(
+            articleBodyStyles.facetMentionLink,
+            styles.mentionChip,
+          )}
+        >
+          {actor ? (
+            <Avatar
+              size="sm"
+              src={actor.avatarUrl ?? undefined}
+              fallback={initials(actor.handle ?? label)}
+              alt={actor.handle ?? ""}
+              style={styles.mentionAvatar}
+            />
+          ) : null}
+          {label}
+        </Link>
+      )}
+    </EntityHoverCard>
   );
 }
 
@@ -157,7 +305,7 @@ function FacetSegment({
   text: string;
   features: Array<FacetFeature>;
 }) {
-  const { publications, documents, actors } = useInlineMentions();
+  const { publications, documents, actors, actorLinks } = useInlineMentions();
 
   if (features.length === 0) return <>{text}</>;
 
@@ -174,6 +322,7 @@ function FacetSegment({
     findFacetFeature(features, "mention");
   const publicationMention = lookupPublicationMention(features, publications);
   const documentMention = lookupDocumentMention(features, documents);
+  const actorLink = lookupActorLinkMention(features, actorLinks);
 
   let node: React.ReactNode = text;
 
@@ -193,11 +342,19 @@ function FacetSegment({
         {text}
       </DocumentMentionChip>
     );
+  } else if (actorLink) {
+    node = (
+      <LinkedActorChip
+        ident={actorLink.ident}
+        actor={actorLink.actor}
+        text={text}
+      />
+    );
   } else if (link?.uri) {
     node = (
-      <AppLink href={link.uri} linkStyle={articleBodyStyles.facetLink}>
+      <SmartArticleLink href={link.uri} linkStyle={articleBodyStyles.facetLink}>
         {text}
-      </AppLink>
+      </SmartArticleLink>
     );
   } else if (didMention?.did) {
     node = (

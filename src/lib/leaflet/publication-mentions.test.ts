@@ -113,9 +113,12 @@ describe("collectInlineMentionRefs", () => {
     // The pub.leaflet twin is normalized to its site.standard AT-URI.
     expect(refs.publicationAtUris).toEqual([BLOG_STANDARD_URI]);
     expect(refs.publicationUrls).toContain("https://news.atproto.com.br/");
-    expect(refs.publicationUrls).toContain(
+    // A `#link` to a Bluesky profile is a user reference, not a publication
+    // homepage — it lands in actorLinks (by ident), not publicationUrls.
+    expect(refs.publicationUrls).not.toContain(
       "https://bsky.app/profile/atproto.com.br",
     );
+    expect(refs.actorLinks).toContain("atproto.com.br");
   });
 
   it("collects actor DIDs from didMention facets", () => {
@@ -188,6 +191,7 @@ describe("lookupDocumentMention", () => {
         did: "did:plc:auth",
         rkey: "3lzdlwt2i2s2i",
         title: "Tutorial: Migrando de PDS",
+        iconUrl: null,
       },
     };
     const hit = lookupDocumentMention(

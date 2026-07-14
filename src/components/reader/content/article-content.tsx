@@ -24,6 +24,7 @@ import {
 } from "./body-styles";
 import { CONTENT_RENDERERS } from "./renderers";
 import { InlineMentionProvider } from "./renderers/shared/inline-mention-provider";
+import { ContentLinkProvider } from "./smart-article-link";
 import type { ContentRendererProps } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -151,15 +152,26 @@ export function ArticleContent({
     const isLeaflet =
       contentType === LEAFLET_CONTENT ||
       contentType === LEAFLET_DOCUMENT_FORMAT;
-    if (isLeaflet) {
-      return (
-        <InlineMentionProvider content={article.contentJson}>
+    // Leaflet carries inline publication/actor *facets* (resolved by
+    // InlineMentionProvider). Every content type additionally has plain links,
+    // which ContentLinkProvider resolves to pub/article/user chips — so
+    // mentions work across formats, not just Leaflet.
+    return (
+      <ContentLinkProvider>
+        {isLeaflet ? (
+          <InlineMentionProvider content={article.contentJson}>
+            <Renderer {...props} />
+          </InlineMentionProvider>
+        ) : (
           <Renderer {...props} />
-        </InlineMentionProvider>
-      );
-    }
-    return <Renderer {...props} />;
+        )}
+      </ContentLinkProvider>
+    );
   }
 
-  return <FallbackContent article={article} hasHero={hasHero} />;
+  return (
+    <ContentLinkProvider>
+      <FallbackContent article={article} hasHero={hasHero} />
+    </ContentLinkProvider>
+  );
 }

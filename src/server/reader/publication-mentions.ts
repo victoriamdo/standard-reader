@@ -69,9 +69,21 @@ async function resolveDocuments(
 ): Promise<DocumentMentionMap> {
   if (atUris.length === 0) return {};
   const d = schema.documents;
+  const p = schema.publications;
+  const pr = schema.profiles;
   const rows = await db
-    .select({ uri: d.uri, did: d.did, rkey: d.rkey, title: d.title })
+    .select({
+      uri: d.uri,
+      did: d.did,
+      rkey: d.rkey,
+      title: d.title,
+      pubDid: p.did,
+      pubIconCid: p.iconCid,
+      ownerAvatarUrl: pr.avatarUrl,
+    })
     .from(d)
+    .leftJoin(p, eq(p.uri, d.publicationUri))
+    .leftJoin(pr, eq(pr.did, p.did))
     .where(and(eq(d.deleted, false), inArray(d.uri, atUris)));
 
   const map: DocumentMentionMap = {};
@@ -81,6 +93,10 @@ async function resolveDocuments(
       did: row.did,
       rkey: row.rkey,
       title: row.title,
+      iconUrl:
+        row.pubIconCid && row.pubDid
+          ? cdnImageUrl(row.pubDid, row.pubIconCid, "png")
+          : row.ownerAvatarUrl,
     };
   }
   return map;
@@ -110,6 +126,45 @@ async function resolveActors(
 }
 
 /**
+ * Resolve `#link` facets that point at a user profile (in-app `/u/…` or a
+ * Bluesky profile/post) to actor identity + avatar, so they render as avatar
+ * chips. Idents may be DIDs or handles; the returned map is keyed by whichever
+ * the link carried (and also by DID) so the renderer can look up either.
+ */
+async function resolveActorLinks(
+  db: Db,
+  schema: Schema,
+  idents: Array<string>,
+): Promise<ActorMentionMap> {
+  if (idents.length === 0) return {};
+  const pr = schema.profiles;
+  const dids = idents.filter((ident) => ident.startsWith("did:"));
+  const handles = idents.filter((ident) => !ident.startsWith("did:"));
+
+  const predicates = [];
+  if (dids.length > 0) predicates.push(inArray(pr.did, dids));
+  if (handles.length > 0) predicates.push(inArray(pr.handle, handles));
+  if (predicates.length === 0) return {};
+
+  const rows = await db
+    .select({ did: pr.did, handle: pr.handle, avatarUrl: pr.avatarUrl })
+    .from(pr)
+    .where(or(...predicates));
+
+  const map: ActorMentionMap = {};
+  for (const row of rows) {
+    const entry = {
+      did: row.did,
+      handle: row.handle,
+      avatarUrl: row.avatarUrl,
+    };
+    map[row.did] = entry;
+    if (row.handle) map[row.handle] = entry;
+  }
+  return map;
+}
+
+/**
  * Resolve inline Leaflet references — publication `#atMention`s / homepage
  * `#link`s, document `#atMention`s, and actor `#didMention`s — to Standard
  * Reader publications, documents, and profiles, so the reader can render them
@@ -123,7 +178,7 @@ export async function resolveInlineMentions(
   schema: Schema,
   refs: InlineMentionRefs,
 ): Promise<InlineMentions> {
-  const [publications, documents, actors] = await Promise.all([
+  const [publications, documents, actors, actorLinks] = await Promise.all([
     resolvePublications(
       db,
       schema,
@@ -132,6 +187,7 @@ export async function resolveInlineMentions(
     ),
     resolveDocuments(db, schema, refs.documentAtUris),
     resolveActors(db, schema, refs.actorDids),
+    resolveActorLinks(db, schema, refs.actorLinks),
   ]);
-  return { publications, documents, actors };
+  return { publications, documents, actors, actorLinks };
 }

@@ -18,7 +18,10 @@ import {
   authorRecommendations,
   authorSubscriptions,
 } from "#/server/reader/queries";
-import type { AuthorReader } from "#/server/reader/queries";
+import type {
+  AuthorProfileStats,
+  AuthorReader,
+} from "#/server/reader/queries";
 
 import type {
   ArticleCard,
@@ -65,6 +68,20 @@ const authorSifaInput = z.object({
   did: z.string().min(1),
   handle: z.string().nullable().optional(),
 });
+
+const authorSummaryInput = z.object({
+  did: z.string().min(1),
+});
+
+/**
+ * The cheap slice of {@link AuthorProfile} a hovercard needs: identity +
+ * aggregate counts, without the five activity pages `getAuthorProfile` fans out
+ * to. Both halves reuse the same helpers the full profile does.
+ */
+export interface AuthorSummary {
+  profile: ProfileSummary;
+  stats: AuthorProfileStats;
+}
 
 export interface AuthorProfile {
   profile: ProfileSummary;
@@ -298,6 +315,49 @@ const getAuthorProfile = createServerFn({ method: "GET" })
     ),
   );
 
+/**
+ * Lightweight author summary for inline mention hovercards — identity +
+ * aggregate counts only, so a card that appears on hover doesn't pay for the
+ * full profile's activity pages. Returns `null` when the DID resolves to no
+ * indexed identity or writing.
+ */
+const getAuthorSummary = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .validator(authorSummaryInput)
+  .handler(
+    observe(
+      "author.getSummary",
+      async ({ data, context }, span): Promise<AuthorSummary | null> => {
+        const { db, schema } = context;
+        const did = await resolveAuthorDid(db, schema, data.did);
+        span.set("did", did);
+
+        const [profile, stats] = await Promise.all([
+          resolveAuthorProfile(db, schema, did),
+          authorProfileStats(db, schema, did),
+        ]);
+
+        const hasIdentity =
+          profile.handle != null ||
+          profile.displayName != null ||
+          profile.description != null ||
+          profile.avatarUrl != null ||
+          stats.publicationCount > 0 ||
+          stats.documentCount > 0 ||
+          stats.subscriptionCount > 0 ||
+          stats.recommendationCount > 0;
+
+        if (!hasIdentity) {
+          span.set("found", false);
+          return null;
+        }
+
+        span.set("found", true);
+        return { profile, stats };
+      },
+    ),
+  );
+
 const getAuthorSifaProfile = createServerFn({ method: "GET" })
   .middleware([dbMiddleware])
   .validator(authorSifaInput)
@@ -471,6 +531,14 @@ function getAuthorProfileQueryOptions(
   });
 }
 
+function getAuthorSummaryQueryOptions(did: string) {
+  return queryOptions({
+    queryKey: ["author", "summary", did] as const,
+    queryFn: async () => getAuthorSummary({ data: { did } }),
+    staleTime: 300_000,
+  });
+}
+
 function getAuthorSifaProfileQueryOptions(did: string, handle: string | null) {
   return queryOptions({
     queryKey: ["author", "sifa", did, handle] as const,
@@ -536,6 +604,8 @@ function getAuthorDocumentsQueryOptions(
 export const authorApi = {
   getAuthorProfile,
   getAuthorProfileQueryOptions,
+  getAuthorSummary,
+  getAuthorSummaryQueryOptions,
   getAuthorSifaProfile,
   getAuthorSifaProfileQueryOptions,
   getAuthorPublications,

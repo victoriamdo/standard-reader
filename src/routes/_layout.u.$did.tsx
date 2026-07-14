@@ -18,6 +18,7 @@ import { Link as AriaLink } from "react-aria-components";
 import { z } from "zod";
 
 import { formatReaders, initials } from "#/components/reader/format";
+import { ButtonLink } from "#/components/router-links";
 import type {
   AuthorProfile,
   AuthorReader,
@@ -41,9 +42,9 @@ import {
   siteSocialMeta,
 } from "#/lib/site-metadata";
 
+import { AddToListButton } from "../components/reader/add-to-list-button";
 import { AuthorProfileLink } from "../components/reader/author-profile-link";
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
-import { AddToListButton } from "../components/reader/add-to-list-button";
 import { FollowUserButton } from "../components/reader/follow-user-button";
 import { LinkifiedText } from "../components/reader/linkified-text";
 import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
@@ -53,9 +54,11 @@ import { ShareMenu } from "../components/reader/share-menu";
 import { AuthorSifaResumeChip } from "../components/reader/sifa-resume-chip";
 import { Avatar } from "../design-system/avatar";
 import { Badge } from "../design-system/badge";
+import { Button } from "../design-system/button";
 import { IconButton } from "../design-system/icon-button";
 import { Tab, TabList, TabPanel, Tabs } from "../design-system/tabs";
 import { uiColor } from "../design-system/theme/color.stylex";
+import { radius } from "../design-system/theme/radius.stylex";
 import { ui } from "../design-system/theme/semantic-color.stylex";
 import { size as boxSize } from "../design-system/theme/semantic-spacing.stylex";
 import { spacing } from "../design-system/theme/spacing.stylex";
@@ -185,6 +188,7 @@ const styles = stylex.create({
   },
   avatarWrap: {
     flexShrink: 0,
+    alignSelf: "center",
   },
   avatar: {
     height: boxSize["6xl"],
@@ -355,6 +359,54 @@ const styles = stylex.create({
     textAlign: "center",
     paddingBottom: spacing["8"],
     paddingTop: spacing["8"],
+  },
+  profileEmptyCard: {
+    borderColor: uiColor.border1,
+    borderRadius: radius.md,
+    borderStyle: "solid",
+    borderWidth: 1,
+    boxSizing: "border-box",
+    display: "flex",
+    flexDirection: "column",
+    marginTop: spacing["8"],
+    maxWidth: "100%",
+    paddingBottom: spacing["10"],
+    paddingLeft: {
+      default: spacing["6"],
+      [HERO_DESKTOP]: spacing["8"],
+    },
+    paddingRight: {
+      default: spacing["6"],
+      [HERO_DESKTOP]: spacing["8"],
+    },
+    paddingTop: spacing["10"],
+    rowGap: spacing["4"],
+    width: "100%",
+  },
+  profileEmptyTitle: {
+    color: uiColor.text2,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize["2xl"],
+    fontWeight: fontWeight.medium,
+    letterSpacing: tracking.tight,
+    lineHeight: lineHeight.sm,
+    marginBottom: spacing["0"],
+    marginTop: spacing["0"],
+  },
+  profileEmptyDek: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.serif,
+    fontSize: fontSize.lg,
+    lineHeight: lineHeight.sm,
+    marginBottom: spacing["0"],
+    marginTop: spacing["0"],
+    maxWidth: "52ch",
+  },
+  profileEmptyActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: spacing["2"],
+    marginTop: spacing["2"],
   },
   loadSentinel: {
     height: 1,
@@ -557,6 +609,24 @@ function AuthorProfileContent({
   const { profile, stats } = initialPage;
   const name = authorDisplayName(profile);
   const pageUrl = `${getPublicUrlClient()}/u/${did}`;
+  // Three profile kinds drive the hero label and empty state:
+  //  - "author": has published work of their own (posts or publications).
+  //  - "reader": no authored work, but some reading footprint (follows,
+  //    followers, lists, or recommendations).
+  //  - "empty": no footprint at all — someone pulled in from the network who
+  //    hasn't done anything on Standard Reader yet. Not a reader; point them
+  //    at their Bluesky profile instead.
+  const hasAuthored = stats.documentCount > 0 || stats.publicationCount > 0;
+  const hasReaderActivity =
+    stats.subscriptionCount > 0 ||
+    stats.subscriberCount > 0 ||
+    stats.recommendationCount > 0 ||
+    (lists?.length ?? 0) > 0;
+  const profileKind: "author" | "reader" | "empty" = hasAuthored
+    ? "author"
+    : hasReaderActivity
+      ? "reader"
+      : "empty";
 
   // Tabs that have content to show. The owner can hide any of these from their
   // public profile via the settings modal; `hiddenTabs` is applied for everyone.
@@ -594,7 +664,11 @@ function AuthorProfileContent({
             </div>
 
             <div {...stylex.props(styles.heroInfo)}>
-              <Kicker>Author</Kicker>
+              {profileKind === "empty" ? null : (
+                <Kicker>
+                  {profileKind === "author" ? "Author" : "Reader"}
+                </Kicker>
+              )}
               <h1 {...stylex.props(styles.heroName)}>{name}</h1>
               {profile.handle ? (
                 <Handle style={styles.heroHandle}>@{profile.handle}</Handle>
@@ -718,125 +792,136 @@ function AuthorProfileContent({
         </div>
       </div>
 
-      <Tabs
-        selectedKey={tab}
-        onSelectionChange={onTabChange}
-        style={styles.tabs}
-      >
-        <div {...stylex.props(styles.tabBar)}>
-          <div {...stylex.props(styles.tabBarInner)}>
-            <TabList aria-label="Author sections" style={styles.tabList}>
-              {visibleTabs.includes("posts") ? (
-                <Tab id="posts">
-                  Posts
-                  <Badge size="sm" style={styles.tabCount}>
-                    {stats.documentCount}
-                  </Badge>
-                </Tab>
-              ) : null}
-              {visibleTabs.includes("publications") ? (
-                <Tab id="publications">
-                  Publications
-                  <Badge size="sm" style={styles.tabCount}>
-                    {stats.publicationCount}
-                  </Badge>
-                </Tab>
-              ) : null}
-              {visibleTabs.includes("subscriptions") ? (
-                <Tab id="subscriptions">
-                  Subscriptions
-                  <Badge size="sm" style={styles.tabCount}>
-                    {stats.subscriptionCount}
-                  </Badge>
-                </Tab>
-              ) : null}
-              {visibleTabs.includes("readers") ? (
-                <Tab id="readers">
-                  Readers
-                  <Badge size="sm" style={styles.tabCount}>
-                    {formatReaders(stats.subscriberCount)}
-                  </Badge>
-                </Tab>
-              ) : null}
-              {visibleTabs.includes("lists") && lists ? (
-                <Tab id="lists">
-                  Lists
-                  <Badge size="sm" style={styles.tabCount}>
-                    {lists.length}
-                  </Badge>
-                </Tab>
-              ) : null}
-              {visibleTabs.includes("likes") ? (
-                <Tab id="likes">
-                  Recommendations
-                  <Badge size="sm" style={styles.tabCount}>
-                    {stats.recommendationCount}
-                  </Badge>
-                </Tab>
-              ) : null}
-            </TabList>
-          </div>
-          <div {...stylex.props(styles.tabRule)} aria-hidden />
-        </div>
-
+      {visibleTabs.length === 0 ? (
         <ReaderContent>
-          {visibleTabs.includes("posts") ? (
-            <TabPanel id="posts" style={styles.tabPanel}>
-              <AuthorPostsPanel
-                did={did}
-                initialItems={initialPage.documents}
-                initialNextOffset={initialPage.documentsNextOffset}
-              />
-            </TabPanel>
-          ) : null}
-
-          {visibleTabs.includes("publications") ? (
-            <TabPanel id="publications" style={styles.tabPanel}>
-              <AuthorPublicationsPanel
-                did={did}
-                initialItems={initialPage.publications}
-                initialNextOffset={initialPage.publicationsNextOffset}
-              />
-            </TabPanel>
-          ) : null}
-
-          {visibleTabs.includes("subscriptions") ? (
-            <TabPanel id="subscriptions" style={styles.tabPanel}>
-              <AuthorSubscriptionsPanel
-                did={did}
-                initialItems={initialPage.subscriptions}
-                initialNextOffset={initialPage.subscriptionsNextOffset}
-              />
-            </TabPanel>
-          ) : null}
-
-          {visibleTabs.includes("readers") ? (
-            <TabPanel id="readers" style={styles.tabPanel}>
-              <AuthorReadersPanel
-                did={did}
-                initialItems={initialPage.readers}
-                initialNextOffset={initialPage.readersNextOffset}
-              />
-            </TabPanel>
-          ) : null}
-
-          {visibleTabs.includes("lists") && lists ? (
-            <TabPanel id="lists" style={styles.tabPanel}>
-              <AuthorListsPanel did={did} lists={lists} />
-            </TabPanel>
-          ) : null}
-
-          {visibleTabs.includes("likes") ? (
-            <TabPanel id="likes" style={styles.tabPanel}>
-              <AuthorLikesPanel
-                did={did}
-                initialItems={initialPage.recommendations}
-                initialNextOffset={initialPage.recommendationsNextOffset}
-              />
-            </TabPanel>
-          ) : null}
+          <ProfileEmptyState
+            name={name}
+            handle={profile.handle}
+            isOwnProfile={isOwnProfile}
+            isFullyEmpty={profileKind === "empty"}
+          />
         </ReaderContent>
-      </Tabs>
+      ) : (
+        <Tabs
+          selectedKey={tab}
+          onSelectionChange={onTabChange}
+          style={styles.tabs}
+        >
+          <div {...stylex.props(styles.tabBar)}>
+            <div {...stylex.props(styles.tabBarInner)}>
+              <TabList aria-label="Author sections" style={styles.tabList}>
+                {visibleTabs.includes("posts") ? (
+                  <Tab id="posts">
+                    Posts
+                    <Badge size="sm" style={styles.tabCount}>
+                      {stats.documentCount}
+                    </Badge>
+                  </Tab>
+                ) : null}
+                {visibleTabs.includes("publications") ? (
+                  <Tab id="publications">
+                    Publications
+                    <Badge size="sm" style={styles.tabCount}>
+                      {stats.publicationCount}
+                    </Badge>
+                  </Tab>
+                ) : null}
+                {visibleTabs.includes("subscriptions") ? (
+                  <Tab id="subscriptions">
+                    Subscriptions
+                    <Badge size="sm" style={styles.tabCount}>
+                      {stats.subscriptionCount}
+                    </Badge>
+                  </Tab>
+                ) : null}
+                {visibleTabs.includes("readers") ? (
+                  <Tab id="readers">
+                    Readers
+                    <Badge size="sm" style={styles.tabCount}>
+                      {formatReaders(stats.subscriberCount)}
+                    </Badge>
+                  </Tab>
+                ) : null}
+                {visibleTabs.includes("lists") && lists ? (
+                  <Tab id="lists">
+                    Lists
+                    <Badge size="sm" style={styles.tabCount}>
+                      {lists.length}
+                    </Badge>
+                  </Tab>
+                ) : null}
+                {visibleTabs.includes("likes") ? (
+                  <Tab id="likes">
+                    Recommendations
+                    <Badge size="sm" style={styles.tabCount}>
+                      {stats.recommendationCount}
+                    </Badge>
+                  </Tab>
+                ) : null}
+              </TabList>
+            </div>
+            <div {...stylex.props(styles.tabRule)} aria-hidden />
+          </div>
+
+          <ReaderContent>
+            {visibleTabs.includes("posts") ? (
+              <TabPanel id="posts" style={styles.tabPanel}>
+                <AuthorPostsPanel
+                  did={did}
+                  initialItems={initialPage.documents}
+                  initialNextOffset={initialPage.documentsNextOffset}
+                />
+              </TabPanel>
+            ) : null}
+
+            {visibleTabs.includes("publications") ? (
+              <TabPanel id="publications" style={styles.tabPanel}>
+                <AuthorPublicationsPanel
+                  did={did}
+                  initialItems={initialPage.publications}
+                  initialNextOffset={initialPage.publicationsNextOffset}
+                />
+              </TabPanel>
+            ) : null}
+
+            {visibleTabs.includes("subscriptions") ? (
+              <TabPanel id="subscriptions" style={styles.tabPanel}>
+                <AuthorSubscriptionsPanel
+                  did={did}
+                  initialItems={initialPage.subscriptions}
+                  initialNextOffset={initialPage.subscriptionsNextOffset}
+                />
+              </TabPanel>
+            ) : null}
+
+            {visibleTabs.includes("readers") ? (
+              <TabPanel id="readers" style={styles.tabPanel}>
+                <AuthorReadersPanel
+                  did={did}
+                  initialItems={initialPage.readers}
+                  initialNextOffset={initialPage.readersNextOffset}
+                />
+              </TabPanel>
+            ) : null}
+
+            {visibleTabs.includes("lists") && lists ? (
+              <TabPanel id="lists" style={styles.tabPanel}>
+                <AuthorListsPanel did={did} lists={lists} />
+              </TabPanel>
+            ) : null}
+
+            {visibleTabs.includes("likes") ? (
+              <TabPanel id="likes" style={styles.tabPanel}>
+                <AuthorLikesPanel
+                  did={did}
+                  initialItems={initialPage.recommendations}
+                  initialNextOffset={initialPage.recommendationsNextOffset}
+                />
+              </TabPanel>
+            ) : null}
+          </ReaderContent>
+        </Tabs>
+      )}
 
       {isOwnProfile ? (
         <ProfileTabsSettingsModal
@@ -847,6 +932,87 @@ function AuthorProfileContent({
           onToggleTab={onToggleTab}
         />
       ) : null}
+    </div>
+  );
+}
+
+function ProfileEmptyState({
+  name,
+  handle,
+  isOwnProfile,
+  isFullyEmpty,
+}: {
+  name: string;
+  handle: string | null;
+  isOwnProfile: boolean;
+  isFullyEmpty: boolean;
+}) {
+  if (isOwnProfile) {
+    return (
+      <div {...stylex.props(styles.profileEmptyCard)}>
+        <h2 {...stylex.props(styles.profileEmptyTitle)}>
+          Your profile is quiet for now
+        </h2>
+        <p {...stylex.props(styles.profileEmptyDek)}>
+          Follow the publications you love and build reading lists worth sharing
+          — they&apos;ll gather here for others to discover. Everything you do
+          lives in your own repo, owned by you.
+        </p>
+        <div {...stylex.props(styles.profileEmptyActions)}>
+          <ButtonLink to="/discover" variant="primary" size="lg">
+            Discover publications
+          </ButtonLink>
+          <ButtonLink to="/" variant="secondary" size="lg">
+            Browse your feed
+          </ButtonLink>
+        </div>
+      </div>
+    );
+  }
+
+  // A profile with no footprint at all: don't call them a reader. Lead with
+  // their Bluesky profile, which is where they actually are.
+  if (isFullyEmpty) {
+    return (
+      <div {...stylex.props(styles.profileEmptyCard)}>
+        <h2 {...stylex.props(styles.profileEmptyTitle)}>
+          Not on Standard Reader yet
+        </h2>
+        <p {...stylex.props(styles.profileEmptyDek)}>
+          {name} hasn&apos;t started reading or publishing here.
+          {handle ? " You can find them on Bluesky." : ""}
+        </p>
+        {handle ? (
+          <div {...stylex.props(styles.profileEmptyActions)}>
+            <Button
+              variant="primary"
+              size="lg"
+              onPress={() => {
+                window.open(
+                  `https://bsky.app/profile/${handle}`,
+                  "_blank",
+                  "noopener,noreferrer",
+                );
+              }}
+            >
+              <ExternalLink size={16} aria-hidden />
+              View on Bluesky
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  // Has a reading footprint, but nothing is publicly visible right now (e.g.
+  // the owner hid every tab).
+  return (
+    <div {...stylex.props(styles.profileEmptyCard)}>
+      <h2 {...stylex.props(styles.profileEmptyTitle)}>Nothing here yet</h2>
+      <p {...stylex.props(styles.profileEmptyDek)}>
+        {name} hasn&apos;t published or shared anything public yet. Follow along
+        to catch their work when it arrives.
+      </p>
     </div>
   );
 }
