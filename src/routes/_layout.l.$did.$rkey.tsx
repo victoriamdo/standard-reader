@@ -12,7 +12,13 @@ import {
   BookOpen,
   BookmarkCheck,
   BookmarkPlus,
+  Eye,
+  EyeOff,
+  Link as LinkIcon,
+  MoreHorizontal,
   Pencil,
+  Rss,
+  Share2,
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -26,7 +32,9 @@ import type {
   PublicationCard,
 } from "#/integrations/tanstack-query/api-shapes";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { shareLinkUrl, useNativeShareAvailable } from "#/lib/native-share";
 import { getPublicUrlClient } from "#/lib/public-url";
+import { buildBlueskyComposeUrl } from "#/lib/quote-share";
 import {
   listFeedUrl,
   listOgImageUrl,
@@ -51,6 +59,7 @@ import {
 } from "../design-system/alert-dialog";
 import { Avatar } from "../design-system/avatar";
 import { IconButton } from "../design-system/icon-button";
+import { Menu, MenuItem } from "../design-system/menu";
 import { Tab, TabList, TabPanel, Tabs } from "../design-system/tabs";
 import { uiColor } from "../design-system/theme/color.stylex";
 import { spacing } from "../design-system/theme/spacing.stylex";
@@ -67,6 +76,9 @@ const PAGE_SIZE = 20;
 
 /** How many of the most recent renderable articles a magazine edition pins. */
 const MAGAZINE_LIMIT = 12;
+
+/** Below this width the hero actions collapse into a single overflow menu. */
+const HERO_DESKTOP = "@media (min-width: 40rem)";
 
 const listSearchSchema = z.object({
   view: z.enum(["feed", "publications", "users"]).default("feed"),
@@ -197,10 +209,17 @@ const styles = stylex.create({
   heroActs: {
     alignItems: "center",
     columnGap: spacing["1.5"],
-    display: "flex",
+    display: { default: "none", [HERO_DESKTOP]: "flex" },
     flexWrap: "wrap",
     justifyContent: "flex-end",
     rowGap: spacing["2.5"],
+    paddingTop: spacing["1"],
+  },
+  heroActsMobile: {
+    alignItems: "center",
+    display: { default: "flex", [HERO_DESKTOP]: "none" },
+    flexShrink: 0,
+    justifyContent: "flex-end",
     paddingTop: spacing["1"],
   },
   tabs: {
@@ -299,11 +318,13 @@ function ListFeedPanel({
   rkey,
   hasMembers,
   isOwner,
+  hideRead,
 }: {
   did: string;
   rkey: string;
   hasMembers: boolean;
   isOwner: boolean;
+  hideRead: boolean;
 }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -379,6 +400,11 @@ function ListFeedPanel({
     );
   }
 
+  const canFilterRead = hideRead && trackReading && signedIn;
+  const visibleItems = canFilterRead
+    ? items.filter((article) => !article.isRead)
+    : items;
+
   if (items.length === 0) {
     return (
       <div {...stylex.props(styles.emptyNote)}>
@@ -387,10 +413,19 @@ function ListFeedPanel({
     );
   }
 
+  if (visibleItems.length === 0) {
+    return (
+      <div {...stylex.props(styles.emptyNote)}>
+        You&apos;ve read every article here. Show read articles to see them
+        again.
+      </div>
+    );
+  }
+
   return (
     <>
       <div>
-        {items.map((article, index) => (
+        {visibleItems.map((article, index) => (
           <ArticleRow
             key={article.uri}
             article={article}
@@ -519,12 +554,16 @@ function ListPage() {
   );
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
+  const { enabled: trackReading } = useTrackReadingHistory();
+  const nativeShareAvailable = useNativeShareAvailable();
   const { data: sidebar } = useQuery(feedApi.getSidebarQueryOptions());
   const following = sidebar?.following ?? [];
   const followingUsers = sidebar?.followingUsers ?? [];
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [rssOpen, setRssOpen] = useState(false);
+  const [hideRead, setHideRead] = useState(false);
 
   // Snapshot the current top-of-feed articles so the magazine link is stable:
   // the chosen articles are baked into the URL and won't drift as the list grows.
@@ -607,6 +646,25 @@ function ListPage() {
       : view;
 
   const pageUrl = `${getPublicUrlClient()}/l/${did}/${rkey}`;
+  const feedUrl = listFeedUrl(getPublicUrlClient(), did, rkey);
+  const showMagazine = magazineArticles.length > 0;
+  // Filtering read articles only makes sense once reading history is tracked.
+  const showReadToggle = signedIn && trackReading;
+  const readToggleLabel = hideRead
+    ? "Show read articles"
+    : "Hide read articles";
+
+  const toggleHideRead = () => setHideRead((value) => !value);
+  const onCopyLink = () => {
+    void navigator.clipboard.writeText(pageUrl);
+  };
+  const onShareBluesky = () => {
+    globalThis.open(
+      buildBlueskyComposeUrl(pageUrl),
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
 
   return (
     <div>
@@ -649,7 +707,7 @@ function ListPage() {
         </div>
 
         <div {...stylex.props(styles.heroActs)}>
-          {magazineArticles.length > 0 ? (
+          {showMagazine ? (
             <IconButton
               variant="secondary"
               size="lg"
@@ -659,11 +717,23 @@ function ListPage() {
               <BookOpen size={18} />
             </IconButton>
           ) : null}
+          {showReadToggle ? (
+            <IconButton
+              variant={hideRead ? "primary" : "secondary"}
+              size="lg"
+              label={readToggleLabel}
+              onPress={toggleHideRead}
+            >
+              {hideRead ? <EyeOff size={18} /> : <Eye size={18} />}
+            </IconButton>
+          ) : null}
           <ShareMenu pageUrl={pageUrl} variant="icon" size="lg" />
           <RssFeedButton
             name={list.name}
-            feedUrl={listFeedUrl(getPublicUrlClient(), did, rkey)}
+            feedUrl={feedUrl}
             size="lg"
+            isOpen={rssOpen}
+            onOpenChange={setRssOpen}
           />
           {viewer.isOwner ? (
             <>
@@ -675,41 +745,14 @@ function ListPage() {
               >
                 <Pencil size={18} />
               </IconButton>
-              <AlertDialog
-                isOpen={deleteOpen}
-                onOpenChange={setDeleteOpen}
-                trigger={
-                  <IconButton
-                    variant="critical-outline"
-                    size="lg"
-                    label="Delete list"
-                  >
-                    <Trash2 size={18} />
-                  </IconButton>
-                }
+              <IconButton
+                variant="critical-outline"
+                size="lg"
+                label="Delete list"
+                onPress={() => setDeleteOpen(true)}
               >
-                <AlertDialogHeader>Delete list?</AlertDialogHeader>
-                <AlertDialogDescription>
-                  “{list.name}” will be removed from your account. Anyone who
-                  saved it will no longer see it in their sidebar. This can’t be
-                  undone.
-                </AlertDialogDescription>
-                <AlertDialogFooter>
-                  <AlertDialogCancelButton
-                    isDisabled={deleteMutation.isPending}
-                  >
-                    Cancel
-                  </AlertDialogCancelButton>
-                  <AlertDialogActionButton
-                    variant="critical"
-                    closeOnPress={false}
-                    isPending={deleteMutation.isPending}
-                    onPress={() => deleteMutation.mutate(rkey)}
-                  >
-                    Delete list
-                  </AlertDialogActionButton>
-                </AlertDialogFooter>
-              </AlertDialog>
+                <Trash2 size={18} />
+              </IconButton>
             </>
           ) : signedIn ? (
             viewer.isSaved ? (
@@ -734,6 +777,84 @@ function ListPage() {
               </IconButton>
             )
           ) : null}
+        </div>
+
+        <div {...stylex.props(styles.heroActsMobile)}>
+          <Menu
+            trigger={
+              <IconButton variant="secondary" size="lg" label="More actions">
+                <MoreHorizontal size={18} />
+              </IconButton>
+            }
+          >
+            {showMagazine ? (
+              <MenuItem onPress={openMagazine} suffix={<BookOpen size={14} />}>
+                Read as magazine
+              </MenuItem>
+            ) : null}
+            {showReadToggle ? (
+              <MenuItem
+                onPress={toggleHideRead}
+                suffix={hideRead ? <EyeOff size={14} /> : <Eye size={14} />}
+              >
+                {readToggleLabel}
+              </MenuItem>
+            ) : null}
+            <MenuItem onPress={onCopyLink} suffix={<LinkIcon size={14} />}>
+              Copy link
+            </MenuItem>
+            <MenuItem onPress={onShareBluesky} suffix={<Share2 size={14} />}>
+              Share on Bluesky
+            </MenuItem>
+            {nativeShareAvailable ? (
+              <MenuItem
+                onPress={() => {
+                  void shareLinkUrl(pageUrl);
+                }}
+              >
+                Share elsewhere
+              </MenuItem>
+            ) : null}
+            <MenuItem
+              onPress={() => setRssOpen(true)}
+              suffix={<Rss size={14} />}
+            >
+              RSS feed
+            </MenuItem>
+            {viewer.isOwner ? (
+              <>
+                <MenuItem
+                  onPress={() => setEditOpen(true)}
+                  suffix={<Pencil size={14} />}
+                >
+                  Edit list
+                </MenuItem>
+                <MenuItem
+                  variant="destructive"
+                  onPress={() => setDeleteOpen(true)}
+                  suffix={<Trash2 size={14} />}
+                >
+                  Delete list
+                </MenuItem>
+              </>
+            ) : signedIn ? (
+              viewer.isSaved ? (
+                <MenuItem
+                  onPress={() => unsaveMutation.mutate(list.uri)}
+                  suffix={<BookmarkCheck size={14} />}
+                >
+                  Remove list
+                </MenuItem>
+              ) : (
+                <MenuItem
+                  onPress={() => saveMutation.mutate(list.uri)}
+                  suffix={<BookmarkPlus size={14} />}
+                >
+                  Subscribe to list
+                </MenuItem>
+              )
+            ) : null}
+          </Menu>
         </div>
       </div>
 
@@ -762,6 +883,7 @@ function ListPage() {
               rkey={rkey}
               hasMembers={hasPublications || hasUsers}
               isOwner={viewer.isOwner}
+              hideRead={hideRead}
             />
           </TabPanel>
           {hasPublications ? (
@@ -781,14 +903,40 @@ function ListPage() {
       </Tabs>
 
       {viewer.isOwner ? (
-        <ListEditModal
-          isOpen={editOpen}
-          onOpenChange={setEditOpen}
-          list={list}
-          following={following}
-          followingUsers={followingUsers}
-          onDeleted={leaveAfterDelete}
-        />
+        <>
+          <ListEditModal
+            isOpen={editOpen}
+            onOpenChange={setEditOpen}
+            list={list}
+            following={following}
+            followingUsers={followingUsers}
+            onDeleted={leaveAfterDelete}
+          />
+          <AlertDialog
+            isOpen={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            trigger={<span hidden aria-hidden />}
+          >
+            <AlertDialogHeader>Delete list?</AlertDialogHeader>
+            <AlertDialogDescription>
+              “{list.name}” will be removed from your account. Anyone who saved
+              it will no longer see it in their sidebar. This can’t be undone.
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton isDisabled={deleteMutation.isPending}>
+                Cancel
+              </AlertDialogCancelButton>
+              <AlertDialogActionButton
+                variant="critical"
+                closeOnPress={false}
+                isPending={deleteMutation.isPending}
+                onPress={() => deleteMutation.mutate(rkey)}
+              >
+                Delete list
+              </AlertDialogActionButton>
+            </AlertDialogFooter>
+          </AlertDialog>
+        </>
       ) : null}
     </div>
   );
