@@ -10,16 +10,6 @@ body,
   min-height: 100%;
 }
 
-/* Lock text at author-specified sizes. Without this, Android Chromium
-   (Chrome/Edge) applies "font boosting" (automatic text autosizing) and
-   recomputes the scale whenever a large block reflows — e.g. when toggling a
-   setting that invalidates the feed — abruptly rescaling text and making the
-   whole app appear to change size. */
-html {
-  text-size-adjust: 100%;
-  -webkit-text-size-adjust: 100%;
-}
-
 /* Subscribe embed iframes shrink-wrap the card (background matches publication theme). */
 html[data-embed="subscribe"] {
   color-scheme: normal;

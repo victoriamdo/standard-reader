@@ -98,7 +98,14 @@ const styles = stylex.create({
     overflow: "hidden",
     display: "flex",
     flexDirection: "row",
-    height: stylex.firstThatWorks("100dvh", "100vh"),
+    // Use the *static* small-viewport unit, not the dynamic `dvh`. `dvh`
+    // re-resolves live as mobile browser chrome (address/toolbar) shows and
+    // hides — so focusing a control (e.g. a settings Switch) resizes the whole
+    // shell mid-interaction, making the page jump and leaving it shorter than
+    // the screen with a gap below the dock. `svh` never changes on interaction
+    // and is always ≤ the visible area, so the shell can't jump or get cut off.
+    // In a standalone PWA svh == dvh == full screen.
+    height: stylex.firstThatWorks("100svh", "100dvh", "100vh"),
   },
   sidebar: {
     backgroundColor: uiColor.bgSubtle,
@@ -110,7 +117,9 @@ const styles = stylex.create({
     borderRightColor: uiColor.border1,
     borderRightStyle: "solid",
     borderRightWidth: 1,
-    height: stylex.firstThatWorks("100dvh", "100vh"),
+    // Match the shell: static small-viewport height so it never resizes on
+    // interaction (see the note on `shell.height`).
+    height: stylex.firstThatWorks("100svh", "100dvh", "100vh"),
     // The sidebar itself doesn't scroll; its inner region does, so the foot
     // stays pinned outside the scrollport and content never hides behind it.
     overflow: "hidden",
