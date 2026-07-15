@@ -19,6 +19,7 @@ const NON_XRPC_LEXICON_STEMS = new Set([
   "collection",
   "collectionsPublication",
   "defs",
+  "graph.follow",
   "labeler.defs",
   "labeler.getServices",
   "labeler.service",
@@ -28,6 +29,7 @@ const NON_XRPC_LEXICON_STEMS = new Set([
   "listSave",
   "publicationTheme",
   "read",
+  "sidebarPref",
 ]);
 
 function loadAppviewLexiconNsids(): Array<string> {

@@ -16,7 +16,9 @@ function openExternal(url: string) {
 }
 
 function currentPageUrl(): string {
-  return globalThis.location.href;
+  // `location` is undefined during SSR — LinkShareMenu calls this while
+  // rendering (to decide `canShare`), so guard against the server.
+  return globalThis.location?.href ?? "";
 }
 
 export function DocumentShareMenu({
