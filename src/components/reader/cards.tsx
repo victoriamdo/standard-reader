@@ -8,6 +8,7 @@ import {
   BookOpen,
   Bookmark,
   Check,
+  CircleCheck,
   Heart,
   Plus,
 } from "lucide-react";
@@ -74,7 +75,11 @@ import {
   PublicationAvatar,
   Topic,
 } from "./primitives";
-import { applyMarkReadOptimisticUpdate } from "./read-optimistic";
+import {
+  applyMarkReadOptimisticUpdate,
+  applyMarkUnreadOptimisticUpdate,
+  invalidateReadQueries,
+} from "./read-optimistic";
 import { useArticleBookmark } from "./use-article-bookmark";
 
 const styles = stylex.create({
@@ -1573,6 +1578,53 @@ export function SaveButton({
   );
 }
 
+/**
+ * Pushes an already-read document back to unread (deletes its `read` record).
+ * Used in the reading-history list; renders nothing when read tracking is off or
+ * the reader is signed out (in which case there's no unread state to restore).
+ */
+export function MarkUnreadButton({
+  documentUri,
+  publicationUri,
+  size = "sm",
+}: {
+  documentUri: string;
+  publicationUri?: string | null;
+  size?: "sm" | "md";
+}) {
+  const queryClient = useQueryClient();
+  const { data: session } = useQuery(user.getSessionQueryOptions);
+  const signedIn = Boolean(session?.user);
+  const { enabled: trackReading } = useTrackReadingHistory();
+  const { mutate: markUnread, isPending } = useMutation(
+    readerApi.markUnreadMutationOptions(),
+  );
+  const iconSize = size === "md" ? 18 : 16;
+
+  if (!signedIn || !trackReading) return null;
+
+  const onPress = () => {
+    applyMarkUnreadOptimisticUpdate(queryClient, documentUri, publicationUri);
+    markUnread(documentUri, {
+      onError: () => invalidateReadQueries(queryClient),
+    });
+  };
+
+  return (
+    <IconButton
+      variant="secondary"
+      size={size}
+      label="Mark as unread"
+      isDisabled={isPending}
+      onPress={onPress}
+      onClick={stopSaveClick}
+      style={styles.saveActive}
+    >
+      <CircleCheck size={iconSize} aria-hidden />
+    </IconButton>
+  );
+}
+
 /* ── Article row (list) ─────────────────────────────────────────────────── */
 
 export function ArticleRow({
@@ -1581,6 +1633,7 @@ export function ArticleRow({
   showByline = true,
   showSaveButton = true,
   saveButtonPlacement = "header",
+  showMarkUnreadButton = false,
   isFirstInSection = false,
   assumeBookmarked,
   metaLabels,
@@ -1591,6 +1644,8 @@ export function ArticleRow({
   showSaveButton?: boolean;
   /** Where the save toggle sits — `besideMedia` places it to the right of the cover. */
   saveButtonPlacement?: "header" | "besideMedia";
+  /** Show a "mark as unread" control in the row header (reading-history list). */
+  showMarkUnreadButton?: boolean;
   /** Drop top padding when the section head already provides spacing above. */
   isFirstInSection?: boolean;
   /** Skip per-row bookmark status fetches when the list is already the save queue. */
@@ -1611,11 +1666,24 @@ export function ArticleRow({
     />
   ) : null;
 
+  const markUnreadButton = showMarkUnreadButton ? (
+    <MarkUnreadButton
+      documentUri={article.uri}
+      publicationUri={article.publicationUri}
+    />
+  ) : null;
+  // The save toggle sits in the header by default; `besideMedia` pins it to the
+  // row's right edge instead. The unread toggle always pins to the right edge so
+  // it lines up across rows regardless of whether a cover image is present.
+  const asideSaveButton = saveBesideMedia ? saveButton : null;
+  const headerSaveButton = saveBesideMedia ? null : saveButton;
+  const hasAside = Boolean(markUnreadButton || asideSaveButton);
+
   const gridStyles: Array<stylex.StyleXStyles | false | undefined> = [
     showByline ? styles.rowGrid : styles.row,
-    !cover && !saveBesideMedia ? styles.rowNoMedia : false,
-    !cover && saveBesideMedia ? styles.rowNoMediaSaveAside : false,
-    saveBesideMedia && cover ? styles.rowSaveBesideMedia : false,
+    !cover && !hasAside ? styles.rowNoMedia : false,
+    !cover && hasAside ? styles.rowNoMediaSaveAside : false,
+    hasAside && cover ? styles.rowSaveBesideMedia : false,
     !showByline && isFirstInSection ? styles.rowFirstInSection : false,
   ];
 
@@ -1629,7 +1697,7 @@ export function ArticleRow({
       ) : (
         <span />
       )}
-      {saveBesideMedia ? null : saveButton}
+      {headerSaveButton}
     </Flex>
   );
 
@@ -1656,8 +1724,13 @@ export function ArticleRow({
           <AspectRatioImage src={cover} alt="" referrerPolicy="no-referrer" />
         </AspectRatio>
       ) : null}
-      {saveBesideMedia && saveButton ? (
-        <div {...stylex.props(styles.rowSaveAside)}>{saveButton}</div>
+      {hasAside ? (
+        <div {...stylex.props(styles.rowSaveAside)}>
+          <Flex align="center" gap="sm">
+            {markUnreadButton}
+            {asideSaveButton}
+          </Flex>
+        </div>
       ) : null}
     </ArticleLink>
   );

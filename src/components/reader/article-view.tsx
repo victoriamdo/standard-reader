@@ -12,9 +12,12 @@ import {
   ArrowLeft,
   BookOpen,
   Bookmark,
+  Circle,
+  CircleCheck,
   ExternalLink,
   Headphones,
   Heart,
+  MoreHorizontal,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -43,6 +46,7 @@ import {
   LIGHTBOX_IMAGE_TRANSITION_NAME,
   startLightboxViewTransition,
 } from "../../design-system/lightbox/transition";
+import { Menu, MenuItem } from "../../design-system/menu";
 import { animationDuration } from "../../design-system/theme/animations.stylex";
 import {
   criticalColor,
@@ -98,6 +102,7 @@ import { applyMarkReadOptimisticUpdate } from "./read-optimistic";
 import { ReaderWordHighlighter } from "./reader-word-highlighter";
 import { SaveDraftConsumer } from "./save-draft-consumer";
 import { useArticleBookmark } from "./use-article-bookmark";
+import { useArticleReadToggle } from "./use-article-read-toggle";
 import { useArticleRecommend } from "./use-article-recommend";
 
 /** Reading progress for article content within the app-shell scroller. */
@@ -207,6 +212,23 @@ const styles = stylex.create({
     display: "flex",
     flexShrink: 0,
     rowGap: gap.md,
+  },
+  topActsInline: {
+    alignItems: "center",
+    columnGap: gap.md,
+    // Individual secondary buttons on desktop; folded into an overflow menu below
+    // this breakpoint (see `topActsOverflow`).
+    display: {
+      default: "none",
+      "@media (min-width: 40rem)": "flex",
+    },
+  },
+  topActsOverflow: {
+    alignItems: "center",
+    display: {
+      default: "flex",
+      "@media (min-width: 40rem)": "none",
+    },
   },
   pubByline: {
     borderWidth: 0,
@@ -568,6 +590,98 @@ function BookmarkButton({
   );
 }
 
+function ReadToggleButton({
+  isRead,
+  onToggle,
+  isPending = false,
+}: {
+  isRead: boolean;
+  onToggle: () => void;
+  isPending?: boolean;
+}) {
+  return (
+    <IconButton
+      variant="secondary"
+      size="md"
+      label={isRead ? "Mark as unread" : "Mark as read"}
+      aria-pressed={isRead}
+      isDisabled={isPending}
+      onPress={onToggle}
+      style={isRead ? styles.bookmarkActive : undefined}
+    >
+      {isRead ? <CircleCheck size={18} /> : <Circle size={18} />}
+    </IconButton>
+  );
+}
+
+/**
+ * Mobile overflow for the article top bar: collapses the secondary actions
+ * (magazine / open-on-site / read toggle / save) behind a single "⋯" button so
+ * the bar doesn't overflow on narrow screens. On desktop the same actions render
+ * as individual icon buttons instead (see `styles.topActsInline`).
+ */
+function ReaderSecondaryActionsMenu({
+  onOpenMagazine,
+  onOpenPublication,
+  publicationName,
+  showReadToggle,
+  isRead,
+  onToggleRead,
+  bookmarked,
+  onToggleBookmark,
+}: {
+  onOpenMagazine: (() => void) | null;
+  onOpenPublication: (() => void) | null;
+  publicationName?: string | null;
+  showReadToggle: boolean;
+  isRead: boolean;
+  onToggleRead: () => void;
+  bookmarked: boolean;
+  onToggleBookmark: () => void;
+}) {
+  return (
+    <Menu
+      trigger={
+        <IconButton variant="secondary" size="md" label="More actions">
+          <MoreHorizontal size={18} />
+        </IconButton>
+      }
+    >
+      {onOpenMagazine ? (
+        <MenuItem prefix={<BookOpen size={16} />} onPress={onOpenMagazine}>
+          Open magazine edition
+        </MenuItem>
+      ) : null}
+      {onOpenPublication ? (
+        <MenuItem
+          prefix={<ExternalLink size={16} />}
+          onPress={onOpenPublication}
+        >
+          {publicationName
+            ? `Open on ${publicationName}`
+            : "Open on publication"}
+        </MenuItem>
+      ) : null}
+      {showReadToggle ? (
+        <MenuItem
+          prefix={isRead ? <CircleCheck size={16} /> : <Circle size={16} />}
+          onPress={onToggleRead}
+        >
+          {isRead ? "Mark as unread" : "Mark as read"}
+        </MenuItem>
+      ) : null}
+      <MenuItem
+        prefix={
+          <Bookmark size={16} fill={bookmarked ? "currentColor" : "none"} />
+        }
+        onPress={onToggleBookmark}
+      >
+        {bookmarked ? "Saved for later" : "Save for later"}
+      </MenuItem>
+    </Menu>
+  );
+}
+
 function ArticleLikePrompt({
   recommended,
   onToggle,
@@ -727,6 +841,24 @@ function ArticleViewBody({
   const date = formatDate(article.publishedAt);
   const publicationArticleUrl = articlePublicationUrl(article);
   const linkParams = documentLinkParams(article.uri);
+
+  const handleOpenMagazine =
+    article.collection && linkParams
+      ? () => {
+          rememberOpenInMagazine();
+          void router.navigate({
+            to: "/collection/$did/$rkey",
+            params: linkParams,
+            replace: true,
+          });
+        }
+      : null;
+  const handleOpenPublication = publicationArticleUrl
+    ? () => {
+        globalThis.open(publicationArticleUrl, "_blank", "noopener,noreferrer");
+      }
+    : null;
+
   const dismissMagazineIntro = () => {
     try {
       globalThis.localStorage?.setItem(COLLECTION_MAGAZINE_INTRO_KEY, "1");
@@ -761,6 +893,15 @@ function ArticleViewBody({
   const { enabled: trackReading } = useTrackReadingHistory();
   const { mutate: markRead } = useMutation(readerApi.markReadMutationOptions());
   const markedUriRef = useRef<string | null>(null);
+
+  const {
+    isRead,
+    toggle: toggleRead,
+    isPending: readTogglePending,
+  } = useArticleReadToggle(article.uri, {
+    signedIn,
+    publicationUri: article.publicationUri,
+  });
 
   useEffect(() => {
     if (!signedIn || !trackReading || markedUriRef.current === article.uri) {
@@ -883,44 +1024,57 @@ function ArticleViewBody({
 
           <div {...stylex.props(styles.topActs)}>
             <TopListenButton article={article} />
-            {article.collection && linkParams ? (
-              <IconButton
-                variant="secondary"
-                size="md"
-                label="Open magazine edition"
-                onPress={() => {
-                  rememberOpenInMagazine();
-                  void router.navigate({
-                    to: "/collection/$did/$rkey",
-                    params: linkParams,
-                    replace: true,
-                  });
-                }}
-              >
-                <BookOpen size={18} />
-              </IconButton>
-            ) : null}
-            {publicationArticleUrl ? (
-              <IconButton
-                variant="secondary"
-                size="md"
-                label={pub ? `Open on ${pub.name}` : "Open on publication"}
-                onPress={() => {
-                  globalThis.open(
-                    publicationArticleUrl,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                }}
-              >
-                <ExternalLink size={18} />
-              </IconButton>
-            ) : null}
-            <BookmarkButton
-              bookmarked={bookmarked}
-              onToggle={toggleBookmark}
-              isPending={bookmarkPending}
-            />
+
+            {/* Secondary actions: individual buttons on desktop… */}
+            <div {...stylex.props(styles.topActsInline)}>
+              {handleOpenMagazine ? (
+                <IconButton
+                  variant="secondary"
+                  size="md"
+                  label="Open magazine edition"
+                  onPress={handleOpenMagazine}
+                >
+                  <BookOpen size={18} />
+                </IconButton>
+              ) : null}
+              {handleOpenPublication ? (
+                <IconButton
+                  variant="secondary"
+                  size="md"
+                  label={pub ? `Open on ${pub.name}` : "Open on publication"}
+                  onPress={handleOpenPublication}
+                >
+                  <ExternalLink size={18} />
+                </IconButton>
+              ) : null}
+              {signedIn && trackReading ? (
+                <ReadToggleButton
+                  isRead={isRead}
+                  onToggle={toggleRead}
+                  isPending={readTogglePending}
+                />
+              ) : null}
+              <BookmarkButton
+                bookmarked={bookmarked}
+                onToggle={toggleBookmark}
+                isPending={bookmarkPending}
+              />
+            </div>
+
+            {/* …collapsed into an overflow menu on mobile. */}
+            <div {...stylex.props(styles.topActsOverflow)}>
+              <ReaderSecondaryActionsMenu
+                onOpenMagazine={handleOpenMagazine}
+                onOpenPublication={handleOpenPublication}
+                publicationName={pub?.name}
+                showReadToggle={signedIn && trackReading}
+                isRead={isRead}
+                onToggleRead={toggleRead}
+                bookmarked={bookmarked}
+                onToggleBookmark={toggleBookmark}
+              />
+            </div>
+
             <DocumentShareMenu
               recordUri={article.uri}
               title={article.title}
