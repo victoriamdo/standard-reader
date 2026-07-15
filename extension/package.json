@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "@stylexjs/stylex": "^0.18.3",
+    "@stylexjs/stylex": "^0.19.0",
     "kokoro-js": "^1.2.1",
     "lucide-react": "^0.548.0",
     "react": "^19.2.0",
@@ -25,7 +25,7 @@
     "react-stately": "^3.47.0"
   },
   "devDependencies": {
-    "@stylexjs/unplugin": "^0.18.2",
+    "@stylexjs/unplugin": "^0.19.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@wxt-dev/module-react": "^1.1.5",

@@ -10,6 +10,10 @@
   },
   "ignorePatterns": [
     "services/**",
+    ".agents/**",
+    ".claude/**",
+    ".cursor/**",
+    ".polytoken/**",
     "**/routeTree.gen.ts",
     "eslint.stylex-autofix.mjs",
     "eslint.react-compiler.mjs",
