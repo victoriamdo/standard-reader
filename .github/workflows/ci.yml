@@ -29,6 +29,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Validate the drizzle migration journal/snapshots are consistent before
+      # the deploy's pre-deploy `pnpm db:migrate` tries to apply them. Offline
+      # check (no DB connection); the URL only satisfies drizzle.config.ts.
+      - name: Check migrations
+        run: pnpm exec drizzle-kit check
+        env:
+          DATABASE_URL: postgres://drizzle:drizzle@localhost:5432/drizzle
+
       - name: Format check
         run: pnpm format:check
 

@@ -431,6 +431,12 @@ tsconfig.json         # bundler resolution; "#/*" and "@/*" aliases -> ./src/*
 
 - `pnpm build` emits a Node server bundle at `dist/server/server.js` plus client assets in
   `dist/client/`.
+- Database migrations run automatically on deploy: the Railway web service's `preDeployCommand`
+  (`railway.json`) runs `pnpm db:migrate` once after build and before traffic switches, so a merged
+  PR's schema changes are applied before the new code serves. Only the web service migrates — the
+  ingest/cron services share the DB but must not race on migrations. CI runs `drizzle-kit check` on
+  every PR to catch an inconsistent migration journal before it reaches deploy. `drizzle-kit` is a
+  runtime dependency (not dev-only) so the deploy image can run it.
 - TanStack Start supports Cloudflare Workers, Netlify, Vercel, Node/Docker, Bun, and Railway. The
   default toolchain produces a Node server output; choose/configure a target before deploying. Load
   `@tanstack/start-client-core#start-core/deployment` for target-specific guidance.
