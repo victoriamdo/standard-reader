@@ -92,6 +92,13 @@
       "when": 1783989034421,
       "tag": "0012_fix_count_old_unread_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784099620903,
+      "tag": "0013_tags_topic_in_search_vector",
+      "breakpoints": true
     }
   ]
 }

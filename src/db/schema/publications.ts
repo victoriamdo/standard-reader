@@ -80,10 +80,13 @@ export const publications = pgTable(
     /** True if this record currently exists in the repo (soft-delete tombstone). */
     deleted: boolean("deleted").notNull().default(false),
 
-    /** Generated full-text search vector over name + description. */
+    /** Generated full-text search vector over name, description, and the
+     * app-derived topic. Folding the topic in (weight B) lets a tag/`#hashtag`
+     * search surface publications on that topic alongside tagged articles,
+     * mirroring the tag pages' dual Articles/Publications view. */
     searchVector: tsvector("search_vector").generatedAlwaysAs(
       (): ReturnType<typeof sql> =>
-        sql`setweight(to_tsvector('english', coalesce(name, '')), 'A') || setweight(to_tsvector('english', coalesce(description, '')), 'B')`,
+        sql`setweight(to_tsvector('english', coalesce(name, '')), 'A') || setweight(to_tsvector('english', coalesce(description, '')), 'B') || setweight(to_tsvector('english', coalesce(topic, '')), 'B')`,
     ),
 
     indexedAt: timestamp("indexed_at", { withTimezone: true })
