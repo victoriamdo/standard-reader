@@ -45,6 +45,7 @@ import { useReadingTypography } from "#/lib/use-reading-typography";
 import { articleBodyStyles, readingDropCapStyleProps } from "../../body-styles";
 import type { FacetFeature } from "./facets";
 import { findFacetFeature, hasFacetKind } from "./facets";
+import { useFootnoteNumber } from "./footnote-context";
 import { useInlineMentions } from "./publication-mention-context";
 
 const styles = stylex.create({
@@ -298,6 +299,37 @@ function LinkedActorChip({
   );
 }
 
+/**
+ * Inline footnote reference — a superscript number linking down to the
+ * matching entry in the footnotes section. Renders nothing when the footnote
+ * isn't registered (e.g. faceted text shown outside an article body). The
+ * `title` gives a quick hover preview of the note without leaving the reading
+ * position.
+ */
+function FootnoteReference({
+  footnoteId,
+  contentPlaintext,
+}: {
+  footnoteId: string;
+  contentPlaintext?: string;
+}) {
+  const number = useFootnoteNumber(footnoteId);
+  if (number == null) return null;
+  return (
+    <sup {...stylex.props(articleBodyStyles.footnoteRef)}>
+      <a
+        id={`fnref-${footnoteId}`}
+        href={`#fn-${footnoteId}`}
+        title={contentPlaintext || undefined}
+        aria-label={`Footnote ${number}`}
+        {...stylex.props(articleBodyStyles.footnoteRefLink)}
+      >
+        {number}
+      </a>
+    </sup>
+  );
+}
+
 function FacetSegment({
   text,
   features,
@@ -395,6 +427,19 @@ function FacetSegment({
   if (isBold) {
     node = (
       <strong {...stylex.props(articleBodyStyles.facetBold)}>{node}</strong>
+    );
+  }
+
+  const footnote = findFacetFeature(features, "footnote");
+  if (footnote?.footnoteId) {
+    node = (
+      <>
+        {node}
+        <FootnoteReference
+          footnoteId={footnote.footnoteId}
+          contentPlaintext={footnote.contentPlaintext}
+        />
+      </>
     );
   }
 

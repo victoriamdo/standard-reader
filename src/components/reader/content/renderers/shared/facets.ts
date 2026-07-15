@@ -4,6 +4,10 @@ export interface FacetFeature {
   did?: string;
   handle?: string;
   atURI?: string;
+  /** `#footnote` — stable id shared by the inline reference and its entry. */
+  footnoteId?: string;
+  /** `#footnote` — the footnote body as plaintext (for the reference tooltip). */
+  contentPlaintext?: string;
 }
 
 /** Extract the `#feature` suffix from any AT Proto facet `$type`. */
