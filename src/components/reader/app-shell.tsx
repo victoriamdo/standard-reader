@@ -134,7 +134,6 @@ const styles = stylex.create({
     // Hug the wordmark so the focus ring is tight to it, not a full-width box
     // wrapping empty space.
     alignItems: "center",
-    alignSelf: "flex-start",
     display: "inline-flex",
     width: "fit-content",
     borderRadius: radius.sm,
@@ -149,6 +148,10 @@ const styles = stylex.create({
     outlineOffset: "2px",
   },
   brandSidebar: {
+    // Left-align in the sidebar's column flow; only relevant here — in the
+    // mobile bar's row flow this would pin the wordmark to the top instead of
+    // letting it center vertically.
+    alignSelf: "flex-start",
     // Margin, not padding — the separation below the logo must sit outside the
     // focusable box so the focus ring hugs the wordmark.
     marginBottom: verticalSpace["7xl"],
