@@ -8,6 +8,7 @@ import {
   BookOpen,
   Bookmark,
   Check,
+  CircleCheck,
   Heart,
   Plus,
 } from "lucide-react";
@@ -74,7 +75,11 @@ import {
   PublicationAvatar,
   Topic,
 } from "./primitives";
-import { applyMarkReadOptimisticUpdate } from "./read-optimistic";
+import {
+  applyMarkReadOptimisticUpdate,
+  applyMarkUnreadOptimisticUpdate,
+  invalidateReadQueries,
+} from "./read-optimistic";
 import { useArticleBookmark } from "./use-article-bookmark";
 
 const styles = stylex.create({
@@ -1573,6 +1578,53 @@ export function SaveButton({
   );
 }
 
+/**
+ * Pushes an already-read document back to unread (deletes its `read` record).
+ * Used in the reading-history list; renders nothing when read tracking is off or
+ * the reader is signed out (in which case there's no unread state to restore).
+ */
+export function MarkUnreadButton({
+  documentUri,
+  publicationUri,
+  size = "sm",
+}: {
+  documentUri: string;
+  publicationUri?: string | null;
+  size?: "sm" | "md";
+}) {
+  const queryClient = useQueryClient();
+  const { data: session } = useQuery(user.getSessionQueryOptions);
+  const signedIn = Boolean(session?.user);
+  const { enabled: trackReading } = useTrackReadingHistory();
+  const { mutate: markUnread, isPending } = useMutation(
+    readerApi.markUnreadMutationOptions(),
+  );
+  const iconSize = size === "md" ? 18 : 16;
+
+  if (!signedIn || !trackReading) return null;
+
+  const onPress = () => {
+    applyMarkUnreadOptimisticUpdate(queryClient, documentUri, publicationUri);
+    markUnread(documentUri, {
+      onError: () => invalidateReadQueries(queryClient),
+    });
+  };
+
+  return (
+    <IconButton
+      variant="secondary"
+      size={size}
+      label="Mark as unread"
+      isDisabled={isPending}
+      onPress={onPress}
+      onClick={stopSaveClick}
+      style={styles.saveActive}
+    >
+      <CircleCheck size={iconSize} aria-hidden />
+    </IconButton>
+  );
+}
+
 /* ── Article row (list) ─────────────────────────────────────────────────── */
 
 export function ArticleRow({
@@ -1581,6 +1633,7 @@ export function ArticleRow({
   showByline = true,
   showSaveButton = true,
   saveButtonPlacement = "header",
+  showMarkUnreadButton = false,
   isFirstInSection = false,
   assumeBookmarked,
   metaLabels,
@@ -1591,6 +1644,8 @@ export function ArticleRow({
   showSaveButton?: boolean;
   /** Where the save toggle sits — `besideMedia` places it to the right of the cover. */
   saveButtonPlacement?: "header" | "besideMedia";
+  /** Show a "mark as unread" control in the row header (reading-history list). */
+  showMarkUnreadButton?: boolean;
   /** Drop top padding when the section head already provides spacing above. */
   isFirstInSection?: boolean;
   /** Skip per-row bookmark status fetches when the list is already the save queue. */
@@ -1619,6 +1674,21 @@ export function ArticleRow({
     !showByline && isFirstInSection ? styles.rowFirstInSection : false,
   ];
 
+  const markUnreadButton = showMarkUnreadButton ? (
+    <MarkUnreadButton
+      documentUri={article.uri}
+      publicationUri={article.publicationUri}
+    />
+  ) : null;
+  const headerSaveButton = saveBesideMedia ? null : saveButton;
+  const headerActions =
+    markUnreadButton || headerSaveButton ? (
+      <Flex align="center" gap="sm">
+        {markUnreadButton}
+        {headerSaveButton}
+      </Flex>
+    ) : null;
+
   const bylineHeader = (
     <Flex align="center" gap="2xl" style={styles.rowHeader}>
       {showByline ? (
@@ -1629,7 +1699,7 @@ export function ArticleRow({
       ) : (
         <span />
       )}
-      {saveBesideMedia ? null : saveButton}
+      {headerActions}
     </Flex>
   );
 

@@ -52,11 +52,14 @@ export function ReaderQueueRows({
   items,
   showSaveButton = true,
   saveButtonPlacement = "header",
+  showMarkUnreadButton = false,
   assumeBookmarked,
 }: {
   items: Array<ReaderQueueRowItem>;
   showSaveButton?: boolean;
   saveButtonPlacement?: "header" | "besideMedia";
+  /** Show a "mark as unread" control per row (reading-history list). */
+  showMarkUnreadButton?: boolean;
   /** Skip per-row bookmark status fetches when rendering the save queue. */
   assumeBookmarked?: boolean;
 }) {
@@ -69,6 +72,7 @@ export function ReaderQueueRows({
           isFirstInSection={index === 0}
           showSaveButton={showSaveButton}
           saveButtonPlacement={saveButtonPlacement}
+          showMarkUnreadButton={showMarkUnreadButton}
           assumeBookmarked={assumeBookmarked}
         />
       );

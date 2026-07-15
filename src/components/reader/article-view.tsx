@@ -12,6 +12,8 @@ import {
   ArrowLeft,
   BookOpen,
   Bookmark,
+  Circle,
+  CircleCheck,
   ExternalLink,
   Headphones,
   Heart,
@@ -98,6 +100,7 @@ import { applyMarkReadOptimisticUpdate } from "./read-optimistic";
 import { ReaderWordHighlighter } from "./reader-word-highlighter";
 import { SaveDraftConsumer } from "./save-draft-consumer";
 import { useArticleBookmark } from "./use-article-bookmark";
+import { useArticleReadToggle } from "./use-article-read-toggle";
 import { useArticleRecommend } from "./use-article-recommend";
 
 /** Reading progress for article content within the app-shell scroller. */
@@ -568,6 +571,30 @@ function BookmarkButton({
   );
 }
 
+function ReadToggleButton({
+  isRead,
+  onToggle,
+  isPending = false,
+}: {
+  isRead: boolean;
+  onToggle: () => void;
+  isPending?: boolean;
+}) {
+  return (
+    <IconButton
+      variant="secondary"
+      size="md"
+      label={isRead ? "Mark as unread" : "Mark as read"}
+      aria-pressed={isRead}
+      isDisabled={isPending}
+      onPress={onToggle}
+      style={isRead ? styles.bookmarkActive : undefined}
+    >
+      {isRead ? <CircleCheck size={18} /> : <Circle size={18} />}
+    </IconButton>
+  );
+}
+
 function ArticleLikePrompt({
   recommended,
   onToggle,
@@ -762,6 +789,15 @@ function ArticleViewBody({
   const { mutate: markRead } = useMutation(readerApi.markReadMutationOptions());
   const markedUriRef = useRef<string | null>(null);
 
+  const {
+    isRead,
+    toggle: toggleRead,
+    isPending: readTogglePending,
+  } = useArticleReadToggle(article.uri, {
+    signedIn,
+    publicationUri: article.publicationUri,
+  });
+
   useEffect(() => {
     if (!signedIn || !trackReading || markedUriRef.current === article.uri) {
       return;
@@ -915,6 +951,13 @@ function ArticleViewBody({
               >
                 <ExternalLink size={18} />
               </IconButton>
+            ) : null}
+            {signedIn && trackReading ? (
+              <ReadToggleButton
+                isRead={isRead}
+                onToggle={toggleRead}
+                isPending={readTogglePending}
+              />
             ) : null}
             <BookmarkButton
               bookmarked={bookmarked}

@@ -164,7 +164,11 @@ function ReaderHistory() {
         </div>
       ) : (
         <>
-          <ReaderQueueRows items={queueRows} showSaveButton={false} />
+          <ReaderQueueRows
+            items={queueRows}
+            showSaveButton={false}
+            showMarkUnreadButton
+          />
           {isFetchingNextPage ? (
             <p {...stylex.props(styles.loadingNote)}>Loading…</p>
           ) : null}

@@ -1,4 +1,4 @@
-import type { QueryClient } from "@tanstack/react-query";
+import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 
 import type {
   HomeFeed,
@@ -10,7 +10,11 @@ import type {
   PublicationDocumentsPage,
   PublicationProfile,
 } from "../../integrations/tanstack-query/api-publication.functions";
-import type { ReadStatus } from "../../integrations/tanstack-query/api-reader.functions";
+import type {
+  ReaderListPage,
+  ReadHistoryItem,
+  ReadStatus,
+} from "../../integrations/tanstack-query/api-reader.functions";
 import type { ArticleCard } from "../../integrations/tanstack-query/api-shapes";
 
 function decrement(count: number | null | undefined): number | null {
@@ -262,6 +266,185 @@ export function applyMarkReadOptimisticUpdate(
 
   queryClient.setQueryData<ReadStatus>(["reader", "readStatus", documentUri], {
     isRead: true,
+  });
+}
+
+function increment(count: number | null | undefined): number | null {
+  if (count == null) return count ?? null;
+  return count + 1;
+}
+
+/** Returns the card flipped to unread, or the same reference when it doesn't match. */
+function flipCardUnread(card: ArticleCard, uri: string): ArticleCard {
+  return card.uri === uri && card.isRead ? { ...card, isRead: false } : card;
+}
+
+function markCardUnread(card: ArticleCard, uri: string): ArticleCard {
+  return card.uri === uri ? { ...card, isRead: false } : card;
+}
+
+function incrementFollowingUnread(
+  following: SidebarData["following"],
+  publicationUri: string | null,
+): SidebarData["following"] {
+  if (!publicationUri) return following;
+  return following.map((pub) =>
+    pub.uri === publicationUri
+      ? { ...pub, unreadCount: pub.unreadCount + 1 }
+      : pub,
+  );
+}
+
+/**
+ * Inverse of {@link updateFeedCache}: flips `isRead` back to false on any matching
+ * card and, when `wasRead`, increments the relevant unread counters. Returns the
+ * same reference when nothing changed so React Query can skip the update.
+ */
+function updateFeedCacheUnread(
+  data: unknown,
+  uri: string,
+  wasRead: boolean,
+  publicationUri: string | null,
+): unknown {
+  if (isLatestFeed(data)) {
+    return {
+      ...data,
+      items: data.items.map((card) => flipCardUnread(card, uri)),
+      counts:
+        wasRead && data.counts
+          ? { ...data.counts, unread: data.counts.unread + 1 }
+          : data.counts,
+    } satisfies LatestFeed;
+  }
+
+  if (isHomeFeed(data)) {
+    return {
+      ...data,
+      featured: data.featured
+        ? flipCardUnread(data.featured, uri)
+        : data.featured,
+      latestUnread: data.latestUnread.map((card) => flipCardUnread(card, uri)),
+      trending: data.trending.map((card) => flipCardUnread(card, uri)),
+      unreadCount: wasRead ? increment(data.unreadCount) : data.unreadCount,
+    } satisfies HomeFeed;
+  }
+
+  if (isSidebarData(data)) {
+    if (!wasRead) return data;
+    return {
+      ...data,
+      unreadCount: increment(data.unreadCount),
+      following: incrementFollowingUnread(data.following, publicationUri),
+    } satisfies SidebarData;
+  }
+
+  return data;
+}
+
+type ReadingHistoryInfiniteData = InfiniteData<ReaderListPage<ReadHistoryItem>>;
+
+function isReadingHistoryInfiniteData(
+  data: unknown,
+): data is ReadingHistoryInfiniteData {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "pages" in data &&
+    Array.isArray((data as ReadingHistoryInfiniteData).pages)
+  );
+}
+
+/** Drop a document from the reading-history list — its `read` record is gone. */
+function removeFromReadingHistory(
+  data: ReadingHistoryInfiniteData,
+  documentUri: string,
+): ReadingHistoryInfiniteData {
+  let removed = false;
+  const pages = data.pages.map((page) => {
+    const items = page.items.filter((item) => {
+      if (item.documentUri === documentUri) {
+        removed = true;
+        return false;
+      }
+      return true;
+    });
+    return { ...page, items };
+  });
+
+  if (!removed) return data;
+
+  return {
+    ...data,
+    pages: pages.map((page) => ({
+      ...page,
+      total: Math.max(0, page.total - 1),
+    })),
+  };
+}
+
+/**
+ * Inverse of {@link applyMarkReadOptimisticUpdate}: optimistically mark a document
+ * unread across every cache the UI reads from — feed rails (`isRead` + unread
+ * counters), batch read-status lookups, the single read-status query, and the
+ * reading-history list (the `read` record is being deleted, so the entry leaves
+ * history). Idempotent: only bumps unread counters when the document was read.
+ */
+export function applyMarkUnreadOptimisticUpdate(
+  queryClient: QueryClient,
+  documentUri: string,
+  publicationUri?: string | null,
+): void {
+  const wasRead = isDocumentReadInCache(queryClient, documentUri);
+  const pubUri = publicationUri ?? findPublicationUri(queryClient, documentUri);
+
+  queryClient.setQueriesData({ queryKey: ["feed"] }, (data) =>
+    updateFeedCacheUnread(data, documentUri, wasRead, pubUri),
+  );
+
+  queryClient.setQueriesData(
+    { queryKey: ["publication", "profile"] },
+    (data) => {
+      if (!isPublicationProfile(data)) return data;
+      return {
+        ...data,
+        recentDocuments: data.recentDocuments.map((card) =>
+          markCardUnread(card, documentUri),
+        ),
+      } satisfies PublicationProfile;
+    },
+  );
+
+  queryClient.setQueriesData(
+    { queryKey: ["publication", "documents"] },
+    (data) => {
+      if (!isPublicationDocumentsPage(data)) return data;
+      return {
+        ...data,
+        items: data.items.map((card) => markCardUnread(card, documentUri)),
+      } satisfies PublicationDocumentsPage;
+    },
+  );
+
+  if (wasRead) {
+    queryClient.setQueriesData<LatestFeedCounts>(
+      { queryKey: ["feed", "latest", "counts"] },
+      (data) => (data ? { ...data, unread: data.unread + 1 } : data),
+    );
+  }
+
+  queryClient.setQueriesData<Array<string>>(
+    { queryKey: ["reader", "readDocuments"] },
+    (data) => (data ? data.filter((uri) => uri !== documentUri) : data),
+  );
+
+  queryClient.setQueriesData({ queryKey: ["reader", "history"] }, (data) =>
+    isReadingHistoryInfiniteData(data)
+      ? removeFromReadingHistory(data, documentUri)
+      : data,
+  );
+
+  queryClient.setQueryData<ReadStatus>(["reader", "readStatus", documentUri], {
+    isRead: false,
   });
 }
 

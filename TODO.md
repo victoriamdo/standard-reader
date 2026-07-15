@@ -581,6 +581,13 @@ not offline body cache). Route slug **`/saved`**.
       `app.standard-reader.read` / `reads` table (no new lexicon); `readerApi.getReadingHistory` + user-menu link + empty state; infinite scroll (20 per page). Update [`APP_VISION.md`](APP_VISION.md) when landing.
 - [x] **Track reading history setting** — user-menu toggle (cookie + `user.track_reading_history`);
       when off: no `markRead` writes, zero unread counts/dots, hidden Unread tab + Reading history link.
+- [x] **Manual read/unread toggle** — reader-facing control to flip an article back to unread
+      (deletes its `app.standard-reader.read` record via the existing `markUnread` path). Article-view
+      top-bar toggle ([`article-view.tsx`](src/components/reader/article-view.tsx) +
+      [`use-article-read-toggle.ts`](src/components/reader/use-article-read-toggle.ts)) and a per-row
+      "Mark as unread" button on `/history` ([`cards.tsx`](src/components/reader/cards.tsx) `MarkUnreadButton`).
+      `applyMarkUnreadOptimisticUpdate` mirrors the mark-read cache flip in reverse (re-adds unread
+      dots/counters, drops the row from Reading history).
 
 ## 11. Post-v1 — bigger bets (Tier 4)
 
