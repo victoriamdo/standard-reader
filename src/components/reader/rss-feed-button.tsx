@@ -69,14 +69,28 @@ export function RssFeedButton({
   name,
   variant = "icon",
   size = "md",
+  isOpen: controlledOpen,
+  onOpenChange,
 }: {
   feedUrl: string;
   /** Subject shown in the dialog copy, e.g. a publication, list, or author name. */
   name: string;
   variant?: "button" | "icon";
   size?: Size;
+  /**
+   * Optional controlled open state. When provided, the dialog is driven by the
+   * parent — letting another control (e.g. an overflow menu item) open it.
+   */
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
 
   const iconSize = size === "sm" ? 14 : 18;
 
