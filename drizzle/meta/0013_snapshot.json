@@ -1174,7 +1174,7 @@
           "notNull": false,
           "generated": {
             "type": "stored",
-            "as": "setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(description, '')), 'B') || setweight(to_tsvector('english', coalesce(array_to_string(tags, ' '), '')), 'B') || setweight(to_tsvector('english', coalesce(text_content, '')), 'C')"
+            "as": "setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(description, '')), 'B') || setweight(to_tsvector('english', coalesce(immutable_array_to_string(tags), '')), 'B') || setweight(to_tsvector('english', coalesce(text_content, '')), 'C')"
           }
         },
         "indexed_at": {

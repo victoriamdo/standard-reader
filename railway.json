@@ -5,7 +5,7 @@
     "buildCommand": "pnpm build"
   },
   "deploy": {
-    "preDeployCommand": "pnpm db:migrate",
+    "preDeployCommand": "if [ \"$RAILWAY_GIT_BRANCH\" = \"main\" ]; then pnpm db:migrate; else echo \"Skipping db:migrate on branch $RAILWAY_GIT_BRANCH (main only)\"; fi",
     "startCommand": "pnpm start",
     "healthcheckPath": "/api/auth/atproto/metadata.json",
     "restartPolicyType": "ON_FAILURE",

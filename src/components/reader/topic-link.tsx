@@ -38,6 +38,11 @@ const styles = stylex.create({
     position: "relative",
     zIndex: 1,
   },
+  // Matched tag in search results: stronger accent so it reads as the reason
+  // the result surfaced.
+  active: {
+    color: primaryColor.text1,
+  },
 });
 
 type TopicProps = {
@@ -49,14 +54,25 @@ type TopicProps = {
    * nested inside another link (e.g. article or publication cards).
    */
   nested?: boolean;
+  /** Emphasize this tag (e.g. it matched the current search query). */
+  active?: boolean;
 };
 
-export function Topic({ name, linkable = true, nested = false }: TopicProps) {
+export function Topic({
+  name,
+  linkable = true,
+  nested = false,
+  active = false,
+}: TopicProps) {
   const navigate = useNavigate();
 
   if (!name) return null;
 
-  const mergedStyle = stylex.props(styles.topic, linkable && styles.link);
+  const mergedStyle = stylex.props(
+    styles.topic,
+    linkable && styles.link,
+    active && styles.active,
+  );
 
   const goToTag = () => {
     void navigate({ to: "/tag/$tag", params: { tag: name } });
@@ -86,7 +102,12 @@ export function Topic({ name, linkable = true, nested = false }: TopicProps) {
             goToTag();
           }
         }}
-        {...stylex.props(styles.topic, styles.link, styles.nestedInteractive)}
+        {...stylex.props(
+          styles.topic,
+          styles.link,
+          styles.nestedInteractive,
+          active && styles.active,
+        )}
       >
         {name}
       </span>

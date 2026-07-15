@@ -89,6 +89,13 @@ export interface ArticleCard {
   authorDisplayName: string | null;
   /** Free-form tags from the document record. */
   tags: Array<string> | null;
+  /**
+   * Tags on this document that matched the search query (search results only).
+   * Lets the card surface the tag that produced the match even when it isn't
+   * among the leading tags — and highlight it as the reason for the hit. Absent
+   * outside search.
+   */
+  matchedTags?: Array<string>;
   /** Plaintext body when indexed (used for reading-time on cards). */
   textContent: string | null;
   /** Network likes (`site.standard.graph.recommend`). */
@@ -386,6 +393,7 @@ type ArticleCardRow = {
   authorAvatarUrl: string | null;
   authorDisplayName: string | null;
   tags: Array<string> | null;
+  matchedTags?: Array<string> | null;
   textContent?: string | null;
   hasRenderableBody?: boolean | null;
   isCollection?: boolean | null;
@@ -426,6 +434,7 @@ export function toArticleCard(row: ArticleCardRow): ArticleCard {
     authorAvatarUrl: row.authorAvatarUrl,
     authorDisplayName: row.authorDisplayName,
     tags: row.tags,
+    matchedTags: row.matchedTags ?? undefined,
     textContent: row.textContent ?? null,
     hasRenderableBody: row.hasRenderableBody ?? true,
     isCollection: row.isCollection ?? false,

@@ -202,6 +202,13 @@ const searchArticles = createServerFn({ method: "GET" })
             d.textContent,
             tsq,
           ),
+          // Which of the document's tags the query actually hit — so the card can
+          // show the matching tag (and mark it) even when it isn't a leading tag.
+          // Mirrors the `search_vector` fold: english-lexize each tag and test it
+          // against the same tsquery.
+          matchedTags: sql<
+            Array<string>
+          >`coalesce(array(select t from unnest(${d.tags}) as t where to_tsvector('english', t) @@ ${tsq}), '{}')`,
         })
         .from(page)
         .innerJoin(d, eq(d.uri, page.uri))

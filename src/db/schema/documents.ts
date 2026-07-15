@@ -109,7 +109,7 @@ export const documents = pgTable(
      * GIN index. */
     searchVector: tsvector("search_vector").generatedAlwaysAs(
       (): ReturnType<typeof sql> =>
-        sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(description, '')), 'B') || setweight(to_tsvector('english', coalesce(array_to_string(tags, ' '), '')), 'B') || setweight(to_tsvector('english', coalesce(text_content, '')), 'C')`,
+        sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(description, '')), 'B') || setweight(to_tsvector('english', coalesce(immutable_array_to_string(tags), '')), 'B') || setweight(to_tsvector('english', coalesce(text_content, '')), 'C')`,
     ),
 
     indexedAt: timestamp("indexed_at", { withTimezone: true })
