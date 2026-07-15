@@ -86,6 +86,10 @@ export function AutocompleteInput<T extends object>({
   suffix,
   onAction,
   renderEmptyState,
+  // Don't auto-focus the first suggestion after each keystroke — that gives it
+  // a keyboard focus ring while the user is only typing. The ring should
+  // appear only once they arrow into the list. Still overridable per usage.
+  disableAutoFocusFirst = true,
   ...props
 }: AutocompleteInputProps<T>) {
   const size = sizeProp || use(SizeContext);
@@ -145,7 +149,11 @@ export function AutocompleteInput<T extends object>({
 
   return (
     <SizeContext value={size}>
-      <AriaAutocomplete {...props} {...stylex.props(style)}>
+      <AriaAutocomplete
+        disableAutoFocusFirst={disableAutoFocusFirst}
+        {...props}
+        {...stylex.props(style)}
+      >
         <div
           ref={wrapperRef}
           {...stylex.props(styles.wrapper)}
