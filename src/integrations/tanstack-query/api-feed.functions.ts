@@ -4,6 +4,7 @@ import { getCookie, getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import {
+  DEFAULT_GUEST_HOME_SCOPE,
   HOME_SCOPE_COOKIE,
   dbValueToHomeScope,
   parseHomeScope,
@@ -548,7 +549,14 @@ const getHomePage = createServerFn({ method: "GET" })
       if (reader) {
         scope = data.scope ?? dbValueToHomeScope(reader.homeScope ?? null);
       } else {
-        scope = data.scope ?? parseHomeScope(getCookie(HOME_SCOPE_COOKIE));
+        // Signed-out: default to Trending (see DEFAULT_GUEST_HOME_SCOPE) since a
+        // guest has no follows to personalize.
+        scope =
+          data.scope ??
+          parseHomeScope(
+            getCookie(HOME_SCOPE_COOKIE),
+            DEFAULT_GUEST_HOME_SCOPE,
+          );
       }
 
       const trackReading =

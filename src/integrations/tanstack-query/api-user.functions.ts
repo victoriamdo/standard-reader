@@ -18,6 +18,7 @@ import {
   parseCountOldPostsAsUnreadCookie,
 } from "#/lib/count-old-posts-as-unread";
 import {
+  DEFAULT_GUEST_HOME_SCOPE,
   HOME_SCOPE_COOKIE,
   HOME_SCOPE_COOKIE_MAX_AGE_SECONDS,
   dbValueToHomeScope,
@@ -234,7 +235,10 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
         ),
       },
       homeScope: {
-        scope: parseHomeScope(cookies[HOME_SCOPE_COOKIE]),
+        scope: parseHomeScope(
+          cookies[HOME_SCOPE_COOKIE],
+          DEFAULT_GUEST_HOME_SCOPE,
+        ),
       },
       readerVoice: {
         preference: parseReaderVoicePreference(cookies[READER_VOICE_COOKIE]),
@@ -888,7 +892,12 @@ const getHomeScopePreference = createServerFn({ method: "GET" })
       return { scope: dbValueToHomeScope(session.user.homeScope ?? null) };
     }
 
-    return { scope: parseHomeScope(getCookie(HOME_SCOPE_COOKIE)) };
+    return {
+      scope: parseHomeScope(
+        getCookie(HOME_SCOPE_COOKIE),
+        DEFAULT_GUEST_HOME_SCOPE,
+      ),
+    };
   });
 
 const getHomeScopePreferenceQueryOptions = queryOptions({
