@@ -8,6 +8,8 @@ export const LEAFLET_FACET = {
   atMention: "pub.leaflet.richtext.facet#atMention",
   /** Inline reference to an actor by DID. */
   didMention: "pub.leaflet.richtext.facet#didMention",
+  /** Inline footnote reference; the footnote body rides on the feature itself. */
+  footnote: "pub.leaflet.richtext.facet#footnote",
 } as const;
 
 export const LEAFLET_BLOCK = {
@@ -56,6 +58,12 @@ export interface LeafletFacetFeature {
   atURI?: string;
   /** `#didMention` target DID. */
   did?: string;
+  /** `#footnote` — stable id shared by the inline reference and its entry. */
+  footnoteId?: string;
+  /** `#footnote` — the footnote body as plaintext. */
+  contentPlaintext?: string;
+  /** `#footnote` — rich-text facets over `contentPlaintext` (byte offsets). */
+  contentFacets?: Array<LeafletFacet>;
 }
 
 export interface LeafletFacet {

@@ -142,6 +142,53 @@ export const articleBodyStyles = stylex.create({
     paddingRight: spacing["1.5"],
     paddingTop: spacing["0.5"],
   },
+  /** Inline footnote reference marker (superscript number). `lineHeight: 0`
+   * keeps the superscript from stretching the line it sits on. */
+  footnoteRef: {
+    fontSize: "0.7em",
+    lineHeight: 0,
+    verticalAlign: "super",
+  },
+  footnoteRefLink: {
+    cornerShape: "squircle",
+    borderRadius: radius.xs,
+    textDecoration: "none",
+    color: primaryColor.text2,
+    fontWeight: fontWeight.medium,
+    paddingInline: spacing["0.5"],
+  },
+  /** Endnotes list at the foot of the article body. */
+  footnotes: {
+    marginTop: spacing["10"],
+  },
+  footnotesDivider: {
+    borderStyle: "none",
+    backgroundColor: uiColor.border1,
+    height: 1,
+    marginBottom: spacing["6"],
+    marginTop: spacing["0"],
+    width: "100%",
+  },
+  footnotesList: {
+    color: uiColor.text1,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.sm,
+    lineHeight: 1.6,
+    marginBottom: spacing["0"],
+    marginTop: spacing["0"],
+    paddingLeft: spacing["6"],
+  },
+  footnotesItem: {
+    marginBottom: gap.sm,
+    marginTop: spacing["0"],
+    // Keep the anchored note clear of any sticky reading chrome when jumped to.
+    scrollMarginTop: spacing["10"],
+  },
+  footnoteBackLink: {
+    textDecoration: "none",
+    color: primaryColor.text2,
+    marginLeft: spacing["1"],
+  },
   codeBlock: {
     borderColor: uiColor.border1,
     borderRadius: radius.md,
