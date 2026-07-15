@@ -19,6 +19,7 @@ import { eq, like } from "drizzle-orm";
 
 import { db } from "#/db/index.server";
 import * as schema from "#/db/schema";
+import { getPublicUrl } from "#/lib/public-url";
 import { logEvent } from "#/server/observability/log";
 
 import { dbRequestLock } from "./db-lock.server";
@@ -208,17 +209,11 @@ function getPrivateKey(): ClientAssertionPrivateJwk {
   return jwk;
 }
 
+// Shared with OG tags / share URLs — resolves to this deployment's own domain
+// on Railway PR previews so the OAuth round-trip returns here, not prod. See
+// `getPublicUrl` for the preview-detection rules.
 function getBaseUrl(): string {
-  const url =
-    process.env.PUBLIC_URL ||
-    process.env.BETTER_AUTH_URL ||
-    process.env.ATPROTO_BASE_URL;
-  if (!url) {
-    throw new Error(
-      "PUBLIC_URL (or BETTER_AUTH_URL / ATPROTO_BASE_URL) environment variable is required",
-    );
-  }
-  return url.replace("localhost", "127.0.0.1").replace(/\/$/, "");
+  return getPublicUrl();
 }
 
 function isPublicClient(): boolean {
