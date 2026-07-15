@@ -1666,28 +1666,26 @@ export function ArticleRow({
     />
   ) : null;
 
-  const gridStyles: Array<stylex.StyleXStyles | false | undefined> = [
-    showByline ? styles.rowGrid : styles.row,
-    !cover && !saveBesideMedia ? styles.rowNoMedia : false,
-    !cover && saveBesideMedia ? styles.rowNoMediaSaveAside : false,
-    saveBesideMedia && cover ? styles.rowSaveBesideMedia : false,
-    !showByline && isFirstInSection ? styles.rowFirstInSection : false,
-  ];
-
   const markUnreadButton = showMarkUnreadButton ? (
     <MarkUnreadButton
       documentUri={article.uri}
       publicationUri={article.publicationUri}
     />
   ) : null;
+  // The save toggle sits in the header by default; `besideMedia` pins it to the
+  // row's right edge instead. The unread toggle always pins to the right edge so
+  // it lines up across rows regardless of whether a cover image is present.
+  const asideSaveButton = saveBesideMedia ? saveButton : null;
   const headerSaveButton = saveBesideMedia ? null : saveButton;
-  const headerActions =
-    markUnreadButton || headerSaveButton ? (
-      <Flex align="center" gap="sm">
-        {markUnreadButton}
-        {headerSaveButton}
-      </Flex>
-    ) : null;
+  const hasAside = Boolean(markUnreadButton || asideSaveButton);
+
+  const gridStyles: Array<stylex.StyleXStyles | false | undefined> = [
+    showByline ? styles.rowGrid : styles.row,
+    !cover && !hasAside ? styles.rowNoMedia : false,
+    !cover && hasAside ? styles.rowNoMediaSaveAside : false,
+    hasAside && cover ? styles.rowSaveBesideMedia : false,
+    !showByline && isFirstInSection ? styles.rowFirstInSection : false,
+  ];
 
   const bylineHeader = (
     <Flex align="center" gap="2xl" style={styles.rowHeader}>
@@ -1699,7 +1697,7 @@ export function ArticleRow({
       ) : (
         <span />
       )}
-      {headerActions}
+      {headerSaveButton}
     </Flex>
   );
 
@@ -1726,8 +1724,13 @@ export function ArticleRow({
           <AspectRatioImage src={cover} alt="" referrerPolicy="no-referrer" />
         </AspectRatio>
       ) : null}
-      {saveBesideMedia && saveButton ? (
-        <div {...stylex.props(styles.rowSaveAside)}>{saveButton}</div>
+      {hasAside ? (
+        <div {...stylex.props(styles.rowSaveAside)}>
+          <Flex align="center" gap="sm">
+            {markUnreadButton}
+            {asideSaveButton}
+          </Flex>
+        </div>
       ) : null}
     </ArticleLink>
   );
