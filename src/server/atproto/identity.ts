@@ -16,6 +16,28 @@ export interface ResolvedIdentity {
   handle: string | null;
 }
 
+/**
+ * The AT Protocol sentinel a relay/PDS emits for a handle it can't
+ * bidirectionally verify at that instant. It is NOT a real handle: never
+ * persist it as one, and never let it short-circuit re-resolution. Doing either
+ * is what strands a profile — and every denormalized `ownerHandle` copied off
+ * it — at `handle.invalid` after a handle change (issue #4).
+ */
+export const INVALID_HANDLE = "handle.invalid";
+
+/**
+ * A handle string we can actually use: non-empty and not the `handle.invalid`
+ * sentinel. Narrows `null`/`undefined`/sentinel away so callers treat those
+ * uniformly as "no known handle" and re-resolve instead of trusting a placeholder.
+ */
+export function isUsableHandle(
+  handle: string | null | undefined,
+): handle is string {
+  return (
+    typeof handle === "string" && handle.length > 0 && handle !== INVALID_HANDLE
+  );
+}
+
 interface CacheEntry extends ResolvedIdentity {
   /**
    * True once this entry reflects an actual DID-document fetch (success *or*

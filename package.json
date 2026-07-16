@@ -26,6 +26,7 @@
     "ingest:start": "tsx src/server/ingest/service.ts",
     "digest:send": "tsx scripts/send-weekly-digest.ts",
     "digest:send:dev": "tsx --env-file=.env scripts/send-weekly-digest.ts",
+    "backfill:actor-handles": "pnpm exec tsx --env-file=.env scripts/backfill-actor-handles.ts",
     "backfill:search-text": "pnpm exec tsx --env-file=.env scripts/backfill-search-text.ts",
     "backfill:renderable": "pnpm exec tsx --env-file=.env scripts/backfill-renderable-body.ts",
     "backfill:content-formats": "pnpm exec tsx --env-file=.env scripts/backfill-content-formats.ts",

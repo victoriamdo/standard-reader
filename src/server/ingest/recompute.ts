@@ -1,4 +1,14 @@
-import { and, asc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { hasRenderableArticleBody } from "#/lib/document/renderable";
 import {
@@ -18,8 +28,13 @@ import {
 } from "#/server/reader/trending-scoring";
 
 import { db } from "../../db/index.ts";
-import { documents, publications } from "../../db/schema.ts";
+import { documents, profiles, publications } from "../../db/schema.ts";
 import { getBacklinkCountForTarget } from "../atproto/constellation.ts";
+import {
+  INVALID_HANDLE,
+  isUsableHandle,
+  refreshIdentity,
+} from "../atproto/identity.ts";
 import { replayDeadLetters } from "./consumer.ts";
 import { reconcileDocumentDup, reconcilePublicationGroup } from "./handlers.ts";
 import { reconcilePublisherReposBatch } from "./repo-sync.ts";
@@ -636,6 +651,59 @@ export async function backfillRenderableBody(): Promise<number> {
 }
 
 /**
+ * Repair `profiles.handle` for actors stranded without a usable handle —
+ * `null`, or the `handle.invalid` sentinel a relay emits when it can't verify a
+ * handle at that instant. Once persisted, that placeholder never refreshed on
+ * its own and leaked into every denormalized `ownerHandle` copied off the row
+ * (issue #4). We re-resolve each affected DID straight from its DID document
+ * (forced, bypassing any stale cache entry) and write back the real handle.
+ *
+ * Idempotent and cron-safe: only rows still lacking a usable handle are read,
+ * and a row is written only when resolution produces a different, usable handle.
+ * Returns how many profiles were updated.
+ */
+export async function backfillActorHandles(): Promise<number> {
+  const BATCH_SIZE = 100;
+  let cursor: string | null = null;
+  let updated = 0;
+
+  for (;;) {
+    const staleHandle = or(
+      isNull(profiles.handle),
+      eq(profiles.handle, INVALID_HANDLE),
+    );
+    const rows = await db
+      .select({ did: profiles.did, handle: profiles.handle })
+      .from(profiles)
+      .where(
+        cursor == null
+          ? staleHandle
+          : and(staleHandle, gt(profiles.did, cursor)),
+      )
+      .orderBy(asc(profiles.did))
+      .limit(BATCH_SIZE);
+
+    if (rows.length === 0) break;
+    cursor = rows.at(-1)?.did ?? null;
+
+    for (const row of rows) {
+      const identity = await refreshIdentity(row.did);
+      if (!isUsableHandle(identity.handle)) continue;
+      if (identity.handle === row.handle) continue;
+      await db
+        .update(profiles)
+        .set({ handle: identity.handle, updatedAt: new Date() })
+        .where(eq(profiles.did, row.did));
+      updated++;
+    }
+
+    if (rows.length < BATCH_SIZE) break;
+  }
+
+  return updated;
+}
+
+/**
  * Collapse duplicate publications (`did, url`) and documents (`did, cid`) to a
  * single canonical row each. Repairs existing data and acts as a safety net for
  * the hot-path dedup. Returns how many duplicate groups were reconciled.
@@ -686,6 +754,13 @@ export async function recomputeDerived(): Promise<void> {
     await reconcilePublisherReposBatch();
   } catch {
     // Best-effort; the background timer retries between sweeps.
+  }
+  // Re-resolve any actor stranded at `null`/`handle.invalid` so a handle change
+  // that never arrived as a usable identity event still self-heals (issue #4).
+  try {
+    await backfillActorHandles();
+  } catch {
+    // Best-effort; only stale-handle rows are touched and the next sweep retries.
   }
   // Dedup first so stats/aggregates compute over canonical rows only.
   await dedupeRecords();

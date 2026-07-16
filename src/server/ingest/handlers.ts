@@ -38,7 +38,10 @@ import { listRepoRecords } from "../atproto/fetch-record.ts";
 import {
   authorPds,
   getCachedIdentity,
+  INVALID_HANDLE,
+  isUsableHandle,
   primeIdentityHandle,
+  refreshIdentity,
   resolveIdentity,
 } from "../atproto/identity.ts";
 import type {
@@ -920,27 +923,39 @@ export async function upsertBskyProfile(
 export async function applyIdentity(
   payload: TapIdentityPayload,
 ): Promise<void> {
-  if (payload.handle) {
-    primeIdentityHandle(payload.did, payload.handle);
+  let handle: string | null = null;
+  if (isUsableHandle(payload.handle)) {
+    handle = payload.handle;
+    primeIdentityHandle(payload.did, handle);
+  } else if (payload.handle === INVALID_HANDLE) {
+    // The relay couldn't bidirectionally verify the handle at this instant and
+    // sent the `handle.invalid` sentinel. Persisting it is what strands a
+    // profile — and every denormalized `ownerHandle` — at `handle.invalid`
+    // after a handle change (issue #4). Resolve the current handle straight
+    // from the DID document instead so the change still propagates. A forced
+    // refresh (not the cached read) is required: the cache may still hold the
+    // pre-change handle.
+    const identity = await refreshIdentity(payload.did);
+    if (isUsableHandle(identity.handle)) handle = identity.handle;
   }
+  // A status-only event (no `handle` field at all) leaves any stored handle
+  // untouched — see the conditional `set` below.
+
   const isActive = payload.isActive ?? payload.status !== "deactivated";
-  const values = {
-    did: payload.did,
-    handle: payload.handle ?? null,
-    isActive,
-    updatedAt: sql`now()`,
-  };
+  // Only overwrite the stored handle when we resolved a usable one. This never
+  // writes the sentinel, and never clobbers a good handle back to null when a
+  // status-only event or a transient DID-doc failure leaves us without one.
+  const set: {
+    handle?: string;
+    isActive: boolean;
+    updatedAt: ReturnType<typeof sql>;
+  } = { isActive, updatedAt: sql`now()` };
+  if (handle !== null) set.handle = handle;
+
   await db
     .insert(profiles)
-    .values(values)
-    .onConflictDoUpdate({
-      target: profiles.did,
-      set: {
-        handle: values.handle,
-        isActive: values.isActive,
-        updatedAt: values.updatedAt,
-      },
-    });
+    .values({ did: payload.did, handle, isActive, updatedAt: sql`now()` })
+    .onConflictDoUpdate({ target: profiles.did, set });
 }
 
 /** Index an `app.standard-reader.collection` sidecar onto its document row. */
