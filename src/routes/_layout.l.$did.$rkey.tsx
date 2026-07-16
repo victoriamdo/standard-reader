@@ -47,6 +47,7 @@ import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
 import { initials } from "../components/reader/format";
 import { ListEditModal } from "../components/reader/list-edit-modal";
 import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
+import { isArticleUnreadForReader } from "../components/reader/read-optimistic";
 import { RssFeedButton } from "../components/reader/rss-feed-button";
 import { ShareMenu } from "../components/reader/share-menu";
 import {
@@ -326,6 +327,7 @@ function ListFeedPanel({
   isOwner: boolean;
   hideRead: boolean;
 }) {
+  const queryClient = useQueryClient();
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
   const { enabled: trackReading } = useTrackReadingHistory();
@@ -400,9 +402,13 @@ function ListFeedPanel({
     );
   }
 
+  // Cache-aware so a just-read article's dot clears (and it hides under "hide
+  // read") the moment it's optimistically marked read, before the list refetches.
+  const isUnread = (article: ArticleCard) =>
+    isArticleUnreadForReader(queryClient, article, { trackReading, signedIn });
   const canFilterRead = hideRead && trackReading && signedIn;
   const visibleItems = canFilterRead
-    ? items.filter((article) => !article.isRead)
+    ? items.filter((article) => isUnread(article))
     : items;
 
   if (items.length === 0) {
@@ -430,7 +436,7 @@ function ListFeedPanel({
             key={article.uri}
             article={article}
             isFirstInSection={index === 0}
-            unread={trackReading && signedIn && !article.isRead}
+            unread={isUnread(article)}
             showSaveButton={false}
           />
         ))}

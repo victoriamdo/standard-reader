@@ -38,6 +38,7 @@ import { Masthead, ReaderContent } from "../components/reader/primitives";
 import {
   applyMarkReadManyOptimisticUpdate,
   invalidateReadQueries,
+  isArticleUnreadForReader,
 } from "../components/reader/read-optimistic";
 import { RssFeedButton } from "../components/reader/rss-feed-button";
 import {
@@ -308,6 +309,7 @@ function LatestFeedPanel({
   readerScope: string;
 }) {
   const navigate = useNavigate({ from: Route.fullPath });
+  const queryClient = useQueryClient();
   const pageSize = latestFeedPageSize(filter);
 
   const { data: feed } = useSuspenseQuery({
@@ -340,8 +342,12 @@ function LatestFeedPanel({
     [feed.items, extraItems],
   );
 
+  // Cache-aware so the dot clears the moment an article is optimistically marked
+  // read (visiting it, or "mark as read"), even on the unread filter where every
+  // row was unread when the page loaded. Reading `isRead` alone would keep the dot
+  // on until a refetch; the optimistic read-status cache flips first.
   const isUnread = (article: ArticleCard) =>
-    trackReading && signedIn && !article.isRead;
+    isArticleUnreadForReader(queryClient, article, { trackReading, signedIn });
 
   const loadMoreFeed = useCallback(async () => {
     if (nextOffset == null || loadingMoreRef.current) return;
@@ -446,7 +452,7 @@ function LatestFeedPanel({
           <ArticleRow
             key={article.uri}
             article={article}
-            unread={signedIn && (filter === "unread" || isUnread(article))}
+            unread={isUnread(article)}
             showSaveButton={false}
             isFirstInSection={index === 0}
           />
