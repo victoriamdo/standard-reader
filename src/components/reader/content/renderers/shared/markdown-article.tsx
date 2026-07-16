@@ -19,6 +19,7 @@ import {
   startLightboxViewTransition,
 } from "#/design-system/lightbox/transition";
 import { radius } from "#/design-system/theme/radius.stylex";
+import { gap } from "#/design-system/theme/semantic-spacing.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex";
 import { stripLeadingMarkupImage } from "#/lib/document/lead-image";
 import { normalizeImageAlt } from "#/lib/document/structured-content/image";
@@ -58,6 +59,13 @@ const markdownStyles = stylex.create({
     display: "block",
     height: "auto",
     maxWidth: "100%",
+  },
+  // Layered over `articleBodyStyles.imageCaption` so the shared caption style
+  // (used by structured image blocks) is untouched: center the caption under
+  // the image and open up a touch more breathing room above it.
+  imageCaption: {
+    marginTop: gap.xl,
+    textAlign: "center",
   },
 });
 
@@ -226,7 +234,10 @@ function useMarkdownComponents(
               {caption ? (
                 <figcaption
                   aria-hidden="true"
-                  {...stylex.props(articleBodyStyles.imageCaption)}
+                  {...stylex.props(
+                    articleBodyStyles.imageCaption,
+                    markdownStyles.imageCaption,
+                  )}
                 >
                   {caption}
                 </figcaption>
