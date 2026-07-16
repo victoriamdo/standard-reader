@@ -102,10 +102,14 @@ export const documents = pgTable(
 
     deleted: boolean("deleted").notNull().default(false),
 
-    /** Generated full-text search vector over title, description, and body text. */
+    /** Generated full-text search vector over title, description, tags, and body
+     * text. Tags are folded in (weight B) so a search for a tag word — or a
+     * `#hashtag`, since `websearch_to_tsquery` strips the leading `#` — surfaces
+     * documents carrying that tag, served by the existing `documents_search_idx`
+     * GIN index. */
     searchVector: tsvector("search_vector").generatedAlwaysAs(
       (): ReturnType<typeof sql> =>
-        sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(description, '')), 'B') || setweight(to_tsvector('english', coalesce(text_content, '')), 'C')`,
+        sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(description, '')), 'B') || setweight(to_tsvector('english', coalesce(immutable_array_to_string(tags), '')), 'B') || setweight(to_tsvector('english', coalesce(text_content, '')), 'C')`,
     ),
 
     indexedAt: timestamp("indexed_at", { withTimezone: true })

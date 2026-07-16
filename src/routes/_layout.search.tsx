@@ -288,7 +288,7 @@ function SearchChrome({
               ? undefined
               : (event) => onInputChange(event.target.value)
           }
-          placeholder="Publications, handles, topics, headlines…"
+          placeholder="Publications, handles, #tags, headlines…"
           aria-label="Search publications and articles"
           {...stylex.props(styles.searchInput, styles.searchInputPlaceholder)}
         />
@@ -319,7 +319,7 @@ function SearchPending() {
         hint={
           trimmedQ
             ? "Searching…"
-            : 'Try "climate", "typography", or a handle like stdout.dev'
+            : 'Try "climate", a #tag like #essay, or a handle like stdout.dev'
         }
         readOnly
       />

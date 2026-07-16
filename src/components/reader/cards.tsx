@@ -1415,9 +1415,22 @@ function coverImage(article: ArticleCard): string | null {
   return article.coverImageUrl ?? null;
 }
 
-/** Topic labels for an article: its own tags, else the publication topic. */
+/**
+ * Topic labels for an article: its own tags, else the publication topic. In
+ * search results any tag that matched the query (`matchedTags`) is pulled to the
+ * front so it's always shown — even when it isn't a leading tag — and never
+ * dropped by the cap.
+ */
 function articleTopics(article: ArticleCard): Array<string> {
   if (article.tags && article.tags.length > 0) {
+    const matched = article.matchedTags ?? [];
+    if (matched.length > 0) {
+      const rest = article.tags.filter((tag) => !matched.includes(tag));
+      // Keep all matched tags (capped so a many-tag hit can't overflow the line)
+      // and fill up to two chips total with the leading remaining tags.
+      const lead = matched.slice(0, 3);
+      return [...lead, ...rest].slice(0, Math.max(2, lead.length));
+    }
     return article.tags.slice(0, 2);
   }
   return article.publicationTopic ? [article.publicationTopic] : [];
@@ -1426,6 +1439,7 @@ function articleTopics(article: ArticleCard): Array<string> {
 /** Renders topic chips inside a {@link MetaLine}. */
 function TopicMeta({ article }: { article: ArticleCard }) {
   const topics = articleTopics(article);
+  const matched = article.matchedTags ?? [];
   return (
     <>
       {topics.map((topic, index) => (
@@ -1435,7 +1449,7 @@ function TopicMeta({ article }: { article: ArticleCard }) {
               ·
             </span>
           ) : null}
-          <Topic name={topic} nested />
+          <Topic name={topic} nested active={matched.includes(topic)} />
         </Fragment>
       ))}
     </>
