@@ -568,9 +568,15 @@ async function resolvePublicationCards(
     .orderBy(sql`coalesce(${st.subscriberCount}, 0) desc`)
     .limit(20);
 
+  // Search is a discovery surface — drop pubs that opted out of discovery. Base
+  // "is this DID indexed?" on the unfiltered set so an author whose only pubs are
+  // hidden returns empty here rather than falling through to the live repo (which
+  // would resurface them).
   if (indexed.length > 0) {
     return withoutExcludedPublications(
-      indexed.map((row) => toPublicationCard(row)),
+      indexed
+        .map((row) => toPublicationCard(row))
+        .filter((card) => !card.hiddenFromDiscover),
     );
   }
 
@@ -580,10 +586,12 @@ async function resolvePublicationCards(
 
   const pubs = await listRepoPublications(identity.pds, did);
   return withoutExcludedPublications(
-    pubs.map((pub) => ({
-      ...pub,
-      ownerHandle: identity.handle ?? pub.ownerHandle,
-    })),
+    pubs
+      .filter((pub) => !pub.hiddenFromDiscover)
+      .map((pub) => ({
+        ...pub,
+        ownerHandle: identity.handle ?? pub.ownerHandle,
+      })),
   );
 }
 
@@ -661,6 +669,7 @@ async function listRepoPublications(
           ownerHandle: null,
           topic: null,
           verified: false,
+          hiddenFromDiscover: false,
           subscriberCount: 0,
           documentCount: 0,
           lastDocumentAt: null,
@@ -678,6 +687,7 @@ async function listRepoPublications(
         ownerHandle: null,
         topic: null,
         verified: false,
+        hiddenFromDiscover: record.preferences?.showInDiscover === false,
         subscriberCount: 0,
         documentCount: 0,
         lastDocumentAt: null,

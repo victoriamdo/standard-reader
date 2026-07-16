@@ -1,11 +1,13 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import type { HideableTabId } from "#/lib/profile-tabs";
 import { parseHiddenTabs } from "#/lib/profile-tabs";
+import { getReaderDidForRequest } from "#/middleware/auth-session.server";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { resolveAuthorDid } from "#/server/atproto/resolve-author-ref";
 import { resolveSifaProfileUrl } from "#/server/atproto/sifa-profile";
@@ -204,6 +206,12 @@ const getAuthorProfile = createServerFn({ method: "GET" })
         span.set("did", did);
         span.set("offset", data.offset);
 
+        // Only the owner viewing their own profile sees pubs that opted out of
+        // discovery — dimmed + labeled. Everyone else gets them filtered out.
+        const viewerDid = await getReaderDidForRequest(getRequest());
+        const includeHidden = viewerDid != null && viewerDid === did;
+        span.set("ownProfile", includeHidden);
+
         const [
           profile,
           stats,
@@ -220,6 +228,7 @@ const getAuthorProfile = createServerFn({ method: "GET" })
             did,
             limit: data.limit,
             offset: data.offset,
+            includeHidden,
           }),
           authorSubscriptions(db, schema, {
             did,
@@ -385,7 +394,17 @@ const getAuthorPublications = createServerFn({ method: "GET" })
         span.set("did", did);
         span.set("offset", data.offset);
 
-        const items = await authorPublications(db, schema, { ...data, did });
+        // Match getProfile: the owner sees their own hidden pubs (dimmed), so
+        // paginating must keep including them; other viewers never see them.
+        const viewerDid = await getReaderDidForRequest(getRequest());
+        const includeHidden = viewerDid != null && viewerDid === did;
+        span.set("ownProfile", includeHidden);
+
+        const items = await authorPublications(db, schema, {
+          ...data,
+          did,
+          includeHidden,
+        });
         span.set("count", items.length);
 
         return {

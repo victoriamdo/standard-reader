@@ -2823,11 +2823,22 @@ export async function authorRecommendations(
 /**
  * Publications owned by one DID, ordered by most recent activity then name.
  * Excludes blento.app platform profiles.
+ *
+ * Publications that opted out of discovery (`showInDiscover = false`) are hidden
+ * from everyone except the owner viewing their own profile: pass
+ * `includeHidden: true` (only when the viewer *is* the owner) to keep them in the
+ * result so the UI can render them dimmed with an explanatory label. The
+ * `hiddenFromDiscover` flag on each returned card marks which ones.
  */
 export async function authorPublications(
   db: Db,
   schema: Schema,
-  opts: { did: string; limit: number; offset?: number },
+  opts: {
+    did: string;
+    limit: number;
+    offset?: number;
+    includeHidden?: boolean;
+  },
 ): Promise<Array<PublicationCard>> {
   const p = schema.publications;
   const st = schema.publicationStats;
@@ -2843,6 +2854,7 @@ export async function authorPublications(
       and(
         eq(p.did, opts.did),
         eq(p.deleted, false),
+        opts.includeHidden ? undefined : eq(p.showInDiscover, true),
         sql`${p.url} not ilike ${EXCLUDED_PUBLICATION_URL_PATTERN}`,
       ),
     )

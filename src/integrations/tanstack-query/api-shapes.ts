@@ -44,6 +44,15 @@ export interface PublicationCard {
   ownerHandle: string | null;
   topic: string | null;
   verified: boolean;
+  /**
+   * True when the publication opted out of discovery
+   * (`preferences.showInDiscover = false`). Hidden publications are filtered out
+   * of every listing except the owner's own profile, where the card renders
+   * dimmed with an explanatory label — this flag drives that treatment. It is
+   * only ever `true` on that one surface; everywhere else hidden pubs are
+   * excluded server-side, so the flag stays `false`.
+   */
+  hiddenFromDiscover: boolean;
   subscriberCount: number;
   documentCount: number;
   lastDocumentAt: string | null;
@@ -186,6 +195,7 @@ export function publicationCardColumns(schema: Schema) {
     ownerHandle: pr.handle,
     topic: p.topic,
     verified: p.verified,
+    showInDiscover: p.showInDiscover,
     subscriberCount: st.subscriberCount,
     documentCount: st.documentCount,
     lastDocumentAt: st.lastDocumentAt,
@@ -294,6 +304,12 @@ type PublicationCardRow = {
   ownerHandle: string | null;
   topic: string | null;
   verified: boolean;
+  /**
+   * Present when the row was built via {@link publicationCardColumns}; absent on
+   * hand-assembled rows (e.g. header/detail projections). Absent is treated as
+   * "not hidden" — those surfaces never carry opted-out pubs.
+   */
+  showInDiscover?: boolean | null;
   subscriberCount: number | null;
   documentCount: number | null;
   lastDocumentAt: Date | string | null;
@@ -363,6 +379,7 @@ export function toPublicationCard(row: PublicationCardRow): PublicationCard {
     ownerHandle: row.ownerHandle,
     topic: row.topic,
     verified: row.verified,
+    hiddenFromDiscover: row.showInDiscover === false,
     subscriberCount: row.subscriberCount ?? 0,
     documentCount: row.documentCount ?? 0,
     lastDocumentAt: toIsoTimestamp(row.lastDocumentAt),
