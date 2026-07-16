@@ -21,6 +21,7 @@ function makePub(uri: string, name: string): PublicationCard {
     ownerHandle: null,
     topic: null,
     verified: false,
+    hiddenFromDiscover: false,
     subscriberCount: 0,
     documentCount: 0,
     lastDocumentAt: null,

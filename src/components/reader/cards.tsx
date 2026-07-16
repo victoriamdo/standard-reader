@@ -9,6 +9,7 @@ import {
   Bookmark,
   Check,
   CircleCheck,
+  EyeOff,
   Heart,
   Plus,
 } from "lucide-react";
@@ -543,6 +544,30 @@ const styles = stylex.create({
   },
   pubDirRowFirstInSection: {
     paddingTop: spacing["0"],
+  },
+  // Owner-only: a pub that opted out of discovery. Muted to read as "not public"
+  // while staying legible; the badge alongside says why.
+  pubDirDimmed: {
+    opacity: 0.5,
+  },
+  pubHiddenBadge: {
+    alignItems: "center",
+    backgroundColor: uiColor.bgSubtle,
+    borderColor: uiColor.border2,
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderRadius: radius.full,
+    color: uiColor.text1,
+    columnGap: spacing["1"],
+    display: "inline-flex",
+    flexShrink: 0,
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
+    lineHeight: lineHeight.sm,
+    paddingBlock: spacing["0.5"],
+    paddingInline: spacing["2"],
+    whiteSpace: "nowrap",
   },
   pubCardSkeleton: {
     pointerEvents: "none",
@@ -2110,6 +2135,7 @@ export function PubDirectoryRow({
   hideTopic = false,
   tagPostCount,
   noLink = false,
+  markHidden = false,
 }: {
   pub: PublicationCard;
   rank?: number;
@@ -2122,10 +2148,20 @@ export function PubDirectoryRow({
   tagPostCount?: number;
   /** Render body only (no stretched link) — for use inside a GridListItem. */
   noLink?: boolean;
+  /**
+   * Opt in to the dimmed "hidden from discovery" treatment for opted-out pubs.
+   * Only the owner's own profile Publications tab sets this — elsewhere a hidden
+   * pub the reader deliberately subscribed to (sidebar, lists, subscriptions
+   * tab) must render normally even though its `hiddenFromDiscover` flag is set.
+   */
+  markHidden?: boolean;
 }) {
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
   const hasRank = rank != null;
+  // `hiddenFromDiscover` rides on every card, but the muted treatment only
+  // applies where the caller opts in (the owner's own Publications tab).
+  const isHidden = markHidden && pub.hiddenFromDiscover;
 
   return (
     <PublicationLink
@@ -2146,7 +2182,11 @@ export function PubDirectoryRow({
       <PublicationAvatar
         pub={pub}
         size="lg"
-        style={[styles.pubDirAvatar, hasRank && styles.pubDirAvatarRanked]}
+        style={[
+          styles.pubDirAvatar,
+          hasRank && styles.pubDirAvatarRanked,
+          isHidden && styles.pubDirDimmed,
+        ]}
       />
       <Flex direction="column" gap="sm" style={styles.pubDirMain}>
         <div
@@ -2155,13 +2195,29 @@ export function PubDirectoryRow({
           {pub.searchNameHtml && tsHeadlineHasMatch(pub.searchNameHtml) ? (
             <SearchHeadline
               html={pub.searchNameHtml}
-              style={styles.pubDirName}
+              style={[styles.pubDirName, isHidden && styles.pubDirDimmed]}
             />
           ) : (
-            <span {...stylex.props(styles.pubDirName)}>{pub.name}</span>
+            <span
+              {...stylex.props(
+                styles.pubDirName,
+                isHidden && styles.pubDirDimmed,
+              )}
+            >
+              {pub.name}
+            </span>
           )}
           {pub.ownerHandle ? (
             <OwnerHandleLink did={pub.did} handle={pub.ownerHandle} />
+          ) : null}
+          {isHidden ? (
+            <span
+              {...stylex.props(styles.pubHiddenBadge)}
+              title="This publication opted out of discovery, so it's hidden everywhere except here on your own profile."
+            >
+              <EyeOff size={12} aria-hidden />
+              Hidden from discovery
+            </span>
           ) : null}
         </div>
         {pub.description ||
@@ -2174,6 +2230,7 @@ export function PubDirectoryRow({
             {...stylex.props(
               styles.pubDirExtra,
               hasRank && styles.pubDirExtraRanked,
+              isHidden && styles.pubDirDimmed,
             )}
           >
             {pub.searchSnippetHtml ? (

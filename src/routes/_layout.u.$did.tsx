@@ -1058,6 +1058,7 @@ function AuthorPublicationsPanel({
           pub={pub}
           isFirstInSection={index === 0}
           isLast={index === items.length - 1 && nextOffset == null}
+          markHidden
         />
       ))}
       <LoadMoreFooter
