@@ -34,6 +34,14 @@ export const articleMarkdownSanitizeSchema: SanitizeSchema = {
   ],
   attributes: {
     ...defaultSchema.attributes,
+    // GFM/Obsidian callouts: `remarkCallouts` marks the blockquote with a
+    // `callout` class and `data-callout-*` attributes the renderer reads.
+    blockquote: mergeAttributes("blockquote", [
+      ["className", "callout"],
+      "dataCalloutKind",
+      "dataCalloutTitle",
+      "dataCalloutFold",
+    ]),
     div: mergeAttributes("div", [["className", playlistClass]]),
     span: mergeAttributes("span", [
       ["className", playlistClass],

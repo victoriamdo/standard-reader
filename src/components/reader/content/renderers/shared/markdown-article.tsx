@@ -22,6 +22,8 @@ import { radius } from "#/design-system/theme/radius.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex";
 import { stripLeadingMarkupImage } from "#/lib/document/lead-image";
 import { articleMarkdownSanitizeSchema } from "#/lib/markdown/article-sanitize-schema";
+import { readCalloutProps } from "#/lib/markdown/callouts";
+import { remarkCallouts } from "#/lib/markdown/remark-callouts";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 
 import "katex/dist/katex.min.css";
@@ -29,6 +31,7 @@ import "katex/dist/katex.min.css";
 import { articleBodyStyles, readingDropCapStyleProps } from "../../body-styles";
 import type { ContentRendererProps } from "../../types";
 import { ArticleBody } from "./article-body";
+import { Callout } from "./callout";
 import { CodeBlockView } from "./code-block";
 import { MarkdownIframeEmbed } from "./iframe-embed";
 import { reactNodeHasText, splitLeadingChar } from "./react-node-text";
@@ -257,16 +260,30 @@ function useMarkdownComponents(
       li: ({ children }) => (
         <li {...stylex.props(articleBodyStyles.listItem)}>{children}</li>
       ),
-      blockquote: ({ children }) => (
-        <blockquote
-          {...stylex.props(
-            articleBodyStyles.pullquote,
-            markdownStyles.blockquote,
-          )}
-        >
-          {children}
-        </blockquote>
-      ),
+      blockquote: ({ children, node }) => {
+        const callout = readCalloutProps(node?.properties);
+        if (callout) {
+          return (
+            <Callout
+              kind={callout.kind}
+              title={callout.title}
+              fold={callout.fold}
+            >
+              {children}
+            </Callout>
+          );
+        }
+        return (
+          <blockquote
+            {...stylex.props(
+              articleBodyStyles.pullquote,
+              markdownStyles.blockquote,
+            )}
+          >
+            {children}
+          </blockquote>
+        );
+      },
       hr: () => <hr {...stylex.props(articleBodyStyles.horizontalRule)} />,
       pre: ({ children }) => <>{children}</>,
       code: ({ className, children }) => {
@@ -391,6 +408,7 @@ export function MarkdownArticle({
     const plugins = [];
     if (flavor === "gfm") plugins.push(remarkGfm);
     if (enableMath) plugins.push(remarkMath);
+    plugins.push(remarkCallouts);
     return plugins;
   }, [enableMath, flavor]);
 
