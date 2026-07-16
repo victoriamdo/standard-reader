@@ -55,10 +55,11 @@ describe("isUsableHandle", () => {
   });
 
   it("rejects the handle.invalid sentinel, empty, and nullish values", () => {
+    const missing: string | undefined = undefined;
     expect(isUsableHandle(INVALID_HANDLE)).toBe(false);
     expect(isUsableHandle("handle.invalid")).toBe(false);
     expect(isUsableHandle("")).toBe(false);
     expect(isUsableHandle(null)).toBe(false);
-    expect(isUsableHandle(undefined)).toBe(false);
+    expect(isUsableHandle(missing)).toBe(false);
   });
 });

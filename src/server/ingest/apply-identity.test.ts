@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as IdentityModule from "../atproto/identity.ts";
+import { applyIdentity } from "./handlers.ts";
+
 const { insertCalls, refreshIdentity } = vi.hoisted(() => ({
   insertCalls: [] as Array<{
     values: Record<string, unknown>;
@@ -25,16 +28,13 @@ vi.mock("../../db/index.ts", () => ({
 }));
 
 vi.mock("../atproto/identity.ts", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("../atproto/identity.ts")>();
+  const actual = await importOriginal<typeof IdentityModule>();
   return {
     ...actual,
     primeIdentityHandle: vi.fn(),
     refreshIdentity,
   };
 });
-
-import { applyIdentity } from "./handlers.ts";
 
 describe("applyIdentity", () => {
   beforeEach(() => {
