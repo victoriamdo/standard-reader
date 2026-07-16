@@ -19,8 +19,10 @@ import {
   startLightboxViewTransition,
 } from "#/design-system/lightbox/transition";
 import { radius } from "#/design-system/theme/radius.stylex";
+import { gap } from "#/design-system/theme/semantic-spacing.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex";
 import { stripLeadingMarkupImage } from "#/lib/document/lead-image";
+import { normalizeImageAlt } from "#/lib/document/structured-content/image";
 import { articleMarkdownSanitizeSchema } from "#/lib/markdown/article-sanitize-schema";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 
@@ -32,6 +34,7 @@ import { ArticleBody } from "./article-body";
 import { CodeBlockView } from "./code-block";
 import { MarkdownIframeEmbed } from "./iframe-embed";
 import { reactNodeHasText, splitLeadingChar } from "./react-node-text";
+import { standaloneImageParagraph } from "./standalone-image-paragraph";
 
 const markdownStyles = stylex.create({
   blockquote: {
@@ -43,7 +46,10 @@ const markdownStyles = stylex.create({
     borderWidth: 0,
     cursor: "zoom-in",
     display: "block",
-    marginBottom: spacing["6"],
+    // Spacing below a standalone image is owned by the enclosing <figure>
+    // (`imageFigure`), so the button itself adds none — otherwise the margin
+    // would open a gap between the image and its caption inside the figure.
+    marginBottom: spacing["0"],
     marginTop: spacing["0"],
     maxWidth: "100%",
     padding: spacing["0"],
@@ -54,17 +60,26 @@ const markdownStyles = stylex.create({
     height: "auto",
     maxWidth: "100%",
   },
+  // Layered over `articleBodyStyles.imageCaption` so the shared caption style
+  // (used by structured image blocks) is untouched: center the caption under
+  // the image and open up a touch more breathing room above it.
+  imageCaption: {
+    marginTop: gap.xl,
+    textAlign: "center",
+  },
 });
 
 function MarkdownImage({
   src,
   alt,
+  title,
   className,
   width,
   height,
 }: {
   src?: string;
   alt?: string;
+  title?: string;
   className?: string;
   width?: string | number;
   height?: string | number;
@@ -77,6 +92,7 @@ function MarkdownImage({
       <img
         src={src}
         alt={alt ?? ""}
+        title={title}
         loading="lazy"
         referrerPolicy="no-referrer"
         width={width ?? 72}
@@ -109,6 +125,7 @@ function MarkdownImage({
         <img
           src={src}
           alt={altText}
+          title={title}
           loading="lazy"
           referrerPolicy="no-referrer"
           width={width}
@@ -196,6 +213,38 @@ function useMarkdownComponents(
           children,
         ),
       p: ({ children, node }) => {
+        // A paragraph that is nothing but a lone image renders as a semantic
+        // <figure>. The Markdown title (`![alt](url "title")`) becomes the
+        // visible caption, falling back to the alt text — matching how
+        // structured image blocks caption themselves (`ImageFigureView`). The
+        // real alt stays on the <img> (set in `MarkdownImage`) for screen
+        // readers, so the caption is `aria-hidden` to avoid double-announcing.
+        // Lifting the image out of the <p> also keeps the <figure> from being
+        // illegally nested inside a paragraph, which the SSR HTML parser would
+        // otherwise unwrap and break hydration.
+        const standaloneImage = node ? standaloneImageParagraph(node) : null;
+        if (standaloneImage) {
+          const caption = normalizeImageAlt(
+            standaloneImage.title,
+            standaloneImage.alt,
+          );
+          return (
+            <figure {...stylex.props(articleBodyStyles.imageFigure)}>
+              {children}
+              {caption ? (
+                <figcaption
+                  aria-hidden="true"
+                  {...stylex.props(
+                    articleBodyStyles.imageCaption,
+                    markdownStyles.imageCaption,
+                  )}
+                >
+                  {caption}
+                </figcaption>
+              ) : null}
+            </figure>
+          );
+        }
         // The drop cap belongs on the first letter of the first prose paragraph,
         // and nowhere else. A paragraph is eligible only when no other paragraph
         // has claimed the slot, or when THIS paragraph is the one that claimed it
