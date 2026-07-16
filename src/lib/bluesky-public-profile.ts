@@ -21,7 +21,12 @@ function normalizeProfileResponse(raw: unknown): BlueskyPublicProfileFields {
       ? rawAvatar.trim()
       : null;
   return {
-    handle: handle && handle.length > 0 ? handle : null,
+    // `handle.invalid` is the AT Protocol sentinel for a handle bsky couldn't
+    // verify — not a usable handle. Drop it so it never surfaces as one.
+    handle:
+      handle && handle.length > 0 && handle !== "handle.invalid"
+        ? handle
+        : null,
     displayName: displayName && displayName.length > 0 ? displayName : null,
     avatarUrl,
   };

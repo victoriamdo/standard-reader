@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 
 import { searchApi } from "#/integrations/tanstack-query/api-search.functions";
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
-import { resolveIdentity } from "#/server/atproto/identity";
+import { isUsableHandle, resolveIdentity } from "#/server/atproto/identity";
 import { resolveAuthorDid } from "#/server/atproto/resolve-author-ref";
 import {
   resolvePageUrl,
@@ -220,15 +220,19 @@ async function resolveAuthorProfileSummary(
     .limit(1);
 
   if (row) {
+    // A stored `handle.invalid` (from before the ingest fix, or a DID whose
+    // handle is momentarily unverifiable) must not short-circuit resolution —
+    // treat it like a missing handle and re-resolve (issue #4).
+    const storedHandle = isUsableHandle(row.handle) ? row.handle : null;
     const [identity, publicProfile] = await Promise.all([
-      row.handle ? Promise.resolve(null) : resolveIdentity(did as never),
+      storedHandle ? Promise.resolve(null) : resolveIdentity(did as never),
       !row.displayName || !row.avatarUrl
         ? fetchBlueskyPublicProfileFields(did)
         : Promise.resolve(null),
     ]);
     return {
       did: row.did,
-      handle: row.handle ?? identity?.handle ?? publicProfile?.handle ?? null,
+      handle: storedHandle ?? identity?.handle ?? publicProfile?.handle ?? null,
       displayName: row.displayName ?? publicProfile?.displayName ?? null,
       description: row.description,
       avatarUrl: row.avatarUrl ?? publicProfile?.avatarUrl ?? null,

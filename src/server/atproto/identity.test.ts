@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { resolveIdentity } from "./identity";
+import { INVALID_HANDLE, isUsableHandle, resolveIdentity } from "./identity";
 
 function mockDidDoc(serviceEndpoint: unknown) {
   return {
@@ -45,5 +45,20 @@ describe("resolveIdentity", () => {
       `did:plc:malformed-${ep || "empty"}`,
     );
     expect(identity.pds).toBeNull();
+  });
+});
+
+describe("isUsableHandle", () => {
+  it("accepts a real handle", () => {
+    expect(isUsableHandle("qxm.de")).toBe(true);
+    expect(isUsableHandle("alice.bsky.social")).toBe(true);
+  });
+
+  it("rejects the handle.invalid sentinel, empty, and nullish values", () => {
+    expect(isUsableHandle(INVALID_HANDLE)).toBe(false);
+    expect(isUsableHandle("handle.invalid")).toBe(false);
+    expect(isUsableHandle("")).toBe(false);
+    expect(isUsableHandle(null)).toBe(false);
+    expect(isUsableHandle(undefined)).toBe(false);
   });
 });
