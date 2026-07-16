@@ -22,15 +22,13 @@ import type { ReactNode } from "react";
 import { useId, useState } from "react";
 
 import { animationDuration } from "#/design-system/theme/animations.stylex";
-import { amberA } from "#/design-system/theme/colors/amber.stylex";
-import { blueA } from "#/design-system/theme/colors/blue.stylex";
-import { cyanA } from "#/design-system/theme/colors/cyan.stylex";
-import { grayA } from "#/design-system/theme/colors/gray.stylex";
-import { greenA } from "#/design-system/theme/colors/green.stylex";
-import { orangeA } from "#/design-system/theme/colors/orange.stylex";
-import { purpleA } from "#/design-system/theme/colors/purple.stylex";
-import { redA } from "#/design-system/theme/colors/red.stylex";
-import { tealA } from "#/design-system/theme/colors/teal.stylex";
+import {
+  criticalColor,
+  primaryColor,
+  successColor,
+  uiColor,
+  warningColor,
+} from "#/design-system/theme/color.stylex";
 import { radius } from "#/design-system/theme/radius.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex";
 import {
@@ -123,91 +121,60 @@ const styles = stylex.create({
   },
 });
 
-// Each kind maps to a Radix *alpha* color scale via four custom properties the
-// layout styles above consume: surface (bgSubtle), border, accent (icon +
-// title), and body text. Alpha tokens composite over the reader's muted mauve
-// background, so callouts read as a soft tint of the theme rather than a bright
-// opaque panel. StyleX needs these spelled out literally, so `note`/`todo`
-// (both blue), `tip`/`success` (both green), and the red family repeat the same
-// tokens rather than sharing a helper.
-const kindTheme = stylex.create({
-  note: {
-    "--callout-surface": blueA.bgSubtle,
-    "--callout-border": blueA.border1,
-    "--callout-accent": blueA.text1,
-    "--callout-body": blueA.text2,
+// Callouts are colored from the reader's own design-system tokens — not raw
+// Radix scales — so they inherit the editorial theme (warm-paper `uiColor` and
+// camel `primaryColor`) and its light/dark overrides. Informational kinds carry
+// the camel accent; only the genuinely stateful kinds reach for the semantic
+// success/warning/critical families. That keeps most callouts on-theme (brown),
+// with color reserved for the few that mean something.
+type CalloutFamily = "primary" | "neutral" | "success" | "warning" | "critical";
+
+const KIND_FAMILY: Record<CalloutKind, CalloutFamily> = {
+  note: "primary",
+  abstract: "primary",
+  info: "primary",
+  todo: "primary",
+  example: "primary",
+  quote: "neutral",
+  tip: "success",
+  success: "success",
+  question: "warning",
+  warning: "warning",
+  failure: "critical",
+  danger: "critical",
+  bug: "critical",
+};
+
+const familyTheme = stylex.create({
+  primary: {
+    "--callout-surface": primaryColor.bgSubtle,
+    "--callout-border": primaryColor.border1,
+    "--callout-accent": primaryColor.text1,
+    "--callout-body": primaryColor.text2,
   },
-  abstract: {
-    "--callout-surface": tealA.bgSubtle,
-    "--callout-border": tealA.border1,
-    "--callout-accent": tealA.text1,
-    "--callout-body": tealA.text2,
-  },
-  info: {
-    "--callout-surface": cyanA.bgSubtle,
-    "--callout-border": cyanA.border1,
-    "--callout-accent": cyanA.text1,
-    "--callout-body": cyanA.text2,
-  },
-  todo: {
-    "--callout-surface": blueA.bgSubtle,
-    "--callout-border": blueA.border1,
-    "--callout-accent": blueA.text1,
-    "--callout-body": blueA.text2,
-  },
-  tip: {
-    "--callout-surface": greenA.bgSubtle,
-    "--callout-border": greenA.border1,
-    "--callout-accent": greenA.text1,
-    "--callout-body": greenA.text2,
+  neutral: {
+    "--callout-surface": uiColor.bgSubtle,
+    "--callout-border": uiColor.border1,
+    "--callout-accent": uiColor.text1,
+    "--callout-body": uiColor.text2,
   },
   success: {
-    "--callout-surface": greenA.bgSubtle,
-    "--callout-border": greenA.border1,
-    "--callout-accent": greenA.text1,
-    "--callout-body": greenA.text2,
-  },
-  question: {
-    "--callout-surface": amberA.bgSubtle,
-    "--callout-border": amberA.border1,
-    "--callout-accent": amberA.text1,
-    "--callout-body": amberA.text2,
+    "--callout-surface": successColor.bgSubtle,
+    "--callout-border": successColor.border1,
+    "--callout-accent": successColor.text1,
+    "--callout-body": successColor.text2,
   },
   warning: {
-    "--callout-surface": orangeA.bgSubtle,
-    "--callout-border": orangeA.border1,
-    "--callout-accent": orangeA.text1,
-    "--callout-body": orangeA.text2,
+    "--callout-surface": warningColor.bgSubtle,
+    "--callout-border": warningColor.border1,
+    "--callout-accent": warningColor.text1,
+    "--callout-body": warningColor.text2,
   },
-  failure: {
-    "--callout-surface": redA.bgSubtle,
-    "--callout-border": redA.border1,
-    "--callout-accent": redA.text1,
-    "--callout-body": redA.text2,
-  },
-  danger: {
-    "--callout-surface": redA.bgSubtle,
-    "--callout-border": redA.border1,
-    "--callout-accent": redA.text1,
-    "--callout-body": redA.text2,
-  },
-  bug: {
-    "--callout-surface": redA.bgSubtle,
-    "--callout-border": redA.border1,
-    "--callout-accent": redA.text1,
-    "--callout-body": redA.text2,
-  },
-  example: {
-    "--callout-surface": purpleA.bgSubtle,
-    "--callout-border": purpleA.border1,
-    "--callout-accent": purpleA.text1,
-    "--callout-body": purpleA.text2,
-  },
-  quote: {
-    "--callout-surface": grayA.bgSubtle,
-    "--callout-border": grayA.border1,
-    "--callout-accent": grayA.text1,
-    "--callout-body": grayA.text2,
+  critical: {
+    "--callout-surface": criticalColor.bgSubtle,
+    "--callout-border": criticalColor.border1,
+    "--callout-accent": criticalColor.text1,
+    "--callout-body": criticalColor.text2,
   },
 });
 
@@ -242,7 +209,7 @@ export function Callout({
   );
 
   return (
-    <div {...stylex.props(styles.callout, kindTheme[kind])}>
+    <div {...stylex.props(styles.callout, familyTheme[KIND_FAMILY[kind]])}>
       {collapsible ? (
         <button
           type="button"
