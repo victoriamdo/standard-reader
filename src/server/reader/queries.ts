@@ -2833,7 +2833,12 @@ export async function authorRecommendations(
 export async function authorPublications(
   db: Db,
   schema: Schema,
-  opts: { did: string; limit: number; offset?: number; includeHidden?: boolean },
+  opts: {
+    did: string;
+    limit: number;
+    offset?: number;
+    includeHidden?: boolean;
+  },
 ): Promise<Array<PublicationCard>> {
   const p = schema.publications;
   const st = schema.publicationStats;

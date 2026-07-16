@@ -4,10 +4,10 @@ import { getRequest } from "@tanstack/react-start/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { getReaderDidForRequest } from "#/middleware/auth-session.server";
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import type { HideableTabId } from "#/lib/profile-tabs";
 import { parseHiddenTabs } from "#/lib/profile-tabs";
+import { getReaderDidForRequest } from "#/middleware/auth-session.server";
 import { resolveIdentity } from "#/server/atproto/identity";
 import { resolveAuthorDid } from "#/server/atproto/resolve-author-ref";
 import { resolveSifaProfileUrl } from "#/server/atproto/sifa-profile";
