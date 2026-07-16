@@ -12,7 +12,10 @@ import { Autocomplete as AriaAutocomplete } from "react-aria-components";
 import { SizeContext } from "../context";
 import { ListBox } from "../listbox";
 import { TextField } from "../text-field";
-import { verticalSpace } from "../theme/semantic-spacing.stylex";
+import {
+  horizontalSpace,
+  verticalSpace,
+} from "../theme/semantic-spacing.stylex";
 import type {
   InputValidationState,
   InputVariant,
@@ -32,6 +35,14 @@ const styles = stylex.create({
     paddingTop: verticalSpace["xs"],
     top: "100%",
     width: "100%",
+  },
+  // Inset the suggestion rows from the popover's rounded corners so a focused
+  // item's ring isn't clipped by the container's `overflow`.
+  list: {
+    paddingBottom: verticalSpace["xs"],
+    paddingLeft: horizontalSpace["xs"],
+    paddingRight: horizontalSpace["xs"],
+    paddingTop: verticalSpace["xs"],
   },
 });
 
@@ -174,7 +185,7 @@ export function AutocompleteInput<T extends object>({
 
           {isOpen && (
             <div {...stylex.props(styles.popover)}>
-              <div {...stylex.props(popoverStyles.wrapper)}>
+              <div {...stylex.props(popoverStyles.wrapper, styles.list)}>
                 <ListBox
                   items={items}
                   selectionMode="none"
