@@ -22,15 +22,15 @@ import type { ReactNode } from "react";
 import { useId, useState } from "react";
 
 import { animationDuration } from "#/design-system/theme/animations.stylex";
-import { amber } from "#/design-system/theme/colors/amber.stylex";
-import { blue } from "#/design-system/theme/colors/blue.stylex";
-import { cyan } from "#/design-system/theme/colors/cyan.stylex";
-import { gray } from "#/design-system/theme/colors/gray.stylex";
-import { green } from "#/design-system/theme/colors/green.stylex";
-import { orange } from "#/design-system/theme/colors/orange.stylex";
-import { purple } from "#/design-system/theme/colors/purple.stylex";
-import { red } from "#/design-system/theme/colors/red.stylex";
-import { teal } from "#/design-system/theme/colors/teal.stylex";
+import { amberA } from "#/design-system/theme/colors/amber.stylex";
+import { blueA } from "#/design-system/theme/colors/blue.stylex";
+import { cyanA } from "#/design-system/theme/colors/cyan.stylex";
+import { grayA } from "#/design-system/theme/colors/gray.stylex";
+import { greenA } from "#/design-system/theme/colors/green.stylex";
+import { orangeA } from "#/design-system/theme/colors/orange.stylex";
+import { purpleA } from "#/design-system/theme/colors/purple.stylex";
+import { redA } from "#/design-system/theme/colors/red.stylex";
+import { tealA } from "#/design-system/theme/colors/teal.stylex";
 import { radius } from "#/design-system/theme/radius.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex";
 import {
@@ -123,89 +123,91 @@ const styles = stylex.create({
   },
 });
 
-// Each kind maps to a Radix color scale via four custom properties the layout
-// styles above consume: surface (bgSubtle), border, accent (icon + title), and
-// body text. StyleX needs these spelled out literally, so `note` and `todo`
-// (both blue), `tip` and `success` (both green), and the red family repeat the
-// same tokens rather than sharing a helper.
+// Each kind maps to a Radix *alpha* color scale via four custom properties the
+// layout styles above consume: surface (bgSubtle), border, accent (icon +
+// title), and body text. Alpha tokens composite over the reader's muted mauve
+// background, so callouts read as a soft tint of the theme rather than a bright
+// opaque panel. StyleX needs these spelled out literally, so `note`/`todo`
+// (both blue), `tip`/`success` (both green), and the red family repeat the same
+// tokens rather than sharing a helper.
 const kindTheme = stylex.create({
   note: {
-    "--callout-surface": blue.bgSubtle,
-    "--callout-border": blue.border1,
-    "--callout-accent": blue.text1,
-    "--callout-body": blue.text2,
+    "--callout-surface": blueA.bgSubtle,
+    "--callout-border": blueA.border1,
+    "--callout-accent": blueA.text1,
+    "--callout-body": blueA.text2,
   },
   abstract: {
-    "--callout-surface": teal.bgSubtle,
-    "--callout-border": teal.border1,
-    "--callout-accent": teal.text1,
-    "--callout-body": teal.text2,
+    "--callout-surface": tealA.bgSubtle,
+    "--callout-border": tealA.border1,
+    "--callout-accent": tealA.text1,
+    "--callout-body": tealA.text2,
   },
   info: {
-    "--callout-surface": cyan.bgSubtle,
-    "--callout-border": cyan.border1,
-    "--callout-accent": cyan.text1,
-    "--callout-body": cyan.text2,
+    "--callout-surface": cyanA.bgSubtle,
+    "--callout-border": cyanA.border1,
+    "--callout-accent": cyanA.text1,
+    "--callout-body": cyanA.text2,
   },
   todo: {
-    "--callout-surface": blue.bgSubtle,
-    "--callout-border": blue.border1,
-    "--callout-accent": blue.text1,
-    "--callout-body": blue.text2,
+    "--callout-surface": blueA.bgSubtle,
+    "--callout-border": blueA.border1,
+    "--callout-accent": blueA.text1,
+    "--callout-body": blueA.text2,
   },
   tip: {
-    "--callout-surface": green.bgSubtle,
-    "--callout-border": green.border1,
-    "--callout-accent": green.text1,
-    "--callout-body": green.text2,
+    "--callout-surface": greenA.bgSubtle,
+    "--callout-border": greenA.border1,
+    "--callout-accent": greenA.text1,
+    "--callout-body": greenA.text2,
   },
   success: {
-    "--callout-surface": green.bgSubtle,
-    "--callout-border": green.border1,
-    "--callout-accent": green.text1,
-    "--callout-body": green.text2,
+    "--callout-surface": greenA.bgSubtle,
+    "--callout-border": greenA.border1,
+    "--callout-accent": greenA.text1,
+    "--callout-body": greenA.text2,
   },
   question: {
-    "--callout-surface": amber.bgSubtle,
-    "--callout-border": amber.border1,
-    "--callout-accent": amber.text1,
-    "--callout-body": amber.text2,
+    "--callout-surface": amberA.bgSubtle,
+    "--callout-border": amberA.border1,
+    "--callout-accent": amberA.text1,
+    "--callout-body": amberA.text2,
   },
   warning: {
-    "--callout-surface": orange.bgSubtle,
-    "--callout-border": orange.border1,
-    "--callout-accent": orange.text1,
-    "--callout-body": orange.text2,
+    "--callout-surface": orangeA.bgSubtle,
+    "--callout-border": orangeA.border1,
+    "--callout-accent": orangeA.text1,
+    "--callout-body": orangeA.text2,
   },
   failure: {
-    "--callout-surface": red.bgSubtle,
-    "--callout-border": red.border1,
-    "--callout-accent": red.text1,
-    "--callout-body": red.text2,
+    "--callout-surface": redA.bgSubtle,
+    "--callout-border": redA.border1,
+    "--callout-accent": redA.text1,
+    "--callout-body": redA.text2,
   },
   danger: {
-    "--callout-surface": red.bgSubtle,
-    "--callout-border": red.border1,
-    "--callout-accent": red.text1,
-    "--callout-body": red.text2,
+    "--callout-surface": redA.bgSubtle,
+    "--callout-border": redA.border1,
+    "--callout-accent": redA.text1,
+    "--callout-body": redA.text2,
   },
   bug: {
-    "--callout-surface": red.bgSubtle,
-    "--callout-border": red.border1,
-    "--callout-accent": red.text1,
-    "--callout-body": red.text2,
+    "--callout-surface": redA.bgSubtle,
+    "--callout-border": redA.border1,
+    "--callout-accent": redA.text1,
+    "--callout-body": redA.text2,
   },
   example: {
-    "--callout-surface": purple.bgSubtle,
-    "--callout-border": purple.border1,
-    "--callout-accent": purple.text1,
-    "--callout-body": purple.text2,
+    "--callout-surface": purpleA.bgSubtle,
+    "--callout-border": purpleA.border1,
+    "--callout-accent": purpleA.text1,
+    "--callout-body": purpleA.text2,
   },
   quote: {
-    "--callout-surface": gray.bgSubtle,
-    "--callout-border": gray.border1,
-    "--callout-accent": gray.text1,
-    "--callout-body": gray.text2,
+    "--callout-surface": grayA.bgSubtle,
+    "--callout-border": grayA.border1,
+    "--callout-accent": grayA.text1,
+    "--callout-body": grayA.text2,
   },
 });
 
