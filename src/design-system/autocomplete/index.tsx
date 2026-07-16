@@ -12,7 +12,10 @@ import { Autocomplete as AriaAutocomplete } from "react-aria-components";
 import { SizeContext } from "../context";
 import { ListBox } from "../listbox";
 import { TextField } from "../text-field";
-import { verticalSpace } from "../theme/semantic-spacing.stylex";
+import {
+  horizontalSpace,
+  verticalSpace,
+} from "../theme/semantic-spacing.stylex";
 import type {
   InputValidationState,
   InputVariant,
@@ -32,6 +35,14 @@ const styles = stylex.create({
     paddingTop: verticalSpace["xs"],
     top: "100%",
     width: "100%",
+  },
+  // Inset the suggestion rows from the popover's rounded corners so a focused
+  // item's ring isn't clipped by the container's `overflow`.
+  list: {
+    paddingBottom: verticalSpace["xs"],
+    paddingLeft: horizontalSpace["xs"],
+    paddingRight: horizontalSpace["xs"],
+    paddingTop: verticalSpace["xs"],
   },
 });
 
@@ -86,6 +97,10 @@ export function AutocompleteInput<T extends object>({
   suffix,
   onAction,
   renderEmptyState,
+  // Don't auto-focus the first suggestion after each keystroke — that gives it
+  // a keyboard focus ring while the user is only typing. The ring should
+  // appear only once they arrow into the list. Still overridable per usage.
+  disableAutoFocusFirst = true,
   ...props
 }: AutocompleteInputProps<T>) {
   const size = sizeProp || use(SizeContext);
@@ -145,7 +160,11 @@ export function AutocompleteInput<T extends object>({
 
   return (
     <SizeContext value={size}>
-      <AriaAutocomplete {...props} {...stylex.props(style)}>
+      <AriaAutocomplete
+        disableAutoFocusFirst={disableAutoFocusFirst}
+        {...props}
+        {...stylex.props(style)}
+      >
         <div
           ref={wrapperRef}
           {...stylex.props(styles.wrapper)}
@@ -166,7 +185,7 @@ export function AutocompleteInput<T extends object>({
 
           {isOpen && (
             <div {...stylex.props(styles.popover)}>
-              <div {...stylex.props(popoverStyles.wrapper)}>
+              <div {...stylex.props(popoverStyles.wrapper, styles.list)}>
                 <ListBox
                   items={items}
                   selectionMode="none"

@@ -35,6 +35,11 @@ const styles = stylex.create({
       ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
     },
     outlineOffset: "-2px",
+    // Round the focus ring so it matches the highlight and, more importantly,
+    // nests inside the popover's rounded corners instead of a sharp full-width
+    // rectangle whose corners get clipped by the container's `overflow`.
+    borderRadius: radius.md,
+    cornerShape: "squircle",
     boxSizing: "border-box",
     fontWeight: {
       default: fontWeight["normal"],
