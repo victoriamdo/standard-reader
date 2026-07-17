@@ -24,6 +24,7 @@ import { LeafletPollBlockView } from "./leaflet-poll";
 import { LeafletSeparatorView } from "./leaflet-separator";
 import { LeafletSignupBlockView } from "./leaflet-signup";
 import { LeafletStandardSitePostBlockView } from "./leaflet-standard-site-post";
+import { LeafletStandardSitePublicationBlockView } from "./leaflet-standard-site-publication";
 import { BlockquoteBlockView } from "./shared/blockquote-block";
 import { BskyPostEmbedView } from "./shared/bsky-post-embed";
 import { CodeBlockView } from "./shared/code-block";
@@ -159,6 +160,9 @@ export function LeafletBlockView({
     }
     case "standardSitePost": {
       return <LeafletStandardSitePostBlockView block={block.block} />;
+    }
+    case "standardSitePublication": {
+      return <LeafletStandardSitePublicationBlockView block={block.block} />;
     }
     case "imageGallery": {
       return (
