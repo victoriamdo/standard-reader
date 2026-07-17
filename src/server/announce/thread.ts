@@ -23,9 +23,13 @@ export interface StrongRef {
   cid: string;
 }
 
-interface LinkFacet {
+export type FacetFeature =
+  | { $type: "app.bsky.richtext.facet#link"; uri: string }
+  | { $type: "app.bsky.richtext.facet#mention"; did: string };
+
+export interface Facet {
   index: { byteStart: number; byteEnd: number };
-  features: Array<{ $type: "app.bsky.richtext.facet#link"; uri: string }>;
+  features: Array<FacetFeature>;
 }
 
 interface ExternalEmbed {
@@ -38,28 +42,48 @@ interface ExternalEmbed {
 export interface PostSpec {
   text: string;
   external?: ExternalEmbed;
-  facets?: Array<LinkFacet>;
+  facets?: Array<Facet>;
 }
 
 /**
- * One `app.bsky.richtext.facet#link` over the first occurrence of `linkText` in
- * `text`. Facet indices are UTF-8 byte offsets. Returns `[]` if not found.
+ * A facet over the first occurrence of `needle` in `text`. Facet indices are
+ * UTF-8 byte offsets. Returns `null` if `needle` isn't present.
  */
+function facetOver(
+  text: string,
+  needle: string,
+  feature: FacetFeature,
+): Facet | null {
+  const at = text.indexOf(needle);
+  if (at === -1) return null;
+  const byteStart = utf8ByteLength(text.slice(0, at));
+  const byteEnd = byteStart + utf8ByteLength(needle);
+  return { index: { byteStart, byteEnd }, features: [feature] };
+}
+
+/** One `app.bsky.richtext.facet#link` over `linkText` (`[]` if not found). */
 export function linkFacets(
   text: string,
   linkText: string,
   uri: string,
-): Array<LinkFacet> {
-  const at = text.indexOf(linkText);
-  if (at === -1) return [];
-  const byteStart = utf8ByteLength(text.slice(0, at));
-  const byteEnd = byteStart + utf8ByteLength(linkText);
-  return [
-    {
-      index: { byteStart, byteEnd },
-      features: [{ $type: "app.bsky.richtext.facet#link", uri }],
-    },
-  ];
+): Array<Facet> {
+  const facet = facetOver(text, linkText, {
+    $type: "app.bsky.richtext.facet#link",
+    uri,
+  });
+  return facet ? [facet] : [];
+}
+
+/** One `app.bsky.richtext.facet#mention` over `mentionText` (e.g. `@handle`). */
+export function mentionFacet(
+  text: string,
+  mentionText: string,
+  did: string,
+): Facet | null {
+  return facetOver(text, mentionText, {
+    $type: "app.bsky.richtext.facet#mention",
+    did,
+  });
 }
 
 /**

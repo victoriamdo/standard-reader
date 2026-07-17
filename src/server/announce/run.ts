@@ -21,13 +21,20 @@ import { db } from "../../db/index.ts";
 import * as schema from "../../db/schema.ts";
 import { loginAsReaderBot } from "./client.ts";
 import {
+  BSKY_POST_MAX_GRAPHEMES,
   capGraphemes,
+  graphemeCount,
   HOT_ARTICLE_LIMIT,
   HOT_WINDOW_DAYS,
   isDryRun,
 } from "./config.ts";
-import { fetchThumbBlob, linkFacets, postThread } from "./thread.ts";
-import type { PostSpec } from "./thread.ts";
+import {
+  fetchThumbBlob,
+  linkFacets,
+  mentionFacet,
+  postThread,
+} from "./thread.ts";
+import type { Facet, PostSpec } from "./thread.ts";
 
 export interface WeeklyThreadSummary {
   /** Hottest articles selected for the thread. */
@@ -41,11 +48,19 @@ export interface WeeklyThreadSummary {
 
 const CTA_APP_LABEL = "standard-reader.app";
 
-/** Byline: publication name, else author display name, else @handle. */
-function byline(card: ArticleCard): string | null {
-  if (card.publicationName) return card.publicationName;
-  if (card.authorDisplayName) return card.authorDisplayName;
-  if (card.authorHandle) return `@${card.authorHandle}`;
+/**
+ * Byline text + (when the author's handle resolves) the DID to @mention. The
+ * author's handle and `did` both come from the document author, so the mention
+ * facet always points at the right account.
+ */
+function byline(
+  card: ArticleCard,
+): { text: string; mentionDid?: string } | null {
+  if (card.authorHandle && card.did) {
+    return { text: `@${card.authorHandle}`, mentionDid: card.did };
+  }
+  if (card.publicationName) return { text: card.publicationName };
+  if (card.authorDisplayName) return { text: card.authorDisplayName };
   return null;
 }
 
@@ -68,20 +83,33 @@ function articleSpec(
   thumb?: Record<string, unknown> | null,
 ): PostSpec {
   const n = index + 1;
-  const b = byline(card);
-  const title = card.title.trim();
-  const line = `${n}. ${title}${b ? ` — ${b}` : ""}`;
-  const text =
+  const rawTitle = card.title.trim();
+  const by = byline(card);
+
+  // Reserve budget for the numbering/intro prefix and the byline suffix so the
+  // author @mention at the end is never truncated away by the 300-char cap.
+  const prefix =
     index === 0
-      ? capGraphemes(
-          `🔥 The ${total} hottest reads on Standard Reader this week\n\n${line}`,
-        )
-      : capGraphemes(line);
+      ? `🔥 The ${total} hottest reads on Standard Reader this week\n\n${n}. `
+      : `${n}. `;
+  const suffix = by ? ` — ${by.text}` : "";
+  const titleBudget =
+    BSKY_POST_MAX_GRAPHEMES - graphemeCount(prefix) - graphemeCount(suffix);
+  const title = capGraphemes(rawTitle, Math.max(12, titleBudget));
+  const text = `${prefix}${title}${suffix}`;
+
+  const facets: Array<Facet> = [];
+  if (by?.mentionDid) {
+    const facet = mentionFacet(text, by.text, by.mentionDid);
+    if (facet) facets.push(facet);
+  }
+
   return {
     text,
+    ...(facets.length > 0 ? { facets } : {}),
     external: {
       uri: articleUrl(card, baseUrl),
-      title: capGraphemes(title, 300),
+      title: capGraphemes(rawTitle, 300),
       description: card.description ?? "",
       ...(thumb ? { thumb } : {}),
     },
@@ -119,8 +147,13 @@ export async function runWeeklyThread(): Promise<WeeklyThreadSummary> {
       if (spec.external) {
         console.info(`  [card] ${spec.external.title} → ${spec.external.uri}`);
       }
-      if (spec.facets?.length) {
-        console.info(`  [link] ${spec.facets[0].features[0].uri}`);
+      for (const facet of spec.facets ?? []) {
+        const feature = facet.features[0];
+        const detail =
+          feature.$type === "app.bsky.richtext.facet#mention"
+            ? `mention ${feature.did}`
+            : `link ${feature.uri}`;
+        console.info(`  [facet] ${detail}`);
       }
     }
     for (const [i, card] of cards.entries()) {

@@ -60,6 +60,15 @@ function graphemeSegmenter(): Intl.Segmenter | null {
   return new Intl.Segmenter(undefined, { granularity: "grapheme" });
 }
 
+/** Count graphemes (what Bluesky's 300-char limit measures). */
+export function graphemeCount(text: string): number {
+  const segmenter = graphemeSegmenter();
+  if (!segmenter) return text.length;
+  let n = 0;
+  for (const _ of segmenter.segment(text)) n++;
+  return n;
+}
+
 /** Truncate to at most `max` graphemes, appending an ellipsis when shortened. */
 export function capGraphemes(
   text: string,
