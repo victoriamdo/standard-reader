@@ -32,6 +32,7 @@ import type {
   PublicationCard,
 } from "#/integrations/tanstack-query/api-shapes";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { HIDE_READ_STORAGE_KEY } from "#/lib/hide-read";
 import { shareLinkUrl, useNativeShareAvailable } from "#/lib/native-share";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { buildBlueskyComposeUrl } from "#/lib/quote-share";
@@ -40,6 +41,7 @@ import {
   listOgImageUrl,
   siteSocialMeta,
 } from "#/lib/site-metadata";
+import { usePersistentToggle } from "#/lib/use-persistent-toggle";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 
 import { AuthorProfileLink } from "../components/reader/author-profile-link";
@@ -569,7 +571,7 @@ function ListPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [rssOpen, setRssOpen] = useState(false);
-  const [hideRead, setHideRead] = useState(false);
+  const [hideRead, setHideRead] = usePersistentToggle(HIDE_READ_STORAGE_KEY);
 
   // Snapshot the current top-of-feed articles so the magazine link is stable:
   // the chosen articles are baked into the URL and won't drift as the list grows.
@@ -660,7 +662,7 @@ function ListPage() {
     ? "Show read articles"
     : "Hide read articles";
 
-  const toggleHideRead = () => setHideRead((value) => !value);
+  const toggleHideRead = () => setHideRead((value: boolean) => !value);
   const onCopyLink = () => {
     void navigator.clipboard.writeText(pageUrl);
   };
