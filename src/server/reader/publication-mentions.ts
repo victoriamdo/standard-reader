@@ -14,6 +14,7 @@ import {
   mentionUrlKey,
   normalizeMentionUrl,
 } from "#/lib/leaflet/publication-mentions";
+import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import { getPublicUrl } from "#/lib/public-url";
 import { cdnImageUrl } from "#/server/atproto/blob";
 
@@ -132,6 +133,25 @@ async function resolveActors(
       avatarUrl: row.avatarUrl,
     };
   }
+
+  // Mentions can target any atproto account, not just ones this reader has
+  // indexed (e.g. `@bsky.app`). Fall back to the public Bluesky profile for
+  // DIDs we don't have locally so the mention chip still gets a handle + avatar.
+  const missing = dids.filter((did) => !map[did]);
+  if (missing.length > 0) {
+    await Promise.all(
+      missing.map(async (did) => {
+        const profile = await fetchBlueskyPublicProfileFields(did);
+        if (!profile) return;
+        map[did] = {
+          did,
+          handle: profile.handle,
+          avatarUrl: profile.avatarUrl,
+        };
+      }),
+    );
+  }
+
   return map;
 }
 

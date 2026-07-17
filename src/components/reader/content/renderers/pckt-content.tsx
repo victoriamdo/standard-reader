@@ -1,6 +1,9 @@
 "use client";
 
-import { pcktBlocks } from "#/lib/pckt/blocks";
+import {
+  pcktBlocks,
+  pcktLeadingHeadingMatchesDescription,
+} from "#/lib/pckt/blocks";
 import type { PcktContent } from "#/lib/pckt/types";
 
 import type { ContentRendererProps } from "../types";
@@ -14,8 +17,17 @@ export function PcktContentRenderer({
   content,
   hasHero,
   skipFirstBlock,
+  leadDescription,
 }: ContentRendererProps) {
-  const blocks = pcktBlocks(content as PcktContent);
+  const parsed = pcktBlocks(content as PcktContent);
+
+  // Drop a leading heading that merely repeats the document's header
+  // description — the reader shows that text as the header dek instead (see
+  // `pcktLeadingHeadingMatchesDescription`), so rendering it here would duplicate it.
+  const blocks = pcktLeadingHeadingMatchesDescription(content, leadDescription)
+    ? parsed.slice(1)
+    : parsed;
+
   if (blocks.length === 0) return null;
 
   const firstTextIndex = blocks.findIndex((block, index) => {

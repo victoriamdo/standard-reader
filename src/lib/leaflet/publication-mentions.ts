@@ -19,11 +19,18 @@ export interface ResolvedPublicationMention {
 /** Lookup keyed by publication AT-URI and by `url:<normalized-homepage>`. */
 export type PublicationMentionMap = Record<string, ResolvedPublicationMention>;
 
-const FACET_PREFIX = "pub.leaflet.richtext.facet#";
-
+/**
+ * The `#feature` suffix of any AT-Proto rich-text facet `$type`, regardless of
+ * lexicon namespace — `pub.leaflet.richtext.facet#didMention`,
+ * `blog.pckt.richtext.facet#didMention`, and `app.bsky.richtext.facet#mention`
+ * all yield their trailing kind. Namespace-agnostic so inline mentions resolve
+ * across every content format, not just Leaflet.
+ */
 function facetKind($type: unknown): string | null {
-  if (typeof $type !== "string" || !$type.startsWith(FACET_PREFIX)) return null;
-  return $type.slice(FACET_PREFIX.length);
+  if (typeof $type !== "string") return null;
+  const hash = $type.lastIndexOf("#");
+  if (hash === -1) return null;
+  return $type.slice(hash + 1);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

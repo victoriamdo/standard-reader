@@ -29,6 +29,10 @@ import {
   countMarginNotesForUrls,
   fetchMarginNotesForUrls,
 } from "#/server/atproto/margin-notes";
+import {
+  countNotesForDocument,
+  fetchNotesForDocument,
+} from "#/server/pckt/notes";
 import { buildCanonicalUrl } from "#/server/ingest/mappers";
 import { listQuoteSharesForDocument } from "#/server/reader/quote-shares";
 
@@ -40,7 +44,7 @@ export interface DocumentCommentAuthor {
 }
 
 export interface DocumentComment {
-  source: "bluesky" | "margin" | "semble";
+  source: "bluesky" | "margin" | "semble" | "note";
   kind: "link" | "quote";
   postUri: string;
   postUrl: string;
@@ -273,12 +277,14 @@ async function refreshCommentCount(
     }
 
     const linkUrls = context.targets.map((target) => target.url);
-    const [backlinkCount, replyCount, marginCount] = await Promise.all([
-      countConstellationBacklinksForTargets(context.targets),
-      countAuthorPostReplies(context.bskyPostUri),
-      countMarginNotesForUrls(linkUrls),
-    ]);
-    const count = backlinkCount + replyCount + marginCount;
+    const [backlinkCount, replyCount, marginCount, noteCount] =
+      await Promise.all([
+        countConstellationBacklinksForTargets(context.targets),
+        countAuthorPostReplies(context.bskyPostUri),
+        countMarginNotesForUrls(linkUrls),
+        countNotesForDocument(documentUri),
+      ]);
+    const count = backlinkCount + replyCount + marginCount + noteCount;
     commentCountCache.set(documentUri, {
       count,
       updatedAt: Date.now(),
@@ -517,12 +523,13 @@ export async function fetchDocumentComments(
   const { targets, stripUrls, bskyPostUri } = context;
   const linkUrls = targets.map((target) => target.url);
 
-  const [discovery, marginComments] = await Promise.all([
+  const [discovery, marginComments, noteComments] = await Promise.all([
     discoverDocumentComments(targets, bskyPostUri),
     fetchMarginNotesForUrls(linkUrls),
+    fetchNotesForDocument(documentUri),
   ]);
 
-  const comments: Array<DocumentComment> = [...marginComments];
+  const comments: Array<DocumentComment> = [...marginComments, ...noteComments];
 
   if (discovery.postMeta.size > 0) {
     const posts = await getPosts([...discovery.postMeta.keys()]);

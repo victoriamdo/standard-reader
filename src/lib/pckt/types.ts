@@ -32,6 +32,7 @@ export const PCKT_BLOCK = {
   tableCell: "blog.pckt.block.tableCell",
   website: "blog.pckt.block.website",
   hardBreak: "blog.pckt.block.hardBreak",
+  noteEmbed: "blog.pckt.block.noteEmbed",
 } as const;
 
 export const PCKT_CONTENT = "blog.pckt.content";
@@ -160,6 +161,12 @@ export interface PcktGalleryBlock {
   ref?: string;
 }
 
+export interface PcktNoteEmbedBlock {
+  $type?: string;
+  /** strongRef to the embedded `blog.pckt.mini.post`. */
+  noteRef?: { uri?: string; cid?: string };
+}
+
 export type PcktRenderableBlock =
   | { kind: "text"; block: PcktTextBlock }
   | { kind: "heading"; block: PcktHeadingBlock }
@@ -175,6 +182,7 @@ export type PcktRenderableBlock =
   | { kind: "table"; block: PcktTableBlock }
   | { kind: "website"; block: PcktWebsiteBlock }
   | { kind: "gallery"; block: PcktGalleryBlock }
+  | { kind: "noteEmbed"; block: PcktNoteEmbedBlock }
   | { kind: "unknown"; blockType: string };
 
 export interface PcktContent {

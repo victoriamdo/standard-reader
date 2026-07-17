@@ -8,6 +8,14 @@ import type { LeafletFacet } from "#/lib/leaflet/types";
 import { articleBodyStyles } from "../../body-styles";
 import { HighlightedFacetedPlaintext } from "./faceted-text";
 
+const styles = stylex.create({
+  // The blockquote's own margin handles spacing to the next block, so the final
+  // inner paragraph must not add its own bottom margin on top of it.
+  lastParagraph: {
+    marginBottom: 0,
+  },
+});
+
 export interface BlockquoteParagraph {
   plaintext: string;
   facets?: Array<LeafletFacet> | Array<unknown>;
@@ -39,6 +47,7 @@ export function BlockquoteBlockView({
             {...stylex.props(
               articleBodyStyles.paragraph,
               embedded && articleBodyStyles.pageEmbedBlockInner,
+              index === items.length - 1 && styles.lastParagraph,
             )}
           >
             <HighlightedFacetedPlaintext

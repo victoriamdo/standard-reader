@@ -11,6 +11,10 @@ export interface ContentRendererProps {
   hasHero: boolean;
   /** When true, omit the first image block (or leading markdown/HTML image). */
   skipFirstBlock?: boolean;
+  /** The document's header description. When the body's first block is a heading
+   * whose text exactly matches this, the renderer drops that heading (it would
+   * duplicate the header). */
+  leadDescription?: string | null;
   blobContext?: ContentBlobContext;
   codeHighlights?: CodeHighlightsByScheme;
 }

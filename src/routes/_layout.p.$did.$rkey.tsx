@@ -10,6 +10,7 @@ import { CheckCheck, ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { authorApi } from "#/integrations/tanstack-query/api-author.functions";
+import { notesApi } from "#/integrations/tanstack-query/api-notes.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import type {
   PublicationEmbedMeta,
@@ -43,6 +44,7 @@ import {
   ReaderContent,
   Topic,
 } from "../components/reader/primitives";
+import { PublicationLatestNote } from "../components/reader/publication-latest-note";
 import { PublicationSocialProofLine } from "../components/reader/publication-social-proof";
 import {
   applyMarkReadManyOptimisticUpdate,
@@ -101,6 +103,8 @@ export const Route = createFileRoute("/_layout/p/$did/$rkey")({
       });
     const socialProofOptions =
       publicationApi.getPublicationSocialProofQueryOptions(uri);
+    const latestNoteOptions =
+      notesApi.getPublicationLatestNoteQueryOptions(uri);
 
     // Non-blocking: ShareMenu and FollowButton read these from React Query.
     void context.queryClient.prefetchQuery(
@@ -115,6 +119,7 @@ export const Route = createFileRoute("/_layout/p/$did/$rkey")({
     if (preload) {
       void context.queryClient.prefetchQuery(headerOptions);
       void context.queryClient.prefetchQuery(recentDocumentsOptions);
+      void context.queryClient.prefetchQuery(latestNoteOptions);
       if (signedIn) void context.queryClient.prefetchQuery(socialProofOptions);
       return {
         publicationName: null,
@@ -128,6 +133,7 @@ export const Route = createFileRoute("/_layout/p/$did/$rkey")({
     const awaitables: Array<Promise<unknown>> = [
       context.queryClient.ensureQueryData(headerOptions),
       context.queryClient.ensureQueryData(recentDocumentsOptions),
+      context.queryClient.ensureQueryData(latestNoteOptions),
     ];
     if (signedIn) {
       awaitables.push(context.queryClient.ensureQueryData(socialProofOptions));
@@ -862,6 +868,7 @@ function PublicationProfileContent({
 
       <ReaderContent>
         <Flex direction="column" gap="6xl" style={styles.writing}>
+          <PublicationLatestNote publicationUri={uri} />
           {documents.length === 0 ? (
             <div {...stylex.props(styles.emptyNote)}>
               No posts indexed from this publication yet.
