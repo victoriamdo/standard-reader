@@ -35,6 +35,7 @@ import {
   ReaderContent,
   SectionHead,
 } from "#/components/reader/primitives";
+import { isArticleUnreadForReader } from "#/components/reader/read-optimistic";
 import { RssFeedButton } from "#/components/reader/rss-feed-button";
 import { ButtonLink } from "#/components/router-links";
 import {
@@ -430,6 +431,7 @@ function TagDirectorySkeleton({
 }
 
 function TagArticlesPanel({ tag }: { tag: string }) {
+  const queryClient = useQueryClient();
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
   const { enabled: trackReading } = useTrackReadingHistory();
@@ -534,7 +536,10 @@ function TagArticlesPanel({ tag }: { tag: string }) {
             key={article.uri}
             article={article}
             isFirstInSection={index === 0}
-            unread={trackReading && signedIn && !article.isRead}
+            unread={isArticleUnreadForReader(queryClient, article, {
+              trackReading,
+              signedIn,
+            })}
             showSaveButton={false}
           />
         ))}
