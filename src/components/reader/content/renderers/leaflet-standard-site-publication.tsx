@@ -133,7 +133,10 @@ function publicationThemeVars(
   const vars = dark ? palette.dark : palette.light;
   return {
     "--pub-card-bg": vars["--paper"],
-    "--pub-card-border": vars["--line"],
+    // Tint the border with the publication's accent (Radix "UI element border"
+    // step) so the card reads as belonging to that publication, matching the
+    // accent-colored title.
+    "--pub-card-border": vars["--accent"],
     "--pub-card-title": vars["--accent-ink"],
     "--pub-card-text": vars["--ink"],
     "--pub-card-muted": vars["--ink-soft"],
