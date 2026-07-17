@@ -12,9 +12,7 @@ import {
 } from "#/components/reader/quote-highlight-tracker";
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import { parseArticleBlocks } from "#/lib/document/blocks";
-import { LEAFLET_DOCUMENT_FORMAT } from "#/lib/document/content-formats";
 import { resolveArticleHeroImage } from "#/lib/document/lead-image";
-import { LEAFLET_CONTENT } from "#/lib/leaflet/types";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 
 import {
@@ -146,25 +144,18 @@ export function ArticleContent({
       content: article.contentJson,
       hasHero,
       skipFirstBlock,
+      leadDescription: article.description,
     };
-    // Only Leaflet content carries inline publication/actor facets; other
-    // formats skip the resolver (and its lazy fetch) entirely.
-    const isLeaflet =
-      contentType === LEAFLET_CONTENT ||
-      contentType === LEAFLET_DOCUMENT_FORMAT;
-    // Leaflet carries inline publication/actor *facets* (resolved by
-    // InlineMentionProvider). Every content type additionally has plain links,
-    // which ContentLinkProvider resolves to pub/article/user chips — so
-    // mentions work across formats, not just Leaflet.
+    // Inline publication/actor facets (`#didMention`, publication/document
+    // refs) can appear in any content format, not just Leaflet. The provider's
+    // resolver query only fires when the content actually carries mention refs
+    // (`hasInlineMentionRefs`), so mention-free documents pay nothing. Plain
+    // links are additionally upgraded by ContentLinkProvider across all formats.
     return (
       <ContentLinkProvider>
-        {isLeaflet ? (
-          <InlineMentionProvider content={article.contentJson}>
-            <Renderer {...props} />
-          </InlineMentionProvider>
-        ) : (
+        <InlineMentionProvider content={article.contentJson}>
           <Renderer {...props} />
-        )}
+        </InlineMentionProvider>
       </ContentLinkProvider>
     );
   }

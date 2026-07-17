@@ -181,7 +181,32 @@ export function CommentCard({ comment }: { comment: DocumentComment }) {
       ? "on Margin"
       : comment.source === "semble"
         ? "on Semble"
-        : "on Bluesky";
+        : comment.source === "note"
+          ? "on pckt"
+          : "on Bluesky";
+  const hasLink = comment.postUrl.trim().length > 0;
+
+  const body = (
+    <>
+      {comment.kind === "quote" && comment.quote ? (
+        <blockquote {...stylex.props(commentStyles.blockquote)}>
+          {comment.quote}
+        </blockquote>
+      ) : null}
+
+      <CommentFacetedText
+        text={comment.commentary}
+        facets={comment.commentaryFacets}
+      />
+
+      <Flex align="center" gap="sm" style={commentStyles.footer}>
+        <MessageCircle size={16} aria-hidden />
+        <span>
+          {replyLabel} {replyContext}
+        </span>
+      </Flex>
+    </>
+  );
 
   return (
     <div {...stylex.props(commentStyles.card)}>
@@ -213,30 +238,18 @@ export function CommentCard({ comment }: { comment: DocumentComment }) {
         </time>
       </div>
 
-      <a
-        href={comment.postUrl}
-        target="_blank"
-        rel="noreferrer"
-        {...stylex.props(commentStyles.cardBodyLink)}
-      >
-        {comment.kind === "quote" && comment.quote ? (
-          <blockquote {...stylex.props(commentStyles.blockquote)}>
-            {comment.quote}
-          </blockquote>
-        ) : null}
-
-        <CommentFacetedText
-          text={comment.commentary}
-          facets={comment.commentaryFacets}
-        />
-
-        <Flex align="center" gap="sm" style={commentStyles.footer}>
-          <MessageCircle size={16} aria-hidden />
-          <span>
-            {replyLabel} {replyContext}
-          </span>
-        </Flex>
-      </a>
+      {hasLink ? (
+        <a
+          href={comment.postUrl}
+          target="_blank"
+          rel="noreferrer"
+          {...stylex.props(commentStyles.cardBodyLink)}
+        >
+          {body}
+        </a>
+      ) : (
+        <div {...stylex.props(commentStyles.cardBodyLink)}>{body}</div>
+      )}
     </div>
   );
 }

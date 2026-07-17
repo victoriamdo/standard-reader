@@ -13,6 +13,7 @@ import type {
   PcktIframeBlock,
   PcktImageBlock,
   PcktListBlock,
+  PcktNoteEmbedBlock,
   PcktRenderableBlock,
   PcktTableBlock,
   PcktTaskListBlock,
@@ -224,6 +225,13 @@ function asRenderableBlock(value: unknown): PcktRenderableBlock | null {
     return { kind: "gallery", block: value as unknown as PcktGalleryBlock };
   }
 
+  if (value.$type === PCKT_BLOCK.noteEmbed) {
+    return {
+      kind: "noteEmbed",
+      block: value as unknown as PcktNoteEmbedBlock,
+    };
+  }
+
   if (value.$type === PCKT_BLOCK.horizontalRule) {
     return { kind: "horizontalRule" };
   }
@@ -231,6 +239,24 @@ function asRenderableBlock(value: unknown): PcktRenderableBlock | null {
   const blockType =
     typeof value.$type === "string" ? value.$type : "unknown block";
   return { kind: "unknown", blockType };
+}
+
+/**
+ * True when the content's first block is a heading whose text exactly matches
+ * the document description. pckt authors often open a post with the description
+ * as an H1; in that case the reader drops the heading from the body (it would
+ * duplicate the header) and instead shows the description as the header dek.
+ * Both the body renderer and the dek-visibility check use this predicate so
+ * they stay in agreement.
+ */
+export function pcktLeadingHeadingMatchesDescription(
+  content: unknown,
+  description: string | null | undefined,
+): boolean {
+  const desc = description?.trim();
+  if (!desc) return false;
+  const first = pcktBlocks(content)[0];
+  return first?.kind === "heading" && first.block.plaintext.trim() === desc;
 }
 
 /** Every renderable block in document order. */
@@ -344,6 +370,7 @@ export function plaintextLinesFromBlock(
     case "iframe":
     case "blueskyEmbed":
     case "gallery":
+    case "noteEmbed":
     case "unknown": {
       return [];
     }

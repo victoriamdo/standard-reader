@@ -5,6 +5,13 @@
  * @see https://constellation.microcosm.blue/
  */
 
+import {
+  MINI_POST_COLLECTION,
+  MINI_POST_PUBLICATION_PATH,
+  MINI_POST_QUOTE_PATHS,
+  MINI_POST_SUBJECT_PATH,
+} from "#/lib/pckt/mini";
+
 export interface ConstellationBacklinkRecord {
   did: string;
   collection: string;
@@ -283,11 +290,16 @@ async function fetchBacklinksPage({
   source,
   cursor,
   limit,
+  forceLegacyLinks = false,
 }: {
   target: string;
   source: string;
   cursor?: string;
   limit: number;
+  /** Force the legacy `/links` endpoint even for AT-URI/DID subjects. Some
+   * sources (e.g. `blog.pckt.mini.post:.subject`) 400 on xrpc but resolve on
+   * legacy `/links`. */
+  forceLegacyLinks?: boolean;
 }): Promise<ConstellationBacklinksResult> {
   const empty: ConstellationBacklinksResult = {
     total: 0,
@@ -302,8 +314,9 @@ async function fetchBacklinksPage({
 
   try {
     // The xrpc endpoint rejects https?:// subjects (400); use legacy /links
-    // for web URLs. AT-URI and DID subjects work on xrpc.
-    const useLegacyLinks = isHttpUrl(target);
+    // for web URLs. AT-URI and DID subjects work on xrpc — except a few sources
+    // that 400 there, for which callers pass `forceLegacyLinks`.
+    const useLegacyLinks = forceLegacyLinks || isHttpUrl(target);
     const url = useLegacyLinks
       ? new URL("/links", constellationBaseUrl())
       : new URL(
@@ -356,6 +369,7 @@ export async function getBacklinks({
 async function getAllBacklinksForSource(
   target: string,
   source: string,
+  forceLegacyLinks = false,
 ): Promise<Array<ConstellationBacklinkRecord>> {
   const merged: Array<ConstellationBacklinkRecord> = [];
   let cursor: string | undefined;
@@ -366,6 +380,7 @@ async function getAllBacklinksForSource(
       source,
       cursor,
       limit: 100,
+      forceLegacyLinks,
     });
     merged.push(...page.records);
     cursor = page.cursor ?? undefined;
@@ -559,4 +574,46 @@ export async function getCitationBacklinksForTarget(
   );
 
   return mergeBacklinkRecords(results, new Set(CITATION_COLLECTIONS));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// pckt notes (`blog.pckt.mini.post`) — replies (`.subject`) and quotes
+// (`.embed.record`) of a document, and notes published under a publication.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Constellation sources for notes that reference a `site.standard.document`. */
+export const NOTE_DOCUMENT_LINK_SOURCES = [
+  `${MINI_POST_COLLECTION}:${MINI_POST_SUBJECT_PATH}`,
+  ...MINI_POST_QUOTE_PATHS.map(
+    (path) => `${MINI_POST_COLLECTION}:${path}` as const,
+  ),
+] as const;
+
+/** Constellation source for notes published under a `site.standard.publication`. */
+export const NOTE_PUBLICATION_LINK_SOURCE =
+  `${MINI_POST_COLLECTION}:${MINI_POST_PUBLICATION_PATH}` as const;
+
+/** Notes (mini.posts) that reply to or quote the given document AT-URI. */
+export async function getNoteBacklinksForDocument(
+  documentUri: string,
+): Promise<Array<ConstellationBacklinkRecord>> {
+  // pckt note sources 400 on the xrpc endpoint; force legacy `/links`.
+  const results = await Promise.all(
+    NOTE_DOCUMENT_LINK_SOURCES.map((source) =>
+      getAllBacklinksForSource(documentUri, source, true),
+    ),
+  );
+  return mergeBacklinkRecords(results, new Set([MINI_POST_COLLECTION]));
+}
+
+/** Notes (mini.posts) published under the given publication AT-URI. */
+export async function getNoteBacklinksForPublication(
+  publicationUri: string,
+): Promise<Array<ConstellationBacklinkRecord>> {
+  const records = await getAllBacklinksForSource(
+    publicationUri,
+    NOTE_PUBLICATION_LINK_SOURCE,
+    true,
+  );
+  return mergeBacklinkRecords([records], new Set([MINI_POST_COLLECTION]));
 }

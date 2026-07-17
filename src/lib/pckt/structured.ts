@@ -187,6 +187,9 @@ function mapPcktBlock(block: PcktRenderableBlock): StructuredRenderableBlock {
         ref: block.block.ref ?? "",
       };
     }
+    case "noteEmbed": {
+      return { kind: "unknown", blockType: PCKT_BLOCK.noteEmbed };
+    }
     case "unknown": {
       return { kind: "unknown", blockType: block.blockType };
     }

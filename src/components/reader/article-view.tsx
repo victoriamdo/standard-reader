@@ -323,7 +323,7 @@ const styles = stylex.create({
     marginLeft: "auto",
     marginRight: "auto",
     marginTop: spacing["0"],
-    maxWidth: "30ch",
+    maxWidth: "48ch",
   },
   magazineIntro: {
     marginBottom: spacing["12"],

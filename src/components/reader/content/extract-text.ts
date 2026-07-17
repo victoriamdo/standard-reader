@@ -21,6 +21,7 @@ import { markpubNarrationText } from "#/lib/markpub/markdown";
 import { MARKPUB_MARKDOWN } from "#/lib/markpub/types";
 import { offprintPlaintext } from "#/lib/offprint/plaintext";
 import { OFFPRINT_CONTENT } from "#/lib/offprint/types";
+import { pcktLeadingHeadingMatchesDescription } from "#/lib/pckt/blocks";
 import { pcktPlaintext } from "#/lib/pckt/plaintext";
 import { PCKT_CONTENT } from "#/lib/pckt/types";
 
@@ -67,7 +68,16 @@ export function articleDescriptionIsBodyExcerpt(article: {
   description?: ArticleDetail["description"];
   collection?: ArticleDetail["collection"] | null;
 }): boolean {
-  if (resolveContentType(article) === PCKT_CONTENT) return true;
+  // pckt descriptions are body excerpts by default, so the dek is normally
+  // suppressed — EXCEPT when the description is the leading heading, which the
+  // body renderer drops. In that case the description is unique to the header,
+  // so show it as the dek.
+  if (resolveContentType(article) === PCKT_CONTENT) {
+    return !pcktLeadingHeadingMatchesDescription(
+      article.contentJson,
+      article.description,
+    );
+  }
 
   const description = article.description?.trim();
   if (!description || !article.collection) return false;

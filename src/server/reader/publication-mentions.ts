@@ -3,6 +3,7 @@ import { and, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 import { publicationDisplayName } from "#/integrations/tanstack-query/api-shapes";
 import { isAppOriginHref } from "#/lib/app-origin";
+import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import type {
   ActorMentionMap,
   DocumentMentionMap,
@@ -132,6 +133,25 @@ async function resolveActors(
       avatarUrl: row.avatarUrl,
     };
   }
+
+  // Mentions can target any atproto account, not just ones this reader has
+  // indexed (e.g. `@bsky.app`). Fall back to the public Bluesky profile for
+  // DIDs we don't have locally so the mention chip still gets a handle + avatar.
+  const missing = dids.filter((did) => !map[did]);
+  if (missing.length > 0) {
+    await Promise.all(
+      missing.map(async (did) => {
+        const profile = await fetchBlueskyPublicProfileFields(did);
+        if (!profile) return;
+        map[did] = {
+          did,
+          handle: profile.handle,
+          avatarUrl: profile.avatarUrl,
+        };
+      }),
+    );
+  }
+
   return map;
 }
 
