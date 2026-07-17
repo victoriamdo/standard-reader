@@ -25,6 +25,15 @@ const styles = stylex.create({
     gap: gap["xl"],
     alignItems: "center",
     display: "flex",
+    // Contain react-aria's visually-hidden <input>. It's rendered absolutely
+    // positioned, so without a positioned wrapper it resolves against the
+    // nearest positioned ancestor (here `main`, a scroll container). Focusing
+    // the switch then makes the browser scroll that distant ancestor to bring
+    // the input into view, jumping the whole page and collapsing the layout on
+    // Chrome/Edge. `position: relative` scopes the input to the switch itself.
+    // See react-aria adobe/react-spectrum#8081 / #8091 (radio/checkbox got the
+    // same treatment; Switch did not).
+    position: "relative",
   },
   indicator: {
     borderRadius: radius.full,
