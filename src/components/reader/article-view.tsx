@@ -364,7 +364,10 @@ const styles = stylex.create({
     // inline gap. From `sm` up they sit inline again.
     columnGap: gap.lg,
     rowGap: spacing["1"],
-    alignItems: { default: "flex-start", "@media (min-width: 40rem)": "center" },
+    alignItems: {
+      default: "flex-start",
+      "@media (min-width: 40rem)": "center",
+    },
     color: uiColor.text2,
     display: "flex",
     flexDirection: { default: "column", "@media (min-width: 40rem)": "row" },
