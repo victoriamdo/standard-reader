@@ -10,6 +10,17 @@ import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
 /** Gravity-style half-life for time-decay (hours). */
 export const HALF_LIFE_HOURS = 30;
 
+/**
+ * Gentler half-life for the weekly "week in review" thread (~3.5 days). Unlike
+ * the 30h trending half-life this lets a heavily-liked early-week article stay
+ * competitive with a fresh one, so the Top 5 reflects the whole week rather than
+ * just the last day or two. Used by {@link weekInReviewArticles}.
+ */
+export const WEEK_HALF_LIFE_HOURS = 84;
+
+/** Weight on Bluesky backlinks relative to a decayed like in the week score. */
+export const WEEK_BACKLINK_WEIGHT = 1.5;
+
 /** Only articles published within this many days are trending-eligible. */
 export const TRENDING_MAX_AGE_DAYS = 4;
 
@@ -63,9 +74,17 @@ export function trendingMaxAgeIntervalSql(): string {
   return `'${TRENDING_MAX_AGE_DAYS} days'`;
 }
 
-/** Half-life decay weight: exp(-ln(2) * age_hours / HALF_LIFE_HOURS). */
+/** Half-life decay weight: exp(-ln(2) * age_hours / halfLifeHours). */
+export function halfLifeDecaySql(
+  ageHoursExpr: string,
+  halfLifeHours: number,
+): string {
+  return `exp(-ln(2) * (${ageHoursExpr}) / ${halfLifeHours}.0)`;
+}
+
+/** Half-life decay weight at the trending half-life (30h). */
 export function decayWeightSql(ageHoursExpr: string): string {
-  return `exp(-ln(2) * (${ageHoursExpr}) / ${HALF_LIFE_HOURS}.0)`;
+  return halfLifeDecaySql(ageHoursExpr, HALF_LIFE_HOURS);
 }
 
 /** Freshness score from published_at (newer = higher). */

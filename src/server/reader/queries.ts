@@ -59,7 +59,10 @@ import {
 import {
   MIN_ARTICLE_RECOMMENDERS,
   TRENDING_MAX_AGE_DAYS,
+  WEEK_BACKLINK_WEIGHT,
+  WEEK_HALF_LIFE_HOURS,
   applyTrendingDiversityCaps,
+  halfLifeDecaySql,
   trendingFetchPoolSize,
 } from "#/server/reader/trending-scoring";
 
@@ -1207,6 +1210,86 @@ export async function topNetworkArticles(
     .leftJoin(pa, eq(pa.did, d.did))
     .where(and(...conds))
     .orderBy(desc(d.trendingScore), desc(d.publishedAt))
+    .limit(trendingFetchPoolSize(limit));
+
+  const cards = rows.map((row) => toArticleCard(row));
+  return applyTrendingDiversityCaps(cards, limit).slice(0, limit);
+}
+
+/**
+ * "Week in review" ranking for the weekly Bluesky thread: the biggest discover-
+ * eligible articles across the whole network over the last `sinceDays`, ranked by
+ * engagement ACCUMULATED across the window rather than by `trending_score`.
+ *
+ * Unlike {@link topNetworkArticles} (which orders by the precomputed
+ * `trending_score` — a 30h half-life, freshness-weighted, 4-day-gated "hot right
+ * now" signal that collapses toward the last day or two) this computes the score
+ * live from `recommends` with a gentler {@link WEEK_HALF_LIFE_HOURS} (~3.5 day)
+ * decay and no published-at freshness term, so a heavily-liked early-week article
+ * can out-rank a barely-liked fresh one. The score blends decay-weighted distinct
+ * likes with {@link WEEK_BACKLINK_WEIGHT}× Bluesky backlinks, and an article must
+ * clear the {@link MIN_ARTICLE_RECOMMENDERS} distinct-liker floor to chart.
+ *
+ * Counts are computed live because `documents.trending_score`,
+ * `distinct_recommender_count`, and `backlink_count` are only maintained for the
+ * 4-day discover slice and are stale for days 5–7 (see `recompute.ts`). Backlinks
+ * have no per-event timestamp so they're added undecayed off `backlink_count`,
+ * which itself under-counts days 5–7 — a small, accepted asymmetry (likes are the
+ * primary, fully-accurate signal).
+ */
+export async function weekInReviewArticles(
+  db: Db,
+  schema: Schema,
+  { sinceDays, limit }: { sinceDays: number; limit: number },
+): Promise<Array<ArticleCard>> {
+  const d = schema.documents;
+  const p = schema.publications;
+  const pr = schema.profiles;
+  const pa = alias(schema.profiles, "pa");
+
+  // Decay-weighted sum of the article's distinct-ish likes over the window. Each
+  // like is weighted by its own age at WEEK_HALF_LIFE_HOURS; mirrors the `rec`
+  // CTE in recompute.ts but with the gentler week half-life.
+  const likeAgeHours =
+    "extract(epoch from (now() - coalesce(r.created_at, r.indexed_at))) / 3600.0";
+  const windowPredicate = sql`
+      r.document_uri = ${d.uri}
+      and r.deleted = false
+      and r.recommender_did <> ${d.did}
+      and coalesce(r.created_at, r.indexed_at) > now() - (${sinceDays}::text || ' days')::interval`;
+
+  const decayedLikes = sql`coalesce((
+    select sum(${sql.raw(halfLifeDecaySql(likeAgeHours, WEEK_HALF_LIFE_HOURS))})
+    from recommends r
+    where ${windowPredicate}
+  ), 0)`;
+  const distinctLikers = sql`(
+    select count(distinct r.recommender_did)::int
+    from recommends r
+    where ${windowPredicate}
+  )`;
+  const weekScore = sql`${decayedLikes} + ${WEEK_BACKLINK_WEIGHT}::float8 * coalesce(${d.backlinkCount}, 0)`;
+
+  const conds = [
+    eq(d.deleted, false),
+    discoverEligibleArticleWhere(p),
+    documentPublishedNotInFuture(d),
+    sql`${d.publishedAt} > now() - (${sinceDays}::text || ' days')::interval`,
+    sql`${distinctLikers} >= ${MIN_ARTICLE_RECOMMENDERS}`,
+  ];
+
+  const rows = await db
+    .select({
+      ...trendingArticleSelection(schema),
+      weekScore: weekScore.mapWith(Number),
+      distinctLikers: distinctLikers.mapWith(Number),
+    })
+    .from(d)
+    .leftJoin(p, eq(p.uri, d.publicationUri))
+    .leftJoin(pr, eq(pr.did, p.did))
+    .leftJoin(pa, eq(pa.did, d.did))
+    .where(and(...conds))
+    .orderBy(desc(weekScore), desc(distinctLikers), desc(d.publishedAt))
     .limit(trendingFetchPoolSize(limit));
 
   const cards = rows.map((row) => toArticleCard(row));

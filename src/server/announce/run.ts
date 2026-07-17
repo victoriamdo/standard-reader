@@ -15,7 +15,7 @@ import {
  */
 import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
 import { getPublicUrl } from "#/lib/public-url";
-import { topNetworkArticles } from "#/server/reader/queries";
+import { weekInReviewArticles } from "#/server/reader/queries";
 
 import { db } from "../../db/index.ts";
 import * as schema from "../../db/schema.ts";
@@ -126,7 +126,7 @@ export async function runWeeklyThread(): Promise<WeeklyThreadSummary> {
   const baseUrl = getPublicUrl();
   const dryRun = isDryRun();
 
-  const cards = await topNetworkArticles(db, schema, {
+  const cards = await weekInReviewArticles(db, schema, {
     sinceDays: HOT_WINDOW_DAYS,
     limit: HOT_ARTICLE_LIMIT,
   });
@@ -157,8 +157,12 @@ export async function runWeeklyThread(): Promise<WeeklyThreadSummary> {
       }
     }
     for (const [i, card] of cards.entries()) {
+      const ageDays = (
+        (Date.now() - new Date(card.publishedAt).getTime()) /
+        86_400_000
+      ).toFixed(1);
       console.info(
-        `  post ${i + 1} cover image: ${card.coverImageUrl ?? "none"}`,
+        `  post ${i + 1} published ${card.publishedAt} (${ageDays}d ago) · cover image: ${card.coverImageUrl ?? "none"}`,
       );
     }
     return { articles: cards.length, posted: 0, rootUri: null, dryRun: true };
