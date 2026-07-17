@@ -1296,7 +1296,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <main id="main-content" tabIndex={-1} {...stylex.props(styles.main)}>
-          <div {...stylex.props(styles.scroller)} data-app-scroller>
+          <div
+            {...stylex.props(styles.scroller)}
+            data-app-scroller
+            // Stable key for TanStack Router scroll restoration. Without it the
+            // router falls back to a generated nth-child selector that breaks
+            // whenever an ancestor's sibling set changes; a fixed id keeps
+            // home→article→back restoring the previous scroll position.
+            data-scroll-restoration-id="app-scroller"
+          >
             {staticPageTitle ? (
               <MobileStaticPageBar title={staticPageTitle} />
             ) : (
