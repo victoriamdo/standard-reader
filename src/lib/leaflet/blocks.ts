@@ -15,6 +15,7 @@ import type {
   LeafletPollBlock,
   LeafletRenderableBlock,
   LeafletStandardSitePostBlock,
+  LeafletStandardSitePublicationBlock,
   LeafletTextBlock,
   LeafletUnorderedListBlock,
   LeafletWebsiteBlock,
@@ -188,6 +189,15 @@ function asRenderableBlock(value: unknown): LeafletRenderableBlock | null {
     return {
       kind: "standardSitePost",
       block: value as unknown as LeafletStandardSitePostBlock,
+    };
+  }
+
+  if (value.$type === LEAFLET_BLOCK.standardSitePublication) {
+    const uri = typeof value.uri === "string" ? value.uri : null;
+    if (!uri) return null;
+    return {
+      kind: "standardSitePublication",
+      block: value as unknown as LeafletStandardSitePublicationBlock,
     };
   }
 
@@ -449,7 +459,8 @@ export function plaintextLinesFromBlock(
       const label = block.block.text?.trim();
       return label ? [label] : [];
     }
-    case "standardSitePost": {
+    case "standardSitePost":
+    case "standardSitePublication": {
       return [];
     }
     case "pageEmbed": {

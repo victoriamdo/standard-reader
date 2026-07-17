@@ -32,6 +32,7 @@ export const LEAFLET_BLOCK = {
   page: "pub.leaflet.blocks.page",
   separator: "pub.leaflet.blocks.separator",
   standardSitePost: "pub.leaflet.blocks.standardSitePost",
+  standardSitePublication: "pub.leaflet.blocks.standardSitePublication",
   imageGallery: "pub.leaflet.blocks.imageGallery",
   imageGalleryImage: "pub.leaflet.blocks.imageGallery#image",
   signup: "pub.leaflet.blocks.signup",
@@ -155,6 +156,18 @@ export interface LeafletStandardSitePostBlock {
   uri?: string;
 }
 
+export interface LeafletStandardSitePublicationBlock {
+  $type?: string;
+  /** AT-URI of the referenced `site.standard.publication` record. */
+  uri?: string;
+  cid?: string;
+  /**
+   * Whether to style the embed with the publication's own theme. Defaults to
+   * true when omitted (matching Leaflet's editor default).
+   */
+  showPublicationTheme?: boolean;
+}
+
 /** A single image entry inside a `pub.leaflet.blocks.imageGallery` block. */
 export interface LeafletImageGalleryImage {
   $type?: string;
@@ -210,6 +223,10 @@ export type LeafletRenderableBlock =
   | { kind: "poll"; block: LeafletPollBlock }
   | { kind: "separator" }
   | { kind: "standardSitePost"; block: LeafletStandardSitePostBlock }
+  | {
+      kind: "standardSitePublication";
+      block: LeafletStandardSitePublicationBlock;
+    }
   | { kind: "imageGallery"; block: LeafletImageGalleryBlock }
   | { kind: "signup" }
   | {
