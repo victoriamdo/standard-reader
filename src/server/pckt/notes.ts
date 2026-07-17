@@ -7,6 +7,7 @@
  * (`fetchRepoRecordWithFallback` with no `pds` arg reads Slingshot alone).
  */
 
+import type { JsonValue } from "#/integrations/tanstack-query/api-shapes";
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import {
   MINI_POST_COLLECTION,
@@ -14,7 +15,6 @@ import {
   pcktNoteUrl,
 } from "#/lib/pckt/mini";
 import type { MiniPost } from "#/lib/pckt/mini";
-import type { JsonValue } from "#/integrations/tanstack-query/api-shapes";
 import type { ConstellationBacklinkRecord } from "#/server/atproto/constellation";
 import {
   getNoteBacklinksForDocument,
@@ -114,9 +114,10 @@ export async function fetchNotesForDocument(
 
   try {
     const records = await getNoteBacklinksForDocument(documentUri);
-    const notes = (
-      await Promise.all(records.map((record) => hydrateNote(record)))
-    ).filter((note): note is MiniPost => note != null);
+    const hydrated = await Promise.all(
+      records.map((record) => hydrateNote(record)),
+    );
+    const notes = hydrated.filter((note): note is MiniPost => note != null);
 
     if (notes.length === 0) {
       noteCommentsCache.set(documentUri, {
@@ -174,9 +175,10 @@ export async function fetchLatestPublicationNote(
 
   try {
     const records = await getNoteBacklinksForPublication(publicationUri);
-    const notes = (
-      await Promise.all(records.map((record) => hydrateNote(record)))
-    ).filter((note): note is MiniPost => note != null);
+    const hydrated = await Promise.all(
+      records.map((record) => hydrateNote(record)),
+    );
+    const notes = hydrated.filter((note): note is MiniPost => note != null);
 
     const latest = notes.toSorted(
       (a, b) =>

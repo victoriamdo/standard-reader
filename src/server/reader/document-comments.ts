@@ -29,11 +29,11 @@ import {
   countMarginNotesForUrls,
   fetchMarginNotesForUrls,
 } from "#/server/atproto/margin-notes";
+import { buildCanonicalUrl } from "#/server/ingest/mappers";
 import {
   countNotesForDocument,
   fetchNotesForDocument,
 } from "#/server/pckt/notes";
-import { buildCanonicalUrl } from "#/server/ingest/mappers";
 import { listQuoteSharesForDocument } from "#/server/reader/quote-shares";
 
 export interface DocumentCommentAuthor {

@@ -3,6 +3,7 @@ import { and, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
 import { publicationDisplayName } from "#/integrations/tanstack-query/api-shapes";
 import { isAppOriginHref } from "#/lib/app-origin";
+import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import type {
   ActorMentionMap,
   DocumentMentionMap,
@@ -14,7 +15,6 @@ import {
   mentionUrlKey,
   normalizeMentionUrl,
 } from "#/lib/leaflet/publication-mentions";
-import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import { getPublicUrl } from "#/lib/public-url";
 import { cdnImageUrl } from "#/server/atproto/blob";
 

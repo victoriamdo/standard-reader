@@ -4,10 +4,10 @@ import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { initials } from "#/components/reader/format";
-import { formatRelativeTime } from "#/components/reader/format";
+import { formatRelativeTime, initials } from "#/components/reader/format";
 import { PublicationAvatar } from "#/components/reader/primitives";
 import { Avatar } from "#/design-system/avatar";
+import { animationDuration } from "#/design-system/theme/animations.stylex";
 import { uiColor } from "#/design-system/theme/color.stylex";
 import { radius } from "#/design-system/theme/radius.stylex";
 import { gap } from "#/design-system/theme/semantic-spacing.stylex";
@@ -43,7 +43,7 @@ const styles = stylex.create({
     paddingBottom: spacing["3"],
     marginBlock: spacing["6"],
     transitionProperty: "border-color",
-    transitionDuration: "150ms",
+    transitionDuration: animationDuration.default,
   },
   // Stretched link: a transparent overlay that makes the whole card open the
   // note on pckt, while the quoted document (layered above it) keeps its own
@@ -113,7 +113,7 @@ const styles = stylex.create({
     textDecoration: "none",
     color: "inherit",
     transitionProperty: "background-color",
-    transitionDuration: "150ms",
+    transitionDuration: animationDuration.default,
   },
   quoteThumb: {
     width: spacing["12"],
@@ -277,7 +277,9 @@ export function PcktNoteEmbedView({
         {avatar}
         <div {...stylex.props(styles.meta)}>
           <span {...stylex.props(styles.name)}>{name}</span>
-          {handle ? <span {...stylex.props(styles.handle)}>{handle}</span> : null}
+          {handle ? (
+            <span {...stylex.props(styles.handle)}>{handle}</span>
+          ) : null}
         </div>
       </div>
       <div {...stylex.props(styles.body)}>{note.text}</div>

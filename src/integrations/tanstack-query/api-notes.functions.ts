@@ -2,8 +2,8 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { fetchLatestPublicationNote } from "#/server/pckt/notes";
 import { observe } from "#/server/observability/log";
+import { fetchLatestPublicationNote } from "#/server/pckt/notes";
 
 export type { PublicationLatestNote } from "#/server/pckt/notes";
 
@@ -25,8 +25,7 @@ const getPublicationLatestNote = createServerFn({ method: "GET" })
 function getPublicationLatestNoteQueryOptions(publicationUri: string) {
   return queryOptions({
     queryKey: ["pckt-latest-note", publicationUri] as const,
-    queryFn: async () =>
-      getPublicationLatestNote({ data: { publicationUri } }),
+    queryFn: async () => getPublicationLatestNote({ data: { publicationUri } }),
     staleTime: 5 * 60 * 1000,
   });
 }
