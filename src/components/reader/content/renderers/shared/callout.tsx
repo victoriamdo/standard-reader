@@ -76,7 +76,9 @@ const styles = stylex.create({
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
     lineHeight: 1.4,
-    paddingBottom: spacing["3"],
+    // Tighter than the top padding: the title should sit close to the body it
+    // introduces rather than floating in the middle of the box.
+    paddingBottom: spacing["2"],
     paddingLeft: spacing["4"],
     paddingRight: spacing["4"],
     paddingTop: spacing["3"],
