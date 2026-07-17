@@ -359,10 +359,15 @@ const styles = stylex.create({
     minWidth: 0,
   },
   bylineName: {
-    gap: gap.lg,
-    alignItems: "center",
+    // On mobile the name + @handle rarely fit on one line, so stack them as a
+    // tight two-line byline instead of letting the handle wrap with the wide
+    // inline gap. From `sm` up they sit inline again.
+    columnGap: gap.lg,
+    rowGap: spacing["1"],
+    alignItems: { default: "flex-start", "@media (min-width: 40rem)": "center" },
     color: uiColor.text2,
     display: "flex",
+    flexDirection: { default: "column", "@media (min-width: 40rem)": "row" },
     flexWrap: "wrap",
     fontFamily: fontFamily.serif,
     fontSize: fontSize.base,
