@@ -4,10 +4,12 @@ import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { use } from "react";
+import { useHover } from "react-aria";
 
 import { publicationLinkParams } from "#/components/reader/format";
 import { PublicationAvatar } from "#/components/reader/primitives";
 import { Skeleton } from "#/design-system/skeleton";
+import { animationDuration } from "#/design-system/theme/animations.stylex";
 import { primaryColor, uiColor } from "#/design-system/theme/color.stylex";
 import { radius } from "#/design-system/theme/radius.stylex";
 import { gap } from "#/design-system/theme/semantic-spacing.stylex";
@@ -53,6 +55,10 @@ export function LeafletStandardSitePublicationBlockView({
   const { resolvedScheme } = useTheme();
   const dark = magazine ? magazine.dark : resolvedScheme === "dark";
 
+  // react-aria's useHover drives the subtle background darken on pointer hover
+  // (and correctly ignores hover from touch, unlike CSS `:hover`).
+  const { hoverProps, isHovered } = useHover({});
+
   const { data: meta, isLoading } = useQuery({
     ...publicationApi.getPublicationEmbedMetaQueryOptions(uri ?? ""),
     enabled: Boolean(uri),
@@ -91,13 +97,16 @@ export function LeafletStandardSitePublicationBlockView({
     </>
   );
 
+  const cardStyle = stylex.props(styles.card, isHovered && styles.cardHovered);
+
   if (linkParams) {
     return (
       <Link
         to="/p/$did/$rkey"
         params={linkParams}
-        style={themeVars ?? undefined}
-        {...stylex.props(styles.card)}
+        {...hoverProps}
+        className={cardStyle.className}
+        style={{ ...cardStyle.style, ...themeVars }}
       >
         {inner}
       </Link>
@@ -105,7 +114,11 @@ export function LeafletStandardSitePublicationBlockView({
   }
 
   return (
-    <div style={themeVars ?? undefined} {...stylex.props(styles.card)}>
+    <div
+      {...hoverProps}
+      className={cardStyle.className}
+      style={{ ...cardStyle.style, ...themeVars }}
+    >
       {inner}
     </div>
   );
@@ -133,10 +146,13 @@ function publicationThemeVars(
   const vars = dark ? palette.dark : palette.light;
   return {
     "--pub-card-bg": vars["--paper"],
-    // Tint the border with the publication's accent (Radix "UI element border"
-    // step) so the card reads as belonging to that publication, matching the
-    // accent-colored title.
-    "--pub-card-border": vars["--accent"],
+    // Slightly darker/sunk surface for the hover state.
+    "--pub-card-bg-hover": vars["--paper-sunk"],
+    // Tint the border with the publication's accent, but softened toward the
+    // paper so it reads as belonging to the publication without shouting —
+    // Radix's exposed accent step (8) is its *hovered* border and too loud at
+    // rest, so mix it back toward the background.
+    "--pub-card-border": `color-mix(in oklab, ${vars["--accent"]} 40%, ${vars["--paper"]})`,
     "--pub-card-title": vars["--accent-ink"],
     "--pub-card-text": vars["--ink"],
     "--pub-card-muted": vars["--ink-soft"],
@@ -171,6 +187,12 @@ const styles = stylex.create({
     marginTop: spacing["0"],
     padding: spacing["4"],
     textDecoration: "none",
+    transitionDuration: animationDuration.default,
+    transitionProperty: "background-color",
+    transitionTimingFunction: "ease",
+  },
+  cardHovered: {
+    backgroundColor: `var(--pub-card-bg-hover, ${uiColor.component2})`,
   },
   avatar: {
     flexShrink: 0,
