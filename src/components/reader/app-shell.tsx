@@ -2,7 +2,12 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import {
+  Link,
+  useElementScrollRestoration,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
 import {
   ArrowLeft,
   ArrowUpDown,
@@ -1034,6 +1039,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({
     select: (s: { location: { pathname: string } }) => s.location.pathname,
   });
+  // Scroll restoration for the custom scroll container. The router's own
+  // restore runs on `resolvedLocation`, which settles only after loaders
+  // finish — a paint after the new content first commits. On back/forward with
+  // cached data the content paints at the top for that one frame (the "flash").
+  // Re-apply the saved offset keyed on `location` (which updates a beat
+  // earlier) in a layout effect so the container is already scrolled before
+  // that first paint. Reads TanStack's own cache, so it can't disagree with the
+  // router's later restore; it just wins the race on the early commit.
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const scrollEntry = useElementScrollRestoration({ id: "app-scroller" });
+  const locationKey = useRouterState({
+    select: (s: { location: { state: { __TSR_key?: string } } }) =>
+      s.location.state.__TSR_key,
+  });
+  useLayoutEffect(() => {
+    const el = scrollerRef.current;
+    if (el && scrollEntry) {
+      el.scrollTop = scrollEntry.scrollY;
+      el.scrollLeft = scrollEntry.scrollX;
+    }
+  }, [locationKey, scrollEntry]);
   const onAbout = pathname === "/about";
   const onPrivacyExtension = pathname === "/privacy/extension";
   const onPrivacy = pathname === "/privacy" || onPrivacyExtension;
@@ -1296,7 +1322,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <main id="main-content" tabIndex={-1} {...stylex.props(styles.main)}>
-          <div {...stylex.props(styles.scroller)} data-app-scroller>
+          <div
+            ref={scrollerRef}
+            {...stylex.props(styles.scroller)}
+            data-app-scroller
+            // Stable key for TanStack Router scroll restoration. Without it the
+            // router falls back to a generated nth-child selector that breaks
+            // whenever an ancestor's sibling set changes; a fixed id keeps
+            // home→article→back restoring the previous scroll position.
+            data-scroll-restoration-id="app-scroller"
+          >
             {staticPageTitle ? (
               <MobileStaticPageBar title={staticPageTitle} />
             ) : (
