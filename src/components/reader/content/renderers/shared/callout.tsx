@@ -76,7 +76,9 @@ const styles = stylex.create({
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
     lineHeight: 1.4,
-    paddingBottom: spacing["3"],
+    // Tighter than the top padding: the title should sit close to the body it
+    // introduces rather than floating in the middle of the box.
+    paddingBottom: spacing["2"],
     paddingLeft: spacing["4"],
     paddingRight: spacing["4"],
     paddingTop: spacing["3"],
@@ -115,9 +117,23 @@ const styles = stylex.create({
     color: "var(--callout-body)",
     fontSize: fontSize.base,
     lineHeight: 1.55,
-    paddingBottom: spacing["1"],
+    // Bottom padding mirrors the header's vertical padding so the prose sits
+    // evenly inside the box instead of hugging one edge.
+    paddingBottom: spacing["3"],
     paddingLeft: spacing["4"],
     paddingRight: spacing["4"],
+    // Callout prose reuses the article paragraph style (a full 1.5rem bottom
+    // margin), which leaves an oversized, unbalanced gap inside the box. Tighten
+    // the gap between stacked blocks and drop the trailing margin so the body
+    // padding alone controls the bottom edge.
+    // eslint-disable-next-line @stylexjs/no-legacy-contextual-styles, @stylexjs/valid-styles
+    ":is(*) > p": {
+      marginBottom: spacing["3"],
+    },
+    // eslint-disable-next-line @stylexjs/no-legacy-contextual-styles, @stylexjs/valid-styles
+    ":is(*) > :last-child": {
+      marginBottom: spacing["0"],
+    },
   },
 });
 
