@@ -15,9 +15,11 @@ import {
 } from "#/lib/track-reading-history";
 import { getReaderContextForRequest } from "#/middleware/auth-session.server";
 import {
+  attachLabelsFromMap,
   attachSubscribedLabels,
   filterHiddenDocuments,
-  hiddenDocumentUris,
+  hiddenUrisFromLabels,
+  readLabelsForUris,
 } from "#/server/labeler/labels.server";
 import type { Span } from "#/server/observability/log";
 import { observe } from "#/server/observability/log";
@@ -43,7 +45,13 @@ import {
 } from "#/server/reader/saved-lists";
 import { loadSidebarData } from "#/server/reader/shell-snapshot.server";
 
-import type { ArticleCard, Db, PublicationCard, Schema } from "./api-shapes";
+import type {
+  ArticleCard,
+  ArticleCardLabel,
+  Db,
+  PublicationCard,
+  Schema,
+} from "./api-shapes";
 import { dbMiddleware } from "./db-middleware";
 
 /**
@@ -374,11 +382,26 @@ async function buildHomeFeedCritical(
     latestUnread = articleCardsAsAllRead(latestUnread);
   }
 
-  // Drop anything the reader hid via a subscribed labeler's label.
-  const hidden = await hiddenDocumentUris(db, schema, ctx.did, [
-    ...(featured ? [featured.uri] : []),
-    ...latestUnread.map((article) => article.uri),
+  // Labels and recommend attribution are independent reads over the same cards,
+  // so fetch them concurrently rather than chaining. Both are computed over the
+  // pre-hide-filter set and the hidden rows are dropped afterwards — filtering
+  // only ever removes cards, so the result is identical to filtering first.
+  //
+  // This replaced three serial round trips (hidden → labels → recommends, where
+  // the first two issued the *same* `document_labels` query) with one wave.
+  const cards = [...(featured ? [featured] : []), ...latestUnread];
+  const cardUris = cards.map((article) => article.uri);
+  const [labelsByUri, withRecs] = await Promise.all([
+    ctx.did
+      ? readLabelsForUris(db, schema, ctx.did, cardUris)
+      : Promise.resolve(new Map<string, Array<ArticleCardLabel>>()),
+    ctx.followedUserDids.length > 0
+      ? attachRecommendedByToArticles(db, schema, ctx.followedUserDids, cards)
+      : Promise.resolve(cards),
   ]);
+
+  // Drop anything the reader hid via a subscribed labeler's label.
+  const hidden = hiddenUrisFromLabels(labelsByUri);
   if (hidden.size > 0) {
     if (featured && hidden.has(featured.uri)) featured = null;
     latestUnread = latestUnread.filter((article) => !hidden.has(article.uri));
@@ -386,25 +409,13 @@ async function buildHomeFeedCritical(
 
   span.set("rows", latestUnread.length);
 
-  const withCounts = await attachCommentCountsToArticles(db, schema, [
-    ...(featured ? [featured] : []),
-    ...latestUnread,
-  ]);
-  const enriched = await attachSubscribedLabels(
+  // No DB work: reads cached counts and schedules background revalidation.
+  const withCounts = await attachCommentCountsToArticles(
     db,
     schema,
-    ctx.did,
-    withCounts,
+    withRecs.filter((article) => !hidden.has(article.uri)),
   );
-  const enrichedWithRecs =
-    ctx.followedUserDids.length > 0
-      ? await attachRecommendedByToArticles(
-          db,
-          schema,
-          ctx.followedUserDids,
-          enriched,
-        )
-      : enriched;
+  const enrichedWithRecs = attachLabelsFromMap(withCounts, labelsByUri);
   const byUri = new Map(
     enrichedWithRecs.map((article) => [article.uri, article]),
   );

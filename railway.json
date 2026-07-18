@@ -9,6 +9,11 @@
     "startCommand": "pnpm start",
     "healthcheckPath": "/api/auth/atproto/metadata.json",
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "restartPolicyMaxRetries": 10,
+    "multiRegionConfig": {
+      "us-east4-eqdc4a": {
+        "numReplicas": 1
+      }
+    }
   }
 }

@@ -163,10 +163,12 @@ function signedInOnlyTargets(): Array<PerfTarget> {
       auth: "signed-in",
       budgetMs: 5000,
     }),
+    // `/likes` is a permanent redirect to `/recommended` (see
+    // `routes/_layout.likes.tsx`) — measure the real route, not the bounce.
     perfTarget({
-      id: "likes",
-      name: "Likes",
-      path: "/likes",
+      id: "recommended",
+      name: "Recommended",
+      path: "/recommended",
       auth: "signed-in",
       budgetMs: 5000,
     }),
