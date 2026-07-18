@@ -80,6 +80,8 @@ import { useDelayedLoading } from "#/lib/use-delayed-loading";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
 
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
+
 const PAGE_SIZE = 24;
 /** Ask before bulk-follow when a tag has more than this many unfollowed publications. */
 const FOLLOW_ALL_CONFIRM_THRESHOLD = 100;
@@ -459,7 +461,6 @@ function TagArticlesPanel({ tag }: { tag: string }) {
     number | null
   >(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
 
   useEffect(() => {
@@ -494,25 +495,11 @@ function TagArticlesPanel({ tag }: { tag: string }) {
     }
   }, [nextOffset, tag]);
 
-  useEffect(() => {
-    if (nextOffset == null) return;
-
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel) return;
-
-    const root = sentinel.closest("[data-app-scroller]");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void loadMore();
-        }
-      },
-      { root, rootMargin: "1200px 0px", threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [loadMore, nextOffset]);
+  const loadMoreSentinelRef = useInfiniteScrollSentinel(
+    loadMore,
+    nextOffset != null,
+    nextOffset ?? 0,
+  );
 
   if (showSkeleton) {
     return <TagArticlesSkeleton />;
@@ -581,7 +568,6 @@ function TagPublicationsPanel({
     number | null
   >(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
 
   const {
@@ -666,25 +652,11 @@ function TagPublicationsPanel({
     }
   }, [nextOffset, sort, tag]);
 
-  useEffect(() => {
-    if (nextOffset == null) return;
-
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel) return;
-
-    const root = sentinel.closest("[data-app-scroller]");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void loadMore();
-        }
-      },
-      { root, rootMargin: "1200px 0px", threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [loadMore, nextOffset]);
+  const loadMoreSentinelRef = useInfiniteScrollSentinel(
+    loadMore,
+    nextOffset != null,
+    nextOffset ?? 0,
+  );
 
   return (
     <>

@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-router";
 import { ExternalLink, ListPlus, Settings } from "lucide-react";
 import type { RefObject } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Link as AriaLink } from "react-aria-components";
 import { z } from "zod";
 
@@ -52,6 +52,7 @@ import { ProfileTabsSettingsModal } from "../components/reader/profile-tabs-sett
 import { RssFeedButton } from "../components/reader/rss-feed-button";
 import { ShareMenu } from "../components/reader/share-menu";
 import { AuthorSifaResumeChip } from "../components/reader/sifa-resume-chip";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { Avatar } from "../design-system/avatar";
 import { Badge } from "../design-system/badge";
 import { Button } from "../design-system/button";
@@ -438,7 +439,6 @@ function useInfiniteScroll(
 ) {
   const loadingMoreRef = useRef(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     if (nextOffset == null || loadingMoreRef.current) return;
@@ -452,24 +452,11 @@ function useInfiniteScroll(
     }
   }, [loadMore, nextOffset]);
 
-  useEffect(() => {
-    if (nextOffset == null) return;
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    const root = sentinel.closest("[data-app-scroller]");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void load();
-        }
-      },
-      { root, rootMargin: "1200px 0px", threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [nextOffset, load]);
+  const sentinelRef = useInfiniteScrollSentinel(
+    load,
+    nextOffset != null,
+    nextOffset ?? 0,
+  );
 
   return { loadingMore, sentinelRef };
 }

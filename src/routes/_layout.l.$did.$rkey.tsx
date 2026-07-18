@@ -52,6 +52,7 @@ import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
 import { isArticleUnreadForReader } from "../components/reader/read-optimistic";
 import { RssFeedButton } from "../components/reader/rss-feed-button";
 import { ShareMenu } from "../components/reader/share-menu";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import {
   AlertDialog,
   AlertDialogActionButton,
@@ -346,7 +347,6 @@ function ListFeedPanel({
     () => feed.nextOffset,
   );
   const [loadingMore, setLoadingMore] = useState(false);
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
 
   useEffect(() => {
@@ -376,24 +376,11 @@ function ListFeedPanel({
     }
   }, [did, nextOffset, rkey]);
 
-  useEffect(() => {
-    if (nextOffset == null) return;
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel) return;
-
-    const root = sentinel.closest("[data-app-scroller]");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void loadMore();
-        }
-      },
-      { root, rootMargin: "1200px 0px", threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [loadMore, nextOffset]);
+  const loadMoreSentinelRef = useInfiniteScrollSentinel(
+    loadMore,
+    nextOffset != null,
+    nextOffset ?? 0,
+  );
 
   if (!hasMembers) {
     return (

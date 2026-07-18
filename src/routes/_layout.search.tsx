@@ -21,6 +21,7 @@ import {
   ReaderContent,
   SectionHead,
 } from "../components/reader/primitives";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
 import { IconButton } from "../design-system/icon-button";
@@ -356,7 +357,6 @@ function Search() {
   const { q: urlQ = "" } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const inputRef = useRef<HTMLInputElement>(null);
-  const loadMoreArticlesRef = useRef<HTMLDivElement>(null);
   const loadingMorePubsRef = useRef(false);
   const committedQRef = useRef(urlQ.trim());
   const [input, setInput] = useState(urlQ);
@@ -451,25 +451,17 @@ function Search() {
     }
   }, [debouncedQ, pubNextOffset]);
 
-  useEffect(() => {
-    if (!hasNextPage || isFetchingNextPage) return;
+  const loadMoreArticles = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-    const sentinel = loadMoreArticlesRef.current;
-    if (!sentinel) return;
-
-    const root = sentinel.closest("[data-app-scroller]");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void fetchNextPage();
-        }
-      },
-      { root, rootMargin: "1200px 0px", threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, articles.length]);
+  const loadMoreArticlesRef = useInfiniteScrollSentinel(
+    loadMoreArticles,
+    hasNextPage,
+    articles.length,
+  );
 
   const trimmedInput = input.trim();
   const hasQuery = debouncedQ.length > 0;

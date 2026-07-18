@@ -103,8 +103,10 @@ export function ReaderWordHighlighter({
       if (userPointerScrollRef.current) onUserIntent();
     };
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (SCROLL_UNLOCK_KEYS.has(event.key)) onUserIntent();
+    // `scrollers` are EventTargets (an element or the Document), so the listener
+    // is typed against the generic Event; narrow to read `key`.
+    const onKeyDown = (event: Event) => {
+      if (SCROLL_UNLOCK_KEYS.has((event as KeyboardEvent).key)) onUserIntent();
     };
 
     for (const el of scrollers) {
