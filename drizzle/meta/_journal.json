@@ -99,6 +99,13 @@
       "when": 1784099620903,
       "tag": "0013_tags_topic_in_search_vector",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784099620904,
+      "tag": "0014_indexable_document_tags",
+      "breakpoints": true
     }
   ]
 }

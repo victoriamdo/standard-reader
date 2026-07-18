@@ -1598,13 +1598,25 @@ export async function discoverDirectoryPublications(
 }
 
 /** Document `tags` array includes `tag` (case-insensitive). */
+/**
+ * Normalized form of a tag as stored in the `documents_tags_norm_idx` GIN index
+ * (lowercased, trimmed). Callers compare against
+ * `immutable_normalized_tags(tags)` so the index can serve the predicate.
+ */
+function normalizedTagSql(tag: string): SQL {
+  return sql`lower(btrim(${tag}))`;
+}
+
+/**
+ * Document carries `tag` (case/whitespace-insensitive).
+ *
+ * Expressed as array containment against `immutable_normalized_tags(tags)` so
+ * the GIN index answers it directly. The equivalent `exists (... unnest(tags)
+ * ...)` form is not indexable and forced a full seq scan of `documents` — a tag
+ * page cost seconds even when the tag matched nothing (see migration 0014).
+ */
 function documentCarriesTagWhere(d: Schema["documents"], tag: string): SQL {
-  return sql`exists (
-    select 1
-    from unnest(${d.tags}) as doc_tag
-    where btrim(doc_tag) <> ''
-      and lower(btrim(doc_tag)) = lower(btrim(${tag}))
-  )`;
+  return sql`immutable_normalized_tags(${d.tags}) @> array[${normalizedTagSql(tag)}]`;
 }
 
 /** Count indexed, published articles carrying a tag on discover-eligible pubs. */
@@ -1640,12 +1652,11 @@ function publicationHasTaggedDocumentSql(
 ): SQL {
   return sql`exists (
     select 1
-    from ${d} doc, unnest(doc.tags) as doc_tag
+    from ${d} doc
     where doc.publication_uri = ${p.uri}
       and doc.deleted = false
       and doc.published_at <= now()
-      and btrim(doc_tag) <> ''
-      and lower(btrim(doc_tag)) = lower(btrim(${tag}))
+      and immutable_normalized_tags(doc.tags) @> array[${normalizedTagSql(tag)}]
   )`;
 }
 
@@ -1657,12 +1668,11 @@ function publicationTaggedPostCountSql(
 ): ReturnType<typeof sql<number>> {
   return sql<number>`coalesce((
     select count(*)::int
-    from ${d} doc, unnest(doc.tags) as doc_tag
+    from ${d} doc
     where doc.publication_uri = ${p.uri}
       and doc.deleted = false
       and doc.published_at <= now()
-      and btrim(doc_tag) <> ''
-      and lower(btrim(doc_tag)) = lower(btrim(${tag}))
+      and immutable_normalized_tags(doc.tags) @> array[${normalizedTagSql(tag)}]
   ), 0)`;
 }
 
