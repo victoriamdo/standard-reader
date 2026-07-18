@@ -36,6 +36,11 @@ export const user = pgTable("user", {
   /** BCP-47 tag from `LOCALES` (`src/lib/locale.ts`); `null` negotiates from
    * the request's `Accept-Language` header. */
   locale: text("locale"),
+  /** `true` once the one-time language indicator has been shown (announcing the
+   * auto-detected interface language and offering to switch); `null` = never
+   * shown, so the reader is still eligible to see it once. Guests use the
+   * `standard-reader-locale-hint` cookie for the same purpose. */
+  localeHintSeen: boolean("locale_hint_seen"),
   /** Kokoro voice id; `null` infers voice from the article author (auto). */
   readerVoice: text("reader_voice"),
   /** `true` opens document links on their original site; `null`/`false` uses

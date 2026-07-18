@@ -147,6 +147,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       bootstrap.locale,
     );
     context.queryClient.setQueryData(
+      user.getLocaleHintQueryOptions.queryKey,
+      bootstrap.localeHint,
+    );
+    context.queryClient.setQueryData(
       user.getTrackReadingHistoryPreferenceQueryOptions.queryKey,
       bootstrap.trackReading,
     );

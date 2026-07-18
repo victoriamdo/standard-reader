@@ -3,6 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Globe,
   Heart,
   History,
   LogOut,
@@ -10,6 +11,7 @@ import {
   Settings,
   User,
 } from "lucide-react";
+import { useState } from "react";
 import type { PopoverProps } from "react-aria-components";
 import { Button as AriaButton } from "react-aria-components";
 
@@ -20,6 +22,7 @@ import { useLoginSearch } from "#/utils/use-login-search";
 
 import { Avatar, AvatarButton } from "../design-system/avatar";
 import { Flex } from "../design-system/flex";
+import { IconButton } from "../design-system/icon-button";
 import { Menu, MenuItem, MenuSeparator } from "../design-system/menu";
 import { animationDuration } from "../design-system/theme/animations.stylex";
 import { uiColor } from "../design-system/theme/color.stylex";
@@ -35,6 +38,7 @@ import {
   fontWeight,
   lineHeight,
 } from "../design-system/theme/typography.stylex";
+import { LanguageDialog } from "./reader/language-dialog";
 import { Handle } from "./reader/primitives";
 
 const styles = stylex.create({
@@ -108,6 +112,9 @@ const styles = stylex.create({
   sidebarLogin: {
     width: "100%",
   },
+  sidebarLoginButton: {
+    flexGrow: 1,
+  },
 });
 
 function UserIdentity({
@@ -161,6 +168,7 @@ export function NavbarAuth({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const loginSearch = useLoginSearch();
+  const [languageOpen, setLanguageOpen] = useState(false);
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -258,22 +266,43 @@ export function NavbarAuth({
     );
   }
 
+  // Guests have no Settings screen, so surface a persistent language switch
+  // next to the sign-in affordance — the only way for them to change the
+  // interface language once the one-time indicator is gone.
+  const languageButton = (
+    <IconButton
+      aria-label={t`Change language`}
+      variant="tertiary"
+      size="md"
+      onPress={() => setLanguageOpen(true)}
+    >
+      <Globe size={18} />
+    </IconButton>
+  );
+
   if (variant === "sidebar") {
     return (
-      <ButtonLink
-        to="/login"
-        search={loginSearch}
-        variant="secondary"
-        size="md"
-        style={styles.sidebarLogin}
-      >
-        <Trans>Log in</Trans>
-      </ButtonLink>
+      <>
+        <Flex align="center" gap="sm" style={styles.sidebarLogin}>
+          <ButtonLink
+            to="/login"
+            search={loginSearch}
+            variant="secondary"
+            size="md"
+            style={styles.sidebarLoginButton}
+          >
+            <Trans>Log in</Trans>
+          </ButtonLink>
+          {languageButton}
+        </Flex>
+        <LanguageDialog isOpen={languageOpen} onOpenChange={setLanguageOpen} />
+      </>
     );
   }
 
   return (
     <Flex align="center" gap="sm">
+      {languageButton}
       <ButtonLink
         to="/login"
         search={loginSearch}
@@ -282,6 +311,7 @@ export function NavbarAuth({
       >
         <Trans>Log in</Trans>
       </ButtonLink>
+      <LanguageDialog isOpen={languageOpen} onOpenChange={setLanguageOpen} />
     </Flex>
   );
 }

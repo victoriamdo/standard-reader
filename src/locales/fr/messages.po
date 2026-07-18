@@ -117,6 +117,11 @@ msgstr "Retirer l’icône"
 msgid "The {SITE_NAME} browser extension helps you save articles and follow publications on the standard.site network from any tab. It connects to the same account as the web app at <0>{siteHost}</0>. This policy covers the extension only; the <1>site privacy policy</1> describes data handling on the website itself."
 msgstr "L’extension de navigateur {SITE_NAME} vous aide à enregistrer des articles et à suivre des publications sur le réseau standard.site depuis n’importe quel onglet. Elle utilise le même compte que l’application web sur <0>{siteHost}</0>. Cette politique ne couvre que l’extension ; la <1>politique de confidentialité du site</1> décrit le traitement des données sur le site lui-même."
 
+#: src/components/NavbarAuth.tsx
+#: src/components/reader/language-hint-prompt.tsx
+msgid "Change language"
+msgstr "Changer de langue"
+
 #: src/components/OpenLinksMenuItem.tsx
 #: src/components/user-settings-view.tsx
 msgid "Open posts externally"
@@ -398,7 +403,7 @@ msgstr "Publications, identifiants, #tags, titres…"
 msgid "No matches"
 msgstr "Aucun résultat"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{count, plural, one {# tagged post} other {{value} tagged posts}}"
 msgstr "{count, plural, one {# article tagué} other {{value} articles tagués}}"
 
@@ -1056,6 +1061,7 @@ msgstr "Couverture de la collection"
 msgid "Anonymous"
 msgstr "Anonyme"
 
+#: src/components/reader/language-dialog.tsx
 #: src/components/user-settings-view.tsx
 msgid "The language used for the reader interface. Articles are shown in the language they were written in."
 msgstr "La langue de l'interface du lecteur. Les articles sont affichés dans la langue dans laquelle ils ont été écrits."
@@ -1129,6 +1135,10 @@ msgstr "Pas envie d'une application de plus à consulter ? Inscrivez-vous à un 
 #: src/routes/_layout.collections.new.tsx
 msgid "Collections"
 msgstr "Collections"
+
+#: src/components/reader/language-dialog.tsx
+msgid "Done"
+msgstr "Terminé"
 
 #: src/routes/_layout.discover.tsx
 #: src/routes/_layout.tag.$tag.tsx
@@ -2094,6 +2104,10 @@ msgstr "tourner la page"
 msgid "Sun · 8:00 AM"
 msgstr "Dim. · 8 h 00"
 
+#: src/components/reader/language-hint-prompt.tsx
+msgid "We picked this language from your browser. You can switch it anytime."
+msgstr "Nous avons choisi cette langue d'après votre navigateur. Vous pouvez en changer à tout moment."
+
 #: src/routes/_layout.latest.tsx
 msgid "Follow a few publications and their latest writing will show up here."
 msgstr "Suivez quelques publications et leurs derniers textes apparaîtront ici."
@@ -2162,6 +2176,10 @@ msgstr "<0>{countLabel}</0> publications indexées — et ce n’est qu’un dé
 #: src/routes/_layout.index.tsx
 msgid "{newCount} new"
 msgstr "{newCount} nouveaux"
+
+#: src/components/reader/language-hint-prompt.tsx
+msgid "Reading in {language}"
+msgstr "Lecture en {language}"
 
 #: src/components/reader/text-selection-toolbar.tsx
 msgid "Read from here"
@@ -2355,7 +2373,7 @@ msgstr "Galerie d'images"
 msgid "Track reading history"
 msgstr "Suivre l'historique de lecture"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{readCount, plural, one {# read} other {{value} reads}}"
 msgstr "{readCount, plural, one {# lecture} other {{value} lectures}}"
 
@@ -3275,6 +3293,10 @@ msgstr "Supprimer tous les signets ?"
 msgid "Labelers"
 msgstr "Services d'étiquetage"
 
+#: src/components/reader/language-dialog.tsx
+msgid "Choose your language"
+msgstr "Choisissez votre langue"
+
 #: src/components/reader/about-view.tsx
 msgid "Find the ones you didn't know you wanted"
 msgstr "Trouvez ceux que vous ne saviez pas vouloir"
@@ -3331,6 +3353,7 @@ msgstr "Ajouter une publication"
 msgid "Bug"
 msgstr "Bogue"
 
+#: src/components/reader/language-dialog.tsx
 #: src/components/user-settings-view.tsx
 msgid "Language"
 msgstr "Langue"

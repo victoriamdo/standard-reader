@@ -30,6 +30,8 @@ import type { Locale } from "#/lib/locale";
 import {
   LOCALE_COOKIE,
   LOCALE_COOKIE_MAX_AGE_SECONDS,
+  LOCALE_HINT_SEEN_COOKIE,
+  LOCALE_HINT_SEEN_COOKIE_MAX_AGE_SECONDS,
   LOCALES,
   DEFAULT_LOCALE,
   dbValueToLocale,
@@ -248,6 +250,12 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
           : (negotiateLocale(request.headers.get("accept-language")) ??
             DEFAULT_LOCALE),
       },
+      // Drives the one-time language indicator: show it only when the guest has
+      // never explicitly picked a language (no cookie) and hasn't seen the hint.
+      localeHint: {
+        seen: cookies[LOCALE_HINT_SEEN_COOKIE] === "1",
+        explicit: isLocale(cookies[LOCALE_COOKIE]),
+      },
       trackReading: {
         enabled: parseTrackReadingHistoryCookie(
           cookies[TRACK_READING_HISTORY_COOKIE],
@@ -306,6 +314,7 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
             updatedAt: true,
             themeMode: true,
             locale: true,
+            localeHintSeen: true,
             trackReadingHistory: true,
             countOldPostsAsUnread: true,
             homeScope: true,
@@ -420,6 +429,13 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
           ? userRow.locale
           : (negotiateLocale(request.headers.get("accept-language")) ??
             DEFAULT_LOCALE),
+      },
+      // `locale === null` means the reader never explicitly picked a language,
+      // so they're still eligible to see the one-time indicator (unless already
+      // shown, tracked by `locale_hint_seen`).
+      localeHint: {
+        seen: userRow.localeHintSeen === true,
+        explicit: isLocale(userRow.locale),
       },
       trackReading: { enabled: trackReading },
       homeScope: { scope: dbValueToHomeScope(userRow.homeScope) },
@@ -597,6 +613,75 @@ const setLocalePreference = createServerFn({ method: "POST" })
     }
 
     return { locale: data.locale };
+  });
+
+export interface LocaleHintState {
+  /** The one-time language indicator has already been shown. */
+  seen: boolean;
+  /** The reader has explicitly chosen a language (so no auto-detection to
+   * announce, and nothing to nudge them about). */
+  explicit: boolean;
+}
+
+/**
+ * State for the one-time language indicator: whether it's already been shown
+ * (`seen`) and whether the reader has explicitly picked a language
+ * (`explicit`). The indicator shows only when neither is true. Mirrors the
+ * DB -> cookie resolution used elsewhere. Seeded by `getShellBootstrap`.
+ */
+const getLocaleHint = createServerFn({ method: "GET" })
+  .middleware([maybeAuthMiddleware])
+  .handler(async ({ context }): Promise<LocaleHintState> => {
+    const session = context?.session;
+    if (session?.user) {
+      const [{ db }, schema] = await Promise.all([
+        import("#/db/index.server"),
+        import("#/db/schema"),
+      ]);
+      const row = await db.query.user.findFirst({
+        where: eq(schema.user.id, session.user.id),
+        columns: { locale: true, localeHintSeen: true },
+      });
+      return {
+        seen: row?.localeHintSeen === true,
+        explicit: isLocale(row?.locale),
+      };
+    }
+
+    return {
+      seen: getCookie(LOCALE_HINT_SEEN_COOKIE) === "1",
+      explicit: isLocale(getCookie(LOCALE_COOKIE)),
+    };
+  });
+
+const getLocaleHintQueryOptions = queryOptions({
+  queryKey: ["localeHint"] as const,
+  queryFn: () => getLocaleHint(),
+  staleTime: Number.POSITIVE_INFINITY,
+});
+
+/**
+ * Record that the one-time language indicator has been shown so it never
+ * appears again. Dual-writes the guest cookie (SSR/unauthenticated) and, when
+ * signed in, `user.locale_hint_seen`. Mirrors `setOnboardingCompleted`.
+ */
+const dismissLocaleHint = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .handler(async ({ context }): Promise<{ seen: true }> => {
+    setCookie(LOCALE_HINT_SEEN_COOKIE, "1", {
+      path: "/",
+      sameSite: "lax",
+      maxAge: LOCALE_HINT_SEEN_COOKIE_MAX_AGE_SECONDS,
+    });
+
+    if (context?.session?.user) {
+      await context.db
+        .update(context.schema.user)
+        .set({ localeHintSeen: true })
+        .where(eq(context.schema.user.id, context.session.user.id));
+    }
+
+    return { seen: true };
   });
 
 const getReaderVoicePreference = createServerFn({ method: "GET" })
@@ -1155,6 +1240,9 @@ export const user = {
   getLocalePreference,
   getLocalePreferenceQueryOptions,
   setLocalePreference,
+  getLocaleHint,
+  getLocaleHintQueryOptions,
+  dismissLocaleHint,
   getReaderVoicePreference,
   getReaderVoicePreferenceQueryOptions,
   setReaderVoicePreference,
