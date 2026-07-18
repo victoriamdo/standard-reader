@@ -4,7 +4,6 @@ import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import {
   Link,
-  useElementScrollRestoration,
   useRouter,
   useRouterState,
 } from "@tanstack/react-router";
@@ -100,10 +99,14 @@ const DESKTOP = "@media (min-width: 60rem)";
 
 const styles = stylex.create({
   shell: {
-    overflow: "hidden",
     display: "flex",
     flexDirection: "row",
-    height: stylex.firstThatWorks("100dvh", "100vh"),
+    // Fill the viewport when content is short, grow past it when tall — the
+    // document is the scroll container now. `flex-start` keeps children pinned
+    // to the top so the sticky sidebar stays viewport-tall in a taller shell
+    // instead of stretching to the full document height.
+    alignItems: "flex-start",
+    minHeight: stylex.firstThatWorks("100dvh", "100vh"),
   },
   sidebar: {
     backgroundColor: uiColor.bgSubtle,
@@ -431,32 +434,27 @@ const styles = stylex.create({
     width: size.lg,
   },
   main: {
-    overflow: "hidden",
     display: "flex",
     flexDirection: "column",
     flexGrow: 1,
     position: "relative",
-    minHeight: 0,
     minWidth: 0,
+    // Keep the content column at least viewport-tall so the footer sits at the
+    // bottom of the screen on short pages instead of floating mid-viewport.
+    minHeight: stylex.firstThatWorks("100dvh", "100vh"),
     // Focused only as the skip-link landing target (tabIndex={-1}); a ring
     // around the whole content region would be noise, not a wayfinding cue.
     outlineStyle: "none",
   },
   scroller: {
-    // Reserve scrollbar width so content width stays stable when the list
-    // height changes (e.g. Discover "Not following" filter).
-
-    scrollbarGutter: "stable",
-    overscrollBehavior: "none",
+    // Content column — no longer a scroll container (the document scrolls).
+    // `overflow-x: clip` still contains any wide child without opening a
+    // horizontal scrollport.
     display: "flex",
-    flexBasis: "0%",
     flexDirection: "column",
     flexGrow: "1",
-    flexShrink: "1",
-    minHeight: 0,
     minWidth: 0,
     overflowX: "clip",
-    overflowY: "auto",
   },
   mobileBar: {
     alignItems: "center",
@@ -488,11 +486,15 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     pointerEvents: "none",
-    position: "absolute",
+    // Pinned to the viewport (the document is the scroll container now, so an
+    // absolute dock would ride to the bottom of the whole article instead of
+    // floating above the fold). Offset by the sidebar width on desktop so the
+    // floating card stays centered over the content column.
+    position: "fixed",
     rowGap: gap.lg,
     zIndex: 30,
     bottom: `calc(env(safe-area-inset-bottom, 0px) + ${verticalSpace["3xl"]})`,
-    left: 0,
+    left: { [DESKTOP]: "264px", default: 0 },
     paddingLeft: horizontalSpace["3xl"],
     paddingRight: horizontalSpace["3xl"],
     right: 0,
@@ -1039,27 +1041,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({
     select: (s: { location: { pathname: string } }) => s.location.pathname,
   });
-  // Scroll restoration for the custom scroll container. The router's own
-  // restore runs on `resolvedLocation`, which settles only after loaders
-  // finish — a paint after the new content first commits. On back/forward with
-  // cached data the content paints at the top for that one frame (the "flash").
-  // Re-apply the saved offset keyed on `location` (which updates a beat
-  // earlier) in a layout effect so the container is already scrolled before
-  // that first paint. Reads TanStack's own cache, so it can't disagree with the
-  // router's later restore; it just wins the race on the early commit.
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const scrollEntry = useElementScrollRestoration({ id: "app-scroller" });
-  const locationKey = useRouterState({
-    select: (s: { location: { state: { __TSR_key?: string } } }) =>
-      s.location.state.__TSR_key,
-  });
-  useLayoutEffect(() => {
-    const el = scrollerRef.current;
-    if (el && scrollEntry) {
-      el.scrollTop = scrollEntry.scrollY;
-      el.scrollLeft = scrollEntry.scrollX;
-    }
-  }, [locationKey, scrollEntry]);
+  // Scroll restoration is handled by the router's built-in window restoration
+  // (`scrollRestoration: true`) now that the document itself is the scroller.
   const onAbout = pathname === "/about";
   const onPrivacyExtension = pathname === "/privacy/extension";
   const onPrivacy = pathname === "/privacy" || onPrivacyExtension;
@@ -1322,16 +1305,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <main id="main-content" tabIndex={-1} {...stylex.props(styles.main)}>
-          <div
-            ref={scrollerRef}
-            {...stylex.props(styles.scroller)}
-            data-app-scroller
-            // Stable key for TanStack Router scroll restoration. Without it the
-            // router falls back to a generated nth-child selector that breaks
-            // whenever an ancestor's sibling set changes; a fixed id keeps
-            // home→article→back restoring the previous scroll position.
-            data-scroll-restoration-id="app-scroller"
-          >
+          <div {...stylex.props(styles.scroller)}>
             {staticPageTitle ? (
               <MobileStaticPageBar title={staticPageTitle} />
             ) : (

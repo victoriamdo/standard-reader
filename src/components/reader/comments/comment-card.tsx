@@ -239,16 +239,20 @@ export function CommentCard({ comment }: { comment: DocumentComment }) {
       </div>
 
       {hasLink ? (
-        <a
-          href={comment.postUrl}
-          target="_blank"
-          rel="noreferrer"
-          {...stylex.props(commentStyles.cardBodyLink)}
-        >
+        <div {...stylex.props(commentStyles.cardBody)}>
+          {/* Stretched overlay link — a sibling of the facet links, not their
+              ancestor, so no nested <a>. */}
+          <a
+            href={comment.postUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open this reply on Bluesky"
+            {...stylex.props(commentStyles.cardBodyOverlay)}
+          />
           {body}
-        </a>
+        </div>
       ) : (
-        <div {...stylex.props(commentStyles.cardBodyLink)}>{body}</div>
+        <div {...stylex.props(commentStyles.cardBody)}>{body}</div>
       )}
     </div>
   );

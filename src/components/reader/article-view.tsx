@@ -105,30 +105,18 @@ import { useArticleBookmark } from "./use-article-bookmark";
 import { useArticleReadToggle } from "./use-article-read-toggle";
 import { useArticleRecommend } from "./use-article-recommend";
 
-/** Reading progress for article content within the app-shell scroller. */
-function articleReadingProgress(
-  scroller: HTMLElement,
-  content: HTMLElement,
-): number {
-  const viewport = scroller.clientHeight;
-  const contentTop =
-    content.getBoundingClientRect().top -
-    scroller.getBoundingClientRect().top +
-    scroller.scrollTop;
+/** Reading progress of the article content within the document scroll. */
+function articleReadingProgress(content: HTMLElement): number {
+  const viewport = globalThis.innerHeight;
+  const scrollY = globalThis.scrollY;
+  const contentTop = content.getBoundingClientRect().top + scrollY;
   const contentBottom = contentTop + content.offsetHeight;
-  const startScroll = contentTop;
-  const endScroll = Math.max(contentBottom - viewport, startScroll);
-  const range = endScroll - startScroll;
+  const endScroll = Math.max(contentBottom - viewport, contentTop);
+  const range = endScroll - contentTop;
   if (range <= 0) {
-    return scroller.scrollTop >= startScroll ? 1 : 0;
+    return scrollY >= contentTop ? 1 : 0;
   }
-  return Math.min(1, Math.max(0, (scroller.scrollTop - startScroll) / range));
-}
-
-/** App-shell scroller that carries article pages (and the site footer). */
-function articleScrollContainer(anchor: HTMLElement): HTMLElement | null {
-  const outer = anchor.closest("[data-app-scroller]");
-  return outer instanceof HTMLElement ? outer : null;
+  return Math.min(1, Math.max(0, (scrollY - contentTop) / range));
 }
 
 const styles = stylex.create({
@@ -956,25 +944,22 @@ function ArticleViewBody({
     const anchor = rootRef.current;
     if (!anchor) return;
 
-    const scroller = articleScrollContainer(anchor);
-    if (!scroller) return;
-
     const sync = () => {
-      setProgress(articleReadingProgress(scroller, anchor));
+      setProgress(articleReadingProgress(anchor));
     };
 
     if (!sharedQuote?.trim()) {
-      scroller.scrollTop = 0;
+      globalThis.scrollTo(0, 0);
     }
     sync();
 
-    scroller.addEventListener("scroll", sync, { passive: true });
+    // The page (document) is the scroller, so its scroll event fires on window.
+    globalThis.addEventListener("scroll", sync, { passive: true });
     const resizeObserver = new ResizeObserver(() => sync());
     resizeObserver.observe(anchor);
-    resizeObserver.observe(scroller);
 
     return () => {
-      scroller.removeEventListener("scroll", sync);
+      globalThis.removeEventListener("scroll", sync);
       resizeObserver.disconnect();
     };
   }, [article.uri, sharedQuote]);

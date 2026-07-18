@@ -371,14 +371,14 @@ function LatestFeedPanel({
     const sentinel = loadMoreSentinelRef.current;
     if (!sentinel) return;
 
-    const root = sentinel.closest("[data-app-scroller]");
+    // Viewport observer — the page scrolls at the document level.
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
           void loadMoreFeed();
         }
       },
-      { root, rootMargin: "1200px 0px", threshold: 0 },
+      { root: null, rootMargin: "1200px 0px", threshold: 0 },
     );
 
     observer.observe(sentinel);

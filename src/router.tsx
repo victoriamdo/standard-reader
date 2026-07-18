@@ -10,9 +10,9 @@ export function getRouter() {
   const router = createTanStackRouter({
     routeTree,
     context,
+    // The document is the scroll container, so the router's default window
+    // scroll restoration + scroll-to-top applies (no custom selector needed).
     scrollRestoration: true,
-    // Main content scrolls in AppShell's `[data-app-scroller]`, not `window`.
-    scrollToTopSelectors: ["[data-app-scroller]"],
     defaultPreload: "intent",
     // Preloaded data stays fresh for 30s — long enough to hover→click without a
     // refetch, short enough to not serve stale data on a real navigation later.

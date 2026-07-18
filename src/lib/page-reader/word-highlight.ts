@@ -296,13 +296,19 @@ export function clearWordHighlight(): void {
   activeHighlight = null;
 }
 
-/** Scroll containers the user may move while reading (app shell scroller). */
-export function articleScrollContainers(root: HTMLElement): Array<HTMLElement> {
-  const outer = root.closest("[data-app-scroller]");
-  if (outer instanceof HTMLElement) {
-    return [outer];
-  }
+/**
+ * Event targets to watch for user-initiated scroll while reading. Returns the
+ * nearest inner overflow container when one exists (e.g. a publisher's own
+ * scroll box under the extension read-along). When the document itself scrolls
+ * — as in the reader app — its `scroll`/`keydown` events fire on the `Document`,
+ * not the `<html>` element `findScrollContainer` returns, so hand back the
+ * document instead.
+ */
+export function articleScrollContainers(root: HTMLElement): Array<EventTarget> {
   const inner = findScrollContainer(root);
+  if (inner === root.ownerDocument.scrollingElement) {
+    return [root.ownerDocument];
+  }
   return [inner];
 }
 

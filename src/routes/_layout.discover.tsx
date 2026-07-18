@@ -283,19 +283,13 @@ function DeferredMount({
     const node = rootRef.current;
     if (!node) return;
 
-    const scroller = node.closest("[data-app-scroller]");
-    if (!scroller) {
-      queueMicrotask(() => setMounted(true));
-      return;
-    }
-
+    // The page scrolls at the document level, so measure against the viewport.
     const marginY = Number.parseInt(DEFERRED_ROOT_MARGIN, 10) || 600;
     const isNearView = () => {
       const nodeRect = node.getBoundingClientRect();
-      const rootRect = scroller.getBoundingClientRect();
       return (
-        nodeRect.bottom >= rootRect.top - marginY &&
-        nodeRect.top <= rootRect.bottom + marginY
+        nodeRect.bottom >= -marginY &&
+        nodeRect.top <= globalThis.innerHeight + marginY
       );
     };
 
@@ -311,7 +305,7 @@ function DeferredMount({
           observer.disconnect();
         }
       },
-      { root: scroller, rootMargin: DEFERRED_ROOT_MARGIN, threshold: 0 },
+      { root: null, rootMargin: DEFERRED_ROOT_MARGIN, threshold: 0 },
     );
 
     observer.observe(node);
@@ -624,14 +618,14 @@ function DiscoverDirectorySection({ signedIn }: { signedIn: boolean }) {
     const sentinel = loadMoreSentinelRef.current;
     if (!sentinel) return;
 
-    const root = sentinel.closest("[data-app-scroller]");
+    // Viewport observer — the page scrolls at the document level.
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
           void loadMoreDirectory();
         }
       },
-      { root, rootMargin: "1200px 0px", threshold: 0 },
+      { root: null, rootMargin: "1200px 0px", threshold: 0 },
     );
 
     observer.observe(sentinel);

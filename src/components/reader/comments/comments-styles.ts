@@ -47,9 +47,12 @@ export const commentStyles = stylex.create({
     paddingRight: horizontalSpace.lg,
     paddingTop: verticalSpace.lg,
   },
-  cardBodyLink: {
+  // A plain container (not a link) with a stretched overlay link below. The
+  // "open post" affordance must not wrap the in-body facet links — a nested
+  // <a> is invalid HTML and breaks hydration.
+  cardBody: {
+    position: "relative",
     borderRadius: radius.sm,
-    textDecoration: "none",
     backgroundColor: {
       default: "transparent",
       ":hover": uiColor.component2,
@@ -64,6 +67,17 @@ export const commentStyles = stylex.create({
     paddingLeft: horizontalSpace.lg,
     paddingRight: horizontalSpace.lg,
     paddingTop: verticalSpace.md,
+  },
+  // Full-card "open the post" link. Sits above the body text (a click anywhere
+  // opens the post) but below the facet links, which lift themselves above it.
+  cardBodyOverlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: radius.sm,
+    zIndex: 0,
   },
   cardHeader: {
     alignItems: "center",
@@ -142,12 +156,18 @@ export const commentStyles = stylex.create({
     marginTop: spacing["0"],
   },
   facetMentionLink: {
+    // Lift above the stretched overlay link so the mention stays clickable.
+    position: "relative",
+    zIndex: 1,
     textDecoration: { default: "none", ":hover": "underline" },
     color: "inherit",
     textDecorationColor: "currentColor",
     textUnderlineOffset: "2px",
   },
   facetLink: {
+    // Lift above the stretched overlay link so the link stays clickable.
+    position: "relative",
+    zIndex: 1,
     textDecoration: { default: "underline", ":hover": "none" },
     color: primaryColor.text2,
     textUnderlineOffset: "2px",
