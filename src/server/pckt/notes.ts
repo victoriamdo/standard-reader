@@ -120,10 +120,16 @@ export async function fetchNotesForDocument(
     const notes = hydrated.filter((note): note is MiniPost => note != null);
 
     if (notes.length === 0) {
-      noteCommentsCache.set(documentUri, {
-        comments: [],
-        expiresAt: Date.now() + NOTE_CACHE_TTL_MS,
-      });
+      // Only cache "no notes" when Constellation genuinely reported none. If it
+      // found records but every hydration failed (Slingshot hiccup), caching []
+      // would hide real notes behind "No discussion yet" for the full TTL, and
+      // a transient blip would look identical to a document with no discussion.
+      if (records.length === 0) {
+        noteCommentsCache.set(documentUri, {
+          comments: [],
+          expiresAt: Date.now() + NOTE_CACHE_TTL_MS,
+        });
+      }
       return [];
     }
 
