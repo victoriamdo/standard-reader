@@ -36,6 +36,15 @@ export const LOCALE_COOKIE = "standard-reader-locale";
 
 export const LOCALE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
+/**
+ * Marks that the one-time language indicator has been shown to a guest. Set to
+ * `"1"` once the indicator appears so it never shows again; signed-in readers
+ * use `user.locale_hint_seen` instead. See `src/lib/use-locale-hint.ts`.
+ */
+export const LOCALE_HINT_SEEN_COOKIE = "standard-reader-locale-hint";
+
+export const LOCALE_HINT_SEEN_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+
 export type TextDirection = "ltr" | "rtl";
 
 /** Right-to-left scripts. Grow this alongside LOCALES (he, fa, ur). */

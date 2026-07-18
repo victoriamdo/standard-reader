@@ -117,6 +117,11 @@ msgstr ""
 msgid "The {SITE_NAME} browser extension helps you save articles and follow publications on the standard.site network from any tab. It connects to the same account as the web app at <0>{siteHost}</0>. This policy covers the extension only; the <1>site privacy policy</1> describes data handling on the website itself."
 msgstr ""
 
+#: src/components/NavbarAuth.tsx
+#: src/components/reader/language-hint-prompt.tsx
+msgid "Change language"
+msgstr ""
+
 #: src/components/OpenLinksMenuItem.tsx
 #: src/components/user-settings-view.tsx
 msgid "Open posts externally"
@@ -398,7 +403,7 @@ msgstr ""
 msgid "No matches"
 msgstr ""
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{count, plural, one {# tagged post} other {{value} tagged posts}}"
 msgstr ""
 
@@ -1056,6 +1061,7 @@ msgstr ""
 msgid "Anonymous"
 msgstr ""
 
+#: src/components/reader/language-dialog.tsx
 #: src/components/user-settings-view.tsx
 msgid "The language used for the reader interface. Articles are shown in the language they were written in."
 msgstr ""
@@ -1128,6 +1134,10 @@ msgstr ""
 #: src/routes/_layout.collections.index.tsx
 #: src/routes/_layout.collections.new.tsx
 msgid "Collections"
+msgstr ""
+
+#: src/components/reader/language-dialog.tsx
+msgid "Done"
 msgstr ""
 
 #: src/routes/_layout.discover.tsx
@@ -2094,6 +2104,10 @@ msgstr ""
 msgid "Sun · 8:00 AM"
 msgstr ""
 
+#: src/components/reader/language-hint-prompt.tsx
+msgid "We picked this language from your browser. You can switch it anytime."
+msgstr ""
+
 #: src/routes/_layout.latest.tsx
 msgid "Follow a few publications and their latest writing will show up here."
 msgstr ""
@@ -2161,6 +2175,10 @@ msgstr ""
 
 #: src/routes/_layout.index.tsx
 msgid "{newCount} new"
+msgstr ""
+
+#: src/components/reader/language-hint-prompt.tsx
+msgid "Reading in {language}"
 msgstr ""
 
 #: src/components/reader/text-selection-toolbar.tsx
@@ -2355,7 +2373,7 @@ msgstr ""
 msgid "Track reading history"
 msgstr ""
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{readCount, plural, one {# read} other {{value} reads}}"
 msgstr ""
 
@@ -3275,6 +3293,10 @@ msgstr ""
 msgid "Labelers"
 msgstr ""
 
+#: src/components/reader/language-dialog.tsx
+msgid "Choose your language"
+msgstr ""
+
 #: src/components/reader/about-view.tsx
 msgid "Find the ones you didn't know you wanted"
 msgstr ""
@@ -3331,6 +3353,7 @@ msgstr ""
 msgid "Bug"
 msgstr ""
 
+#: src/components/reader/language-dialog.tsx
 #: src/components/user-settings-view.tsx
 msgid "Language"
 msgstr ""

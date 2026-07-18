@@ -86,6 +86,7 @@ import { AddPublicationModal } from "./add-publication-modal";
 import { AtstoreReviewPrompt } from "./atstore-review-prompt";
 import { BrandWordmark } from "./brand-wordmark";
 import { initials, listLinkParams, publicationLinkParams } from "./format";
+import { LanguageHintPrompt } from "./language-hint-prompt";
 import { ListEditModal } from "./list-edit-modal";
 import { PageReaderBar } from "./page-reader-bar";
 import { ReorderListsModal } from "./reorder-lists-modal";
@@ -1403,6 +1404,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onSave={sidebarPref.saveOrder}
         />
         <AtstoreReviewPrompt />
+        <LanguageHintPrompt />
         <FeedbackDialog isOpen={feedbackOpen} onOpenChange={setFeedbackOpen} />
         <ToastRegion />
       </div>

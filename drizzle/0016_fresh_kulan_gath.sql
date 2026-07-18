@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "locale_hint_seen" boolean;
