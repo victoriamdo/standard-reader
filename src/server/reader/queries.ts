@@ -90,8 +90,6 @@ export interface ArticleCardQuery {
   discoverOnly?: boolean;
   /** Match documents whose `tags` array includes this label (case-insensitive). */
   tag?: string;
-  /** Restrict to documents authored by this DID (loose + publication-bound). */
-  did?: string;
   /**
    * Followed-user DIDs. When present (even alongside `publicationUris`), the
    * query switches to "follow-feed union" mode: it returns documents authored
@@ -264,6 +262,13 @@ function followFeedUnionSql(
     select ${d.uri} as uri, ${d.publishedAt} as published_at,
            ${d.publicationUri} as publication_uri, ${d.did} as did
     from ${d}
+    join ${creditedDocumentUrisSql(schema, followedUserDids)} fc
+      on fc.document_uri = ${d.uri}
+    where ${base}
+    union
+    select ${d.uri} as uri, ${d.publishedAt} as published_at,
+           ${d.publicationUri} as publication_uri, ${d.did} as did
+    from ${d}
     join (
       select ${rec.documentUri} as document_uri
       from ${rec}
@@ -271,6 +276,26 @@ function followFeedUnionSql(
       group by ${rec.documentUri}
     ) fr on fr.document_uri = ${d.uri}
     where ${base}
+  )`;
+}
+
+/**
+ * Documents crediting any of these DIDs as a contributor
+ * (`site.standard.document#contributor[]`) — guest posts and co-writes that live
+ * in someone *else's* repo, so `documents.did` never names them.
+ *
+ * Always joined as its own union branch, never `or`-ed against
+ * `documents.did`: the `or` is unindexable and costs a full seq-scan of
+ * `documents` (see {@link followFeedUnionSql}). This branch rides
+ * `document_contributors_did_idx` and is empty for most readers' follow sets.
+ */
+function creditedDocumentUrisSql(schema: Schema, dids: Array<string>): SQL {
+  const dc = schema.documentContributors;
+  return sql`(
+    select ${dc.documentUri} as document_uri
+    from ${dc}
+    where ${inArray(dc.did, dids)}
+    group by ${dc.documentUri}
   )`;
 }
 
@@ -336,6 +361,8 @@ async function selectFollowFeedCandidateUris(
   // direct source and recommended by a followed user would otherwise appear
   // twice, since its two rows carry different `feed_at`). `src=0` (direct) sorts
   // before `src=1` (recommend), so a doc that is both keeps its publish time.
+  // The contributor branch is `src=0` too: a guest post is a direct source, so
+  // it belongs at its publish time, not at whenever someone recommended it.
   const rows = await db.execute<{ uri: string }>(sql`
     select deduped.uri from (
       select distinct on (u.uri) u.uri as uri, u.feed_at as feed_at
@@ -344,6 +371,16 @@ async function selectFollowFeedCandidateUris(
           select ${d.uri} as uri, ${d.publishedAt} as feed_at, 0 as src
           from ${d}
           where ${baseWhere} and (${directOr})
+          order by ${d.publishedAt} desc nulls last, ${d.uri} desc
+          limit ${k}
+        )
+        union all
+        (
+          select ${d.uri} as uri, ${d.publishedAt} as feed_at, 0 as src
+          from ${d}
+          join ${creditedDocumentUrisSql(schema, followedUserDids)} fc
+            on fc.document_uri = ${d.uri}
+          where ${baseWhere}
           order by ${d.publishedAt} desc nulls last, ${d.uri} desc
           limit ${k}
         )
@@ -447,9 +484,6 @@ export async function selectArticleCards(
   }
   if (opts.tag) {
     conds.push(documentCarriesTagWhere(d, opts.tag));
-  }
-  if (opts.did) {
-    conds.push(eq(d.did, opts.did));
   }
 
   const columns = articleCardColumns(schema);
@@ -940,6 +974,7 @@ export async function countUnreadByFollowedUser(
   }
   const d = schema.documents;
   const rec = schema.recommends;
+  const dc = schema.documentContributors;
   const r = schema.reads;
   const uf = schema.userFollows;
   const base = and(eq(d.deleted, false), documentPublishedNotInFuture(d));
@@ -966,6 +1001,12 @@ export async function countUnreadByFollowedUser(
              ${d.publishedAt} as published_at
       from ${d}
       where ${base} and ${inArray(d.did, followedUserDids)}
+      union
+      select ${dc.did} as contributor, ${d.uri} as uri,
+             ${d.publishedAt} as published_at
+      from ${dc}
+      join ${d} on ${d.uri} = ${dc.documentUri}
+      where ${base} and ${inArray(dc.did, followedUserDids)}
       union
       select ${rec.recommenderDid} as contributor, ${d.uri} as uri,
              ${d.publishedAt} as published_at
@@ -2608,11 +2649,54 @@ export interface AuthorProfileStats {
 export type AuthorPublicationStats = AuthorProfileStats;
 
 /**
- * Aggregate stats for an author profile header: owned publications plus
- * `site.standard.graph.subscription` / `recommend` activity. `documentCount`
- * sums per-publication stats *and* adds loose documents (records whose `site`
- * is an `https://` URL with no matching publication) authored by this DID, so
- * authors who publish off-platform still show a real article total.
+ * Publications carrying at least one document this DID has a byline on — their
+ * own repo records *plus* ones crediting them via
+ * `site.standard.document#contributor[]` in someone else's repo.
+ *
+ * Gathers publications *from the author's documents* (two index-driven branches
+ * unioned) rather than the natural phrasing — "for each publication, does a
+ * matching document exist". That correlated `exists` makes Postgres seq-scan
+ * `publications` and probe `documents` once per row (~6.5k index searches,
+ * ~1.3s); this shape is sub-millisecond. `union` (not `union all`) because a
+ * document can both live in the author's repo and credit them as a contributor.
+ */
+function bylinePublicationUris(schema: Schema, did: string): SQL {
+  const d = schema.documents;
+  const dc = schema.documentContributors;
+  return sql`(
+    select ${d.publicationUri} from ${d}
+     where ${d.did} = ${did}
+       and ${d.publicationUri} is not null
+       and ${d.deleted} = false
+       and ${documentPublishedNotInFuture(d)}
+    union
+    select ${d.publicationUri} from ${d}
+      join ${dc} on ${dc.documentUri} = ${d.uri} and ${dc.did} = ${did}
+     where ${d.publicationUri} is not null
+       and ${d.deleted} = false
+       and ${documentPublishedNotInFuture(d)}
+  )`;
+}
+
+/**
+ * Publications this DID is *featured in* rather than owns: someone else's
+ * publication carrying at least one published post they wrote or are credited
+ * on. Correlates against the `publications` relation in the outer query.
+ */
+function featuredInPublication(schema: Schema, did: string): SQL {
+  const p = schema.publications;
+  return sql`(${p.did} <> ${did} and ${p.uri} in ${bylinePublicationUris(schema, did)})`;
+}
+
+/**
+ * Aggregate stats for an author profile header: publications plus
+ * `site.standard.graph.subscription` / `recommend` activity.
+ *
+ * `publicationCount` and `documentCount` gate tab visibility and render as tab
+ * badges, so both count exactly what their tab lists: publications the author
+ * owns *or* is featured in, and documents they have a byline on (their own
+ * repo plus contributor credits elsewhere). `subscriberCount` stays owned-only
+ * — it measures the author's own reach.
  */
 export async function authorProfileStats(
   db: Db,
@@ -2624,63 +2708,88 @@ export async function authorProfileStats(
   const sub = schema.subscriptions;
   const rec = schema.recommends;
   const d = schema.documents;
+  const dc = schema.documentContributors;
 
-  const [pubRow, subRow, recRow, looseRow] = await Promise.all([
-    db
-      .select({
-        publicationCount: sql<number>`count(*)::int`.mapWith(Number),
-        documentCount:
-          sql<number>`coalesce(sum(${st.documentCount}), 0)::int`.mapWith(
-            Number,
+  const [pubRow, featuredPubRow, subRow, recRow, ownDocRow, creditDocRow] =
+    await Promise.all([
+      db
+        .select({
+          publicationCount: sql<number>`count(*)::int`.mapWith(Number),
+          subscriberCount:
+            sql<number>`coalesce(sum(${st.subscriberCount}), 0)::int`.mapWith(
+              Number,
+            ),
+        })
+        .from(p)
+        .leftJoin(st, eq(st.publicationUri, p.uri))
+        .where(
+          and(
+            eq(p.did, did),
+            eq(p.deleted, false),
+            sql`${p.url} not ilike ${EXCLUDED_PUBLICATION_URL_PATTERN}`,
           ),
-        subscriberCount:
-          sql<number>`coalesce(sum(${st.subscriberCount}), 0)::int`.mapWith(
-            Number,
+        ),
+      // Publications owned by someone else that carry this author's writing.
+      // Unlike owned pubs, opted-out ones never count — the tab hides them.
+      db
+        .select({ count: sql<number>`count(*)::int`.mapWith(Number) })
+        .from(p)
+        .where(
+          and(
+            eq(p.deleted, false),
+            eq(p.showInDiscover, true),
+            sql`${p.url} not ilike ${EXCLUDED_PUBLICATION_URL_PATTERN}`,
+            featuredInPublication(schema, did),
           ),
-      })
-      .from(p)
-      .leftJoin(st, eq(st.publicationUri, p.uri))
-      .where(
-        and(
-          eq(p.did, did),
-          eq(p.deleted, false),
-          sql`${p.url} not ilike ${EXCLUDED_PUBLICATION_URL_PATTERN}`,
         ),
-      ),
-    db
-      .select({
-        count: sql<number>`count(distinct ${sub.publicationUri})::int`.mapWith(
-          Number,
+      db
+        .select({
+          count:
+            sql<number>`count(distinct ${sub.publicationUri})::int`.mapWith(
+              Number,
+            ),
+        })
+        .from(sub)
+        .where(and(eq(sub.subscriberDid, did), eq(sub.deleted, false))),
+      db
+        .select({
+          count: sql<number>`count(*)::int`.mapWith(Number),
+        })
+        .from(rec)
+        .where(and(eq(rec.recommenderDid, did), eq(rec.deleted, false))),
+      // Every document this author has a byline on, wherever it lives: their own
+      // publications, someone else's, or "loose" (an `https://` `site` with no
+      // matching publication row). Same two disjoint index-driven branches as
+      // `authorDocuments`, so the counts simply add — see the note there for why
+      // this isn't one `or`.
+      db
+        .select({ count: sql<number>`count(*)::int`.mapWith(Number) })
+        .from(d)
+        .where(
+          and(
+            eq(d.did, did),
+            eq(d.deleted, false),
+            documentPublishedNotInFuture(d),
+          ),
         ),
-      })
-      .from(sub)
-      .where(and(eq(sub.subscriberDid, did), eq(sub.deleted, false))),
-    db
-      .select({
-        count: sql<number>`count(*)::int`.mapWith(Number),
-      })
-      .from(rec)
-      .where(and(eq(rec.recommenderDid, did), eq(rec.deleted, false))),
-    // Loose documents (no publication) authored by this DID — not covered by
-    // the per-publication stats sum above.
-    db
-      .select({
-        count: sql<number>`count(*)::int`.mapWith(Number),
-      })
-      .from(d)
-      .where(
-        and(
-          eq(d.did, did),
-          eq(d.deleted, false),
-          isNull(d.publicationUri),
-          documentPublishedNotInFuture(d),
+      db
+        .select({ count: sql<number>`count(*)::int`.mapWith(Number) })
+        .from(dc)
+        .innerJoin(d, eq(d.uri, dc.documentUri))
+        .where(
+          and(
+            eq(dc.did, did),
+            ne(d.did, did),
+            eq(d.deleted, false),
+            documentPublishedNotInFuture(d),
+          ),
         ),
-      ),
-  ]);
+    ]);
 
   return {
-    publicationCount: pubRow[0]?.publicationCount ?? 0,
-    documentCount: (pubRow[0]?.documentCount ?? 0) + (looseRow[0]?.count ?? 0),
+    publicationCount:
+      (pubRow[0]?.publicationCount ?? 0) + (featuredPubRow[0]?.count ?? 0),
+    documentCount: (ownDocRow[0]?.count ?? 0) + (creditDocRow[0]?.count ?? 0),
     subscriberCount: pubRow[0]?.subscriberCount ?? 0,
     subscriptionCount: subRow[0]?.count ?? 0,
     recommendationCount: recRow[0]?.count ?? 0,
@@ -2930,14 +3039,19 @@ export async function authorRecommendations(
 }
 
 /**
- * Publications owned by one DID, ordered by most recent activity then name.
- * Excludes blento.app platform profiles.
+ * Publications one DID owns *or is featured in* — someone else's publication
+ * that carries a post they wrote or are credited on as a contributor. Owned
+ * ones sort first, then each group by most recent activity, then name. Callers
+ * tell the two apart by comparing `card.did` to the profile DID, and label the
+ * borrowed ones "Featured in". Excludes blento.app platform profiles.
  *
  * Publications that opted out of discovery (`showInDiscover = false`) are hidden
  * from everyone except the owner viewing their own profile: pass
  * `includeHidden: true` (only when the viewer *is* the owner) to keep them in the
  * result so the UI can render them dimmed with an explanatory label. The
- * `hiddenFromDiscover` flag on each returned card marks which ones.
+ * `hiddenFromDiscover` flag on each returned card marks which ones. That escape
+ * hatch is owner-only by construction, so it never unhides a *featured* pub —
+ * those belong to someone else.
  */
 export async function authorPublications(
   db: Db,
@@ -2961,13 +3075,23 @@ export async function authorPublications(
     .leftJoin(pr, eq(pr.did, p.did))
     .where(
       and(
-        eq(p.did, opts.did),
         eq(p.deleted, false),
-        opts.includeHidden ? undefined : eq(p.showInDiscover, true),
         sql`${p.url} not ilike ${EXCLUDED_PUBLICATION_URL_PATTERN}`,
+        or(
+          and(
+            eq(p.did, opts.did),
+            opts.includeHidden ? undefined : eq(p.showInDiscover, true),
+          ),
+          and(
+            featuredInPublication(schema, opts.did),
+            eq(p.showInDiscover, true),
+          ),
+        ),
       ),
     )
     .orderBy(
+      // Owned publications lead; `true` sorts before `false` under DESC.
+      sql`(${p.did} = ${opts.did}) desc`,
       sql`${st.lastDocumentAt} desc nulls last`,
       asc(sortName),
       asc(p.uri),
@@ -2979,12 +3103,13 @@ export async function authorPublications(
 }
 
 /**
- * All documents authored by this DID — `site.standard.document` records,
- * whether attached to one of their own publications or "loose" (an
- * `https://` `site` with no matching publication row). Newest first. Backs
- * the "Posts" tab of the author profile, so authors who publish off-platform
- * (e.g. Leaflet-hosted) still have their writing listed alongside posts that
- * belong to a publication.
+ * Every document this DID has a byline on — `site.standard.document` records
+ * in their own repo, whether attached to one of their own publications, to
+ * someone else's, or "loose" (an `https://` `site` with no matching publication
+ * row), *plus* records in another repo that credit them as a contributor.
+ * Newest first. Backs the "Posts" tab of the author profile, so authors who
+ * publish off-platform (e.g. Leaflet-hosted) or guest-write for other
+ * publications have all of their writing listed in one place.
  */
 export async function authorDocuments(
   db: Db,
@@ -2995,38 +3120,83 @@ export async function authorDocuments(
   const p = schema.publications;
   const pr = schema.profiles;
   const pa = alias(schema.profiles, "pa");
-  const where = and(
-    eq(d.did, opts.did),
+  const dc = schema.documentContributors;
+  const offset = opts.offset ?? 0;
+  const published = and(
     eq(d.deleted, false),
     documentPublishedNotInFuture(d),
-  );
+  ) as SQL;
 
-  const [countRow, rows] = await Promise.all([
+  // Two *disjoint* branches, each on its own index, merged here rather than in
+  // SQL. A single `d.did = $did or exists (contributor row)` is unindexable:
+  // Postgres seq-scans all ~380k documents, and for the largest repo (~272k
+  // docs) that is several seconds. Branch A rides
+  // `documents_did_published_idx` exactly as it did before contributors were
+  // included; branch B rides `document_contributors_did_idx` and is empty for
+  // the overwhelming majority of authors. `ne(d.did, ...)` in branch B makes
+  // the two sets disjoint, so totals add and the merge needs no dedupe.
+  const rowColumns = {
+    ...articleCardColumns(schema),
+    isRead: documentReadExistsColumn(schema, opts.did),
+  };
+  // Each branch must yield the whole head of the merged list, since either one
+  // could supply every row up to `offset + limit`.
+  const head = offset + opts.limit;
+  const ownWhere = and(eq(d.did, opts.did), published) as SQL;
+  const creditWhere = and(
+    eq(dc.did, opts.did),
+    ne(d.did, opts.did),
+    published,
+  ) as SQL;
+
+  const [ownCount, creditCount, ownRows, creditRows] = await Promise.all([
     db
       .select({ count: sql<number>`count(*)::int`.mapWith(Number) })
       .from(d)
-      .where(where),
+      .where(ownWhere),
     db
-      .select({
-        ...articleCardColumns(schema),
-        isRead: documentReadExistsColumn(schema, opts.did),
-      })
+      .select({ count: sql<number>`count(*)::int`.mapWith(Number) })
+      .from(dc)
+      .innerJoin(d, eq(d.uri, dc.documentUri))
+      .where(creditWhere),
+    // `pr` (publication owner profile) is null for loose documents
+    // (publication_uri IS NULL → no `p` row → no `pr` match), but
+    // `articleCardColumns` references `pr.avatarUrl`/`pr.handle`/`pr.bannerUrl`,
+    // so the table must be present in the query or Drizzle throws.
+    db
+      .select(rowColumns)
       .from(d)
-      // `pr` (publication owner profile) is null for loose documents
-      // (publication_uri IS NULL → no `p` row → no `pr` match), but
-      // `articleCardColumns` references `pr.avatarUrl`/`pr.handle`/`pr.bannerUrl`,
-      // so the table must be present in the query or Drizzle throws.
       .leftJoin(p, eq(p.uri, d.publicationUri))
       .leftJoin(pr, eq(pr.did, p.did))
       .leftJoin(pa, eq(pa.did, d.did))
-      .where(where)
+      .where(ownWhere)
       .orderBy(...documentsNewestFirst(d))
-      .limit(opts.limit)
-      .offset(opts.offset ?? 0),
+      .limit(head),
+    db
+      .select(rowColumns)
+      .from(dc)
+      .innerJoin(d, eq(d.uri, dc.documentUri))
+      .leftJoin(p, eq(p.uri, d.publicationUri))
+      .leftJoin(pr, eq(pr.did, p.did))
+      .leftJoin(pa, eq(pa.did, d.did))
+      .where(creditWhere)
+      .orderBy(...documentsNewestFirst(d))
+      .limit(head),
   ]);
 
+  const merged =
+    creditRows.length === 0
+      ? ownRows
+      : [...ownRows, ...creditRows].toSorted(
+          (a, b) =>
+            b.publishedAt.getTime() - a.publishedAt.getTime() ||
+            b.uri.localeCompare(a.uri),
+        );
+
   return {
-    items: rows.map((row) => toArticleCard(row)),
-    total: countRow[0]?.count ?? 0,
+    items: merged
+      .slice(offset, offset + opts.limit)
+      .map((row) => toArticleCard(row)),
+    total: (ownCount[0]?.count ?? 0) + (creditCount[0]?.count ?? 0),
   };
 }

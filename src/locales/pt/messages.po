@@ -1426,6 +1426,10 @@ msgstr "Não foi possível subscrever"
 msgid "On keeping a commonplace book"
 msgstr "Sobre manter um caderno de apontamentos"
 
+#: src/components/reader/cards.tsx
+msgid "Featured in"
+msgstr "Publicado em"
+
 #: src/components/reader/collection-theme-editor.tsx
 msgid "A sentence of body copy, set in your chosen fonts and colors, so you can see how it all reads together before you save."
 msgstr "Uma frase de texto corrido, composta com os tipos de letra e as cores que escolheu, para ver como tudo se lê em conjunto antes de guardar."

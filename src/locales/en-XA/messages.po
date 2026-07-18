@@ -1426,6 +1426,10 @@ msgstr ""
 msgid "On keeping a commonplace book"
 msgstr ""
 
+#: src/components/reader/cards.tsx
+msgid "Featured in"
+msgstr "[Ϝḗḗααṭŭŭřḗḗḓ īīƞ]"
+
 #: src/components/reader/collection-theme-editor.tsx
 msgid "A sentence of body copy, set in your chosen fonts and colors, so you can see how it all reads together before you save."
 msgstr ""

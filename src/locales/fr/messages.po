@@ -1426,6 +1426,10 @@ msgstr "Impossible de s'abonner"
 msgid "On keeping a commonplace book"
 msgstr "Tenir un carnet de lectures"
 
+#: src/components/reader/cards.tsx
+msgid "Featured in"
+msgstr "Publié dans"
+
 #: src/components/reader/collection-theme-editor.tsx
 msgid "A sentence of body copy, set in your chosen fonts and colors, so you can see how it all reads together before you save."
 msgstr "Une phrase de texte courant, composée avec les polices et les couleurs que vous avez choisies, pour voir le rendu d'ensemble avant d'enregistrer."

@@ -1426,6 +1426,10 @@ msgstr "تعذّر الاشتراك"
 msgid "On keeping a commonplace book"
 msgstr "في الاحتفاظ بدفتر اقتباسات"
 
+#: src/components/reader/cards.tsx
+msgid "Featured in"
+msgstr "ظهر في"
+
 #: src/components/reader/collection-theme-editor.tsx
 msgid "A sentence of body copy, set in your chosen fonts and colors, so you can see how it all reads together before you save."
 msgstr "جملة من نص المتن، بالخطوط والألوان التي اخترتها، لترى كيف يبدو ذلك كله معًا قبل الحفظ."

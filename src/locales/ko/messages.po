@@ -1426,6 +1426,10 @@ msgstr "구독하지 못했습니다"
 msgid "On keeping a commonplace book"
 msgstr "비망록을 쓴다는 것"
 
+#: src/components/reader/cards.tsx
+msgid "Featured in"
+msgstr "게재 매체"
+
 #: src/components/reader/collection-theme-editor.tsx
 msgid "A sentence of body copy, set in your chosen fonts and colors, so you can see how it all reads together before you save."
 msgstr "선택한 서체와 색으로 표시된 본문 예시 문장입니다. 저장하기 전에 전체적인 느낌을 확인해 보세요."
