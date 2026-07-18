@@ -806,7 +806,6 @@ function ArticleViewBody({
   const { active: readerActive } = usePageReader();
   const { rememberOpenInMagazine } = useOpenCollectionsInMagazine();
   const { preference: readingTypography } = useReadingTypography();
-  const rootRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLElement>(null);
   const [progress, setProgress] = useState(0);
   const [showMagazineIntro, setShowMagazineIntro] = useState(
@@ -941,11 +940,13 @@ function ArticleViewBody({
   }, [article.collection, article.uri, linkParams, queryClient, router]);
 
   useLayoutEffect(() => {
-    const anchor = rootRef.current;
-    if (!anchor) return;
+    // Measure the <article> only — progress should hit 100% at the end of the
+    // article body, not after the "More from" / comments sections below it.
+    const articleEl = articleRef.current;
+    if (!articleEl) return;
 
     const sync = () => {
-      setProgress(articleReadingProgress(anchor));
+      setProgress(articleReadingProgress(articleEl));
     };
 
     if (!sharedQuote?.trim()) {
@@ -956,7 +957,7 @@ function ArticleViewBody({
     // The page (document) is the scroller, so its scroll event fires on window.
     globalThis.addEventListener("scroll", sync, { passive: true });
     const resizeObserver = new ResizeObserver(() => sync());
-    resizeObserver.observe(anchor);
+    resizeObserver.observe(articleEl);
 
     return () => {
       globalThis.removeEventListener("scroll", sync);
@@ -965,10 +966,7 @@ function ArticleViewBody({
   }, [article.uri, sharedQuote]);
 
   return (
-    <div
-      ref={rootRef}
-      {...stylex.props(styles.root, readerActive && styles.rootReader)}
-    >
+    <div {...stylex.props(styles.root, readerActive && styles.rootReader)}>
       <div {...stylex.props(styles.stickyChrome)}>
         <div {...stylex.props(styles.topBar)}>
           <div {...stylex.props(styles.topLeft)}>
