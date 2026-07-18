@@ -17,7 +17,7 @@ import { Button as AriaButton } from "react-aria-components";
 import { AuthorProfileLink } from "#/components/reader/author-profile-link";
 import { DirectionalIcon } from "#/design-system/directional-icon";
 import { formatSidebarUnreadCount } from "#/lib/format-count";
-import { useFormatters } from "#/lib/formatters";
+import { useFormatters } from "#/lib/use-formatters";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";

@@ -13,7 +13,7 @@ import {
   lineHeight,
 } from "#/design-system/theme/typography.stylex";
 import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
-import { useFormatters } from "#/lib/formatters";
+import { useFormatters } from "#/lib/use-formatters";
 
 import { formatReadingTime, initials } from "./format";
 import { ArticleEngagement } from "./primitives";

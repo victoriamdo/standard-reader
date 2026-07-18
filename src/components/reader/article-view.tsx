@@ -32,8 +32,8 @@ import type { ArticleDetail } from "#/integrations/tanstack-query/api-publicatio
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { resolveArticleHeroImage } from "#/lib/document/lead-image";
-import { useFormatters } from "#/lib/formatters";
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
+import { useFormatters } from "#/lib/use-formatters";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { useReadingTypography } from "#/lib/use-reading-typography";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
@@ -84,13 +84,13 @@ import { DocumentShareMenu } from "./document-share-menu";
 import {
   articlePublicationUrl,
   documentLinkParams,
-  formatArticleReadStats,
   formatReaders,
   formatReadingTime,
   initials,
   primaryAuthor,
   publicationLinkParams,
 } from "./format";
+import { formatArticleReadStats } from "./format-i18n";
 import { LabelerPill } from "./labeler-pill";
 import {
   ArticleEngagement,

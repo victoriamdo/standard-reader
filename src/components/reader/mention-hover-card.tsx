@@ -33,7 +33,7 @@ import {
 import { usePopoverStyles } from "#/design-system/theme/usePopoverStyles";
 import { authorApi } from "#/integrations/tanstack-query/api-author.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
-import { useFormatters } from "#/lib/formatters";
+import { useFormatters } from "#/lib/use-formatters";
 
 import { formatReaders, initials } from "./format";
 import { LikeCount, PublicationAvatar } from "./primitives";

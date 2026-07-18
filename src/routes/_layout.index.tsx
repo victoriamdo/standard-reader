@@ -16,8 +16,8 @@ import { z } from "zod";
 import { ButtonLink } from "#/components/router-links";
 import { DirectionalIcon } from "#/design-system/directional-icon";
 import type { Formatters } from "#/lib/formatters";
-import { useFormatters } from "#/lib/formatters";
 import { DEFAULT_TRACK_READING_HISTORY } from "#/lib/track-reading-history";
+import { useFormatters } from "#/lib/use-formatters";
 
 import {
   ArticleRow,

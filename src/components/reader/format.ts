@@ -1,8 +1,5 @@
 /** Formatting helpers shared by the reader UI (kept apart from components). */
 
-import type { I18n } from "@lingui/core";
-import { msg, plural } from "@lingui/core/macro";
-
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import { STANDARD_NSID } from "#/lib/atproto/nsids";
 
@@ -213,32 +210,6 @@ export function initials(name: string): string {
 export function formatReaders(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`;
   return String(n);
-}
-
-/**
- * Tag directory meta: posts on a publication carrying the page tag.
- *
- * Takes an `i18n` rather than being a hook so it stays a plain module function
- * (matching `formatMatchCount` in `_layout.search.tsx`); every call site is a
- * component that can pull one off `useLingui()`.
- */
-export function formatTaggedPostCount(i18n: I18n, count: number): string {
-  const value = formatReaders(count);
-  return i18n._(
-    msg`${plural(count, { one: "# tagged post", other: `${value} tagged posts` })}`,
-  );
-}
-
-/** Article byline meta: read count only (omits zero). Likes use `LikeCount`. */
-export function formatArticleReadStats(
-  i18n: I18n,
-  readCount: number,
-): string | null {
-  if (readCount <= 0) return null;
-  const value = formatReaders(readCount);
-  return i18n._(
-    msg`${plural(readCount, { one: "# read", other: `${value} reads` })}`,
-  );
 }
 
 /** `m:ss` clock time for the page-reader transport. */

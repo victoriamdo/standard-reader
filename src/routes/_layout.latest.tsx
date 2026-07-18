@@ -28,9 +28,9 @@ import {
 } from "#/integrations/tanstack-query/api-feed.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { useFormatters } from "#/lib/formatters";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { latestFeedUrl, pageSocialMeta } from "#/lib/site-metadata";
+import { useFormatters } from "#/lib/use-formatters";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
 

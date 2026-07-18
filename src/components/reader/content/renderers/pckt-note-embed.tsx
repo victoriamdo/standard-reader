@@ -20,8 +20,8 @@ import {
 } from "#/design-system/theme/typography.stylex";
 import { authorApi } from "#/integrations/tanstack-query/api-author.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
-import { useFormatters } from "#/lib/formatters";
 import { fetchMiniPost, pcktNoteUrl } from "#/lib/pckt/mini";
+import { useFormatters } from "#/lib/use-formatters";
 
 // An embedded pckt note, delineated from the article prose by a bordered card
 // (mirroring the sibling Bluesky post embed). The body is set in the serif

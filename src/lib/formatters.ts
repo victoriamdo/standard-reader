@@ -14,11 +14,8 @@
  * space is bounded by `LOCALES`, so it cannot grow without bound.
  */
 
-import { useMemo } from "react";
-
 import type { Locale } from "./locale";
 import { intlLocale } from "./locale";
-import { useLocale } from "./use-locale";
 
 export interface Formatters {
   locale: Locale;
@@ -120,10 +117,4 @@ export function formattersFor(locale: Locale): Formatters {
 
   cache.set(locale, formatters);
   return formatters;
-}
-
-/** Component-side accessor; re-memoizes only when the reader changes language. */
-export function useFormatters(): Formatters {
-  const { locale } = useLocale();
-  return useMemo(() => formattersFor(locale), [locale]);
 }

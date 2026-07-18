@@ -26,9 +26,9 @@ import {
   discoverApi,
 } from "#/integrations/tanstack-query/api-discover.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { useFormatters } from "#/lib/formatters";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
+import { useFormatters } from "#/lib/use-formatters";
 
 import {
   PubCardSkeleton,

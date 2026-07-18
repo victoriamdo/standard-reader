@@ -14,7 +14,7 @@ import {
   lineHeight,
 } from "#/design-system/theme/typography.stylex";
 import { notesApi } from "#/integrations/tanstack-query/api-notes.functions";
-import { useFormatters } from "#/lib/formatters";
+import { useFormatters } from "#/lib/use-formatters";
 
 // A quiet editorial block, not a card — it sits above the writing feed and is
 // set off by the same 1px bottom rule the article rows use, so it recedes into

@@ -27,9 +27,9 @@ import { spacing } from "#/design-system/theme/spacing.stylex.tsx";
 import type { FollowStatus } from "#/integrations/tanstack-query/api-reader.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { useFormatters } from "#/lib/formatters";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { tsHeadlineHasMatch } from "#/lib/search-headline";
+import { useFormatters } from "#/lib/use-formatters";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { useOpenLinks } from "#/lib/use-open-links";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
@@ -67,9 +67,9 @@ import {
 import {
   documentLinkParams,
   formatReaders,
-  formatTaggedPostCount,
   publicationLinkParams,
 } from "./format";
+import { formatTaggedPostCount } from "./format-i18n";
 import { LabelerPill } from "./labeler-pill";
 import {
   ArticleEngagement,

@@ -27,9 +27,9 @@ import type {
 import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { useFormatters } from "#/lib/formatters";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { siteSocialMeta } from "#/lib/site-metadata";
+import { useFormatters } from "#/lib/use-formatters";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
 
 import {

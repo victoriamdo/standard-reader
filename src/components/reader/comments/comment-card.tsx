@@ -12,9 +12,9 @@ import { Flex } from "#/design-system/flex";
 import type { DocumentComment } from "#/integrations/tanstack-query/api-comments.functions";
 import type { JsonValue } from "#/integrations/tanstack-query/api-shapes";
 import { authorProfilePath } from "#/lib/author-profile";
-import { useFormatters } from "#/lib/formatters";
 import { segmentFacetedText, shiftFacets } from "#/lib/leaflet/facets";
 import { utf8ByteLength } from "#/lib/leaflet/utf8";
+import { useFormatters } from "#/lib/use-formatters";
 
 import type { FacetFeature } from "../content/renderers/shared/facets";
 import {

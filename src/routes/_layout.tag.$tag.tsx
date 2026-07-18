@@ -75,10 +75,10 @@ import type {
 } from "#/integrations/tanstack-query/api-tag.functions";
 import { tagApi } from "#/integrations/tanstack-query/api-tag.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { useFormatters } from "#/lib/formatters";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { SITE_NAME, siteSocialMeta, tagFeedUrl } from "#/lib/site-metadata";
 import { useDelayedLoading } from "#/lib/use-delayed-loading";
+import { useFormatters } from "#/lib/use-formatters";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
 

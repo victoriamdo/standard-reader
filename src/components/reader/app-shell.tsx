@@ -37,9 +37,9 @@ import {
   sidebarQueryOptions,
 } from "#/integrations/tanstack-query/shell-queries";
 import { formatSidebarUnreadCount } from "#/lib/format-count";
-import { useFormatters } from "#/lib/formatters";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { PageReaderProvider } from "#/lib/page-reader/page-reader-provider";
+import { useFormatters } from "#/lib/use-formatters";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
