@@ -2,11 +2,7 @@
 
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Link,
-  useRouter,
-  useRouterState,
-} from "@tanstack/react-router";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ArrowUpDown,

@@ -16,12 +16,12 @@ import {
   PubDirectoryRow,
   PubDirectoryRowSkeleton,
 } from "../components/reader/cards";
-import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import {
   Kicker,
   ReaderContent,
   SectionHead,
 } from "../components/reader/primitives";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { Button } from "../design-system/button";
 import { Flex } from "../design-system/flex";
 import { IconButton } from "../design-system/icon-button";

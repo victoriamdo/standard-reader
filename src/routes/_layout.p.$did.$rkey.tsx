@@ -28,7 +28,6 @@ import {
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 
 import { AddToListButton } from "../components/reader/add-to-list-modal";
-import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import {
   ArticleRow,
   FeatureArticle,
@@ -54,6 +53,7 @@ import {
 } from "../components/reader/read-optimistic";
 import { RssFeedButton } from "../components/reader/rss-feed-button";
 import { ShareMenu } from "../components/reader/share-menu";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import {
   AlertDialog,
   AlertDialogActionButton,

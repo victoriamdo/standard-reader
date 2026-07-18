@@ -34,7 +34,6 @@ import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
 
 import { ArticleRow } from "../components/reader/cards";
-import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { Masthead, ReaderContent } from "../components/reader/primitives";
 import {
   applyMarkReadManyOptimisticUpdate,
@@ -42,6 +41,7 @@ import {
   isArticleUnreadForReader,
 } from "../components/reader/read-optimistic";
 import { RssFeedButton } from "../components/reader/rss-feed-button";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import {
   AlertDialog,
   AlertDialogActionButton,

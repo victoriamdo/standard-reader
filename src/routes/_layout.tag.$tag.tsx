@@ -15,8 +15,6 @@ import {
 } from "@tanstack/react-router";
 import { Check, LayoutGrid, List, Plus, Tag } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { z } from "zod";
 
 import {
@@ -81,6 +79,8 @@ import { SITE_NAME, siteSocialMeta, tagFeedUrl } from "#/lib/site-metadata";
 import { useDelayedLoading } from "#/lib/use-delayed-loading";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
+
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 
 const PAGE_SIZE = 24;
 /** Ask before bulk-follow when a tag has more than this many unfollowed publications. */

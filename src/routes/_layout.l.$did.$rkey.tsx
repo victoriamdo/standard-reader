@@ -45,7 +45,6 @@ import { usePersistentToggle } from "#/lib/use-persistent-toggle";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 
 import { AuthorProfileLink } from "../components/reader/author-profile-link";
-import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
 import { initials } from "../components/reader/format";
 import { ListEditModal } from "../components/reader/list-edit-modal";
@@ -53,6 +52,7 @@ import { Handle, Kicker, ReaderContent } from "../components/reader/primitives";
 import { isArticleUnreadForReader } from "../components/reader/read-optimistic";
 import { RssFeedButton } from "../components/reader/rss-feed-button";
 import { ShareMenu } from "../components/reader/share-menu";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import {
   AlertDialog,
   AlertDialogActionButton,

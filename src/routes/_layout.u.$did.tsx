@@ -43,7 +43,6 @@ import {
 } from "#/lib/site-metadata";
 
 import { AddToListButton } from "../components/reader/add-to-list-button";
-import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { AuthorProfileLink } from "../components/reader/author-profile-link";
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
 import { FollowUserButton } from "../components/reader/follow-user-button";
@@ -53,6 +52,7 @@ import { ProfileTabsSettingsModal } from "../components/reader/profile-tabs-sett
 import { RssFeedButton } from "../components/reader/rss-feed-button";
 import { ShareMenu } from "../components/reader/share-menu";
 import { AuthorSifaResumeChip } from "../components/reader/sifa-resume-chip";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { Avatar } from "../design-system/avatar";
 import { Badge } from "../design-system/badge";
 import { Button } from "../design-system/button";
