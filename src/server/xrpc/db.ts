@@ -1,6 +1,5 @@
 import type { Db, Schema } from "#/integrations/tanstack-query/api-shapes";
-import { resolveCountOldPostsAsUnreadEnabled } from "#/server/reader/count-old-posts-as-unread.server";
-import { resolveTrackReadingHistoryEnabled } from "#/server/reader/track-reading-history.server";
+import { resolveReaderSessionPreferences } from "#/server/reader/session-preferences.server";
 
 export type XrpcDbContext = {
   db: Db;
@@ -19,12 +18,8 @@ export async function getXrpcDbContext(): Promise<XrpcDbContext> {
     ]);
     cachedDb = { db, schema };
   }
-  const [trackReadingEnabled, countOldPostsAsUnreadEnabled] = await Promise.all(
-    [
-      resolveTrackReadingHistoryEnabled(cachedDb.db, cachedDb.schema),
-      resolveCountOldPostsAsUnreadEnabled(cachedDb.db, cachedDb.schema),
-    ],
-  );
+  const { trackReadingEnabled, countOldPostsAsUnreadEnabled } =
+    await resolveReaderSessionPreferences(cachedDb.db, cachedDb.schema);
   return { ...cachedDb, trackReadingEnabled, countOldPostsAsUnreadEnabled };
 }
 

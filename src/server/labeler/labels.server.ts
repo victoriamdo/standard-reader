@@ -88,7 +88,7 @@ async function readerSubscriptionsImpl(
  * URI, with each label's effective visibility (the reader's pref, default
  * `warn`). Pure SQL against `document_labels` — no labeler network calls.
  */
-async function readLabelsForUris(
+export async function readLabelsForUris(
   db: Db,
   schema: Schema,
   callerDid: string,
@@ -173,6 +173,36 @@ export async function labelsForDocument(
   if (!callerDid) return [];
   const byUri = await readLabelsForUris(db, schema, callerDid, [uri]);
   return byUri.get(uri) ?? [];
+}
+
+/**
+ * Of an already-read label map, which URIs the reader has chosen to hide.
+ *
+ * Pure — pairs with {@link readLabelsForUris} for callers that need both the
+ * hide-filter and the per-card labels. Reading the map once and deriving both
+ * avoids issuing the same `document_labels` query twice per request (the feed
+ * builders previously called `hiddenDocumentUris` and `attachSubscribedLabels`
+ * back to back over the same URI set).
+ */
+export function hiddenUrisFromLabels(
+  byUri: Map<string, Array<ArticleCardLabel>>,
+): Set<string> {
+  const hidden = new Set<string>();
+  for (const [uri, labels] of byUri) {
+    if (labels.some((l) => l.visibility === "hide")) hidden.add(uri);
+  }
+  return hidden;
+}
+
+/** Attach labels from an already-read map. Pure counterpart of {@link attachSubscribedLabels}. */
+export function attachLabelsFromMap<
+  T extends { uri: string; labels?: Array<ArticleCardLabel> },
+>(cards: Array<T>, byUri: Map<string, Array<ArticleCardLabel>>): Array<T> {
+  if (byUri.size === 0) return cards;
+  return cards.map((card) => {
+    const labels = byUri.get(card.uri);
+    return labels ? { ...card, labels } : card;
+  });
 }
 
 /**
