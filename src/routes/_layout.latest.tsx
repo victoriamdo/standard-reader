@@ -1,5 +1,6 @@
 "use client";
 
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   useMutation,
@@ -27,9 +28,9 @@ import {
 } from "#/integrations/tanstack-query/api-feed.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { formatCount } from "#/lib/format-count";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { latestFeedUrl, pageSocialMeta } from "#/lib/site-metadata";
+import { useFormatters } from "#/lib/use-formatters";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
 
@@ -162,8 +163,8 @@ const styles = stylex.create({
     boxSizing: "border-box",
     marginTop: spacing["6"],
     paddingBottom: spacing["10"],
-    paddingLeft: spacing["8"],
-    paddingRight: spacing["8"],
+    paddingInlineStart: spacing["8"],
+    paddingInlineEnd: spacing["8"],
     paddingTop: spacing["10"],
   },
   emptyTitle: {
@@ -257,8 +258,9 @@ function ArticleRowSkeleton({
 }
 
 function LatestFeedSkeleton({ rows = SKELETON_ROWS }: { rows?: number }) {
+  const { t } = useLingui();
   return (
-    <div aria-busy="true" aria-label="Loading articles">
+    <div aria-busy="true" aria-label={t`Loading articles`}>
       {Array.from({ length: rows }, (_, index) => (
         <ArticleRowSkeleton
           key={index}
@@ -384,36 +386,50 @@ function LatestFeedPanel({
         {isTrending ? (
           <Flex direction="column" gap="2xl" style={styles.emptyCard}>
             <span {...stylex.props(styles.emptyTitle)}>
-              Nothing trending yet
+              <Trans>Nothing trending yet</Trans>
             </span>
             <span {...stylex.props(styles.emptyDek)}>
-              No articles are trending across the network right now. Check back
-              soon.
+              <Trans>
+                No articles are trending across the network right now. Check
+                back soon.
+              </Trans>
             </span>
           </Flex>
         ) : isNetwork ? (
           <Flex direction="column" gap="2xl" style={styles.emptyCard}>
-            <span {...stylex.props(styles.emptyTitle)}>Nothing here yet</span>
+            <span {...stylex.props(styles.emptyTitle)}>
+              <Trans>Nothing here yet</Trans>
+            </span>
             <span {...stylex.props(styles.emptyDek)}>
-              Nothing has been published across the network recently.
+              <Trans>
+                Nothing has been published across the network recently.
+              </Trans>
             </span>
           </Flex>
         ) : counts.subscriptions === 0 ? (
           <Flex direction="column" gap="2xl" style={styles.emptyCard}>
-            <span {...stylex.props(styles.emptyTitle)}>Nothing here yet</span>
+            <span {...stylex.props(styles.emptyTitle)}>
+              <Trans>Nothing here yet</Trans>
+            </span>
             <span {...stylex.props(styles.emptyDek)}>
-              Follow a few publications and their latest writing will show up
-              here.
+              <Trans>
+                Follow a few publications and their latest writing will show up
+                here.
+              </Trans>
             </span>
             <Flex>
-              <ButtonLink to="/discover">Explore the directory</ButtonLink>
+              <ButtonLink to="/discover">
+                <Trans>Explore the directory</Trans>
+              </ButtonLink>
             </Flex>
           </Flex>
         ) : (
           <Flex direction="column" gap="2xl" style={styles.emptyCard}>
-            <span {...stylex.props(styles.emptyTitle)}>All caught up</span>
+            <span {...stylex.props(styles.emptyTitle)}>
+              <Trans>All caught up</Trans>
+            </span>
             <span {...stylex.props(styles.emptyDek)}>
-              No unread articles from your follows right now.
+              <Trans>No unread articles from your follows right now.</Trans>
             </span>
             <Flex>
               <Button
@@ -422,7 +438,7 @@ function LatestFeedPanel({
                   void navigate({ search: { filter: "subscriptions" } })
                 }
               >
-                Show all subscriptions
+                <Trans>Show all subscriptions</Trans>
               </Button>
             </Flex>
           </Flex>
@@ -446,7 +462,9 @@ function LatestFeedPanel({
       </div>
 
       {nextOffset == null ? (
-        <p {...stylex.props(styles.endNote)}>You&apos;ve reached the end.</p>
+        <p {...stylex.props(styles.endNote)}>
+          <Trans>You&apos;ve reached the end.</Trans>
+        </p>
       ) : (
         <>
           <div
@@ -462,6 +480,8 @@ function LatestFeedPanel({
 }
 
 function Latest() {
+  const { t } = useLingui();
+  const fmt = useFormatters();
   const { filter } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
@@ -560,47 +580,59 @@ function Latest() {
 
   const unreadLabel = (
     <LatestTabLabel
-      name="Unread"
+      name={t`Unread`}
       count={counts.unread}
       pending={countsPending}
-      formatCountValue={formatCount}
+      formatCountValue={fmt.compactNumber}
     />
   );
   const subscriptionsLabel = (
     <LatestTabLabel
-      name="Subscriptions"
+      name={t`Subscriptions`}
       count={counts.subscriptions}
       pending={countsPending}
-      formatCountValue={formatCount}
+      formatCountValue={fmt.compactNumber}
     />
   );
   const allLabel = (
     <LatestTabLabel
-      name="All"
+      name={t`All`}
       count={counts.all}
       pending={countsPending}
-      formatCountValue={formatCount}
+      formatCountValue={fmt.compactNumber}
     />
   );
   const trendingLabel = (
     <LatestTabLabel
-      name="Trending"
+      name={t`Trending`}
       count={Math.min(counts.trending, TRENDING_PAGE_LIMIT)}
       pending={countsPending}
-      formatCountValue={formatCount}
+      formatCountValue={fmt.compactNumber}
     />
   );
 
   const isTrending = filter === "trending";
   const isNetwork = !signedIn || filter === "all" || isTrending;
 
-  const metaValueText = isTrending
-    ? `${formatCount(Math.min(counts.trending, TRENDING_PAGE_LIMIT))} articles`
+  const trendingCount = Math.min(counts.trending, TRENDING_PAGE_LIMIT);
+  const metaCount = isTrending
+    ? trendingCount
     : isNetwork
-      ? `${formatCount(counts.all)} articles`
+      ? counts.all
       : filter === "unread"
-        ? `${formatCount(counts.unread)} unread`
-        : `${formatCount(counts.subscriptions)} articles`;
+        ? counts.unread
+        : counts.subscriptions;
+  const formattedMetaCount = fmt.compactNumber(metaCount);
+  const metaValueText =
+    !isTrending && !isNetwork && filter === "unread" ? (
+      <Trans>{formattedMetaCount} unread</Trans>
+    ) : (
+      <Plural
+        value={metaCount}
+        one={`${formattedMetaCount} article`}
+        other={`${formattedMetaCount} articles`}
+      />
+    );
 
   const skeletonRows = Math.min(pageSize, SKELETON_ROWS);
 
@@ -609,18 +641,20 @@ function Latest() {
       <Masthead
         kicker={
           isTrending || isNetwork
-            ? "Across the network"
-            : "From your subscriptions"
+            ? t`Across the network`
+            : t`From your subscriptions`
         }
-        title={isTrending ? "Trending" : "Latest"}
+        title={isTrending ? t`Trending` : t`Latest`}
         dek={
           isTrending
-            ? "Articles gaining attention across the network right now."
+            ? t`Articles gaining attention across the network right now.`
             : isNetwork
-              ? "Everything published recently across the whole network."
-              : "Everything published recently across the publications you subscribe to."
+              ? t`Everything published recently across the whole network.`
+              : t`Everything published recently across the publications you subscribe to.`
         }
-        metaLabel={isTrending || isNetwork ? "On the network" : "In your feed"}
+        metaLabel={
+          isTrending || isNetwork ? t`On the network` : t`In your feed`
+        }
         metaValue={
           countsPending ? (
             <Skeleton
@@ -657,14 +691,14 @@ function Latest() {
         ) : (
           <Flex>
             <ButtonLink to="/login" search={loginSearch} variant="secondary">
-              Log in to follow publications
+              <Trans>Log in to follow publications</Trans>
             </ButtonLink>
           </Flex>
         )}
         <Flex align="center" gap="md">
           {signedIn && filter === "unread" ? (
             <RssFeedButton
-              name="Your Latest"
+              name={t`Your Latest`}
               feedUrl={latestFeedUrl(getPublicUrlClient(), readerScope)}
               size="lg"
             />
@@ -681,16 +715,20 @@ function Latest() {
                 <IconButton
                   variant="secondary"
                   size="lg"
-                  label="Mark all as read"
+                  label={t`Mark all as read`}
                 >
                   <CheckCheck size={18} />
                 </IconButton>
               }
             >
-              <AlertDialogHeader>Mark all as read?</AlertDialogHeader>
+              <AlertDialogHeader>
+                <Trans>Mark all as read?</Trans>
+              </AlertDialogHeader>
               <AlertDialogDescription>
-                Every unread article in your subscriptions will be marked read.
-                This can’t be undone.
+                <Trans>
+                  Every unread article in your subscriptions will be marked
+                  read. This can’t be undone.
+                </Trans>
               </AlertDialogDescription>
               <AlertDialogFooter>
                 <AlertDialogCancelButton isDisabled={markingAllRead} />
@@ -699,7 +737,7 @@ function Latest() {
                   isPending={markingAllRead}
                   onPress={() => markAllRead()}
                 >
-                  Mark all as read
+                  <Trans>Mark all as read</Trans>
                 </AlertDialogActionButton>
               </AlertDialogFooter>
             </AlertDialog>

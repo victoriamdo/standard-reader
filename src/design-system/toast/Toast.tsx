@@ -45,7 +45,7 @@ const styles = stylex.create({
     position: "fixed",
     zIndex: 9999,
     bottom: verticalSpace["3xl"],
-    right: horizontalSpace["3xl"],
+    insetInlineEnd: horizontalSpace["3xl"],
   },
   toast: {
     gap: gap["2xl"],
@@ -55,8 +55,8 @@ const styles = stylex.create({
     justifyContent: "space-between",
     minWidth: sizeSpace["10xl"],
     paddingBottom: verticalSpace["xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["xl"],
   },
   content: {

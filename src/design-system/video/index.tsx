@@ -65,10 +65,10 @@ const styles = stylex.create({
     width: "100%",
   },
   rounded: {
-    borderBottomLeftRadius: radius.lg,
-    borderBottomRightRadius: radius.lg,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderEndStartRadius: radius.lg,
+    borderEndEndRadius: radius.lg,
+    borderStartStartRadius: radius.lg,
+    borderStartEndRadius: radius.lg,
   },
   controller: {
     display: "block",
@@ -120,8 +120,8 @@ const styles = stylex.create({
     transitionTimingFunction: "linear",
     zIndex: 1,
     bottom: 0,
-    left: horizontalSpace["2xl"],
-    right: horizontalSpace["2xl"],
+    insetInlineStart: horizontalSpace["2xl"],
+    insetInlineEnd: horizontalSpace["2xl"],
   }),
   subtitleText: {
     borderRadius: radius.sm,
@@ -134,8 +134,8 @@ const styles = stylex.create({
     whiteSpace: "pre-wrap",
     maxWidth: "100%",
     paddingBottom: verticalSpace.sm,
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
     paddingTop: verticalSpace.sm,
   },
 });

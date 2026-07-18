@@ -27,7 +27,7 @@ const styles = stylex.create({
     color: uiColor.text1,
     fontFamily: fontFamily.sans,
     fontSize: fontSize.xs,
-    marginLeft: "0.35em",
+    marginInlineStart: "0.35em",
   },
 });
 

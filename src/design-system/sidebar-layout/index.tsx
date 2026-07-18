@@ -3,6 +3,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { ArrowRightFromLineIcon } from "lucide-react";
 
+import { DirectionalIcon } from "../directional-icon";
 import { Drawer } from "../drawer";
 import { IconButton } from "../icon-button";
 import { uiColor } from "../theme/color.stylex";
@@ -24,8 +25,8 @@ const styles = stylex.create({
     containerType: "inline-size",
     display: "flex",
     flexDirection: "row",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "var(--page-content-max-width)",
     minHeight: "100cqh",
     width: "100%",
@@ -48,9 +49,9 @@ const styles = stylex.create({
     },
     flexShrink: 0,
     position: "sticky",
-    borderRightColor: uiColor.border1,
-    borderRightStyle: "solid",
-    borderRightWidth: 1,
+    borderInlineEndColor: uiColor.border1,
+    borderInlineEndStyle: "solid",
+    borderInlineEndWidth: 1,
     height: "100cqh",
     overflowX: "hidden",
     overflowY: "auto",
@@ -74,7 +75,7 @@ const styles = stylex.create({
       [containerBreakpoints.md]: "none",
     },
     position: "absolute",
-    left: horizontalSpace["md"],
+    insetInlineStart: horizontalSpace["md"],
     top: verticalSpace["md"],
   },
   page: {
@@ -89,12 +90,12 @@ const styles = stylex.create({
       [containerBreakpoints.sm]: verticalSpace["10xl"],
       ":has(> [data-header-layout=true])": "0 !important",
     },
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["9xl"],
       ":has(> [data-header-layout=true])": "0 !important",
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.lg]: horizontalSpace["6xl"],
       ":has(> [data-header-layout=true])": "0 !important",
@@ -159,7 +160,7 @@ export const SidebarLayoutNavigationSidebar = ({
             variant="outline"
             style={styles.drawer as unknown as stylex.StyleXStyles}
           >
-            <ArrowRightFromLineIcon />
+            <DirectionalIcon as={ArrowRightFromLineIcon} />
           </IconButton>
         }
         direction="left"

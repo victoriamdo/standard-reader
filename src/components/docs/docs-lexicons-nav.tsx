@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 
 import {
@@ -19,14 +20,15 @@ export function DocsLexiconsNav({
 }: {
   entries: Array<LexiconDocsEntry>;
 }) {
+  const { t } = useLingui();
   const active = useDocsScrollSpyActive();
 
   return (
-    <nav {...stylex.props(docsStyles.refNav)} aria-label="Lexicon reference">
+    <nav {...stylex.props(docsStyles.refNav)} aria-label={t`Lexicon reference`}>
       <div {...stylex.props(docsStyles.refNavGroup)}>
         <div {...stylex.props(docsStyles.refNavHeadingRow)}>
           <span {...stylex.props(docsStyles.refNavHeading)}>
-            Getting started
+            <Trans>Getting started</Trans>
           </span>
         </div>
         <a
@@ -37,7 +39,7 @@ export function DocsLexiconsNav({
               docsStyles.refNavLinkActive,
           )}
         >
-          Overview
+          <Trans>Overview</Trans>
         </a>
         <a
           href={`#${LEXICON_DOCS_INTRO_IDS.namespace}`}
@@ -47,7 +49,7 @@ export function DocsLexiconsNav({
               docsStyles.refNavLinkActive,
           )}
         >
-          Namespace
+          <Trans>Namespace</Trans>
         </a>
       </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
 import { Check, Plus } from "lucide-react";
@@ -73,8 +74,8 @@ const styles = stylex.create({
     justifyContent: "center",
     minHeight: "100vh",
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
     width: "100%",
   },
@@ -113,8 +114,8 @@ const styles = stylex.create({
     boxSizing: "border-box",
     color: "var(--sub-fg)",
     display: "flex",
-    paddingLeft: horizontalSpace["2xl"],
-    paddingRight: horizontalSpace["2xl"],
+    paddingInlineStart: horizontalSpace["2xl"],
+    paddingInlineEnd: horizontalSpace["2xl"],
     width: "100%",
   },
   cardResponsive: {
@@ -122,7 +123,7 @@ const styles = stylex.create({
       gap: gap.xl,
       alignItems: "center",
       flexDirection: "row",
-      textAlign: "left",
+      textAlign: "start",
       paddingBottom: verticalSpace["2xl"],
       paddingTop: verticalSpace["2xl"],
     },
@@ -145,7 +146,7 @@ const styles = stylex.create({
     gap: gap.xl,
     alignItems: "center",
     flexDirection: "row",
-    textAlign: "left",
+    textAlign: "start",
     paddingBottom: verticalSpace["2xl"],
     paddingTop: verticalSpace["2xl"],
   },
@@ -205,10 +206,13 @@ const styles = stylex.create({
     fontSize: fontSize.xs,
     lineHeight: lineHeight.sm,
   },
+  // Display names and handles are user content; isolate each so the bidi
+  // algorithm can't reorder them across the `·` separator under an RTL UI.
   authorNameLink: {
     textDecoration: { default: "none", ":hover": "underline" },
     color: "inherit",
     textDecorationColor: "currentColor",
+    unicodeBidi: "isolate",
   },
   authorHandle: {
     textDecoration: { default: "none", ":hover": "underline" },
@@ -216,6 +220,7 @@ const styles = stylex.create({
     fontFamily: fontFamily.mono,
     letterSpacing: tracking.tight,
     textDecorationColor: "currentColor",
+    unicodeBidi: "isolate",
   },
   dek: {
     margin: 0,
@@ -310,7 +315,7 @@ const styles = stylex.create({
     position: "fixed",
     zIndex: 1,
     bottom: verticalSpace.lg,
-    right: horizontalSpace.lg,
+    insetInlineEnd: horizontalSpace.lg,
   },
 });
 
@@ -369,7 +374,7 @@ function SubscribeCardActions({
         {...stylex.props(styles.actions, actionShell)}
       >
         <Button variant="primary" style={actionButton}>
-          <Plus size={16} aria-hidden /> Subscribe
+          <Plus size={16} aria-hidden /> <Trans>Subscribe</Trans>
         </Button>
       </a>
     );
@@ -384,7 +389,7 @@ function SubscribeCardActions({
           variant="primary"
           style={actionButton}
         >
-          <Plus size={16} aria-hidden /> Subscribe
+          <Plus size={16} aria-hidden /> <Trans>Subscribe</Trans>
         </ButtonLink>
       </div>
     );
@@ -394,7 +399,7 @@ function SubscribeCardActions({
     return (
       <div {...stylex.props(styles.actions, actionShell)}>
         <Button variant="primary" isDisabled style={actionButton}>
-          Subscribing…
+          <Trans>Subscribing…</Trans>
         </Button>
       </div>
     );
@@ -466,6 +471,7 @@ function SubscribePageOutcome({
   body: string;
   pending?: boolean;
 }) {
+  const { t } = useLingui();
   const colors = publicationThemeColors(meta);
 
   return (
@@ -483,7 +489,7 @@ function SubscribePageOutcome({
                 <ProgressCircle
                   isIndeterminate
                   size="md"
-                  aria-label="Subscribing"
+                  aria-label={t`Subscribing`}
                 />
               ) : (
                 <div {...stylex.props(styles.successIcon)}>
@@ -499,7 +505,7 @@ function SubscribePageOutcome({
         </div>
       </div>
       <Link to="/" {...stylex.props(styles.poweredBy)}>
-        Powered by Standard Reader
+        <Trans>Powered by Standard Reader</Trans>
       </Link>
     </>
   );
@@ -524,12 +530,15 @@ export function SubscribeCard({
   /** Shown on the subscribe route when auto-follow fails. */
   errorMessage?: string;
 }) {
+  const { t } = useLingui();
+  const publicationName = meta.name;
+
   if (shell === "page") {
     if (errorMessage) {
       return (
         <SubscribePageOutcome
           meta={meta}
-          title="Couldn't subscribe"
+          title={t`Couldn't subscribe`}
           body={errorMessage}
         />
       );
@@ -540,8 +549,8 @@ export function SubscribeCard({
         <SubscribePageOutcome
           meta={meta}
           pending
-          title="Subscribing…"
-          body={`Adding ${meta.name} to your feed.`}
+          title={t`Subscribing…`}
+          body={t`Adding ${publicationName} to your feed.`}
         />
       );
     }
@@ -551,12 +560,12 @@ export function SubscribeCard({
         <SubscribePageOutcome
           meta={meta}
           title={
-            phase === "already" ? "Already subscribed" : "You're subscribed"
+            phase === "already" ? t`Already subscribed` : t`You're subscribed`
           }
           body={
             phase === "already"
-              ? `You're already subscribed to ${meta.name}. New posts will show up in your feed.`
-              : `${meta.name} is in your feed. You'll see new writing as it publishes.`
+              ? t`You're already subscribed to ${publicationName}. New posts will show up in your feed.`
+              : t`${publicationName} is in your feed. You'll see new writing as it publishes.`
           }
         />
       );
@@ -588,12 +597,12 @@ export function SubscribeCard({
         </div>
         <Flex direction="column" align="center" gap="md">
           <h1 {...stylex.props(styles.successTitle)}>
-            {phase === "already" ? "Already subscribed" : "You're subscribed"}
+            {phase === "already" ? t`Already subscribed` : t`You're subscribed`}
           </h1>
           <p {...stylex.props(styles.successBody)}>
             {phase === "already"
-              ? `You're already subscribed to ${meta.name}. New posts will show up in your feed.`
-              : `${meta.name} is in your feed. You'll see new writing as it publishes.`}
+              ? t`You're already subscribed to ${publicationName}. New posts will show up in your feed.`
+              : t`${publicationName} is in your feed. You'll see new writing as it publishes.`}
           </p>
         </Flex>
       </Flex>
@@ -656,7 +665,10 @@ export function SubscribeCard({
           </p>
         ) : null}
         {meta.description ? (
-          <p {...stylex.props(styles.dek, dekLayoutStyle(layoutMode))}>
+          <p
+            dir="auto"
+            {...stylex.props(styles.dek, dekLayoutStyle(layoutMode))}
+          >
             {meta.description}
           </p>
         ) : null}

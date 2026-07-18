@@ -37,8 +37,8 @@ const styles = stylex.create({
     transitionTimingFunction: "ease-in-out",
     userSelect: "none",
     paddingBottom: verticalSpace["sm"],
-    paddingLeft: horizontalSpace["sm"],
-    paddingRight: horizontalSpace["sm"],
+    paddingInlineStart: horizontalSpace["sm"],
+    paddingInlineEnd: horizontalSpace["sm"],
     paddingTop: verticalSpace["sm"],
 
     outline: {
@@ -82,8 +82,8 @@ const styles = stylex.create({
     justifyContent: "center",
     height: sizeSpace["3xl"],
     paddingBottom: verticalSpace["sm"],
-    paddingLeft: horizontalSpace["sm"],
-    paddingRight: horizontalSpace["sm"],
+    paddingInlineStart: horizontalSpace["sm"],
+    paddingInlineEnd: horizontalSpace["sm"],
     paddingTop: verticalSpace["sm"],
     width: sizeSpace["3xl"],
 
@@ -149,8 +149,8 @@ const styles = stylex.create({
       position: "absolute",
       bottom: `calc(${verticalSpace["xxs"]} * -1)`,
       height: "2px",
-      left: 0,
-      right: 0,
+      insetInlineStart: 0,
+      insetInlineEnd: 0,
       width: "100%",
     },
   },
@@ -177,7 +177,7 @@ const styles = stylex.create({
     outlineOffset: "2px",
   },
   menuDisclosurePanel: {
-    marginLeft: `calc(${horizontalSpace["sm"]} * -1)`,
+    marginInlineStart: `calc(${horizontalSpace["sm"]} * -1)`,
     paddingTop: verticalSpace["md"],
   },
 });

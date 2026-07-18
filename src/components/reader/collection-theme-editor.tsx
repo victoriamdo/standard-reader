@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check } from "lucide-react";
@@ -103,8 +104,8 @@ const styles = stylex.create({
     backgroundColor: "var(--accent)",
     height: "3px",
     marginBottom: "0.75rem",
-    marginLeft: "0",
-    marginRight: "0",
+    marginInlineStart: "0",
+    marginInlineEnd: "0",
     marginTop: "0.6rem",
     width: "3.5rem",
   },
@@ -122,8 +123,8 @@ const styles = stylex.create({
     fontSize: "0.8rem",
     lineHeight: 1.5,
     marginBottom: "0",
-    marginLeft: "0",
-    marginRight: "0",
+    marginInlineStart: "0",
+    marginInlineEnd: "0",
     marginTop: "0.75rem",
   },
   previewTocRow: {
@@ -166,8 +167,8 @@ const styles = stylex.create({
     fontWeight: 600,
     marginTop: "0.85rem",
     paddingBottom: "0.3rem",
-    paddingLeft: "0.7rem",
-    paddingRight: "0.7rem",
+    paddingInlineStart: "0.7rem",
+    paddingInlineEnd: "0.7rem",
     paddingTop: "0.3rem",
   },
   // Dynamic palette vars applied via stylex (no inline style → no bad merge).
@@ -225,7 +226,9 @@ function ContrastCheck({
   ratio: number;
   min: number;
 }) {
+  const { t } = useLingui();
   const ok = ratio >= min;
+  const needsNote = t`(needs ${min}:1)`;
   return (
     <Flex
       align="center"
@@ -238,7 +241,7 @@ function ContrastCheck({
         <AlertTriangle size={14} aria-hidden />
       )}
       <SmallBody>
-        {label} — {ratio.toFixed(1)}:1{ok ? "" : ` (needs ${min}:1)`}
+        {label} — {ratio.toFixed(1)}:1{ok ? "" : ` ${needsNote}`}
       </SmallBody>
     </Flex>
   );
@@ -276,19 +279,31 @@ function ThemePreview({
     >
       {fontsHref ? <link rel="stylesheet" href={fontsHref} /> : null}
       <div {...stylex.props(styles.previewInner, paletteVars)}>
-        <div {...stylex.props(styles.previewKicker)}>Your series</div>
+        <div {...stylex.props(styles.previewKicker)}>
+          <Trans>Your series</Trans>
+        </div>
         <div {...stylex.props(styles.previewRule)} aria-hidden />
-        <h3 {...stylex.props(styles.previewTitle)}>The Issue Title</h3>
+        <h3 {...stylex.props(styles.previewTitle)}>
+          <Trans>The Issue Title</Trans>
+        </h3>
         <p {...stylex.props(styles.previewBody)}>
-          A sentence of body copy, set in your chosen fonts and colors, so you
-          can see how it all reads together before you save.
+          <Trans>
+            A sentence of body copy, set in your chosen fonts and colors, so you
+            can see how it all reads together before you save.
+          </Trans>
         </p>
         <div {...stylex.props(styles.previewTocRow)}>
           <span {...stylex.props(styles.previewTocN)}>01</span>
-          <span {...stylex.props(styles.previewTocT)}>An included article</span>
-          <span {...stylex.props(styles.previewTocP)}>Series</span>
+          <span {...stylex.props(styles.previewTocT)}>
+            <Trans>An included article</Trans>
+          </span>
+          <span {...stylex.props(styles.previewTocP)}>
+            <Trans>Series</Trans>
+          </span>
         </div>
-        <div {...stylex.props(styles.previewAccentPill)}>Read the piece →</div>
+        <div {...stylex.props(styles.previewAccentPill)}>
+          <Trans>Read the piece →</Trans>
+        </div>
       </div>
     </div>
   );
@@ -303,6 +318,7 @@ function ThemeForm({
   publicationRkey: string;
   close: () => void;
 }) {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
   const [background, setBackground] = useState(
     theme.background ?? DEFAULTS.background,
@@ -366,33 +382,37 @@ function ThemeForm({
         <Flex gap="4xl" style={styles.columns}>
           <Flex direction="column" gap="6xl" style={styles.controls}>
             <Flex direction="column" gap="2xl">
-              <span {...stylex.props(styles.sectionHead)}>Colors</span>
+              <span {...stylex.props(styles.sectionHead)}>
+                <Trans>Colors</Trans>
+              </span>
               <ColorRow
-                label="Background"
+                label={t`Background`}
                 value={background}
                 onChange={setBackground}
               />
               <ColorRow
-                label="Text"
+                label={t`Text`}
                 value={foreground}
                 onChange={setForeground}
               />
-              <ColorRow label="Accent" value={accent} onChange={setAccent} />
+              <ColorRow label={t`Accent`} value={accent} onChange={setAccent} />
               <ColorRow
-                label="Accent text"
+                label={t`Accent text`}
                 value={accentForeground}
                 onChange={setAccentForeground}
               />
             </Flex>
             <Flex direction="column" gap="2xl">
-              <span {...stylex.props(styles.sectionHead)}>Fonts</span>
+              <span {...stylex.props(styles.sectionHead)}>
+                <Trans>Fonts</Trans>
+              </span>
               <ReadingCustomFontPicker
-                label="Title font"
+                label={t`Title font`}
                 value={fontTitle}
                 onChange={setFontTitle}
               />
               <ReadingCustomFontPicker
-                label="Body font"
+                label={t`Body font`}
                 value={fontBody}
                 onChange={setFontBody}
               />
@@ -401,35 +421,43 @@ function ThemeForm({
 
           <Flex direction="column" gap="2xl" style={styles.previewCol}>
             <Flex align="center" justify="between" gap="md">
-              <SmallBody variant="secondary">Preview</SmallBody>
+              <SmallBody variant="secondary">
+                <Trans>Preview</Trans>
+              </SmallBody>
               <SegmentedControl
-                aria-label="Preview mode"
+                aria-label={t`Preview mode`}
                 selectedKeys={new Set([previewMode])}
                 onSelectionChange={(keys) => {
                   const next = [...keys][0];
                   if (next === "light" || next === "dark") setPreviewMode(next);
                 }}
               >
-                <SegmentedControlItem id="light">Light</SegmentedControlItem>
-                <SegmentedControlItem id="dark">Dark</SegmentedControlItem>
+                <SegmentedControlItem id="light">
+                  <Trans>Light</Trans>
+                </SegmentedControlItem>
+                <SegmentedControlItem id="dark">
+                  <Trans>Dark</Trans>
+                </SegmentedControlItem>
               </SegmentedControl>
             </Flex>
             <ThemePreview theme={previewTheme} mode={previewMode} />
 
             <Flex direction="column" gap="sm">
-              <span {...stylex.props(styles.sectionHead)}>Contrast</span>
+              <span {...stylex.props(styles.sectionHead)}>
+                <Trans>Contrast</Trans>
+              </span>
               <ContrastCheck
-                label="Text on background"
+                label={t`Text on background`}
                 ratio={contrastRatio(foreground, background)}
                 min={4.5}
               />
               <ContrastCheck
-                label="Accent on background"
+                label={t`Accent on background`}
                 ratio={contrastRatio(accent, background)}
                 min={3}
               />
               <ContrastCheck
-                label="Text on accent"
+                label={t`Text on accent`}
                 ratio={contrastRatio(accentForeground, accent)}
                 min={4.5}
               />
@@ -439,14 +467,14 @@ function ThemeForm({
       </DialogBody>
       <DialogFooter>
         <Button variant="secondary" onPress={close}>
-          Cancel
+          <Trans>Cancel</Trans>
         </Button>
         <Button
           variant="primary"
           isDisabled={saveMutation.isPending}
           onPress={save}
         >
-          Save theme
+          <Trans>Save theme</Trans>
         </Button>
       </DialogFooter>
     </>
@@ -474,7 +502,9 @@ export function CollectionThemeEditor({
       trigger={<span hidden aria-hidden />}
     >
       <DialogHeader>
-        <span {...stylex.props(styles.headerTitle)}>Theme &amp; fonts</span>
+        <span {...stylex.props(styles.headerTitle)}>
+          <Trans>Theme &amp; fonts</Trans>
+        </span>
       </DialogHeader>
       <ThemeForm
         key={isOpen ? publicationRkey : "closed"}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { Link as LinkIcon, Play, Share2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -34,7 +35,7 @@ const styles = stylex.create({
     position: "fixed",
     transform: "translate(-50%, calc(-100% - 12px))",
     zIndex: 1000,
-    left: 0,
+    insetInlineStart: 0,
     top: 0,
   },
   shell: {
@@ -48,8 +49,8 @@ const styles = stylex.create({
     transitionProperty: "opacity, transform",
     transitionTimingFunction: "ease-out",
     paddingBottom: verticalSpace.xs,
-    paddingLeft: horizontalSpace.xs,
-    paddingRight: horizontalSpace.xs,
+    paddingInlineStart: horizontalSpace.xs,
+    paddingInlineEnd: horizontalSpace.xs,
     paddingTop: verticalSpace.xs,
   },
   shellVisible: {
@@ -106,6 +107,7 @@ export function TextSelectionToolbar({
   did: string;
   rkey: string;
 }) {
+  const { t } = useLingui();
   const anchorRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(false);
   const isSelectingRef = useRef(false);
@@ -189,7 +191,7 @@ export function TextSelectionToolbar({
     } catch {
       toasts.add(
         {
-          title: "Couldn't create share link",
+          title: t`Couldn't create share link`,
           variant: "critical",
         },
         { timeout: 3000 },
@@ -198,7 +200,7 @@ export function TextSelectionToolbar({
     } finally {
       setSharePending(false);
     }
-  }, [did, documentUri, rkey, shareUrl, toolbar]);
+  }, [did, documentUri, rkey, shareUrl, t, toolbar]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -281,7 +283,7 @@ export function TextSelectionToolbar({
     void navigator.clipboard.writeText(url).then(() => {
       toasts.add(
         {
-          title: "Link copied",
+          title: t`Link copied`,
           variant: "success",
         },
         {
@@ -289,7 +291,7 @@ export function TextSelectionToolbar({
         },
       );
     });
-  }, [ensureShareUrl]);
+  }, [ensureShareUrl, t]);
 
   const dismissAfterShare = useCallback(() => {
     hideToolbar();
@@ -322,12 +324,12 @@ export function TextSelectionToolbar({
       return buildQuoteShareUrl(did, rkey, id);
     } catch {
       toasts.add(
-        { title: "Couldn't create share link", variant: "critical" },
+        { title: t`Couldn't create share link`, variant: "critical" },
         { timeout: 3000 },
       );
       return null;
     }
-  }, [did, documentUri, rkey, savePassage]);
+  }, [did, documentUri, rkey, savePassage, t]);
 
   const onPlayPress = useCallback(() => {
     if (!toolbar) return;
@@ -346,24 +348,24 @@ export function TextSelectionToolbar({
               style={{ left: toolbar.x, top: toolbar.y }}
             >
               <Toolbar
-                aria-label="Text selection actions"
+                aria-label={t`Text selection actions`}
                 style={[styles.shell, styles.shellVisible]}
               >
-                <ToolbarGroup aria-label="Listen">
+                <ToolbarGroup aria-label={t`Listen`}>
                   <IconButton
                     variant="tertiary"
                     size="lg"
-                    label="Read from here"
+                    label={t`Read from here`}
                     onPress={onPlayPress}
                   >
                     <Play size={18} />
                   </IconButton>
                 </ToolbarGroup>
-                <ToolbarGroup aria-label="Share">
+                <ToolbarGroup aria-label={t`Share`}>
                   <IconButton
                     variant="tertiary"
                     size="lg"
-                    label="Copy link"
+                    label={t`Copy link`}
                     isDisabled={sharePending}
                     onPress={onCopyLinkPress}
                   >
@@ -376,17 +378,23 @@ export function TextSelectionToolbar({
                     onOpenChange={setShareMenuOpen}
                     onShare={dismissAfterShare}
                     trigger={
-                      <IconButton variant="tertiary" size="lg" label="Share">
+                      <IconButton variant="tertiary" size="lg" label={t`Share`}>
                         <Share2 size={18} />
                       </IconButton>
                     }
                   >
                     <MenuSeparator />
-                    <MenuItem onPress={() => openSaveDialog("margin")}>
-                      Save to Margin…
+                    <MenuItem
+                      onPress={() => openSaveDialog("margin")}
+                      textValue={t`Save to Margin…`}
+                    >
+                      <Trans>Save to Margin…</Trans>
                     </MenuItem>
-                    <MenuItem onPress={() => openSaveDialog("semble")}>
-                      Save to Semble…
+                    <MenuItem
+                      onPress={() => openSaveDialog("semble")}
+                      textValue={t`Save to Semble…`}
+                    >
+                      <Trans>Save to Semble…</Trans>
                     </MenuItem>
                   </LinkShareMenu>
                 </ToolbarGroup>

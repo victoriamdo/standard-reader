@@ -60,15 +60,15 @@ const styles = stylex.create({
       ":is([data-orientation=horizontal])": 1,
       ":is([data-orientation=vertical])": 0,
     },
-    borderRightColor: {
+    borderInlineEndColor: {
       ":is([data-orientation=horizontal])": "transparent",
       ":is([data-orientation=vertical])": uiColor.border2,
     },
-    borderRightStyle: {
+    borderInlineEndStyle: {
       ":is([data-orientation=horizontal])": "none",
       ":is([data-orientation=vertical])": "solid",
     },
-    borderRightWidth: {
+    borderInlineEndWidth: {
       ":is([data-orientation=horizontal])": 0,
       ":is([data-orientation=vertical])": 1,
     },
@@ -107,12 +107,12 @@ const styles = stylex.create({
       ":is([data-size=md] *)": sizeSpace["xxs"],
       ":is([data-size=sm] *)": sizeSpace["sm"],
     },
-    paddingLeft: {
+    paddingInlineStart: {
       ":is([data-size=lg] *)": sizeSpace["lg"],
       ":is([data-size=md] *)": sizeSpace["md"],
       ":is([data-size=sm] *)": sizeSpace["xxs"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       ":is([data-size=lg] *)": sizeSpace["lg"],
       ":is([data-size=md] *)": sizeSpace["md"],
       ":is([data-size=sm] *)": sizeSpace["xxs"],
@@ -145,16 +145,16 @@ const styles = stylex.create({
       ":is([data-orientation=horizontal] *)": 3,
       ":is([data-orientation=vertical] *)": 0,
     },
-    borderRightColor: {
+    borderInlineEndColor: {
       ":is([data-orientation=vertical] *)": "transparent",
       ":is([data-orientation=vertical] > [data-selected] > *)":
         primaryColor.solid1,
     },
-    borderRightStyle: {
+    borderInlineEndStyle: {
       ":is([data-orientation=horizontal] *)": "none",
       ":is([data-orientation=vertical] *)": "solid",
     },
-    borderRightWidth: {
+    borderInlineEndWidth: {
       ":is([data-orientation=horizontal] *)": 0,
       ":is([data-orientation=vertical] *)": 3,
     },
@@ -162,11 +162,11 @@ const styles = stylex.create({
       ":is([data-orientation=horizontal] *)": 0,
       ":is([data-orientation=vertical] *)": 0,
     },
-    left: {
+    insetInlineStart: {
       ":is([data-orientation=horizontal] *)": 0,
       ":is([data-orientation=vertical] *)": "unset",
     },
-    right: {
+    insetInlineEnd: {
       ":is([data-orientation=horizontal] *)": 0,
       ":is([data-orientation=vertical] *)": "0",
     },
@@ -191,12 +191,12 @@ const styles = stylex.create({
       ":is([data-size=md] *)": sizeSpace["md"],
       ":is([data-size=sm] *)": sizeSpace["xxs"],
     },
-    paddingLeft: {
+    paddingInlineStart: {
       ":is([data-size=lg] *)": sizeSpace["lg"],
       ":is([data-size=md] *)": sizeSpace["md"],
       ":is([data-size=sm] *)": sizeSpace["xxs"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       ":is([data-size=lg] *)": sizeSpace["lg"],
       ":is([data-size=md] *)": sizeSpace["md"],
       ":is([data-size=sm] *)": sizeSpace["xxs"],

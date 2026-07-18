@@ -36,9 +36,13 @@ const zoomOut = stylex.keyframes({
   },
 });
 
+// `left`/`right` here name the drawer's `data-direction` prop, which the RTL
+// pass made logical (the wrapper pins with insetInlineStart/insetInlineEnd), so
+// these slides have to follow the writing direction too. `translateX` is always
+// physical, hence the `--dir` multiplier (1 in LTR, -1 in RTL; see styles.css).
 const slideInRight = stylex.keyframes({
   from: {
-    transform: "translateX(100%)",
+    transform: "translateX(calc(var(--dir) * 100%))",
   },
   to: {
     transform: "translateX(0)",
@@ -50,13 +54,13 @@ const slideOutRight = stylex.keyframes({
     transform: "translateX(0)",
   },
   to: {
-    transform: "translateX(100%)",
+    transform: "translateX(calc(var(--dir) * 100%))",
   },
 });
 
 const slideInLeft = stylex.keyframes({
   from: {
-    transform: "translateX(-100%)",
+    transform: "translateX(calc(var(--dir) * -100%))",
   },
   to: {
     transform: "translateX(0)",
@@ -68,7 +72,7 @@ const slideOutLeft = stylex.keyframes({
     transform: "translateX(0)",
   },
   to: {
-    transform: "translateX(-100%)",
+    transform: "translateX(calc(var(--dir) * -100%))",
   },
 });
 

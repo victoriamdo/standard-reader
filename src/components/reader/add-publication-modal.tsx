@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Search as SearchIcon } from "lucide-react";
@@ -46,8 +47,8 @@ const styles = stylex.create({
     maxHeight: "56vh",
     overflowY: "auto",
     paddingBottom: spacing["5"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: spacing["5"],
   },
   searchField: {
@@ -64,8 +65,8 @@ const styles = stylex.create({
     display: "flex",
     rowGap: spacing["2.5"],
     transitionProperty: "border-color",
-    paddingLeft: spacing["3.5"],
-    paddingRight: spacing["3.5"],
+    paddingInlineStart: spacing["3.5"],
+    paddingInlineEnd: spacing["3.5"],
   },
   searchIcon: {
     color: uiColor.text1,
@@ -83,8 +84,8 @@ const styles = stylex.create({
     outlineStyle: "none",
     minWidth: 0,
     paddingBottom: spacing["3"],
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["3"],
   },
   searchInputPlaceholder: {
@@ -147,6 +148,7 @@ export function AddPublicationModal({
   onOpenChange?: (open: boolean) => void;
   showTrigger?: boolean;
 } = {}) {
+  const { t } = useLingui();
   const inputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -258,12 +260,14 @@ export function AddPublicationModal({
       return null;
     }
     if (!resolvedHandle?.did) {
-      return "Couldn't resolve that handle.";
+      return t`Couldn't resolve that handle.`;
     }
-    const label = resolvedHandle.handle
+    const handleLabel = resolvedHandle.handle
       ? `@${resolvedHandle.handle}`
-      : "this account";
-    return `No publications found for ${label}.`;
+      : null;
+    return handleLabel
+      ? t`No publications found for ${handleLabel}.`
+      : t`No publications found for this account.`;
   })();
 
   const closeModal = () => setOpen(false);
@@ -277,7 +281,7 @@ export function AddPublicationModal({
       trigger={
         showTrigger ? (
           <Button variant="primary" style={styles.trigger}>
-            <Plus size={16} /> Add publication
+            <Plus size={16} /> <Trans>Add publication</Trans>
           </Button>
         ) : (
           <span hidden aria-hidden />
@@ -285,7 +289,9 @@ export function AddPublicationModal({
       }
     >
       <DialogHeader>
-        <span {...stylex.props(styles.headerTitle)}>Add a publication</span>
+        <span {...stylex.props(styles.headerTitle)}>
+          <Trans>Add a publication</Trans>
+        </span>
       </DialogHeader>
       <div {...stylex.props(styles.body)}>
         <div {...stylex.props(styles.searchField)}>
@@ -302,8 +308,8 @@ export function AddPublicationModal({
             spellCheck={false}
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="Search by name, topic, or paste a handle (@user.domain)"
-            aria-label="Search publications or paste a handle"
+            placeholder={t`Search by name, topic, or paste a handle (@user.domain)`}
+            aria-label={t`Search publications or paste a handle`}
             {...stylex.props(styles.searchInput, styles.searchInputPlaceholder)}
           />
         </div>
@@ -335,7 +341,7 @@ export function AddPublicationModal({
             <div
               {...stylex.props(styles.disabledRow)}
               aria-disabled="true"
-              title="This account has documents but no publications to subscribe to"
+              title={t`This account has documents but no publications to subscribe to`}
             >
               <Avatar
                 size="lg"
@@ -349,7 +355,7 @@ export function AddPublicationModal({
                     : resolvedHandle.did}
                 </span>
                 <span {...stylex.props(styles.disabledNote)}>
-                  Has documents but no publications
+                  <Trans>Has documents but no publications</Trans>
                 </span>
               </Flex>
             </div>
@@ -357,7 +363,7 @@ export function AddPublicationModal({
             <p {...stylex.props(styles.emptyNote)}>{handleEmptyNote}</p>
           ) : hasQuery && !showLooseDocAccounts ? (
             <p {...stylex.props(styles.emptyNote)}>
-              No matches in the directory.
+              <Trans>No matches in the directory.</Trans>
             </p>
           ) : null}
           {showLooseDocAccounts
@@ -366,7 +372,7 @@ export function AddPublicationModal({
                   key={account.did}
                   {...stylex.props(styles.disabledRow)}
                   aria-disabled="true"
-                  title="This account has documents but no publications to subscribe to"
+                  title={t`This account has documents but no publications to subscribe to`}
                 >
                   <Avatar
                     size="lg"
@@ -382,11 +388,13 @@ export function AddPublicationModal({
                     </span>
                     {account.handle ? (
                       <span {...stylex.props(styles.disabledNote)}>
-                        @{account.handle} · Has documents but no publications
+                        <Trans>
+                          @{account.handle} · Has documents but no publications
+                        </Trans>
                       </span>
                     ) : (
                       <span {...stylex.props(styles.disabledNote)}>
-                        Has documents but no publications
+                        <Trans>Has documents but no publications</Trans>
                       </span>
                     )}
                   </Flex>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   useInfiniteQuery,
@@ -69,14 +70,14 @@ const MAX_ITEMS = 42;
 
 /** Centered, max-width inner container shared by the header and each band. */
 const innerPadding = {
-  marginLeft: "auto",
-  marginRight: "auto",
+  marginInlineStart: "auto",
+  marginInlineEnd: "auto",
   maxWidth: "1320px",
-  paddingLeft: {
+  paddingInlineStart: {
     default: spacing["5"],
     "@media (min-width: 40rem)": spacing["10"],
   },
-  paddingRight: {
+  paddingInlineEnd: {
     default: spacing["5"],
     "@media (min-width: 40rem)": spacing["10"],
   },
@@ -201,8 +202,8 @@ const styles = stylex.create({
     transform: "translateY(-50%)",
     zIndex: 2,
     height: CARD_GAP,
-    left: 0,
-    right: 0,
+    insetInlineStart: 0,
+    insetInlineEnd: 0,
   },
   dropIndicatorBar: {
     borderRadius: radius.full,
@@ -234,9 +235,9 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     rowGap: spacing["1"],
-    borderRightColor: uiColor.border1,
-    borderRightStyle: "solid",
-    borderRightWidth: 1,
+    borderInlineEndColor: uiColor.border1,
+    borderInlineEndStyle: "solid",
+    borderInlineEndWidth: 1,
     paddingBottom: verticalSpace.sm,
     paddingTop: verticalSpace.sm,
   },
@@ -249,8 +250,8 @@ const styles = stylex.create({
     alignSelf: "center",
     minWidth: 0,
     paddingBottom: verticalSpace.sm,
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.md,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.md,
     paddingTop: verticalSpace.sm,
   },
   dragPreviewTitle: {
@@ -268,9 +269,9 @@ const styles = stylex.create({
     backgroundColor: uiColor.bgSubtle,
     display: "flex",
     flexDirection: "column",
-    borderRightColor: uiColor.border1,
-    borderRightStyle: "solid",
-    borderRightWidth: 1,
+    borderInlineEndColor: uiColor.border1,
+    borderInlineEndStyle: "solid",
+    borderInlineEndWidth: 1,
     paddingBottom: spacing["2"],
     paddingTop: spacing["3"],
   },
@@ -287,8 +288,8 @@ const styles = stylex.create({
   },
   cardBody: {
     minWidth: 0,
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["4"],
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["4"],
     paddingTop: spacing["4"],
   },
   noteFooter: {
@@ -296,12 +297,12 @@ const styles = stylex.create({
     borderTopColor: uiColor.border1,
     borderTopStyle: "solid",
     borderTopWidth: 1,
-    marginLeft: `calc(${spacing["4"]} * -1)`,
-    marginRight: `calc(${spacing["4"]} * -1)`,
+    marginInlineStart: `calc(${spacing["4"]} * -1)`,
+    marginInlineEnd: `calc(${spacing["4"]} * -1)`,
     marginTop: spacing["4"],
     paddingBottom: spacing["3"],
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["4"],
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["4"],
     paddingTop: spacing["3"],
   },
   itemTitle: {
@@ -330,14 +331,14 @@ const styles = stylex.create({
   addEmpty: {
     display: "block",
     paddingBottom: verticalSpace.lg,
-    paddingLeft: horizontalSpace.xl,
-    paddingRight: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    paddingInlineEnd: horizontalSpace.xl,
     paddingTop: verticalSpace.lg,
   },
   addSearching: {
     paddingBottom: verticalSpace.lg,
-    paddingLeft: horizontalSpace.xl,
-    paddingRight: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    paddingInlineEnd: horizontalSpace.xl,
     paddingTop: verticalSpace.lg,
   },
   coverPreview: {
@@ -546,6 +547,7 @@ export function CollectionBuilder({
   onSaved: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [editorialBody, setEditorialBody] = useState(
@@ -590,7 +592,7 @@ export function CollectionBuilder({
           {
             uri: selectedPubUri,
             rkey: "",
-            name: "Series",
+            name: t`Series`,
             description: null,
             iconUrl: null,
             theme: {
@@ -754,30 +756,43 @@ export function CollectionBuilder({
   };
 
   const error = saveMutation.error;
+  const itemCount = items.length;
 
   return (
     <div>
       <div {...stylex.props(styles.heroInner)}>
         <div {...stylex.props(styles.heroInfo)}>
-          <Kicker icon={<Layers size={14} aria-hidden />}>Collections</Kicker>
+          <Kicker icon={<Layers size={14} aria-hidden />}>
+            <Trans>Collections</Trans>
+          </Kicker>
           <h1 {...stylex.props(styles.heroName)}>
-            {initial ? "Edit collection" : "New collection"}
+            {initial ? (
+              <Trans>Edit collection</Trans>
+            ) : (
+              <Trans>New collection</Trans>
+            )}
           </h1>
           <p {...stylex.props(styles.heroDesc)}>
-            Choose a series, give it a title and cover, then assemble the
-            articles you want to feature.
+            <Trans>
+              Choose a series, give it a title and cover, then assemble the
+              articles you want to feature.
+            </Trans>
           </p>
         </div>
         <div {...stylex.props(styles.heroActs)}>
           <Button variant="secondary" onPress={onCancel} isDisabled={busy}>
-            Cancel
+            <Trans>Cancel</Trans>
           </Button>
           <Button
             variant="primary"
             isDisabled={busy || title.trim().length === 0 || items.length === 0}
             onPress={save}
           >
-            {initial ? "Save collection" : "Create collection"}
+            {initial ? (
+              <Trans>Save collection</Trans>
+            ) : (
+              <Trans>Create collection</Trans>
+            )}
           </Button>
         </div>
       </div>
@@ -786,8 +801,8 @@ export function CollectionBuilder({
         <div {...stylex.props(styles.bandInner)}>
           <Flex direction="column" gap="2xl">
             <Select
-              label="Series"
-              description="Where this collection is published — followers of the series receive it."
+              label={t`Series`}
+              description={t`Where this collection is published — followers of the series receive it.`}
               size="lg"
               selectedKey={selectedPubUri}
               onSelectionChange={(key) => {
@@ -800,15 +815,15 @@ export function CollectionBuilder({
               }}
               items={[
                 ...pubOptions.map((pub) => ({ id: pub.uri, label: pub.name })),
-                { id: CREATE_PUBLICATION, label: "＋ New series…" },
+                { id: CREATE_PUBLICATION, label: t`＋ New series…` },
               ]}
             >
               {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
             </Select>
 
             <TextField
-              label="Title"
-              placeholder="e.g. The Spring Reading Issue"
+              label={t`Title`}
+              placeholder={t`e.g. The Spring Reading Issue`}
               value={title}
               onChange={setTitle}
               isRequired
@@ -816,11 +831,13 @@ export function CollectionBuilder({
             />
 
             <Flex direction="column" gap="md">
-              <Label size="lg">Cover</Label>
+              <Label size="lg">
+                <Trans>Cover</Trans>
+              </Label>
               {coverUrl ? (
                 <img
                   src={coverUrl}
-                  alt="Collection cover"
+                  alt={t`Collection cover`}
                   {...stylex.props(styles.coverPreview)}
                 />
               ) : null}
@@ -836,37 +853,37 @@ export function CollectionBuilder({
                   <ImagePlus size={16} aria-hidden />
                   <span>
                     {coverMutation.isPending
-                      ? "Uploading…"
+                      ? t`Uploading…`
                       : coverUrl
-                        ? "Drop or choose a new image to replace"
-                        : "Drop an image here, or choose a file"}
+                        ? t`Drop or choose a new image to replace`
+                        : t`Drop an image here, or choose a file`}
                   </span>
                   <FileDropDefaultTrigger>
-                    {coverUrl ? "Replace cover image" : null}
+                    {coverUrl ? t`Replace cover image` : null}
                   </FileDropDefaultTrigger>
                 </FileDropZone>
                 {coverUrl ? (
                   <Button variant="tertiary" size="lg" onPress={removeCover}>
-                    Remove
+                    <Trans>Remove</Trans>
                   </Button>
                 ) : null}
               </Flex>
             </Flex>
 
             <MarkdownField
-              label="Editorial"
+              label={t`Editorial`}
               value={editorialBody}
               onChange={setEditorialBody}
-              placeholder="Introduce the collection… (markdown supported)"
+              placeholder={t`Introduce the collection… (markdown supported)`}
               rows={6}
               size="lg"
             />
 
             <MarkdownField
-              label="Colophon"
+              label={t`Colophon`}
               value={colophonBody}
               onChange={setColophonBody}
-              placeholder="Closing credits on the end spread… (markdown supported)"
+              placeholder={t`Closing credits on the end spread… (markdown supported)`}
               rows={4}
               size="lg"
             />
@@ -877,8 +894,8 @@ export function CollectionBuilder({
       <div {...stylex.props(styles.band)}>
         <div {...stylex.props(styles.bandInner)}>
           <SectionHead
-            kicker={`${items.length} of ${MAX_ITEMS}`}
-            title="Articles"
+            kicker={t`${itemCount} of ${MAX_ITEMS}`}
+            title={<Trans>Articles</Trans>}
             action={
               <Dialog
                 size="md"
@@ -894,16 +911,18 @@ export function CollectionBuilder({
                     isDisabled={items.length >= MAX_ITEMS}
                     onPress={() => setAddOpen(true)}
                   >
-                    <Plus size={16} aria-hidden /> Add an article
+                    <Plus size={16} aria-hidden /> <Trans>Add an article</Trans>
                   </Button>
                 }
               >
-                <DialogHeader>Add an article</DialogHeader>
+                <DialogHeader>
+                  <Trans>Add an article</Trans>
+                </DialogHeader>
                 <DialogBody>
                   <Flex direction="column" gap="2xl">
                     <SearchField
-                      aria-label="Search articles"
-                      placeholder="Search by title or author, or paste a URL or at:// URI"
+                      aria-label={t`Search articles`}
+                      placeholder={t`Search by title or author, or paste a URL or at:// URI`}
                       value={search}
                       onChange={setSearch}
                       size="lg"
@@ -912,7 +931,7 @@ export function CollectionBuilder({
                       autoFocus
                     />
                     <ListBox
-                      aria-label="Matching articles"
+                      aria-label={t`Matching articles`}
                       items={candidates}
                       selectionMode="none"
                       size="lg"
@@ -928,10 +947,10 @@ export function CollectionBuilder({
                             <ProgressCircle
                               isIndeterminate
                               size="sm"
-                              aria-label="Searching"
+                              aria-label={t`Searching`}
                             />
                             <span {...stylex.props(styles.empty)}>
-                              Searching…
+                              <Trans>Searching…</Trans>
                             </span>
                           </Flex>
                         ) : (
@@ -939,8 +958,8 @@ export function CollectionBuilder({
                             {...stylex.props(styles.empty, styles.addEmpty)}
                           >
                             {search.trim().length === 0
-                              ? "Search by title or author handle, or paste a Standard Reader URL, article URL, or at:// URI."
-                              : "No matching articles."}
+                              ? t`Search by title or author handle, or paste a Standard Reader URL, article URL, or at:// URI.`
+                              : t`No matching articles.`}
                           </span>
                         )
                       }
@@ -959,7 +978,9 @@ export function CollectionBuilder({
 
           {items.length === 0 ? (
             <span {...stylex.props(styles.empty)}>
-              No articles yet — use “Add an article” to get started.
+              <Trans>
+                No articles yet — use “Add an article” to get started.
+              </Trans>
             </span>
           ) : (
             <div ref={listRef} {...stylex.props(styles.gridListShell)}>
@@ -971,7 +992,7 @@ export function CollectionBuilder({
                 />
               ) : null}
               <GridList
-                aria-label="Articles in collection"
+                aria-label={t`Articles in collection`}
                 selectionMode="none"
                 layout="stack"
                 // Notes are text fields inside each row — typeahead and arrow
@@ -981,109 +1002,114 @@ export function CollectionBuilder({
                 dragAndDropHooks={dragAndDropHooks}
                 {...stylex.props(styles.gridList)}
               >
-                {items.map((item, index) => (
-                  <GridListItem
-                    key={item.uri}
-                    id={item.uri}
-                    textValue={item.title}
-                    ref={(el) => setItemRef(item.uri, el)}
-                    {...stylex.props(
-                      styles.gridListItem,
-                      ...cardSlotPaddingStyles(index, items.length),
-                    )}
-                  >
-                    {({ allowsDragging, isDragging }) => (
-                      <div
-                        {...stylex.props(
-                          styles.cardRow,
-                          isDragging && styles.cardRowDragging,
-                        )}
-                      >
-                        <div {...stylex.props(styles.rail)}>
-                          <span {...stylex.props(styles.ord)}>
-                            {String(index + 1).padStart(2, "0")}
-                          </span>
-                          <div {...stylex.props(styles.railCtl)}>
-                            {allowsDragging ? (
+                {items.map((item, index) => {
+                  const itemTitle = item.title;
+                  return (
+                    <GridListItem
+                      key={item.uri}
+                      id={item.uri}
+                      textValue={item.title}
+                      ref={(el) => setItemRef(item.uri, el)}
+                      {...stylex.props(
+                        styles.gridListItem,
+                        ...cardSlotPaddingStyles(index, items.length),
+                      )}
+                    >
+                      {({ allowsDragging, isDragging }) => (
+                        <div
+                          {...stylex.props(
+                            styles.cardRow,
+                            isDragging && styles.cardRowDragging,
+                          )}
+                        >
+                          <div {...stylex.props(styles.rail)}>
+                            <span {...stylex.props(styles.ord)}>
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
+                            <div {...stylex.props(styles.railCtl)}>
+                              {allowsDragging ? (
+                                <IconButton
+                                  slot="drag"
+                                  aria-label={t`Reorder ${itemTitle}`}
+                                  size="sm"
+                                  variant="tertiary"
+                                  style={styles.dragHandle}
+                                >
+                                  <GripVertical />
+                                </IconButton>
+                              ) : null}
                               <IconButton
-                                slot="drag"
-                                aria-label={`Reorder ${item.title}`}
+                                aria-label={t`Move up`}
                                 size="sm"
                                 variant="tertiary"
-                                style={styles.dragHandle}
+                                isDisabled={index === 0}
+                                onPress={() => nudgeItem(index, -1)}
                               >
-                                <GripVertical />
+                                <ChevronUp />
                               </IconButton>
-                            ) : null}
-                            <IconButton
-                              aria-label="Move up"
-                              size="sm"
-                              variant="tertiary"
-                              isDisabled={index === 0}
-                              onPress={() => nudgeItem(index, -1)}
+                              <IconButton
+                                aria-label={t`Move down`}
+                                size="sm"
+                                variant="tertiary"
+                                isDisabled={index === items.length - 1}
+                                onPress={() => nudgeItem(index, 1)}
+                              >
+                                <ChevronDown />
+                              </IconButton>
+                              <IconButton
+                                aria-label={t`Remove ${itemTitle}`}
+                                size="sm"
+                                variant="tertiary"
+                                onPress={() => removeItem(item.uri)}
+                              >
+                                <X />
+                              </IconButton>
+                            </div>
+                          </div>
+                          <div {...stylex.props(styles.cardBody)}>
+                            {item.card ? (
+                              <ArticleResultRow
+                                article={item.card}
+                                variant="feed"
+                              />
+                            ) : (
+                              <span {...stylex.props(styles.itemTitle)}>
+                                {item.title}
+                              </span>
+                            )}
+                            <div
+                              role="group"
+                              {...stylex.props(styles.noteFooter)}
+                              onPointerDown={isolateNoteFieldFromRowDrag}
+                              onMouseDown={isolateNoteFieldFromRowDrag}
+                              onDragStart={isolateNoteFieldFromRowDrag}
                             >
-                              <ChevronUp />
-                            </IconButton>
-                            <IconButton
-                              aria-label="Move down"
-                              size="sm"
-                              variant="tertiary"
-                              isDisabled={index === items.length - 1}
-                              onPress={() => nudgeItem(index, 1)}
-                            >
-                              <ChevronDown />
-                            </IconButton>
-                            <IconButton
-                              aria-label={`Remove ${item.title}`}
-                              size="sm"
-                              variant="tertiary"
-                              onPress={() => removeItem(item.uri)}
-                            >
-                              <X />
-                            </IconButton>
+                              <MarkdownField
+                                label={t`Editor’s note`}
+                                value={item.note}
+                                onChange={(note) => setNote(item.uri, note)}
+                                placeholder={t`Why is this piece here? (markdown supported)`}
+                                rows={3}
+                                size="lg"
+                                variant="tertiary"
+                                style={styles.noteField}
+                              />
+                            </div>
                           </div>
                         </div>
-                        <div {...stylex.props(styles.cardBody)}>
-                          {item.card ? (
-                            <ArticleResultRow
-                              article={item.card}
-                              variant="feed"
-                            />
-                          ) : (
-                            <span {...stylex.props(styles.itemTitle)}>
-                              {item.title}
-                            </span>
-                          )}
-                          <div
-                            role="group"
-                            {...stylex.props(styles.noteFooter)}
-                            onPointerDown={isolateNoteFieldFromRowDrag}
-                            onMouseDown={isolateNoteFieldFromRowDrag}
-                            onDragStart={isolateNoteFieldFromRowDrag}
-                          >
-                            <MarkdownField
-                              label="Editor’s note"
-                              value={item.note}
-                              onChange={(note) => setNote(item.uri, note)}
-                              placeholder="Why is this piece here? (markdown supported)"
-                              rows={3}
-                              size="lg"
-                              variant="tertiary"
-                              style={styles.noteField}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </GridListItem>
-                ))}
+                      )}
+                    </GridListItem>
+                  );
+                })}
               </GridList>
             </div>
           )}
 
           {error ? (
             <span {...stylex.props(styles.empty, styles.errorNote)}>
-              {error instanceof Error ? error.message : "Something went wrong."}
+              {error instanceof Error
+                ? error.message
+                : t`Something went wrong.`}
             </span>
           ) : null}
         </div>

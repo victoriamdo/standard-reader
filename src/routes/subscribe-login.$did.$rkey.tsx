@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
@@ -47,8 +48,8 @@ const styles = stylex.create({
     justifyContent: "center",
     minHeight: "100vh",
     paddingBottom: verticalSpace["4xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
     width: "100%",
   },
@@ -65,8 +66,8 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
     width: {
       default: "100%",
@@ -120,8 +121,8 @@ const styles = stylex.create({
     lineHeight: lineHeight.sm,
     textAlign: "center",
     paddingBottom: verticalSpace["2xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace.xs,
   },
   legalLink: {
@@ -159,6 +160,7 @@ export const Route = createFileRoute("/subscribe-login/$did/$rkey")({
 });
 
 function SubscribeLoginPage() {
+  const { t } = useLingui();
   const { meta } = Route.useLoaderData();
   const navigate = useNavigate();
   const [handle, setHandle] = useState("");
@@ -181,6 +183,7 @@ function SubscribeLoginPage() {
   });
 
   const avatarUrl = meta.iconUrl ?? meta.ownerAvatarUrl ?? undefined;
+  const publicationName = meta.name;
 
   return (
     <main
@@ -196,15 +199,19 @@ function SubscribeLoginPage() {
             size="xl"
             style={styles.avatar}
           />
-          <Text style={styles.title}>Subscribe to {meta.name}</Text>
-          <Body style={styles.dek}>Sign in with your Atmosphere account.</Body>
+          <Text style={styles.title}>
+            <Trans>Subscribe to {publicationName}</Trans>
+          </Text>
+          <Body style={styles.dek}>
+            <Trans>Sign in with your Atmosphere account.</Trans>
+          </Body>
         </Flex>
 
         <Flex direction="column" gap="md" style={styles.form}>
           <UserHandleAutocomplete
             size="lg"
             placeholder="your.handle.com"
-            aria-label="Atmosphere account"
+            aria-label={t`Atmosphere account`}
             value={inputValue}
             onValueChange={(value) => {
               setInputValue(value);
@@ -229,15 +236,17 @@ function SubscribeLoginPage() {
               loginMutation.mutate(trimmed);
             }}
           >
-            Subscribe
+            <Trans>Subscribe</Trans>
           </Button>
         </Flex>
       </Form>
       <p {...stylex.props(styles.legalLine)}>
-        Powered by{" "}
-        <a href={getPublicUrlClient()} {...stylex.props(styles.legalLink)}>
-          Standard Reader
-        </a>
+        <Trans>
+          Powered by{" "}
+          <a href={getPublicUrlClient()} {...stylex.props(styles.legalLink)}>
+            Standard Reader
+          </a>
+        </Trans>
       </p>
     </main>
   );

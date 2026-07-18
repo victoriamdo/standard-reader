@@ -1,5 +1,8 @@
 "use client";
 
+import type { I18n } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -30,8 +33,9 @@ import {
 import { usePopoverStyles } from "#/design-system/theme/usePopoverStyles";
 import { authorApi } from "#/integrations/tanstack-query/api-author.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
+import { useFormatters } from "#/lib/use-formatters";
 
-import { formatDate, formatReaders, initials } from "./format";
+import { formatReaders, initials } from "./format";
 import { LikeCount, PublicationAvatar } from "./primitives";
 
 /* ── interaction ──────────────────────────────────────────────────────────── */
@@ -189,11 +193,45 @@ function HoverCardFrame({
 /** Joins non-empty stat fragments with a middot, e.g. `3 pubs · 41 articles`. */
 function StatLine({ parts }: { parts: Array<string> }) {
   if (parts.length === 0) return null;
-  return <span {...stylex.props(styles.stats)}>{parts.join(" · ")}</span>;
+  return (
+    <span {...stylex.props(styles.stats)}>
+      <DotJoined parts={parts} />
+    </span>
+  );
 }
 
-function count(n: number, singular: string, plural = `${singular}s`): string {
-  return `${formatReaders(n)} ${n === 1 ? singular : plural}`;
+/**
+ * Renders `·`-separated fragments with each fragment in its own bidi isolate,
+ * so Latin/numeric runs aren't reordered against RTL UI text around them.
+ */
+function DotJoined({ parts }: { parts: Array<string> }) {
+  return parts.map((part, index) => (
+    <span key={part}>
+      {index > 0 ? <span aria-hidden> · </span> : null}
+      <span {...stylex.props(styles.bidiIsolate)}>{part}</span>
+    </span>
+  ));
+}
+
+function publicationCount(i18n: I18n, n: number): string {
+  const value = formatReaders(n);
+  return i18n._(
+    msg`${plural(n, { one: "# publication", other: `${value} publications` })}`,
+  );
+}
+
+function articleCount(i18n: I18n, n: number): string {
+  const value = formatReaders(n);
+  return i18n._(
+    msg`${plural(n, { one: "# article", other: `${value} articles` })}`,
+  );
+}
+
+function subscriberCount(i18n: I18n, n: number): string {
+  const value = formatReaders(n);
+  return i18n._(
+    msg`${plural(n, { one: "# subscriber", other: `${value} subscribers` })}`,
+  );
 }
 
 function SkeletonLines() {
@@ -207,6 +245,9 @@ function SkeletonLines() {
 
 /* ── user ─────────────────────────────────────────────────────────────────── */
 
+/** Last-resort display name when a mention resolves to no profile at all. */
+const READER = msg`Reader`;
+
 export function UserHoverCardBody({
   did,
   fallbackLabel,
@@ -218,6 +259,7 @@ export function UserHoverCardBody({
   fallbackHandle?: string | null;
   fallbackAvatarUrl?: string | null;
 }) {
+  const { i18n } = useLingui();
   const { data, isLoading } = useQuery(
     authorApi.getAuthorSummaryQueryOptions(did),
   );
@@ -227,20 +269,20 @@ export function UserHoverCardBody({
   const handle = profile?.handle ?? fallbackHandle ?? null;
   const displayName = profile?.displayName ?? null;
   const name =
-    displayName ?? (handle ? `@${handle}` : (fallbackLabel ?? "Reader"));
+    displayName ?? (handle ? `@${handle}` : (fallbackLabel ?? i18n._(READER)));
   const avatarUrl = profile?.avatarUrl ?? fallbackAvatarUrl ?? undefined;
   const showHandle = displayName != null && handle != null;
 
   const statParts: Array<string> = [];
   if (stats) {
     if (stats.publicationCount > 0) {
-      statParts.push(count(stats.publicationCount, "publication"));
+      statParts.push(publicationCount(i18n, stats.publicationCount));
     }
     if (stats.documentCount > 0) {
-      statParts.push(count(stats.documentCount, "article"));
+      statParts.push(articleCount(i18n, stats.documentCount));
     }
     if (stats.subscriberCount > 0) {
-      statParts.push(count(stats.subscriberCount, "subscriber"));
+      statParts.push(subscriberCount(i18n, stats.subscriberCount));
     }
   }
 
@@ -253,7 +295,7 @@ export function UserHoverCardBody({
           data-hovercard-action
           {...stylex.props(styles.actionLink)}
         >
-          View profile
+          <Trans>View profile</Trans>
           <span aria-hidden {...stylex.props(styles.actionArrow)}>
             →
           </span>
@@ -303,6 +345,7 @@ export function PublicationHoverCardBody({
   fallbackName: string;
   fallbackIconUrl?: string | null;
 }) {
+  const { t, i18n } = useLingui();
   const { data, isLoading } = useQuery(
     publicationApi.getPublicationHeaderQueryOptions(publicationUri),
   );
@@ -313,10 +356,10 @@ export function PublicationHoverCardBody({
   const statParts: Array<string> = [];
   if (pub) {
     if (pub.documentCount > 0) {
-      statParts.push(count(pub.documentCount, "article"));
+      statParts.push(articleCount(i18n, pub.documentCount));
     }
     if (pub.subscriberCount > 0) {
-      statParts.push(count(pub.subscriberCount, "subscriber"));
+      statParts.push(subscriberCount(i18n, pub.subscriberCount));
     }
   }
 
@@ -329,7 +372,7 @@ export function PublicationHoverCardBody({
           data-hovercard-action
           {...stylex.props(styles.actionLink)}
         >
-          View publication
+          <Trans>View publication</Trans>
           <span aria-hidden {...stylex.props(styles.actionArrow)}>
             →
           </span>
@@ -348,7 +391,7 @@ export function PublicationHoverCardBody({
               <BadgeCheck
                 size={15}
                 strokeWidth={2.25}
-                aria-label="Verified"
+                aria-label={t`Verified`}
                 {...stylex.props(styles.verified)}
               />
             ) : null}
@@ -382,6 +425,7 @@ export function DocumentHoverCardBody({
   rkey: string;
   fallbackTitle: string;
 }) {
+  const fmt = useFormatters();
   const { data: art, isLoading } = useQuery(
     publicationApi.getArticleCardQueryOptions(documentUri),
   );
@@ -393,7 +437,7 @@ export function DocumentHoverCardBody({
   const metaParts: Array<string> = [];
   if (art) {
     if (byline) metaParts.push(byline);
-    const date = formatDate(art.publishedAt);
+    const date = fmt.date(art.publishedAt);
     if (date) metaParts.push(date);
   }
 
@@ -406,7 +450,7 @@ export function DocumentHoverCardBody({
           data-hovercard-action
           {...stylex.props(styles.actionLink)}
         >
-          Read article
+          <Trans>Read article</Trans>
           <span aria-hidden {...stylex.props(styles.actionArrow)}>
             →
           </span>
@@ -448,7 +492,7 @@ export function DocumentHoverCardBody({
               ) : null}
               {metaParts.length > 0 ? (
                 <span {...stylex.props(styles.stats)}>
-                  {metaParts.join(" · ")}
+                  <DotJoined parts={metaParts} />
                 </span>
               ) : null}
               {art ? <LikeCount count={art.recommendCount} /> : null}
@@ -480,8 +524,8 @@ const styles = stylex.create({
     width: "20rem",
     maxWidth: `calc(100vw - ${spacing["6"]})`,
     paddingBottom: verticalSpace.md,
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.md,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.md,
     paddingTop: verticalSpace.md,
   },
   body: {
@@ -538,6 +582,7 @@ const styles = stylex.create({
     letterSpacing: tracking.tight,
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+    unicodeBidi: "isolate",
   },
   title: {
     color: uiColor.text2,
@@ -572,6 +617,9 @@ const styles = stylex.create({
     fontFamily: fontFamily.sans,
     fontSize: fontSize.xs,
   },
+  bidiIsolate: {
+    unicodeBidi: "isolate",
+  },
   metaRow: {
     alignItems: "center",
     columnGap: gap.sm,
@@ -588,8 +636,8 @@ const styles = stylex.create({
   coverWrap: {
     height: "7rem",
     marginBottom: verticalSpace.xs,
-    marginLeft: `calc(-1 * ${horizontalSpace.md})`,
-    marginRight: `calc(-1 * ${horizontalSpace.md})`,
+    marginInlineStart: `calc(-1 * ${horizontalSpace.md})`,
+    marginInlineEnd: `calc(-1 * ${horizontalSpace.md})`,
     marginTop: `calc(-1 * ${verticalSpace.md})`,
     overflow: "hidden",
   },
@@ -606,10 +654,10 @@ const styles = stylex.create({
     borderTopColor: uiColor.border1,
     borderTopStyle: "solid",
     borderTopWidth: 1,
-    marginLeft: `calc(-1 * ${horizontalSpace.md})`,
-    marginRight: `calc(-1 * ${horizontalSpace.md})`,
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.md,
+    marginInlineStart: `calc(-1 * ${horizontalSpace.md})`,
+    marginInlineEnd: `calc(-1 * ${horizontalSpace.md})`,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.md,
     paddingTop: verticalSpace.sm,
   },
   actionLink: {
@@ -628,7 +676,8 @@ const styles = stylex.create({
     display: "inline-block",
     transform: {
       default: "translateX(0)",
-      ":is([data-hovercard-action]:hover *)": "translateX(3px)",
+      ":is([data-hovercard-action]:hover *)":
+        "translateX(calc(var(--dir) * 3px))",
     },
     transitionDuration: animationDuration.default,
     transitionProperty: "transform",

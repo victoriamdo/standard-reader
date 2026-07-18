@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { Layers } from "lucide-react";
@@ -45,6 +46,7 @@ export const Route = createFileRoute("/_layout/collections/edit/$rkey")({
 });
 
 function EditCollectionPage() {
+  const { t } = useLingui();
   const { rkey } = Route.useParams();
   const navigate = useNavigate();
   const { data: initial } = useSuspenseQuery(
@@ -69,10 +71,10 @@ function EditCollectionPage() {
     return (
       <ReaderContent>
         <Masthead
-          kicker="Collections"
+          kicker={t`Collections`}
           kickerIcon={<Layers size={14} aria-hidden />}
-          title="Collection not found"
-          dek="We couldn’t load that collection to edit."
+          title={t`Collection not found`}
+          dek={t`We couldn’t load that collection to edit.`}
         />
       </ReaderContent>
     );

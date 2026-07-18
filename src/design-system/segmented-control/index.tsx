@@ -30,8 +30,8 @@ import type { Size, StyleXComponentProps } from "../theme/types";
 const styles = stylex.create({
   group: {
     paddingBottom: verticalSpace["xxs"],
-    paddingLeft: horizontalSpace["xxs"],
-    paddingRight: horizontalSpace["xxs"],
+    paddingInlineStart: horizontalSpace["xxs"],
+    paddingInlineEnd: horizontalSpace["xxs"],
     paddingTop: verticalSpace["xxs"],
 
     cornerShape: "squircle",
@@ -86,8 +86,8 @@ const styles = stylex.create({
     },
     height: "100%",
     paddingBottom: verticalSpace["xs"],
-    paddingLeft: horizontalSpace["md"],
-    paddingRight: horizontalSpace["md"],
+    paddingInlineStart: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
     paddingTop: verticalSpace["xs"],
 
     // eslint-disable-next-line @stylexjs/no-legacy-contextual-styles, @stylexjs/valid-styles
@@ -125,7 +125,7 @@ const styles = stylex.create({
     },
     zIndex: -1,
     height: "100%",
-    left: 0,
+    insetInlineStart: 0,
     top: 0,
     width: "100%",
   },

@@ -98,14 +98,14 @@ const styles = stylex.create({
     flexShrink: 0,
     justifyContent: "center",
     borderBottomWidth: 0,
-    borderLeftStyle: "solid",
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
+    borderInlineStartStyle: "solid",
+    borderInlineStartWidth: 0,
+    borderInlineEndWidth: 0,
     borderTopWidth: 0,
     minHeight: 0,
     paddingBottom: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
     paddingTop: 0,
 
     // eslint-disable-next-line @stylexjs/no-legacy-contextual-styles, @stylexjs/valid-styles
@@ -127,17 +127,17 @@ const styles = stylex.create({
     outlineOffset: "-2px",
   },
   buttonLeft: {
-    borderRightStyle: "solid",
-    borderRightWidth: 1,
+    borderInlineEndStyle: "solid",
+    borderInlineEndWidth: 1,
   },
   buttonRight: {
-    borderLeftStyle: "solid",
-    borderLeftWidth: 1,
+    borderInlineStartStyle: "solid",
+    borderInlineStartWidth: 1,
   },
   inputWithStepper: {
     textAlign: "center",
-    paddingLeft: horizontalSpace["md"],
-    paddingRight: horizontalSpace["md"],
+    paddingInlineStart: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
   },
 });
 

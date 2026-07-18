@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Share2 } from "lucide-react";
 import { useState } from "react";
 
@@ -48,6 +49,7 @@ export function DocumentShareMenu({
   imageUrl?: string | null;
   size?: Size;
 }) {
+  const { t } = useLingui();
   const iconSize = size === "sm" ? 14 : 18;
   const [saveDialog, setSaveDialog] = useState<"margin" | "semble" | null>(
     null,
@@ -58,25 +60,32 @@ export function DocumentShareMenu({
       <LinkShareMenu
         getLinkUrl={currentPageUrl}
         trigger={
-          <IconButton variant="secondary" size={size} label="Share">
+          <IconButton variant="secondary" size={size} label={t`Share`}>
             <Share2 size={iconSize} />
           </IconButton>
         }
       >
         <MenuSeparator />
-        <MenuItem onPress={() => setSaveDialog("margin")}>
-          Save to Margin…
+        <MenuItem
+          onPress={() => setSaveDialog("margin")}
+          textValue={t`Save to Margin…`}
+        >
+          <Trans>Save to Margin…</Trans>
         </MenuItem>
-        <MenuItem onPress={() => setSaveDialog("semble")}>
-          Save to Semble…
+        <MenuItem
+          onPress={() => setSaveDialog("semble")}
+          textValue={t`Save to Semble…`}
+        >
+          <Trans>Save to Semble…</Trans>
         </MenuItem>
         <MenuSeparator />
         <MenuItem
           onPress={() => {
             openExternal(buildPdslsRecordUrl(recordUri));
           }}
+          textValue={t`View on PDSLS`}
         >
-          View on PDSLS
+          <Trans>View on PDSLS</Trans>
         </MenuItem>
       </LinkShareMenu>
       <SaveToCollectionDialog

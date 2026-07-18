@@ -16,10 +16,10 @@ const styles = stylex.create({
   },
   rounded: {
     cornerShape: "squircle",
-    borderBottomLeftRadius: radius.lg,
-    borderBottomRightRadius: radius.lg,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderEndStartRadius: radius.lg,
+    borderEndEndRadius: radius.lg,
+    borderStartStartRadius: radius.lg,
+    borderStartEndRadius: radius.lg,
   },
   imageContainer: {
     inset: 0,

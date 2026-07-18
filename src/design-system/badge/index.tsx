@@ -38,8 +38,8 @@ const styles = stylex.create({
     fontSize: fontSize["xs"],
     height: sizeSpace["lg"],
     paddingBottom: verticalSpace["xxs"],
-    paddingLeft: horizontalSpace["lg"],
-    paddingRight: horizontalSpace["lg"],
+    paddingInlineStart: horizontalSpace["lg"],
+    paddingInlineEnd: horizontalSpace["lg"],
     paddingTop: verticalSpace["xxs"],
 
     // eslint-disable-next-line @stylexjs/no-legacy-contextual-styles, @stylexjs/valid-styles
@@ -55,8 +55,8 @@ const styles = stylex.create({
     fontSize: fontSize["sm"],
     height: sizeSpace["xl"],
     paddingBottom: verticalSpace["xxs"],
-    paddingLeft: horizontalSpace["2xl"],
-    paddingRight: horizontalSpace["2xl"],
+    paddingInlineStart: horizontalSpace["2xl"],
+    paddingInlineEnd: horizontalSpace["2xl"],
     paddingTop: verticalSpace["xxs"],
 
     // eslint-disable-next-line @stylexjs/no-legacy-contextual-styles, @stylexjs/valid-styles

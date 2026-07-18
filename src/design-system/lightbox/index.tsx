@@ -16,6 +16,7 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 
+import { DirectionalIcon } from "../directional-icon";
 import { IconButton } from "../icon-button";
 import {
   animationDuration,
@@ -87,7 +88,7 @@ const styles = stylex.create({
   closeButton: {
     position: "fixed",
     zIndex: 210,
-    right: horizontalSpace["3xl"],
+    insetInlineEnd: horizontalSpace["3xl"],
     top: verticalSpace["3xl"],
   },
   hiddenTrigger: {
@@ -102,8 +103,8 @@ const styles = stylex.create({
     justifyContent: "center",
     minHeight: 0,
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["2xl"],
-    paddingRight: horizontalSpace["2xl"],
+    paddingInlineStart: horizontalSpace["2xl"],
+    paddingInlineEnd: horizontalSpace["2xl"],
     paddingTop: verticalSpace["6xl"],
     width: "100%",
   },
@@ -208,6 +209,18 @@ export interface LightboxProps extends StyleXComponentProps<object> {
   trigger?: React.ReactNode;
 }
 
+/**
+ * Horizontal scroll offset for a carousel page.
+ *
+ * `scrollLeft` runs negative under RTL (0 at the right edge down to
+ * -maxScroll), so a plain `index * width` scrolls the wrong way and lands on
+ * the first slide every time.
+ */
+function pageScrollLeft(scroll: HTMLElement, index: number): number {
+  const isRtl = globalThis.getComputedStyle(scroll).direction === "rtl";
+  return (isRtl ? -1 : 1) * index * scroll.clientWidth;
+}
+
 function prefersReducedMotion() {
   return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
@@ -274,7 +287,7 @@ export function Lightbox({
     if (!scroll) return;
     requestAnimationFrame(() => {
       scroll.scrollTo({
-        left: clampedInitialIndex * scroll.clientWidth,
+        left: pageScrollLeft(scroll, clampedInitialIndex),
         behavior: "auto",
       });
     });
@@ -297,7 +310,7 @@ export function Lightbox({
         prefersReducedMotion() ? 0 : CONTROL_SETTLE_DURATION_MS,
       );
       scroll.scrollTo({
-        left: nextIndex * scroll.clientWidth,
+        left: pageScrollLeft(scroll, nextIndex),
         behavior: prefersReducedMotion() ? "auto" : "smooth",
       });
     },
@@ -434,11 +447,16 @@ export function Lightbox({
                 onScroll={() => {
                   const scroll = scrollRef.current;
                   if (!scroll || scroll.clientWidth === 0) return;
+                  // Under RTL, browsers report scrollLeft as negative (0 at the
+                  // right edge, down to -maxScroll). Without abs() the index
+                  // clamps to 0 and the carousel never advances.
                   const nextIndex = Math.max(
                     0,
                     Math.min(
                       images.length - 1,
-                      Math.round(scroll.scrollLeft / scroll.clientWidth),
+                      Math.round(
+                        Math.abs(scroll.scrollLeft) / scroll.clientWidth,
+                      ),
                     ),
                   );
                   setCurrentIndex(nextIndex);
@@ -526,7 +544,7 @@ export function Lightbox({
                     isDisabled={controlsIndex <= 0}
                     onPress={() => scrollToIndex(activeIndex - 1)}
                   >
-                    <ChevronLeft size={24} />
+                    <DirectionalIcon as={ChevronLeft} size={24} />
                   </IconButton>
                   <div {...stylex.props(styles.counter)}>
                     {activeIndex + 1} / {images.length}
@@ -538,7 +556,7 @@ export function Lightbox({
                     isDisabled={controlsIndex >= images.length - 1}
                     onPress={() => scrollToIndex(activeIndex + 1)}
                   >
-                    <ChevronRight size={24} />
+                    <DirectionalIcon as={ChevronRight} size={24} />
                   </IconButton>
                 </div>
               ) : null}

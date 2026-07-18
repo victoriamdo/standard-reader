@@ -45,8 +45,8 @@ const styles = stylex.create({
     display: "flex",
     justifyContent: "center",
     paddingBottom: verticalSpace["2xl"],
-    paddingLeft: horizontalSpace["2xl"],
-    paddingRight: horizontalSpace["2xl"],
+    paddingInlineStart: horizontalSpace["2xl"],
+    paddingInlineEnd: horizontalSpace["2xl"],
     paddingTop: verticalSpace["2xl"],
   },
 });

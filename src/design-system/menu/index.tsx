@@ -19,6 +19,7 @@ import {
 } from "react-aria-components";
 
 import { SizeContext } from "../context";
+import { DirectionalIcon } from "../directional-icon";
 import { useHaptics } from "../haptics";
 import { ListBoxSeparator } from "../listbox";
 import {
@@ -32,14 +33,14 @@ import { usePopoverStyles } from "../theme/usePopoverStyles";
 const styles = stylex.create({
   header: {
     paddingBottom: verticalSpace["xs"],
-    paddingLeft: horizontalSpace["xl"],
-    paddingRight: horizontalSpace["xl"],
+    paddingInlineStart: horizontalSpace["xl"],
+    paddingInlineEnd: horizontalSpace["xl"],
     paddingTop: verticalSpace["md"],
   },
   footer: {
     paddingBottom: verticalSpace["xs"],
-    paddingLeft: horizontalSpace["xl"],
-    paddingRight: horizontalSpace["xl"],
+    paddingInlineStart: horizontalSpace["xl"],
+    paddingInlineEnd: horizontalSpace["xl"],
     paddingTop: verticalSpace["md"],
   },
   menu: {
@@ -246,7 +247,7 @@ export function MenuItem({
           )}
           {hasSubmenu && (
             <div {...stylex.props(menuItemStyles.addon)}>
-              <ChevronRight size={16} />
+              <DirectionalIcon as={ChevronRight} size={16} />
             </div>
           )}
         </div>

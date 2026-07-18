@@ -66,19 +66,19 @@ const styles = stylex.create({
   },
   popoverContent: {
     paddingBottom: verticalSpace["sm"],
-    paddingLeft: horizontalSpace["sm"],
-    paddingRight: horizontalSpace["sm"],
+    paddingInlineStart: horizontalSpace["sm"],
+    paddingInlineEnd: horizontalSpace["sm"],
     paddingTop: verticalSpace["sm"],
   },
   separator: {
-    paddingRight: {
+    paddingInlineEnd: {
       ":is([data-size=lg] *)": horizontalSpace["xs"],
       ":is([data-size=md] *)": horizontalSpace["sm"],
       ":is([data-size=sm] *)": horizontalSpace["xxs"],
     },
   },
   lastInput: {
-    paddingRight: 0,
+    paddingInlineEnd: 0,
   },
   segment: {
     color: {

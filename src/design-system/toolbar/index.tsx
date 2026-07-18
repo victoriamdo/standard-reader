@@ -45,11 +45,11 @@ const styles = stylex.create({
       ":is([data-orientation=horizontal] *)": verticalSpace["xxs"],
       ":is([data-orientation=vertical] *)": verticalSpace["sm"],
     },
-    marginLeft: {
+    marginInlineStart: {
       ":is([data-orientation=horizontal] *)": horizontalSpace["sm"],
       ":is([data-orientation=vertical] *)": horizontalSpace["xxs"],
     },
-    marginRight: {
+    marginInlineEnd: {
       ":is([data-orientation=horizontal] *)": horizontalSpace["sm"],
       ":is([data-orientation=vertical] *)": horizontalSpace["xxs"],
     },

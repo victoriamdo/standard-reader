@@ -54,7 +54,7 @@ const styles = stylex.create({
   fills: {
     position: "absolute",
     height: "100%",
-    left: 0,
+    insetInlineStart: 0,
     top: 0,
     width: "100%",
   },
@@ -94,7 +94,7 @@ const styles = stylex.create({
   check: {
     position: "absolute",
     transform: "translate(-50%, -50%)",
-    left: "50%",
+    insetInlineStart: "50%",
     top: "50%",
   },
   completed: {

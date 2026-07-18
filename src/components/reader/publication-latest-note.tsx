@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 
@@ -13,8 +14,7 @@ import {
   lineHeight,
 } from "#/design-system/theme/typography.stylex";
 import { notesApi } from "#/integrations/tanstack-query/api-notes.functions";
-
-import { formatRelativeTime } from "./format";
+import { useFormatters } from "#/lib/use-formatters";
 
 // A quiet editorial block, not a card — it sits above the writing feed and is
 // set off by the same 1px bottom rule the article rows use, so it recedes into
@@ -75,6 +75,7 @@ export function PublicationLatestNote({
 }: {
   publicationUri: string;
 }) {
+  const fmt = useFormatters();
   const { data: note } = useQuery(
     notesApi.getPublicationLatestNoteQueryOptions(publicationUri),
   );
@@ -89,9 +90,11 @@ export function PublicationLatestNote({
       {...stylex.props(styles.block)}
     >
       <div {...stylex.props(styles.labelRow)}>
-        <span {...stylex.props(styles.label)}>Latest note</span>
+        <span {...stylex.props(styles.label)}>
+          <Trans>Latest note</Trans>
+        </span>
         <time dateTime={note.createdAt} {...stylex.props(styles.time)}>
-          {formatRelativeTime(note.createdAt)}
+          {fmt.relativeTime(note.createdAt)}
         </time>
       </div>
       <p {...stylex.props(styles.text)}>{note.text}</p>

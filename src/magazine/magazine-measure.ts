@@ -75,15 +75,24 @@ export function readFlowMeasure({
   const pitch = geom.colW + geom.gap;
   if (pitch <= 0) return null;
 
-  const flowLeft = flow.getBoundingClientRect().left;
+  // Column indices are measured from the edge where the flow STARTS. CSS
+  // multicol mirrors under RTL: column 0 is flush with the flow's right edge
+  // and later columns overflow leftward, so distances must be taken from
+  // `rect.right` inward (and each element's leading edge is its right edge).
+  // Measuring from `rect.left` under RTL yields negative offsets that clamp to
+  // 0, collapsing every feature onto column 0.
+  const flowRect = flow.getBoundingClientRect();
+  const isRtl = globalThis.getComputedStyle(flow).direction === "rtl";
   const columnAt = (el: HTMLElement | null) => {
     if (!el) return null;
-    const x = el.getBoundingClientRect().left - flowLeft;
+    const r = el.getBoundingClientRect();
+    const x = isRtl ? flowRect.right - r.right : r.left - flowRect.left;
     return Math.max(0, Math.round(x / pitch));
   };
   const columnSpanEnd = (el: HTMLElement | null) => {
     if (!el) return null;
-    const x = el.getBoundingClientRect().right - flowLeft;
+    const r = el.getBoundingClientRect();
+    const x = isRtl ? flowRect.right - r.left : r.right - flowRect.left;
     return Math.max(0, Math.ceil(x / pitch) - 1);
   };
 

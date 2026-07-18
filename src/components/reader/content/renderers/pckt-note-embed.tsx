@@ -4,7 +4,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { formatRelativeTime, initials } from "#/components/reader/format";
+import { initials } from "#/components/reader/format";
 import { PublicationAvatar } from "#/components/reader/primitives";
 import { Avatar } from "#/design-system/avatar";
 import { animationDuration } from "#/design-system/theme/animations.stylex";
@@ -21,6 +21,7 @@ import {
 import { authorApi } from "#/integrations/tanstack-query/api-author.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { fetchMiniPost, pcktNoteUrl } from "#/lib/pckt/mini";
+import { useFormatters } from "#/lib/use-formatters";
 
 // An embedded pckt note, delineated from the article prose by a bordered card
 // (mirroring the sibling Bluesky post embed). The body is set in the serif
@@ -211,6 +212,7 @@ export function PcktNoteEmbedView({
 }: {
   noteRef?: { uri?: string; cid?: string };
 }) {
+  const fmt = useFormatters();
   const uri = noteRef?.uri?.trim();
 
   const { data: note } = useQuery({
@@ -287,7 +289,7 @@ export function PcktNoteEmbedView({
         <PcktNoteQuoteEmbed uri={note.quotedRecordUri} />
       ) : null}
       <time dateTime={note.createdAt} {...stylex.props(styles.time)}>
-        {formatRelativeTime(note.createdAt)}
+        {fmt.relativeTime(note.createdAt)}
       </time>
     </div>
   );

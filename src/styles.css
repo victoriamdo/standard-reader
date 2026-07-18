@@ -4,6 +4,27 @@
   box-sizing: border-box;
 }
 
+/*
+ * Writing-direction multiplier for directional transforms.
+ *
+ * `transform: translateX()` is always physical — positive X moves right even in
+ * RTL — so any transform that means "toward the end of the line" has to be
+ * negated under `dir="rtl"`. Logical CSS properties (padding-inline-start etc.)
+ * flip on their own; transforms do not.
+ *
+ * Usage: transform: translateX(calc(var(--dir) * 3px));
+ *
+ * Do NOT use this for transforms that are direction-agnostic — a
+ * `translateX(-50%)` used to center an element must stay unflipped.
+ */
+:root {
+  --dir: 1;
+}
+
+[dir="rtl"] {
+  --dir: -1;
+}
+
 html,
 body,
 #app {

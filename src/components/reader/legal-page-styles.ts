@@ -19,18 +19,18 @@ const MOBILE = "@media (max-width: 47.5rem)";
 export const legalPageStyles = stylex.create({
   root: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "640px",
     paddingBottom: {
       [MOBILE]: spacing["20"],
       default: spacing["20"],
     },
-    paddingLeft: {
+    paddingInlineStart: {
       [MOBILE]: horizontalSpace["3xl"],
       default: horizontalSpace["3xl"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       [MOBILE]: horizontalSpace["3xl"],
       default: horizontalSpace["3xl"],
     },
@@ -85,7 +85,7 @@ export const legalPageStyles = stylex.create({
   list: {
     marginBottom: spacing["5"],
     marginTop: verticalSpace.none,
-    paddingLeft: horizontalSpace["4xl"],
+    paddingInlineStart: horizontalSpace["4xl"],
   },
   listItem: {
     marginBottom: verticalSpace.lg,
@@ -120,8 +120,8 @@ export const legalPageStyles = stylex.create({
     textDecorationThickness: "2px",
     textUnderlineOffset: spacing["1"],
     paddingBottom: verticalSpace.none,
-    paddingLeft: horizontalSpace.none,
-    paddingRight: horizontalSpace.none,
+    paddingInlineStart: horizontalSpace.none,
+    paddingInlineEnd: horizontalSpace.none,
     paddingTop: verticalSpace.none,
   },
 });

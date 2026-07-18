@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 
@@ -20,17 +21,26 @@ function CommentsSkeleton() {
 }
 
 export function CommentsSection({ documentUri }: { documentUri: string }) {
+  const { t } = useLingui();
   const { data: comments, isPending } = useQuery(
     commentsApi.getDocumentCommentsQueryOptions(documentUri),
   );
 
   return (
-    <section {...stylex.props(commentStyles.section)} aria-label="Discussion">
-      <SectionHead kicker="Across the Atmosphere" title="Discussions" />
+    <section
+      {...stylex.props(commentStyles.section)}
+      aria-label={t`Discussion`}
+    >
+      <SectionHead
+        kicker={<Trans>Across the Atmosphere</Trans>}
+        title={<Trans>Discussions</Trans>}
+      />
       {isPending || comments === undefined ? (
         <CommentsSkeleton />
       ) : comments.length === 0 ? (
-        <p {...stylex.props(commentStyles.empty)}>No discussion yet.</p>
+        <p {...stylex.props(commentStyles.empty)}>
+          <Trans>No discussion yet.</Trans>
+        </p>
       ) : (
         <Flex direction="column" gap="lg" style={commentStyles.list}>
           {comments.map((comment) => (

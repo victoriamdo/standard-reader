@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { use, useState } from "react";
 import { flushSync } from "react-dom";
@@ -68,6 +69,7 @@ export function ImageFigureView({
    *  `MAX_NATURAL_IMAGE_HEIGHT` instead of forcing a fixed box. */
   fit?: "cover" | "natural";
 }) {
+  const { t } = useLingui();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [transitionActive, setTransitionActive] = useState(false);
   const magazine = use(MagazineColorContext);
@@ -111,7 +113,7 @@ export function ImageFigureView({
         />
       ) : canOpenLightbox ? (
         <button
-          aria-label={altText || "Open image"}
+          aria-label={altText || t`Open image`}
           type="button"
           onClick={() => {
             flushSync(() => setTransitionActive(true));
@@ -139,7 +141,7 @@ export function ImageFigureView({
       ) : null}
       {canOpenLightbox ? (
         <Lightbox
-          alt="Image"
+          alt={t`Image`}
           images={[
             {
               src,

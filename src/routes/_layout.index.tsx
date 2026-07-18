@@ -1,3 +1,6 @@
+import type { I18n } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
@@ -11,8 +14,10 @@ import { Suspense, useEffect } from "react";
 import { z } from "zod";
 
 import { ButtonLink } from "#/components/router-links";
-import { formatCount } from "#/lib/format-count";
+import { DirectionalIcon } from "#/design-system/directional-icon";
+import type { Formatters } from "#/lib/formatters";
 import { DEFAULT_TRACK_READING_HISTORY } from "#/lib/track-reading-history";
+import { useFormatters } from "#/lib/use-formatters";
 
 import {
   ArticleRow,
@@ -150,8 +155,8 @@ const styles = stylex.create({
     backgroundColor: uiColor.bgSubtle,
     boxSizing: "border-box",
     paddingBottom: spacing["2"],
-    paddingLeft: spacing["5"],
-    paddingRight: spacing["5"],
+    paddingInlineStart: spacing["5"],
+    paddingInlineEnd: spacing["5"],
     paddingTop: spacing["5"],
   },
   railHead: {
@@ -186,8 +191,8 @@ const styles = stylex.create({
     boxSizing: "border-box",
     marginTop: spacing["6"],
     paddingBottom: spacing["10"],
-    paddingLeft: spacing["8"],
-    paddingRight: spacing["8"],
+    paddingInlineStart: spacing["8"],
+    paddingInlineEnd: spacing["8"],
     paddingTop: spacing["10"],
   },
   emptyTitle: {
@@ -227,18 +232,19 @@ const styles = stylex.create({
   },
 });
 
-const TODAY_FMT = new Intl.DateTimeFormat("en-US", {
-  month: "long",
-  day: "numeric",
-  year: "numeric",
-});
-const WEEKDAY_FMT = new Intl.DateTimeFormat("en-US", { weekday: "long" });
-
-function homeMastheadKicker(weekday: string, personalized: boolean): string {
-  return `${weekday} · ${personalized ? "Your feed" : "Across the network"}`;
+function homeMastheadKicker(
+  i18n: I18n,
+  weekday: string,
+  personalized: boolean,
+): string {
+  return personalized
+    ? i18n._(msg`${weekday} · Your feed`)
+    : i18n._(msg`${weekday} · Across the network`);
 }
 
 function homeFeedLabels({
+  i18n,
+  fmt,
   weekday,
   today,
   personalized,
@@ -247,6 +253,8 @@ function homeFeedLabels({
   unreadCountPending = false,
   isTrending = false,
 }: {
+  i18n: I18n;
+  fmt: Formatters;
   weekday: string;
   today: string;
   personalized: boolean;
@@ -257,30 +265,36 @@ function homeFeedLabels({
 }) {
   if (isTrending) {
     return {
-      kicker: `${weekday} · Trending`,
-      dek: "The most-read writing across the network right now.",
+      kicker: i18n._(msg`${weekday} · Trending`),
+      dek: i18n._(msg`The most-read writing across the network right now.`),
       metaLabel: today,
       unreadLabel: undefined,
-      sectionKicker: "Across the network",
-      sectionTitle: "Trending",
+      sectionKicker: i18n._(msg`Across the network`),
+      sectionTitle: i18n._(msg`Trending`),
     };
   }
 
+  const newCount = unreadCount == null ? "" : fmt.compactNumber(unreadCount);
   const unreadLabel = trackReading
     ? unreadCountPending || unreadCount == null
       ? undefined
-      : `${formatCount(unreadCount)} new`
-    : "Fresh";
+      : i18n._(msg`${newCount} new`)
+    : i18n._(msg`Fresh`);
+  const subscribedCount = fmt.compactNumber(unreadCount ?? 0);
   const dek = personalized
     ? trackReading
       ? unreadCountPending
-        ? "The latest writing from the publications you subscribe to."
-        : `${formatCount(unreadCount ?? 0)} unread across the publications you subscribe to.`
-      : "The latest writing from the publications you subscribe to."
-    : "The latest long-form writing from across the network.";
+        ? i18n._(
+            msg`The latest writing from the publications you subscribe to.`,
+          )
+        : i18n._(
+            msg`${subscribedCount} unread across the publications you subscribe to.`,
+          )
+      : i18n._(msg`The latest writing from the publications you subscribe to.`)
+    : i18n._(msg`The latest long-form writing from across the network.`);
 
   return {
-    kicker: homeMastheadKicker(weekday, personalized),
+    kicker: homeMastheadKicker(i18n, weekday, personalized),
     dek,
     metaLabel: today,
     unreadLabel,
@@ -288,9 +302,11 @@ function homeFeedLabels({
 }
 
 function HomeFeedSkeleton() {
+  const { t } = useLingui();
+
   return (
     <ReaderContent>
-      <div aria-busy="true" aria-label="Loading today">
+      <div aria-busy="true" aria-label={t`Loading today`}>
         <Flex direction="column" gap="3xl">
           <Skeleton variant="rectangle" height={spacing["4"]} width="36%" />
           <Skeleton variant="rectangle" height={spacing["10"]} width="42%" />
@@ -314,14 +330,16 @@ function HomeFeedSkeleton() {
 const FOLLOW_RAIL_SKELETON_ROWS = 3;
 
 function HomeYouMightFollowRailSkeleton() {
+  const { t } = useLingui();
+
   return (
     <div
       {...stylex.props(styles.railCard)}
-      aria-label="Loading recommendations"
+      aria-label={t`Loading recommendations`}
     >
       <div {...stylex.props(styles.railHead)}>
-        <Sparkles size={14} {...stylex.props(styles.railIcon)} /> You might
-        follow
+        <Sparkles size={14} {...stylex.props(styles.railIcon)} />{" "}
+        <Trans>You might follow</Trans>
       </div>
       <Flex direction="column" style={styles.railRows} aria-hidden>
         {Array.from({ length: FOLLOW_RAIL_SKELETON_ROWS }, (_, index) => (
@@ -391,6 +409,8 @@ function HomeFeed({
   scope: HomeScope;
   readerScope: string;
 }) {
+  const { i18n } = useLingui();
+  const fmt = useFormatters();
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
   const { setScope } = useHomeScope();
@@ -465,10 +485,12 @@ function HomeFeed({
     }
   };
 
-  const now = new Date();
+  const nowIso = new Date().toISOString();
   const labels = homeFeedLabels({
-    weekday: WEEKDAY_FMT.format(now),
-    today: TODAY_FMT.format(now),
+    i18n,
+    fmt,
+    weekday: fmt.weekday(nowIso),
+    today: fmt.longDate(nowIso),
     personalized: feed.personalized,
     trackReading,
     unreadCount,
@@ -485,18 +507,29 @@ function HomeFeed({
     return (
       <ReaderContent>
         <Masthead
-          kicker="Your reading room"
-          title="A quiet place to begin"
-          dek="Subscribe to a few publications or follow some people, and their latest writing and recommendations will collect here."
+          kicker={<Trans>Your reading room</Trans>}
+          title={<Trans>A quiet place to begin</Trans>}
+          dek={
+            <Trans>
+              Subscribe to a few publications or follow some people, and their
+              latest writing and recommendations will collect here.
+            </Trans>
+          }
         />
         <Flex direction="column" gap="2xl" style={styles.emptyCard}>
-          <span {...stylex.props(styles.emptyTitle)}>Wander the directory</span>
+          <span {...stylex.props(styles.emptyTitle)}>
+            <Trans>Wander the directory</Trans>
+          </span>
           <span {...stylex.props(styles.emptyDek)}>
-            Standard Reader knows about every publication on the network. Find a
-            few worth your mornings.
+            <Trans>
+              Standard Reader knows about every publication on the network. Find
+              a few worth your mornings.
+            </Trans>
           </span>
           <Flex>
-            <ButtonLink to="/discover">Explore the directory</ButtonLink>
+            <ButtonLink to="/discover">
+              <Trans>Explore the directory</Trans>
+            </ButtonLink>
           </Flex>
         </Flex>
       </ReaderContent>
@@ -509,7 +542,7 @@ function HomeFeed({
     <ReaderContent>
       <Masthead
         kicker={labels.kicker}
-        title="Today"
+        title={<Trans>Today</Trans>}
         dek={
           unreadCountPending ? (
             <Skeleton variant="rectangle" height={spacing["5"]} width="68%" />
@@ -540,9 +573,11 @@ function HomeFeed({
             style={styles.segmentedControlResponsive}
           >
             <SegmentedControlItem id="follows">
-              Subscriptions
+              <Trans>Subscriptions</Trans>
             </SegmentedControlItem>
-            <SegmentedControlItem id="trending">Trending</SegmentedControlItem>
+            <SegmentedControlItem id="trending">
+              <Trans>Trending</Trans>
+            </SegmentedControlItem>
           </SegmentedControl>
         </div>
       ) : null}
@@ -569,7 +604,8 @@ function HomeFeed({
               size="lg"
               style={styles.viewAll}
             >
-              See all trending <ArrowRight size={15} />
+              <Trans>See all trending</Trans>{" "}
+              <DirectionalIcon as={ArrowRight} size={15} />
             </ButtonLink>
           ) : session?.user ? (
             <ButtonLink
@@ -578,7 +614,8 @@ function HomeFeed({
               size="lg"
               style={styles.viewAll}
             >
-              View all latest <ArrowRight size={15} />
+              <Trans>View all latest</Trans>{" "}
+              <DirectionalIcon as={ArrowRight} size={15} />
             </ButtonLink>
           ) : null}
         </Flex>
@@ -587,8 +624,8 @@ function HomeFeed({
           {trendingPubs.length > 0 ? (
             <div {...stylex.props(styles.railCard)}>
               <div {...stylex.props(styles.railHead)}>
-                <Flame size={14} {...stylex.props(styles.railIcon)} /> Trending
-                publications
+                <Flame size={14} {...stylex.props(styles.railIcon)} />{" "}
+                <Trans>Trending publications</Trans>
               </div>
               <div>
                 {trendingPubs.slice(0, 3).map((pub, i, pubs) => (
@@ -605,7 +642,8 @@ function HomeFeed({
                 size="sm"
                 style={styles.directoryLink}
               >
-                Open the directory <ArrowRight size={14} />
+                <Trans>Open the directory</Trans>{" "}
+                <DirectionalIcon as={ArrowRight} size={14} />
               </ButtonLink>
             </div>
           ) : null}
@@ -615,8 +653,8 @@ function HomeFeed({
           ) : youMightFollow.length > 0 ? (
             <div {...stylex.props(styles.railCard)}>
               <div {...stylex.props(styles.railHead)}>
-                <Sparkles size={14} {...stylex.props(styles.railIcon)} /> You
-                might follow
+                <Sparkles size={14} {...stylex.props(styles.railIcon)} />{" "}
+                <Trans>You might follow</Trans>
               </div>
               <div>
                 {youMightFollow.slice(0, 3).map((pub, i, pubs) => (
@@ -633,7 +671,8 @@ function HomeFeed({
                 size="sm"
                 style={styles.directoryLink}
               >
-                Open the directory <ArrowRight size={14} />
+                <Trans>Open the directory</Trans>{" "}
+                <DirectionalIcon as={ArrowRight} size={14} />
               </ButtonLink>
             </div>
           ) : null}

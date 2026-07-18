@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { Pause, Play } from "lucide-react";
 import {
@@ -59,8 +60,8 @@ const styles = stylex.create({
     borderBottomWidth: 1,
     marginBottom: verticalSpace["3xl"],
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
   label: {
@@ -75,8 +76,8 @@ const styles = stylex.create({
   },
   article: {
     marginBottom: verticalSpace["3xl"],
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     width: "100%",
   },
   previewBody: {
@@ -117,7 +118,7 @@ const styles = stylex.create({
   },
   buttonIconLayer: {
     position: "absolute",
-    left: 0,
+    insetInlineStart: 0,
     top: 0,
   },
   buttonIconHidden: {
@@ -150,6 +151,7 @@ export function ReadingSettingsPreview({
 }: {
   voicePreference: ReaderVoicePreference;
 }) {
+  const { t } = useLingui();
   const { preference: typography } = useReadingTypography();
   const [status, setStatus] = useState<PreviewStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -237,20 +239,25 @@ export function ReadingSettingsPreview({
       statusRef.current = "error";
       startTransition(() => {
         setStatus("error");
-        setErrorMessage("Couldn’t play the voice sample.");
+        setErrorMessage(t`Couldn’t play the voice sample.`);
       });
     }
-  }, [stopPreview, voicePreference]);
+  }, [stopPreview, t, voicePreference]);
 
   return (
     <div {...stylex.props(styles.card)}>
       <ReadingCustomFontLoader family={readingCustomFontFamily(typography)} />
-      <p {...stylex.props(styles.label)}>Preview</p>
+      <p {...stylex.props(styles.label)}>
+        <Trans>Preview</Trans>
+      </p>
 
       <article
         {...stylex.props(styles.article, articleMeasureStyle(typography))}
       >
-        <div {...readingBodyStyleProps(typography, false, styles.previewBody)}>
+        <div
+          dir="auto"
+          {...readingBodyStyleProps(typography, false, styles.previewBody)}
+        >
           <p
             {...stylex.props(
               articleBodyStyles.paragraph,
@@ -295,7 +302,7 @@ export function ReadingSettingsPreview({
                 <Pause size={14} />
               </span>
             </span>
-            {status === "playing" ? "Stop sample" : "Play voice sample"}
+            {status === "playing" ? t`Stop sample` : t`Play voice sample`}
           </Button>
           <div
             {...stylex.props(
@@ -307,7 +314,7 @@ export function ReadingSettingsPreview({
             <ProgressCircle
               isIndeterminate
               size="sm"
-              aria-label="Loading voice sample"
+              aria-label={t`Loading voice sample`}
             />
           </div>
         </Flex>

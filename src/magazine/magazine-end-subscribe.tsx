@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
@@ -49,6 +50,7 @@ function SubscribeButton({
   following: boolean;
   onPress: () => void;
 }) {
+  const { t } = useLingui();
   return (
     <MagHoverButton
       type="button"
@@ -56,7 +58,7 @@ function SubscribeButton({
       disabled={pending}
       onClick={onPress}
     >
-      {pending ? "Subscribing…" : label}
+      {pending ? t`Subscribing…` : label}
     </MagHoverButton>
   );
 }
@@ -66,6 +68,7 @@ function PublicationEndSubscribe({
 }: {
   target: Extract<MagSubscribeTarget, { kind: "publication" }>;
 }) {
+  const { t } = useLingui();
   const loginSearch = useLoginSearch();
   const queryClient = useQueryClient();
   const { data: session } = useQuery(user.getSessionQueryOptions);
@@ -88,7 +91,7 @@ function PublicationEndSubscribe({
   if (!signedIn) {
     return (
       <LoginLink search={{ ...loginSearch, intent: "subscribe" }}>
-        Subscribe
+        {t`Subscribe`}
       </LoginLink>
     );
   }
@@ -109,7 +112,7 @@ function PublicationEndSubscribe({
 
   return (
     <SubscribeButton
-      label={following ? "Subscribed" : "Subscribe"}
+      label={following ? t`Subscribed` : t`Subscribe`}
       pending={pending}
       following={following}
       onPress={onPress}
@@ -122,6 +125,7 @@ function ListEndSubscribe({
 }: {
   target: Extract<MagSubscribeTarget, { kind: "list" }>;
 }) {
+  const { t } = useLingui();
   const loginSearch = useLoginSearch();
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -136,7 +140,7 @@ function ListEndSubscribe({
   const pending = saveMutation.isPending || unsaveMutation.isPending;
 
   if (!signedIn) {
-    return <LoginLink search={loginSearch}>Subscribe to list</LoginLink>;
+    return <LoginLink search={loginSearch}>{t`Subscribe to list`}</LoginLink>;
   }
 
   const onPress = () => {
@@ -149,7 +153,7 @@ function ListEndSubscribe({
 
   return (
     <SubscribeButton
-      label={saved ? "Subscribed to list" : "Subscribe to list"}
+      label={saved ? t`Subscribed to list` : t`Subscribe to list`}
       pending={pending}
       following={saved}
       onPress={onPress}

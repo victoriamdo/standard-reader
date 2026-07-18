@@ -43,12 +43,22 @@ export function beginResizeChrome(root: HTMLElement | null | undefined): void {
   root.classList.add(RESIZE_CLASS);
 }
 
-/** Snap the frozen transform to the target slide before revealing it. */
+/**
+ * Snap the frozen transform to the target slide before revealing it.
+ *
+ * `translatePx` is a *logical* offset from the slide math (negative = further
+ * along the flow), so it goes through `--dir` to become physical — the flow
+ * mirrors under RTL but `translateX` does not. This differs from
+ * `beginResizeChrome`, which freezes an already-physical measured transform.
+ */
 export function snapResizeChromeTransform(
   root: HTMLElement | null | undefined,
   translatePx: number,
 ): void {
-  root?.style.setProperty(FROZEN_TRANSFORM_VAR, `translateX(${translatePx}px)`);
+  root?.style.setProperty(
+    FROZEN_TRANSFORM_VAR,
+    `translateX(calc(var(--dir) * ${translatePx}px))`,
+  );
 }
 
 export function endResizeChrome(root: HTMLElement | null | undefined): void {

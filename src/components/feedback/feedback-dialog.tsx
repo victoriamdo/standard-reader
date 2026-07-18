@@ -1,5 +1,8 @@
 "use client";
 
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import type { QueryClient } from "@tanstack/react-query";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -48,6 +51,16 @@ const styles = stylex.create({
     fontSize: fontSize.sm,
   },
 });
+
+/**
+ * Human labels for the space's tags. `STANDARD_READER_FEEDBACK_TAGS` carries
+ * the machine values plus English labels; these are the translated forms.
+ */
+const TAG_LABEL: Record<FeedbackTag, MessageDescriptor> = {
+  bug: msg`Bug`,
+  feature: msg`Feature request`,
+  question: msg`Question`,
+};
 
 export interface FeedbackDialogProps {
   isOpen: boolean;
@@ -107,6 +120,7 @@ async function waitForDiscussionToAppear(
  * trigger, lifted `isOpen` state).
  */
 export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
+  const { t, i18n } = useLingui();
   const [tag, setTag] = useState<FeedbackTag>("bug");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -127,7 +141,7 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
     > => {
       const trimmedTitle = title.trim();
       if (!trimmedTitle) {
-        throw new Error("Please add a title.");
+        throw new Error(t`Please add a title.`);
       }
       const trimmedBody = body.trim();
 
@@ -168,18 +182,17 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
       }
       onOpenChange(false);
       toasts.add({
-        title: "Feedback submitted",
-        description:
-          "Thanks for taking the time to help us improve Standard Reader.",
+        title: t`Feedback submitted`,
+        description: t`Thanks for taking the time to help us improve Standard Reader.`,
       });
     },
     onError: (error) => {
       toasts.add({
-        title: "Could not submit feedback",
+        title: t`Could not submit feedback`,
         description:
           error instanceof Error
             ? error.message
-            : "Something went wrong. Please try again.",
+            : t`Something went wrong. Please try again.`,
       });
     },
   });
@@ -199,23 +212,27 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
       fitContent
       trigger={<span hidden aria-hidden {...stylex.props(styles.trigger)} />}
     >
-      <DialogHeader>Submit feedback</DialogHeader>
+      <DialogHeader>
+        <Trans>Submit feedback</Trans>
+      </DialogHeader>
       <DialogDescription>
-        Posted to our{" "}
-        <Link
-          href="https://userinput.app/#/s/did:plc:f4os2wz5fjl56xpwcvtnqu7m/3mprrc56lgd2e"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          feedback board
-        </Link>{" "}
-        on userinput.app. You may be asked to grant permission the first time.
+        <Trans>
+          Posted to our{" "}
+          <Link
+            href="https://userinput.app/#/s/did:plc:f4os2wz5fjl56xpwcvtnqu7m/3mprrc56lgd2e"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            feedback board
+          </Link>{" "}
+          on userinput.app. You may be asked to grant permission the first time.
+        </Trans>
       </DialogDescription>
       <Separator />
       <DialogBody style={styles.body}>
         <Flex direction="column" gap="2xl" style={styles.content}>
           <SegmentedControl
-            aria-label="Feedback type"
+            aria-label={t`Feedback type`}
             selectedKeys={new Set([tag])}
             size="lg"
             onSelectionChange={(keys) => {
@@ -223,26 +240,26 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
               if (next) setTag(next);
             }}
           >
-            {STANDARD_READER_FEEDBACK_TAGS.map((t) => (
-              <SegmentedControlItem key={t.value} id={t.value}>
-                {t.label}
+            {STANDARD_READER_FEEDBACK_TAGS.map((option) => (
+              <SegmentedControlItem key={option.value} id={option.value}>
+                {i18n._(TAG_LABEL[option.value])}
               </SegmentedControlItem>
             ))}
           </SegmentedControl>
 
           <TextField
-            label="Title"
+            label={t`Title`}
             value={title}
             onChange={setTitle}
-            placeholder="Summarize your feedback"
+            placeholder={t`Summarize your feedback`}
             isRequired
             style={styles.fieldGroup}
           />
 
           <TextArea
-            label="Details"
-            aria-label="Details"
-            placeholder="Optional: add context, steps to reproduce, or what you'd like to see"
+            label={t`Details`}
+            aria-label={t`Details`}
+            placeholder={t`Optional: add context, steps to reproduce, or what you'd like to see`}
             value={body}
             onChange={setBody}
             rows={5}
@@ -253,7 +270,7 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
             <span {...stylex.props(styles.error)}>
               {error instanceof Error
                 ? error.message
-                : "Something went wrong while submitting your feedback."}
+                : t`Something went wrong while submitting your feedback.`}
             </span>
           ) : null}
         </Flex>
@@ -265,7 +282,7 @@ export function FeedbackDialog({ isOpen, onOpenChange }: FeedbackDialogProps) {
           isPending={submitOrUpgrade.isPending}
           onPress={() => submitOrUpgrade.mutate()}
         >
-          Create
+          <Trans>Create</Trans>
         </Button>
       </DialogFooter>
     </Dialog>

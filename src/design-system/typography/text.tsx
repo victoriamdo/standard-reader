@@ -94,9 +94,9 @@ const styles = stylex.create({
 
   strikethrough: { textDecoration: "line-through" },
 
-  left: { textAlign: "left" },
+  left: { textAlign: "start" },
   center: { textAlign: "center" },
-  right: { textAlign: "right" },
+  right: { textAlign: "end" },
 
   textEllipsis: {
     overflow: "hidden",

@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import {
   useMutation,
   useQueryClient,
@@ -57,6 +58,7 @@ export const Route = createFileRoute("/_layout/collections/new")({
 });
 
 function NewCollectionPage() {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { publication: publicationRkey } = Route.useSearch();
@@ -121,15 +123,15 @@ function NewCollectionPage() {
     return (
       <ReaderContent>
         <Masthead
-          kicker="Collections"
+          kicker={t`Collections`}
           kickerIcon={<Layers size={14} aria-hidden />}
-          title="Name your series"
-          dek="On your first collection we create one series to hold them — a special collection you can subscribe to, rename, and theme later."
+          title={t`Name your series`}
+          dek={t`On your first collection we create one series to hold them — a special collection you can subscribe to, rename, and theme later.`}
         />
         <Flex direction="column" gap="2xl">
           <TextField
-            label="Series name"
-            placeholder="e.g. Dispatches from the Atmosphere"
+            label={t`Series name`}
+            placeholder={t`e.g. Dispatches from the Atmosphere`}
             value={pubName}
             onChange={setPubName}
             isRequired
@@ -137,7 +139,7 @@ function NewCollectionPage() {
           />
           <Flex align="center" gap="md">
             <Button variant="secondary" onPress={toCollections}>
-              Cancel
+              <Trans>Cancel</Trans>
             </Button>
             <Button
               variant="primary"
@@ -146,7 +148,7 @@ function NewCollectionPage() {
               }
               onPress={createPublication}
             >
-              Continue
+              <Trans>Continue</Trans>
             </Button>
           </Flex>
         </Flex>

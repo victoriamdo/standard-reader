@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -35,8 +36,8 @@ const galleryStyles = stylex.create({
   },
   itemFigure: {
     marginBottom: spacing["0"],
-    marginLeft: spacing["0"],
-    marginRight: spacing["0"],
+    marginInlineStart: spacing["0"],
+    marginInlineEnd: spacing["0"],
     marginTop: spacing["0"],
     width: "100%",
   },
@@ -61,6 +62,7 @@ export function LeafletImageGalleryBlockView({
   block: LeafletImageGalleryBlock;
   blobContext?: ContentBlobContext;
 }) {
+  const { t } = useLingui();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [transitionIndex, setTransitionIndex] = useState<number | null>(null);
   const [polyfillColumns, setPolyfillColumns] = useState(
@@ -155,6 +157,7 @@ export function LeafletImageGalleryBlockView({
       >
         {galleryImages.map((image, index) => {
           const transitionName = LIGHTBOX_IMAGE_TRANSITION_NAME;
+          const position = index + 1;
           return (
             <figure
               key={index}
@@ -164,7 +167,7 @@ export function LeafletImageGalleryBlockView({
               )}
             >
               <button
-                aria-label={image.alt || `Open image ${index + 1}`}
+                aria-label={image.alt || t`Open image ${position}`}
                 type="button"
                 onClick={() => {
                   flushSync(() => setTransitionIndex(index));
@@ -198,7 +201,7 @@ export function LeafletImageGalleryBlockView({
         })}
       </div>
       <Lightbox
-        alt="Image gallery"
+        alt={t`Image gallery`}
         images={galleryImages.map((image, index) => ({
           ...image,
           transitionName:

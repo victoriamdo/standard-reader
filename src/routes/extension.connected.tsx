@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -33,14 +34,18 @@ function ExtensionConnectedPage() {
   return (
     <Flex direction="column" gap="2xl" style={styles.page}>
       <Flex direction="column" gap="4xl" style={styles.card}>
-        <Heading4>You&apos;re signed in</Heading4>
+        <Heading4>
+          <Trans>You&apos;re signed in</Trans>
+        </Heading4>
         <Text variant="secondary">
-          Return to the Standard Reader extension — this tab will close
-          automatically.
+          <Trans>
+            Return to the Standard Reader extension — this tab will close
+            automatically.
+          </Trans>
         </Text>
         <Flex direction="column" gap="sm" style={styles.actions}>
           <Button variant="primary" onPress={requestExtensionCloseLoginTab}>
-            Close tab
+            <Trans>Close tab</Trans>
           </Button>
         </Flex>
       </Flex>

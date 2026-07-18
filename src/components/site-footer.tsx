@@ -20,11 +20,11 @@ const styles = stylex.create({
       default: verticalSpace["7xl"],
       [containerBreakpoints.sm]: verticalSpace["8xl"],
     },
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
     },

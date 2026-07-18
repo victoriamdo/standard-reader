@@ -57,7 +57,13 @@ function FallbackContent({
   if (blocks.length === 0) return null;
 
   return (
-    <div {...readingBodyStyleProps(preference, hasHero)}>
+    // `dir="auto"` — article text is user content in an unknown language, so it
+    // must NOT inherit the UI direction from <html>. The browser picks the
+    // direction from the first strong directional character, which keeps an
+    // English article LTR inside an Arabic UI and an Arabic article RTL inside
+    // an English one. Hardcoding "ltr" would fix the first case and break the
+    // second. Revisit only if documents ever gain a real language field.
+    <div dir="auto" {...readingBodyStyleProps(preference, hasHero)}>
       {blocks.map((block, index) => {
         const highlightRange = tracker?.consume(block.text.length) ?? null;
 

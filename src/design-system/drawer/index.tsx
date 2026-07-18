@@ -40,12 +40,12 @@ const styles = stylex.create({
       ":is([data-direction=left])": 0,
       ":is([data-direction=right])": 0,
     },
-    left: {
+    insetInlineStart: {
       ":is([data-direction=bottom])": 0,
       ":is([data-direction=left])": 0,
       ":is([data-direction=top])": 0,
     },
-    right: {
+    insetInlineEnd: {
       ":is([data-direction=bottom])": 0,
       ":is([data-direction=right])": 0,
       ":is([data-direction=top])": 0,
@@ -63,18 +63,18 @@ const styles = stylex.create({
       default: 0,
       ":is([data-direction=top])": 1,
     },
-    borderLeftWidth: {
+    borderInlineStartWidth: {
       default: 0,
       ":is([data-direction=right])": 1,
     },
-    borderRightWidth: {
+    borderInlineEndWidth: {
       default: 0,
       ":is([data-direction=left])": 1,
     },
-    borderTopLeftRadius: {
+    borderStartStartRadius: {
       ":is([data-direction=bottom])": radius.xl,
     },
-    borderTopRightRadius: {
+    borderStartEndRadius: {
       ":is([data-direction=bottom])": radius.xl,
     },
     borderTopWidth: {
@@ -145,8 +145,8 @@ const styles = stylex.create({
     flexShrink: 0,
     height: spacing["1"],
     marginBottom: verticalSpace.xxs,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     marginTop: verticalSpace.lg,
     width: spacing["10"],
   },
@@ -160,21 +160,21 @@ const styles = stylex.create({
     justifyContent: "space-between",
     height: sizeSpace["3xl"],
     paddingBottom: verticalSpace["md"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
   },
   description: {
     color: uiColor.text1,
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
   body: {
     flexGrow: 1,
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: { default: 0, ":first-child": verticalSpace["3xl"] },
   },
   bodyBottom: {
@@ -191,8 +191,8 @@ const styles = stylex.create({
     display: "flex",
     justifyContent: "flex-end",
     paddingBottom: verticalSpace["md"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
 
     borderTopColor: uiColor.border1,

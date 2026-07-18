@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { Sparkles } from "lucide-react";
 
@@ -25,14 +26,17 @@ function ReaderVoiceMenuItems({
 }: {
   onSelect: (next: ReaderVoicePreference) => void;
 }) {
+  const { t } = useLingui();
+
   return (
     <>
       <MenuItem
         id="auto"
         prefix={<Sparkles size={16} />}
+        textValue={t`Auto`}
         onAction={() => onSelect("auto")}
       >
-        Auto
+        <Trans>Auto</Trans>
       </MenuItem>
       {AMERICAN_ENGLISH_VOICES.map((voice) => (
         <MenuItem
@@ -53,6 +57,7 @@ function ReaderVoiceMenuItems({
 }
 
 export function ReaderVoiceSubMenu() {
+  const { t } = useLingui();
   const { preference, setPreference } = useReaderVoice();
   const currentLabel = readerVoicePreferenceLabel(preference);
 
@@ -60,13 +65,14 @@ export function ReaderVoiceSubMenu() {
     <SubMenu
       trigger={
         <MenuItem
+          textValue={t`Reader voice`}
           suffix={
             <span {...stylex.props(styles.currentPreference)}>
               {currentLabel}
             </span>
           }
         >
-          Reader voice
+          <Trans>Reader voice</Trans>
         </MenuItem>
       }
       selectionMode="single"

@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 
@@ -153,6 +154,7 @@ export function StructuredImageDiffBlockView({
   block: Extract<StructuredRenderableBlock, { kind: "imageDiff" }>;
   blobContext?: ContentBlobContext;
 }) {
+  const { t } = useLingui();
   const [position, setPosition] = useState(50);
 
   if (!blobContext) return null;
@@ -166,8 +168,8 @@ export function StructuredImageDiffBlockView({
     structuredImageAspectRatio(beforeImage),
     structuredImageAspectRatio(afterImage),
   );
-  const beforeLabel = block.labels?.[0]?.trim() || "Before";
-  const afterLabel = block.labels?.[1]?.trim() || "After";
+  const beforeLabel = block.labels?.[0]?.trim() || t`Before`;
+  const afterLabel = block.labels?.[1]?.trim() || t`After`;
 
   return (
     <figure
@@ -202,7 +204,7 @@ export function StructuredImageDiffBlockView({
           style={{ left: `${position}%` }}
         />
         <input
-          aria-label="Compare before and after images"
+          aria-label={t`Compare before and after images`}
           max={100}
           min={0}
           type="range"

@@ -71,7 +71,11 @@ const styles = stylex.create({
     position: "absolute",
     transform: {
       default: "translateY(-50%)",
-      ":is([data-selected=true] *)": `translate(calc(100cqw - (${horizontalSpace["xs"]} * 2) - ${sizeSpace.md}), -50%)`,
+      // `marginInlineStart` puts the thumb at the track's start edge, which is
+      // the RIGHT edge under RTL — so the "on" travel has to run in the
+      // opposite physical direction. translateX is always physical, hence the
+      // --dir multiplier (see src/styles.css).
+      ":is([data-selected=true] *)": `translate(calc(var(--dir) * (100cqw - (${horizontalSpace["xs"]} * 2) - ${sizeSpace.md})), -50%)`,
     },
     transitionDuration: animationDuration.fast,
     transitionProperty: {
@@ -80,7 +84,7 @@ const styles = stylex.create({
     },
     transitionTimingFunction: "ease-in-out",
     height: sizeSpace.md,
-    marginLeft: horizontalSpace["xs"],
+    marginInlineStart: horizontalSpace["xs"],
     top: "50%",
     width: sizeSpace.md,
   },

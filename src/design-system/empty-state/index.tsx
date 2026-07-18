@@ -95,8 +95,8 @@ const styles = stylex.create({
     gridRowEnd: "title",
     gridRowStart: "title",
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
   },
   description: {
@@ -107,8 +107,8 @@ const styles = stylex.create({
     gridRowEnd: "description",
     gridRowStart: "description",
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
     maxWidth: {
       ":is([data-empty-state-size=lg])": "480px",
@@ -128,7 +128,7 @@ const styles = stylex.create({
     gridRowStart: "actions",
     justifyContent: "center",
 
-    paddingLeft: {
+    paddingInlineStart: {
       ":is([data-empty-state-size=sm] *)": horizontalSpace["3xl"],
     },
   },

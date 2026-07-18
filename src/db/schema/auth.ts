@@ -33,6 +33,9 @@ export const user = pgTable("user", {
   isAdmin: boolean("is_admin").default(false).notNull(),
   /** `light` | `dark`; `null` follows system preference. */
   themeMode: text("theme_mode"),
+  /** BCP-47 tag from `LOCALES` (`src/lib/locale.ts`); `null` negotiates from
+   * the request's `Accept-Language` header. */
+  locale: text("locale"),
   /** Kokoro voice id; `null` infers voice from the article author (auto). */
   readerVoice: text("reader_voice"),
   /** `true` opens document links on their original site; `null`/`false` uses

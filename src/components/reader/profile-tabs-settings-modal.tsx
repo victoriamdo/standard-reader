@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 
 import type { ProfileTabId } from "#/lib/profile-tabs";
@@ -58,6 +59,7 @@ export function ProfileTabsSettingsModal({
   visibleTabs,
   onToggleTab,
 }: ProfileTabsSettingsModalProps) {
+  const { t } = useLingui();
   return (
     <Dialog
       isOpen={isOpen}
@@ -66,14 +68,16 @@ export function ProfileTabsSettingsModal({
       fitContent
       trigger={<span hidden aria-hidden />}
     >
-      <DialogHeader>Profile settings</DialogHeader>
+      <DialogHeader>
+        <Trans>Profile settings</Trans>
+      </DialogHeader>
       <DialogDescription>
-        Choose which tabs appear on your public profile.
+        <Trans>Choose which tabs appear on your public profile.</Trans>
       </DialogDescription>
       <DialogBody>
         {candidateTabs.length === 0 ? (
           <p {...stylex.props(styles.empty)}>
-            You don&apos;t have any content tabs to show yet.
+            <Trans>You don&apos;t have any content tabs to show yet.</Trans>
           </p>
         ) : (
           candidateTabs.map((tabId) => {
@@ -85,7 +89,7 @@ export function ProfileTabsSettingsModal({
                 <Switch
                   isSelected={visible}
                   onChange={(next) => onToggleTab(tabId, next)}
-                  aria-label={`Show ${label} tab`}
+                  aria-label={t`Show ${label} tab`}
                 />
               </div>
             );

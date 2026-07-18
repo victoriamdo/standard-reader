@@ -11,6 +11,7 @@ import { use } from "react";
 
 import { Button } from "../button";
 import { SizeContext } from "../context";
+import { DirectionalIcon } from "../directional-icon";
 import { Flex } from "../flex";
 import { IconButton } from "../icon-button";
 import { gap } from "../theme/semantic-spacing.stylex";
@@ -102,7 +103,7 @@ export function Pagination({
             onClick={() => setPage(page - 1)}
             variant="tertiary"
           >
-            <ChevronLeft />
+            <DirectionalIcon as={ChevronLeft} />
           </IconButton>
         </li>
         <li {...stylex.props(styles.listItem, styles.desktopButton)}>
@@ -112,7 +113,7 @@ export function Pagination({
             isDisabled={page === 1}
             onClick={() => setPage(page - 1)}
           >
-            <ArrowLeft />
+            <DirectionalIcon as={ArrowLeft} />
             Previous
           </Button>
         </li>
@@ -165,7 +166,7 @@ export function Pagination({
             onClick={() => setPage(page + 1)}
             variant="tertiary"
           >
-            <ChevronRight />
+            <DirectionalIcon as={ChevronRight} />
           </IconButton>
         </li>
         <li {...stylex.props(styles.listItem, styles.desktopButton)}>
@@ -176,7 +177,7 @@ export function Pagination({
             onClick={() => setPage(page + 1)}
           >
             Next
-            <ArrowRight />
+            <DirectionalIcon as={ArrowRight} />
           </Button>
         </li>
       </ul>

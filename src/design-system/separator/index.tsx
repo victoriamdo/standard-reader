@@ -14,8 +14,8 @@ const styles = stylex.create({
       ":is([aria-orientation=vertical])": "100%",
     },
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
     width: {
       default: "100%",

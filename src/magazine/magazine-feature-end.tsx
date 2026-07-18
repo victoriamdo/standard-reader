@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans } from "@lingui/react/macro";
 import { ExternalLink, Share2 } from "lucide-react";
 import { mergeProps } from "react-aria";
 
@@ -21,7 +22,9 @@ function FeatureEndLink({ href }: { href: string }) {
       {...mergeProps(hoverProps)}
       data-hovered={isHovered || undefined}
     >
-      <span>Read more from the author</span>
+      <span>
+        <Trans>Read more from the author</Trans>
+      </span>
       <ExternalLink size={14} aria-hidden />
     </a>
   );
@@ -53,7 +56,9 @@ export function MagazineFeatureEnd({ detail }: { detail: ArticleDetail }) {
             onClick={onShare}
           >
             <Share2 size={14} aria-hidden />
-            <span>Share</span>
+            <span>
+              <Trans>Share</Trans>
+            </span>
           </MagHoverButton>
         ) : null}
       </div>

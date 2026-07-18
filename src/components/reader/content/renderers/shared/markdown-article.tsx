@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps } from "react";
 import { createElement, useMemo, useRef, useState } from "react";
@@ -87,6 +88,7 @@ function MarkdownImage({
   width?: string | number;
   height?: string | number;
 }) {
+  const { t } = useLingui();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [transitionActive, setTransitionActive] = useState(false);
 
@@ -112,7 +114,7 @@ function MarkdownImage({
   return (
     <>
       <button
-        aria-label={altText || "Open image"}
+        aria-label={altText || t`Open image`}
         type="button"
         onClick={() => {
           flushSync(() => setTransitionActive(true));
@@ -137,7 +139,7 @@ function MarkdownImage({
         />
       </button>
       <Lightbox
-        alt="Image"
+        alt={t`Image`}
         images={[
           {
             src,

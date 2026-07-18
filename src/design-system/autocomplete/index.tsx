@@ -31,7 +31,7 @@ const styles = stylex.create({
   popover: {
     position: "absolute",
     zIndex: 1000,
-    left: 0,
+    insetInlineStart: 0,
     paddingTop: verticalSpace["xs"],
     top: "100%",
     width: "100%",
@@ -40,8 +40,8 @@ const styles = stylex.create({
   // item's ring isn't clipped by the container's `overflow`.
   list: {
     paddingBottom: verticalSpace["xs"],
-    paddingLeft: horizontalSpace["xs"],
-    paddingRight: horizontalSpace["xs"],
+    paddingInlineStart: horizontalSpace["xs"],
+    paddingInlineEnd: horizontalSpace["xs"],
     paddingTop: verticalSpace["xs"],
   },
 });

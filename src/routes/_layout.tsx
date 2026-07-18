@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   Outlet,
@@ -36,6 +37,7 @@ function isArticlePath(pathname: string): boolean {
 }
 
 function RouteContentFallback() {
+  const { t } = useLingui();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -46,7 +48,7 @@ function RouteContentFallback() {
 
   return (
     <ReaderContent>
-      <div aria-busy="true" aria-label="Loading page">
+      <div aria-busy="true" aria-label={t`Loading page`}>
         <Flex direction="column" gap="3xl" style={styles.fallbackMasthead}>
           <Flex direction="column" gap="4xl">
             <Skeleton variant="rectangle" height={spacing["3.5"]} width="18%" />

@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import type { Components } from "react-markdown";
@@ -47,31 +48,31 @@ const styles = stylex.create({
     fontSize: fontSize.xs,
     lineHeight: lineHeight.sm,
     paddingBottom: verticalSpace.xxs,
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.md,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.md,
     paddingTop: verticalSpace.xxs,
   },
   sizeMd: {
     fontSize: fontSize.sm,
     lineHeight: lineHeight.base,
     paddingBottom: verticalSpace.sm,
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.md,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.md,
     paddingTop: verticalSpace.sm,
   },
   sizeLg: {
     fontSize: fontSize.base,
     lineHeight: lineHeight.lg,
     paddingBottom: verticalSpace.xs,
-    paddingLeft: horizontalSpace.xl,
-    paddingRight: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    paddingInlineEnd: horizontalSpace.xl,
     paddingTop: verticalSpace.xs,
   },
   // Flush the box padding so a borderless (tertiary) field's text lines up with
   // its label instead of indenting past it.
   flush: {
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
   },
   // A borderless textarea still reserves a 1px border; match it on the preview
   // so toggling Edit/Preview doesn't nudge the text by a pixel.
@@ -90,7 +91,7 @@ const styles = stylex.create({
   list: {
     marginBottom: { default: "1.4em", ":last-child": 0 },
     marginTop: 0,
-    paddingLeft: "1.4em",
+    paddingInlineStart: "1.4em",
   },
   bold: {
     fontWeight: fontWeight.semibold,
@@ -165,6 +166,7 @@ export function MarkdownField({
   variant?: InputVariant;
   style?: stylex.StyleXStyles;
 }) {
+  const { t } = useLingui();
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const trimmed = value.trim();
   const flush = variant === "tertiary";
@@ -182,15 +184,19 @@ export function MarkdownField({
           {label}
         </Label>
         <SegmentedControl
-          aria-label={`${label} mode`}
+          aria-label={t`${label} mode`}
           selectedKeys={new Set([mode])}
           onSelectionChange={(keys) => {
             const next = [...keys][0];
             if (next === "edit" || next === "preview") setMode(next);
           }}
         >
-          <SegmentedControlItem id="edit">Edit</SegmentedControlItem>
-          <SegmentedControlItem id="preview">Preview</SegmentedControlItem>
+          <SegmentedControlItem id="edit">
+            <Trans>Edit</Trans>
+          </SegmentedControlItem>
+          <SegmentedControlItem id="preview">
+            <Trans>Preview</Trans>
+          </SegmentedControlItem>
         </SegmentedControl>
       </Flex>
 
@@ -222,7 +228,9 @@ export function MarkdownField({
               {trimmed}
             </ReactMarkdown>
           ) : (
-            <span {...stylex.props(styles.empty)}>Nothing to preview yet.</span>
+            <span {...stylex.props(styles.empty)}>
+              <Trans>Nothing to preview yet.</Trans>
+            </span>
           )}
         </div>
       )}

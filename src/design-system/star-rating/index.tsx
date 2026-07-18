@@ -48,12 +48,12 @@ const styles = stylex.create({
     cursor: "pointer",
     display: "flex",
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
     paddingBottom: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
     paddingTop: 0,
   },
   starButtonDisabled: {
@@ -68,14 +68,14 @@ const styles = stylex.create({
   },
   halfStarBase: {
     position: "absolute",
-    left: 0,
+    insetInlineStart: 0,
     top: 0,
   },
   halfStarClip: {
     overflow: "hidden",
     clipPath: "inset(0 50% 0 0)",
     position: "absolute",
-    left: 0,
+    insetInlineStart: 0,
     top: 0,
   },
 });
@@ -200,7 +200,10 @@ export function StarRatingInput({
       const el = starsRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const x = e.clientX - rect.left;
+      // Stars render right-to-left under RTL, so the first star sits at the
+      // right edge. Measure from the inline START edge or the rating inverts.
+      const isRtl = globalThis.getComputedStyle(el).direction === "rtl";
+      const x = isRtl ? rect.right - e.clientX : e.clientX - rect.left;
       const index = Math.min(
         MAX_STARS - 1,
         Math.max(0, Math.floor((x / rect.width) * MAX_STARS)),

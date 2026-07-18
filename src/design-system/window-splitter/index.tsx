@@ -50,8 +50,8 @@ const styles = stylex.create({
       ":is([data-handle-orientation='vertical'] *)": "translateY(-50%)",
     },
     bottom: { ":is([data-handle-orientation='horizontal'] *)": 0 },
-    left: { ":is([data-handle-orientation='vertical'] *)": 0 },
-    right: { ":is([data-handle-orientation='vertical'] *)": 0 },
+    insetInlineStart: { ":is([data-handle-orientation='vertical'] *)": 0 },
+    insetInlineEnd: { ":is([data-handle-orientation='vertical'] *)": 0 },
     top: { ":is([data-handle-orientation='horizontal'] *)": 0 },
 
     height: {

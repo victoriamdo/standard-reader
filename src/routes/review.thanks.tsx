@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
@@ -71,16 +72,16 @@ const styles = stylex.create({
     justifyContent: "center",
     minHeight: "100vh",
     paddingBottom: verticalSpace["5xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["5xl"],
   },
   panel: {
     boxSizing: "border-box",
     maxWidth: "32rem",
     paddingBottom: verticalSpace["4xl"],
-    paddingLeft: horizontalSpace["4xl"],
-    paddingRight: horizontalSpace["4xl"],
+    paddingInlineStart: horizontalSpace["4xl"],
+    paddingInlineEnd: horizontalSpace["4xl"],
     paddingTop: verticalSpace["4xl"],
     width: {
       default: "100%",
@@ -111,17 +112,21 @@ function ReviewThanksPage() {
     <main {...stylex.props(styles.page)}>
       <Flex direction="column" style={styles.panel}>
         <Flex direction="column" gap="xxs">
-          <h1 {...stylex.props(styles.title)}>Thank you.</h1>
+          <h1 {...stylex.props(styles.title)}>
+            <Trans>Thank you.</Trans>
+          </h1>
           <p {...stylex.props(styles.body)}>
-            Your review has been posted to{" "}
-            <Link
-              href="https://atstore.fyi/products/standard-reader"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              ATStore
-            </Link>
-            . Thanks for helping more readers discover Standard Reader.
+            <Trans>
+              Your review has been posted to{" "}
+              <Link
+                href="https://atstore.fyi/products/standard-reader"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                ATStore
+              </Link>
+              . Thanks for helping more readers discover Standard Reader.
+            </Trans>
           </p>
         </Flex>
         <Flex>
@@ -131,7 +136,7 @@ function ReviewThanksPage() {
               globalThis.location.href = returnTo;
             }}
           >
-            Return to the app
+            <Trans>Return to the app</Trans>
           </Button>
         </Flex>
       </Flex>

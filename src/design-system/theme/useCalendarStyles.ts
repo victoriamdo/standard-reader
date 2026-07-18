@@ -53,8 +53,8 @@ const styles = stylex.create({
     transitionTimingFunction: "ease-in-out",
     zIndex: 0,
     paddingBottom: verticalSpace["xxs"],
-    paddingLeft: horizontalSpace["xxs"],
-    paddingRight: horizontalSpace["xxs"],
+    paddingInlineStart: horizontalSpace["xxs"],
+    paddingInlineEnd: horizontalSpace["xxs"],
     paddingTop: verticalSpace["xxs"],
     width: sizeSpace["3xl"],
 
@@ -111,22 +111,22 @@ const styles = stylex.create({
       ":is([data-hovered]):not(:is([data-unavailable]))": uiColor.text2,
       ":is([data-selection-start],[data-selection-end])": primaryColor.text2,
     },
-    borderBottomLeftRadius: {
+    borderEndStartRadius: {
       ":is([data-selection-start],td:first-child > *)::before": radius.md,
     },
-    borderBottomRightRadius: {
+    borderEndEndRadius: {
       ":is([data-selection-end],td:last-child > *)::before": radius.md,
     },
-    borderTopLeftRadius: {
+    borderStartStartRadius: {
       ":is([data-selection-start],td:first-child > *)::before": radius.md,
     },
-    borderTopRightRadius: {
+    borderStartEndRadius: {
       ":is([data-selection-end],td:last-child > *)::before": radius.md,
     },
-    marginLeft: {
+    marginInlineStart: {
       ":is(td:not(:first-child) > [data-selected]):not([data-selection-start],[data-selection-end])::before": `calc(${horizontalSpace["md"]} * -1)`,
     },
-    marginRight: {
+    marginInlineEnd: {
       ":is(td:not(:last-child) > [data-selected]):not([data-selection-start],[data-selection-end])::before": `calc(${horizontalSpace["md"]} * -1)`,
     },
   },
@@ -141,8 +141,8 @@ const styles = stylex.create({
     fontWeight: fontWeight["semibold"],
     textAlign: "center",
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
   },
   grid: {

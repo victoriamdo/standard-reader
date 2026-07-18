@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 
 import { Skeleton } from "#/design-system/skeleton";
@@ -25,13 +26,13 @@ const styles = stylex.create({
   },
   article: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "100%",
     minWidth: 0,
     paddingBottom: spacing["24"],
-    paddingLeft: spacing["6"],
-    paddingRight: spacing["6"],
+    paddingInlineStart: spacing["6"],
+    paddingInlineEnd: spacing["6"],
     paddingTop: spacing["14"],
     width: "100%",
   },
@@ -39,8 +40,8 @@ const styles = stylex.create({
     alignItems: "center",
     display: "flex",
     flexDirection: "column",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "100%",
     width: "100%",
   },
@@ -115,10 +116,12 @@ const styles = stylex.create({
 });
 
 export function ArticleViewSkeleton() {
+  const { t } = useLingui();
+
   return (
     <div
       aria-busy="true"
-      aria-label="Loading article"
+      aria-label={t`Loading article`}
       {...stylex.props(styles.root)}
     >
       <article {...stylex.props(styles.article, articleMeasureStyles.default)}>

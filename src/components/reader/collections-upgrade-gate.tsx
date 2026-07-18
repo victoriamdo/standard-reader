@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMutation } from "@tanstack/react-query";
 import { Layers } from "lucide-react";
 
@@ -50,20 +51,26 @@ export function CollectionsUpgradeDialogBody({
   const upgradeMutation = useUpgradeMutation(redirect);
   return (
     <>
-      <AlertDialogHeader>Upgrade permissions</AlertDialogHeader>
+      <AlertDialogHeader>
+        <Trans>Upgrade permissions</Trans>
+      </AlertDialogHeader>
       <AlertDialogDescription>
-        Standard Reader needs write access to your site.standard publications
-        and documents, plus your collection records, to author Collections.
-        You'll be asked to approve this on your PDS login.
+        <Trans>
+          Standard Reader needs write access to your site.standard publications
+          and documents, plus your collection records, to author Collections.
+          You'll be asked to approve this on your PDS login.
+        </Trans>
       </AlertDialogDescription>
       <AlertDialogFooter>
-        <AlertDialogCancelButton>Not now</AlertDialogCancelButton>
+        <AlertDialogCancelButton>
+          <Trans>Not now</Trans>
+        </AlertDialogCancelButton>
         <AlertDialogActionButton
           closeOnPress={false}
           isPending={upgradeMutation.isPending}
           onPress={() => upgradeMutation.mutate()}
         >
-          Upgrade permissions
+          <Trans>Upgrade permissions</Trans>
         </AlertDialogActionButton>
       </AlertDialogFooter>
     </>
@@ -77,13 +84,14 @@ export function CollectionsUpgradeDialogBody({
  * the dialog (the builder would just fail on every write).
  */
 export function CollectionsUpgradeGate({ redirect }: { redirect: string }) {
+  const { t } = useLingui();
   return (
     <ReaderContent>
       <Masthead
-        kicker="Collections"
+        kicker={t`Collections`}
         kickerIcon={<Layers size={14} aria-hidden />}
-        title="Upgrade to author Collections"
-        dek="Authoring Collections needs additional permissions to publish collections and documents on your behalf. You can revoke this any time from your account settings."
+        title={t`Upgrade to author Collections`}
+        dek={t`Authoring Collections needs additional permissions to publish collections and documents on your behalf. You can revoke this any time from your account settings.`}
       />
       <AlertDialog trigger={null} isOpen>
         <CollectionsUpgradeDialogBody redirect={redirect} />

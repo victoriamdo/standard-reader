@@ -15,6 +15,7 @@ import {
   Heading,
 } from "react-aria-components";
 
+import { DirectionalIcon } from "../directional-icon";
 import { Flex } from "../flex";
 import { IconButton } from "../icon-button";
 import { ErrorMessage } from "../label";
@@ -63,11 +64,11 @@ export function RangeCalendar<T extends DateValue>(
           slot="previous"
           aria-label="Previous month"
         >
-          <ChevronLeft />
+          <DirectionalIcon as={ChevronLeft} />
         </IconButton>
         <Heading {...stylex.props(calendarStyles.heading)} />
         <IconButton variant="secondary" slot="next" aria-label="Previous month">
-          <ChevronRight />
+          <DirectionalIcon as={ChevronRight} />
         </IconButton>
       </header>
       <Flex align="start" gap="2xl">

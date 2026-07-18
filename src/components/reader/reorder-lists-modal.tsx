@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { GripVertical } from "lucide-react";
 import { useRef, useState } from "react";
@@ -43,8 +44,8 @@ const styles = stylex.create({
   },
   body: {
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
   },
   list: {
     borderColor: uiColor.border1,
@@ -63,8 +64,8 @@ const styles = stylex.create({
     fontSize: fontSize.sm,
     fontStyle: "italic",
     paddingBottom: verticalSpace.lg,
-    paddingLeft: horizontalSpace.xl,
-    paddingRight: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    paddingInlineEnd: horizontalSpace.xl,
     paddingTop: verticalSpace.lg,
   },
   grip: {
@@ -91,8 +92,8 @@ const styles = stylex.create({
     fontWeight: fontWeight.semibold,
     maxWidth: "16rem",
     paddingBottom: verticalSpace.sm,
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
     paddingTop: verticalSpace.sm,
   },
   dragPreviewName: {
@@ -107,8 +108,8 @@ const styles = stylex.create({
     flexShrink: 0,
     fontFamily: fontFamily.mono,
     fontSize: fontSize.xs,
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.md,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.md,
   },
   /**
    * Line between rows showing where the dragged list will land. Sized 2px with
@@ -163,6 +164,7 @@ function ReorderForm({
   onSave: (orderedUris: Array<string>) => void;
   close: () => void;
 }) {
+  const { t } = useLingui();
   const [items, setItems] = useState<Array<ReorderableGroup>>(groups);
   const nameByUri = new Map(groups.map((group) => [group.listUri, group.name]));
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -199,7 +201,7 @@ function ReorderForm({
     },
     renderDragPreview(dragItems) {
       const first = dragItems[0]?.["text/plain"];
-      const name = (first && nameByUri.get(first)) || "List";
+      const name = (first && nameByUri.get(first)) || t`List`;
       const extra = dragItems.length - 1;
       return (
         <div {...stylex.props(styles.dragPreview)}>
@@ -242,7 +244,7 @@ function ReorderForm({
         {...stylex.props(styles.body)}
       >
         <ListBox
-          aria-label="Sidebar lists"
+          aria-label={t`Sidebar lists`}
           size="lg"
           items={items.map((item) => ({ ...item, id: item.listUri }))}
           selectionMode="none"
@@ -250,7 +252,7 @@ function ReorderForm({
           style={styles.list}
           renderEmptyState={() => (
             <span {...stylex.props(styles.emptyList)}>
-              You don&apos;t have any lists to reorder yet.
+              <Trans>You don&apos;t have any lists to reorder yet.</Trans>
             </span>
           )}
         >
@@ -266,7 +268,7 @@ function ReorderForm({
                 />
               }
             >
-              {item.name}
+              <span dir="auto">{item.name}</span>
             </ListBoxItem>
           )}
         </ListBox>
@@ -274,11 +276,11 @@ function ReorderForm({
 
       <DialogFooter>
         <Button variant="tertiary" onPress={close}>
-          Cancel
+          <Trans>Cancel</Trans>
         </Button>
         <span {...stylex.props(styles.footerSpacer)} aria-hidden />
         <Button variant="primary" onPress={save}>
-          Save order
+          <Trans>Save order</Trans>
         </Button>
       </DialogFooter>
     </>
@@ -309,10 +311,14 @@ export function ReorderListsModal({
       trigger={<span hidden aria-hidden />}
     >
       <DialogHeader>
-        <span {...stylex.props(styles.headerTitle)}>Reorder lists</span>
+        <span {...stylex.props(styles.headerTitle)}>
+          <Trans>Reorder lists</Trans>
+        </span>
       </DialogHeader>
       <DialogDescription>
-        Drag to change the order your lists appear in the sidebar.
+        <Trans>
+          Drag to change the order your lists appear in the sidebar.
+        </Trans>
       </DialogDescription>
       {/* Reset local drag state whenever the dialog reopens with fresh groups. */}
       <ReorderForm

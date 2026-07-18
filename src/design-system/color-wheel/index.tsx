@@ -42,7 +42,7 @@ const styles = stylex.create({
     position: "absolute",
     transform: "translate(-50%, -50%)",
     height: "80%",
-    left: "50%",
+    insetInlineStart: "50%",
     top: "50%",
     width: "80%",
   },

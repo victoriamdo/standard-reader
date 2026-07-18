@@ -54,15 +54,15 @@ const styles = stylex.create({
       ":is([data-footer-centered] *)": "column !important",
     },
     justifyContent: "space-between",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "var(--page-content-max-width)",
     paddingBottom: verticalSpace["5xl"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
     },
@@ -92,8 +92,8 @@ const styles = stylex.create({
     letterSpacing: "0.05em",
     textTransform: "uppercase",
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
   },
   sectionContent: {
@@ -107,8 +107,8 @@ const styles = stylex.create({
   copyright: {
     fontSize: fontSize["xs"],
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
   },
   socialLinkList: {
@@ -176,8 +176,8 @@ const styles = stylex.create({
     gridRowEnd: "title",
     gridRowStart: "title",
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
   },
   subscribeDescription: {
@@ -187,8 +187,8 @@ const styles = stylex.create({
     gridRowEnd: "description",
     gridRowStart: "description",
     marginBottom: verticalSpace["md"],
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
   },
   subscribeInput: {

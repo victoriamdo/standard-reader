@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -50,7 +51,7 @@ const styles = stylex.create({
     flexGrow: 1,
     fontFamily: fontFamily.sans,
     fontSize: fontSize.sm,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
   },
   error: {
     color: criticalColor.text2,
@@ -98,6 +99,7 @@ async function dismissPromptBestEffort(args: {
 }
 
 export function AtstoreReviewPrompt() {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const [open, setOpen] = useState(false);
@@ -123,7 +125,7 @@ export function AtstoreReviewPrompt() {
       };
 
       if (rating < 1) {
-        throw new Error("Please choose a rating.");
+        throw new Error(t`Please choose a rating.`);
       }
 
       await dismissPromptBestEffort({
@@ -177,10 +179,10 @@ export function AtstoreReviewPrompt() {
     shownPromptToastDids.add(did);
     toasts.add(
       {
-        title: "Do you like Standard Reader?",
-        description: "Leave us a review on ATStore.",
+        title: t`Do you like Standard Reader?`,
+        description: t`Leave us a review on ATStore.`,
         action: {
-          label: "Review",
+          label: t`Review`,
           variant: "primary",
           onPress: () => {
             void dismissPromptBestEffort({
@@ -202,11 +204,11 @@ export function AtstoreReviewPrompt() {
       },
       { timeout: 15_000 },
     );
-  }, [dismissPrompt, queryClient, session]);
+  }, [dismissPrompt, queryClient, session, t]);
 
   const footerCopy = hasAtstoreReviewScope(session?.grantedScope ?? null)
-    ? "Create will publish your review to ATStore."
-    : "Clicking Create will first request permissions to create a review.";
+    ? t`Create will publish your review to ATStore.`
+    : t`Clicking Create will first request permissions to create a review.`;
 
   const error = submitOrUpgrade.error;
 
@@ -224,26 +226,32 @@ export function AtstoreReviewPrompt() {
         fitContent
         trigger={<span hidden aria-hidden {...stylex.props(styles.trigger)} />}
       >
-        <DialogHeader>Leave a review</DialogHeader>
+        <DialogHeader>
+          <Trans>Leave a review</Trans>
+        </DialogHeader>
         <DialogDescription>
-          Sharing a review on the{" "}
-          <Link
-            href="https://atstore.fyi/products/standard-reader"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            ATStore
-          </Link>{" "}
-          will help both us and other users see what you think about Standard
-          Reader.
+          <Trans>
+            Sharing a review on the{" "}
+            <Link
+              href="https://atstore.fyi/products/standard-reader"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              ATStore
+            </Link>{" "}
+            will help both us and other users see what you think about Standard
+            Reader.
+          </Trans>
         </DialogDescription>
         <Separator />
         <DialogBody style={styles.body}>
           <Flex direction="column" gap="3xl" style={styles.content}>
             <Flex align="center" gap="md">
-              <Text weight="semibold">Rating</Text>
+              <Text weight="semibold">
+                <Trans>Rating</Trans>
+              </Text>
               <StarRatingInput
-                aria-label="Rating"
+                aria-label={t`Rating`}
                 value={rating}
                 onChange={setRating}
                 size={24}
@@ -251,8 +259,8 @@ export function AtstoreReviewPrompt() {
             </Flex>
 
             <TextArea
-              aria-label="Review"
-              placeholder="Optional: tell people what you like about Standard Reader"
+              aria-label={t`Review`}
+              placeholder={t`Optional: tell people what you like about Standard Reader`}
               value={text}
               onChange={setText}
               rows={5}
@@ -263,7 +271,7 @@ export function AtstoreReviewPrompt() {
               <span {...stylex.props(styles.error)}>
                 {error instanceof Error
                   ? error.message
-                  : "Something went wrong while preparing your review."}
+                  : t`Something went wrong while preparing your review.`}
               </span>
             ) : null}
           </Flex>
@@ -276,7 +284,7 @@ export function AtstoreReviewPrompt() {
             isPending={submitOrUpgrade.isPending}
             onPress={() => submitOrUpgrade.mutate()}
           >
-            Create
+            <Trans>Create</Trans>
           </Button>
         </DialogFooter>
       </Dialog>

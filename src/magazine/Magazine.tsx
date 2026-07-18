@@ -1,3 +1,4 @@
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import type { Dispatch, SetStateAction } from "react";
 import {
@@ -117,6 +118,18 @@ function isEdgeTap(clientX: number, edgeWidth: number) {
   return clientX <= edgeWidth || clientX >= width - edgeWidth;
 }
 
+/**
+ * Physical sign of "forward through the flow": +1 in LTR, -1 in RTL.
+ *
+ * The flow is CSS multicol, which mirrors under RTL — reading forward moves
+ * physically LEFT. So a forward page turn is a leftward arrow key, and a
+ * rightward drag (the finger pulls the next column in from the left).
+ */
+function flowDirSign(el: HTMLElement | null): 1 | -1 {
+  if (!el) return 1;
+  return globalThis.getComputedStyle(el).direction === "rtl" ? -1 : 1;
+}
+
 /** Ignore synthetic mouse events fired after touch (edge tap, swipe). */
 const POST_TOUCH_MOUSE_MS = 500;
 
@@ -156,6 +169,7 @@ export function Magazine({
   dark?: boolean;
   onDarkChange?: Dispatch<SetStateAction<boolean>>;
 }) {
+  const { t } = useLingui();
   const storageKey = `mag-slide:${issue.name}`;
 
   const [mounted, setMounted] = useState(false);
@@ -274,13 +288,13 @@ export function Magazine({
     if (!onDarkChange) {
       setDarkInternal(readMagazineDark(issue.theme));
     }
-    const t = setTimeout(() => setAnimate(true), 60);
+    const animateTimer = setTimeout(() => setAnimate(true), 60);
     return () => {
       if (!embedded && prevHtml !== null && prevBody !== null) {
         html.style.overflow = prevHtml;
         body.style.overflow = prevBody;
       }
-      clearTimeout(t);
+      clearTimeout(animateTimer);
     };
   }, [embedded, issue.theme, onDarkChange]);
 
@@ -602,10 +616,20 @@ export function Magazine({
         wake();
         return;
       }
-      if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
+      // Arrow keys are physical, the flow is not: under RTL "forward" is the
+      // LEFT arrow. PageUp/PageDown/Space are not directional, so they keep
+      // their meaning in both directions.
+      const sign = flowDirSign(stageRef.current);
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        go(sign);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        go(-sign);
+      } else if (e.key === "PageDown" || e.key === " ") {
         e.preventDefault();
         go(1);
-      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+      } else if (e.key === "PageUp") {
         e.preventDefault();
         go(-1);
       } else if (e.key === "Home") {
@@ -679,8 +703,8 @@ export function Magazine({
   })();
 
   const stageStyle = {
-    paddingLeft: geom.hMargin,
-    paddingRight: geom.hMargin,
+    paddingInlineStart: geom.hMargin,
+    paddingInlineEnd: geom.hMargin,
     paddingTop: geom.vMargin,
     paddingBottom: geom.vMargin,
     "--mag-h-margin": `${geom.hMargin}px`,
@@ -690,11 +714,18 @@ export function Magazine({
     resizing && frozenTransformPx !== null
       ? frozenTransformPx
       : -activeSlide * geom.perView * geom.pageW;
+  // `flowTranslatePx` is a *logical* offset (negative = "further along the
+  // flow"). CSS multicol mirrors under RTL — column 0 sits at the right edge
+  // and later columns overflow to the LEFT — but `translateX` is always
+  // physical. Multiplying by `--dir` (1 in LTR, -1 in RTL; see src/styles.css)
+  // scrolls toward the flow's end in both directions. Without it, paging under
+  // RTL pushes the already-offscreen columns further away and shows blanks.
+  const flowTransform = `translateX(calc(var(--dir) * ${flowTranslatePx}px))`;
   const flowStyle: React.CSSProperties = {
     columnWidth: `${geom.colW}px`,
     columnGap: `${geom.gap}px`,
     height: geom.pageH - 2 * geom.vMargin,
-    transform: `translateX(${flowTranslatePx}px)`,
+    transform: flowTransform,
   };
 
   const showBuilding = measure === null || !mounted;
@@ -728,7 +759,9 @@ export function Magazine({
     touchX.current = null;
     if (Math.abs(dx) > 44) {
       suppressWake();
-      go(dx < 0 ? 1 : -1);
+      // Swipe deltas are physical. Dragging left advances in LTR; under RTL the
+      // next column lives to the left, so the finger drags RIGHT to pull it in.
+      go(dx * flowDirSign(stageRef.current) < 0 ? 1 : -1);
       return;
     }
     if (isEdgeTap(startX, geom.hMargin)) {
@@ -755,14 +788,16 @@ export function Magazine({
             className={`creases ${animate && !resizing ? "animate" : ""}`}
             aria-hidden
             style={{
-              left: 0,
+              insetInlineStart: 0,
               top: 0,
               bottom: 0,
               // Only span full two-page spreads, so a trailing lone page (odd
               // column count) doesn't get a crease through its blank facing page.
               width: Math.floor(measure.columns / 2) * 2 * geom.pageW,
               backgroundSize: `${2 * geom.pageW}px 100%`,
-              transform: `translateX(${flowTranslatePx}px)`,
+              // Creases ride along with the flow, so they take the same
+              // direction-aware transform (see `flowTransform`).
+              transform: flowTransform,
             }}
           />
         ) : null}
@@ -803,11 +838,11 @@ export function Magazine({
         <div
           className="building"
           aria-busy="true"
-          aria-label="Setting the issue"
+          aria-label={t`Setting the issue`}
         >
           <div>
             <div className="spin" />
-            Setting the issue…
+            <Trans>Setting the issue…</Trans>
           </div>
         </div>
       ) : null}
@@ -833,7 +868,7 @@ export function Magazine({
         onPointerDown={() => suppressWake()}
         onClick={() => go(-1)}
         disabled={activeSlide <= 0 || photoLightbox.isOpen}
-        aria-label="Previous page"
+        aria-label={t`Previous page`}
         tabIndex={-1}
       />
       <button
@@ -841,7 +876,7 @@ export function Magazine({
         onPointerDown={() => suppressWake()}
         onClick={() => go(1)}
         disabled={activeSlide >= maxSlide || photoLightbox.isOpen}
-        aria-label="Next page"
+        aria-label={t`Next page`}
         tabIndex={-1}
       />
 
@@ -850,21 +885,21 @@ export function Magazine({
         onClick={() => setToc(true)}
       >
         <span className="mk">S</span>
-        Contents
+        <Trans>Contents</Trans>
       </MagHoverButton>
 
       <MagHoverButton
         className={`reader-btn ${chromeOn ? "show" : ""}`}
         onClick={onOpenReader}
-        aria-label="Switch to reader view"
+        aria-label={t`Switch to reader view`}
       >
-        Reader
+        <Trans>Reader</Trans>
       </MagHoverButton>
 
       <MagHoverButton
         className={`theme-btn ${chromeOn ? "show" : ""}`}
         onClick={toggleDark}
-        aria-label={dark ? "Switch to light paper" : "Switch to dark paper"}
+        aria-label={dark ? t`Switch to light paper` : t`Switch to dark paper`}
       >
         {dark ? Icon.sun : Icon.moon}
       </MagHoverButton>
@@ -872,7 +907,7 @@ export function Magazine({
       <MagHoverButton
         className={`exit-btn ${chromeOn ? "show" : ""}`}
         onClick={onExit}
-        aria-label="Close magazine"
+        aria-label={t`Close magazine`}
       >
         {Icon.close}
       </MagHoverButton>
@@ -882,7 +917,9 @@ export function Magazine({
           <span>
             <kbd>←</kbd> <kbd>→</kbd>
           </span>
-          <span>turn the page</span>
+          <span>
+            <Trans>turn the page</Trans>
+          </span>
         </div>
       ) : null}
 
@@ -890,7 +927,7 @@ export function Magazine({
         <MagHoverButton
           onClick={() => go(-1)}
           disabled={activeSlide <= 0 || photoLightbox.isOpen}
-          aria-label="Previous"
+          aria-label={t`Previous`}
         >
           {Icon.prev}
         </MagHoverButton>
@@ -903,7 +940,7 @@ export function Magazine({
         <MagHoverButton
           onClick={() => go(1)}
           disabled={activeSlide >= maxSlide || photoLightbox.isOpen}
-          aria-label="Next"
+          aria-label={t`Next`}
         >
           {Icon.next}
         </MagHoverButton>
@@ -912,7 +949,7 @@ export function Magazine({
       <button
         type="button"
         className={`toc-scrim ${toc ? "open" : ""}`}
-        aria-label="Close table of contents"
+        aria-label={t`Close table of contents`}
         onClick={() => setToc(false)}
       />
       <nav className={`toc ${toc ? "open" : ""}`}>
@@ -920,14 +957,23 @@ export function Magazine({
           <div className="iss">
             {issue.name} &nbsp;·&nbsp; {issue.no}
           </div>
-          <h2>Contents</h2>
-          <div className="sub">{issue.features.length} features</div>
+          <h2>
+            <Trans>Contents</Trans>
+          </h2>
+          <div className="sub">
+            <Plural
+              value={issue.features.length}
+              one="# feature"
+              other="# features"
+            />
+          </div>
         </div>
         <div className="toc-list">
           {issue.features.map((feature, i) => {
             const col = measure?.featureCols[i] ?? 0;
             const num = Math.max(1, col - firstFeatureCol + 1);
             const active = featureForColumn(leftCol) === i;
+            const minutes = feature.meta.minutes;
             return (
               <MagHoverButton
                 key={feature.meta.id}
@@ -941,7 +987,7 @@ export function Magazine({
                   </span>
                   <span className="t">{feature.meta.title}</span>
                 </span>
-                <span className="mins">{feature.meta.minutes}m</span>
+                <span className="mins">{t`${minutes}m`}</span>
               </MagHoverButton>
             );
           })}
@@ -986,7 +1032,7 @@ export function Magazine({
         onOpenChange={photoLightbox.setIsOpen}
         images={photoLightbox.images}
         initialIndex={photoLightbox.initialIndex}
-        alt="Image"
+        alt={t`Image`}
         style={lightboxStyles.overlay}
       />
     </MagazineColorContext>

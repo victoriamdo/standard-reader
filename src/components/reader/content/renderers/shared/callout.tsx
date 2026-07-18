@@ -21,6 +21,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useId, useState } from "react";
 
+import { DirectionalIcon } from "#/design-system/directional-icon";
 import { animationDuration } from "#/design-system/theme/animations.stylex";
 import {
   criticalColor,
@@ -79,8 +80,8 @@ const styles = stylex.create({
     // Tighter than the top padding: the title should sit close to the body it
     // introduces rather than floating in the middle of the box.
     paddingBottom: spacing["2"],
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["4"],
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["4"],
     paddingTop: spacing["3"],
   },
   headerButton: {
@@ -110,6 +111,9 @@ const styles = stylex.create({
   },
   chevronOpen: {
     rotate: "90deg",
+    // Cancel the RTL mirror once open: a rotated-down chevron reads the same
+    // in both directions, and mirroring it would point it back up.
+    transform: "none",
   },
   body: {
     // No font family: inherit the article's serif so callout prose matches the
@@ -120,8 +124,8 @@ const styles = stylex.create({
     // Bottom padding mirrors the header's vertical padding so the prose sits
     // evenly inside the box instead of hugging one edge.
     paddingBottom: spacing["3"],
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["4"],
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["4"],
     // Callout prose reuses the article paragraph style (a full 1.5rem bottom
     // margin), which leaves an oversized, unbalanced gap inside the box. Tighten
     // the gap between stacked blocks and drop the trailing margin so the body
@@ -216,9 +220,9 @@ export function Callout({
       <Icon aria-hidden {...stylex.props(styles.icon)} />
       <span {...stylex.props(styles.title)}>{title}</span>
       {collapsible ? (
-        <ChevronRight
-          aria-hidden
-          {...stylex.props(styles.chevron, open && styles.chevronOpen)}
+        <DirectionalIcon
+          as={ChevronRight}
+          style={[styles.chevron, open && styles.chevronOpen]}
         />
       ) : null}
     </>

@@ -1,3 +1,6 @@
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -77,8 +80,8 @@ const styles = stylex.create({
     flexShrink: 0,
     justifyContent: "space-between",
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
   scroll: {
@@ -87,15 +90,15 @@ const styles = stylex.create({
     flexDirection: "column",
     flexGrow: 1,
     overflowY: "auto",
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
   },
   column: {
     // `marginBlock: auto` centers the step vertically when it's shorter than
     // the viewport, and collapses to allow normal scrolling when it's taller.
     marginBottom: "auto",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     marginTop: "auto",
     paddingBottom: verticalSpace["5xl"],
     paddingTop: verticalSpace["5xl"],
@@ -116,10 +119,10 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     flexShrink: 0,
-    marginLeft: "auto",
-    marginRight: "auto",
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace.xl,
     rowGap: verticalSpace.lg,
     width: {
@@ -169,19 +172,19 @@ const styles = stylex.create({
 
 const STEP_COPY: Record<
   Exclude<OnboardingStep, "intro" | "done">,
-  { title: string; dek: string }
+  { title: MessageDescriptor; dek: MessageDescriptor }
 > = {
   topics: {
-    title: "What do you like to read?",
-    dek: "Pick a few topics — we'll suggest publications to match. Optional.",
+    title: msg`What do you like to read?`,
+    dek: msg`Pick a few topics — we'll suggest publications to match. Optional.`,
   },
   follow: {
-    title: "Subscribe to a few publications",
-    dek: "Your Home feed is built from subscriptions. Three is a good start.",
+    title: msg`Subscribe to a few publications`,
+    dek: msg`Your Home feed is built from subscriptions. Three is a good start.`,
   },
   settings: {
-    title: "A few preferences",
-    dek: "Set these now, or change them any time in Settings.",
+    title: msg`A few preferences`,
+    dek: msg`Set these now, or change them any time in Settings.`,
   },
 };
 
@@ -196,6 +199,7 @@ export function WelcomeWizard({
   onStepChange: (next: OnboardingStep) => void;
   onTopicsChange: (next: Array<string>) => void;
 }) {
+  const { t } = useLingui();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -243,10 +247,11 @@ export function WelcomeWizard({
           toasts.add(
             {
               variant: "warning",
-              title: `Couldn't follow ${failed.length} publication${
-                failed.length === 1 ? "" : "s"
-              }`,
-              description: "You can add them later from Discover.",
+              title: t`${plural(failed.length, {
+                one: "Couldn't follow # publication",
+                other: "Couldn't follow # publications",
+              })}`,
+              description: t`You can add them later from Discover.`,
             },
             { timeout: 5000 },
           );
@@ -255,8 +260,8 @@ export function WelcomeWizard({
         toasts.add(
           {
             variant: "critical",
-            title: "Couldn't save your follows",
-            description: "You can subscribe to publications from Discover.",
+            title: t`Couldn't save your follows`,
+            description: t`You can subscribe to publications from Discover.`,
           },
           { timeout: 5000 },
         );
@@ -264,7 +269,7 @@ export function WelcomeWizard({
     }
     await finishMutation.mutateAsync();
     await navigate({ to: "/" });
-  }, [selected, followMutation, finishMutation, navigate]);
+  }, [selected, followMutation, finishMutation, navigate, t]);
 
   const progressIndex = PROGRESS_STEPS.indexOf(step);
 
@@ -310,21 +315,23 @@ export function WelcomeWizard({
 
   const forwardLabel =
     step === "intro"
-      ? "Get started"
+      ? t`Get started`
       : step === "topics"
-        ? "Continue"
+        ? t`Continue`
         : step === "follow"
           ? selected.size === 0
-            ? "Skip for now"
-            : "Continue"
+            ? t`Skip for now`
+            : t`Continue`
           : step === "settings"
-            ? "Finish"
-            : "Start reading";
+            ? t`Finish`
+            : t`Start reading`;
 
   const forwardPending =
     step === "done" && (followMutation.isPending || finishMutation.isPending);
 
   const back = backTarget[step];
+  const selectedCount = selected.size;
+  const remainingFollows = MIN_FOLLOWS - selectedCount;
 
   return (
     <main {...stylex.props(styles.main)}>
@@ -341,7 +348,7 @@ export function WelcomeWizard({
           }
           style={step === "done" ? styles.skipHidden : undefined}
         >
-          Skip for now
+          <Trans>Skip for now</Trans>
         </Button>
       </div>
 
@@ -377,14 +384,22 @@ export function WelcomeWizard({
           {step === "done" ? (
             <Flex direction="column" align="center" gap="5xl">
               <Text font="title" size="3xl" weight="bold">
-                Your feed is ready
+                <Trans>Your feed is ready</Trans>
               </Text>
               <Body variant="secondary" style={styles.center}>
-                {selected.size > 0
-                  ? `You're following ${selected.size} publication${
-                      selected.size === 1 ? "" : "s"
-                    }. Their latest writing will collect on Home.`
-                  : "Your Home feed is empty for now — head to Discover whenever you're ready, and everything you subscribe to will start collecting here."}
+                {selected.size > 0 ? (
+                  <Plural
+                    value={selected.size}
+                    one="You're following # publication. Their latest writing will collect on Home."
+                    other="You're following # publications. Their latest writing will collect on Home."
+                  />
+                ) : (
+                  <Trans>
+                    Your Home feed is empty for now — head to Discover whenever
+                    you're ready, and everything you subscribe to will start
+                    collecting here.
+                  </Trans>
+                )}
               </Body>
             </Flex>
           ) : null}
@@ -399,13 +414,16 @@ export function WelcomeWizard({
               selected.size >= MIN_FOLLOWS && styles.counterReady,
             )}
           >
-            {selected.size === 0
-              ? `Follow at least ${MIN_FOLLOWS} to fill your feed`
-              : `${selected.size} selected${
-                  selected.size < MIN_FOLLOWS
-                    ? ` — ${MIN_FOLLOWS - selected.size} more to fill your feed`
-                    : ""
-                }`}
+            {selected.size === 0 ? (
+              <Trans>Follow at least {MIN_FOLLOWS} to fill your feed</Trans>
+            ) : selected.size < MIN_FOLLOWS ? (
+              <Trans>
+                {selectedCount} selected — {remainingFollows} more to fill your
+                feed
+              </Trans>
+            ) : (
+              <Trans>{selectedCount} selected</Trans>
+            )}
           </span>
         ) : null}
         <div {...stylex.props(styles.footerRow)}>
@@ -414,7 +432,7 @@ export function WelcomeWizard({
             isDisabled={back == null}
             onPress={() => back && onStepChange(back)}
           >
-            Back
+            <Trans>Back</Trans>
           </Button>
           <Button
             variant={
@@ -449,13 +467,14 @@ function StepHeadingBlock({
 }: {
   stepKey: Exclude<OnboardingStep, "intro" | "done">;
 }) {
+  const { i18n } = useLingui();
   const copy = STEP_COPY[stepKey];
   return (
     <div {...stylex.props(styles.stepHeading)}>
       <Text font="title" size="3xl" weight="bold">
-        {copy.title}
+        {i18n._(copy.title)}
       </Text>
-      <Body variant="secondary">{copy.dek}</Body>
+      <Body variant="secondary">{i18n._(copy.dek)}</Body>
     </div>
   );
 }

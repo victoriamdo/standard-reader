@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { MessageCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { formatRelativeTime, initials } from "#/components/reader/format";
+import { initials } from "#/components/reader/format";
 import { Avatar } from "#/design-system/avatar";
 import { Flex } from "#/design-system/flex";
 import { IconButton } from "#/design-system/icon-button";
@@ -22,6 +22,11 @@ import {
   lineHeight,
 } from "#/design-system/theme/typography.stylex";
 import { Text } from "#/design-system/typography/text";
+// The extension is not localized yet (its strings are a separate i18n
+// surface), so it pins the default locale to preserve prior behaviour —
+// `formatRelativeTime` used to be hardcoded to English in `format.ts`.
+import { formattersFor } from "#/lib/formatters";
+import { DEFAULT_LOCALE } from "#/lib/locale";
 
 import { sendMessage } from "../lib/messaging";
 import type {
@@ -308,7 +313,7 @@ function DiscussionCommentCard({
           dateTime={comment.indexedAt}
           {...stylex.props(styles.commentTime)}
         >
-          {formatRelativeTime(comment.indexedAt)}
+          {formattersFor(DEFAULT_LOCALE).relativeTime(comment.indexedAt)}
         </time>
       </Flex>
 

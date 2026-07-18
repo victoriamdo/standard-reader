@@ -13,8 +13,9 @@ import {
   lineHeight,
 } from "#/design-system/theme/typography.stylex";
 import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
+import { useFormatters } from "#/lib/use-formatters";
 
-import { formatReadingTime, formatRelativeTime, initials } from "./format";
+import { formatReadingTime, initials } from "./format";
 import { ArticleEngagement } from "./primitives";
 
 const DEK_MAX = 200;
@@ -32,6 +33,10 @@ const styles = stylex.create({
     minWidth: 0,
   },
   title: {
+    // Single-line NAME/TITLE in a UI row: isolate for correct character
+    // ordering, but let alignment follow the surrounding UI (right under
+    // RTL). `dir="auto"` here would left-align it and break the column.
+    unicodeBidi: "isolate",
     overflow: "hidden",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
@@ -49,7 +54,16 @@ const styles = stylex.create({
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
+  // Keeps a Latin/numeric run (handle, relative date) from being reordered by
+  // the bidi algorithm when it shares a line with RTL UI text.
+  bidiIsolate: {
+    unicodeBidi: "isolate",
+  },
   byName: {
+    // Single-line NAME/TITLE in a UI row: isolate for correct character
+    // ordering, but let alignment follow the surrounding UI (right under
+    // RTL). `dir="auto"` here would left-align it and break the column.
+    unicodeBidi: "isolate",
     color: uiColor.text2,
     fontWeight: fontWeight.semibold,
   },
@@ -70,6 +84,10 @@ const styles = stylex.create({
     minWidth: 0,
   },
   feedTitle: {
+    // Single-line NAME/TITLE in a UI row: isolate for correct character
+    // ordering, but let alignment follow the surrounding UI (right under
+    // RTL). `dir="auto"` here would left-align it and break the column.
+    unicodeBidi: "isolate",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: fontSize.xl,
@@ -77,6 +95,10 @@ const styles = stylex.create({
     lineHeight: lineHeight.xs,
   },
   feedDek: {
+    // Single-line NAME/TITLE in a UI row: isolate for correct character
+    // ordering, but let alignment follow the surrounding UI (right under
+    // RTL). `dir="auto"` here would left-align it and break the column.
+    unicodeBidi: "isolate",
     color: uiColor.text1,
     fontFamily: fontFamily.serif,
     fontSize: fontSize.base,
@@ -122,8 +144,18 @@ function Byline({
       />
       <span {...stylex.props(styles.bylineText)}>
         <span {...stylex.props(styles.byName)}>{name}</span>
-        {handle ? ` · ${handle}` : null}
-        {when ? ` · ${when}` : null}
+        {handle ? (
+          <>
+            <span aria-hidden> · </span>
+            <span {...stylex.props(styles.bidiIsolate)}>{handle}</span>
+          </>
+        ) : null}
+        {when ? (
+          <>
+            <span aria-hidden> · </span>
+            <span {...stylex.props(styles.bidiIsolate)}>{when}</span>
+          </>
+        ) : null}
       </span>
     </Flex>
   );
@@ -178,8 +210,9 @@ export function ArticleResultRow({
   article: ArticleCard;
   variant?: "compact" | "feed";
 }) {
+  const fmt = useFormatters();
   const readingTime = formatReadingTime(article.textContent);
-  const when = formatRelativeTime(article.publishedAt);
+  const when = fmt.relativeTime(article.publishedAt);
   const coverUrl = article.coverImageUrl ?? article.publicationBannerUrl;
 
   if (variant === "feed") {

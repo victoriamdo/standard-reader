@@ -30,11 +30,11 @@ const styles = stylex.create({
   clearButton: {
     position: "absolute",
     transform: "translateY(-50%)",
-    right: 0,
+    insetInlineEnd: 0,
     top: "50%",
   },
   clearButtonPadding: {
-    paddingRight: horizontalSpace["7xl"],
+    paddingInlineEnd: horizontalSpace["7xl"],
   },
 });
 

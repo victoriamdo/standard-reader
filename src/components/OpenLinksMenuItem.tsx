@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 
 import { MenuItem } from "#/design-system/menu";
@@ -16,18 +17,20 @@ const styles = stylex.create({
  * reader.
  */
 export function OpenLinksMenuItem() {
+  const { t } = useLingui();
   const { openExternally, setOpenExternally } = useOpenLinks();
 
   return (
     <MenuItem
       onPress={() => setOpenExternally(!openExternally)}
+      textValue={t`Open posts externally`}
       suffix={
         <span {...stylex.props(styles.currentState)}>
-          {openExternally ? "On" : "Off"}
+          {openExternally ? <Trans>On</Trans> : <Trans>Off</Trans>}
         </span>
       }
     >
-      Open posts externally
+      <Trans>Open posts externally</Trans>
     </MenuItem>
   );
 }

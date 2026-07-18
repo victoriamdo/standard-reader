@@ -1,5 +1,6 @@
 "use client";
 
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   useMutation,
@@ -145,15 +146,15 @@ const styles = stylex.create({
     display: "flex",
     flexWrap: "wrap",
     rowGap: spacing["4"],
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "1320px",
     paddingBottom: spacing["0"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
@@ -168,6 +169,10 @@ const styles = stylex.create({
     paddingTop: spacing["0.5"],
   },
   heroName: {
+    // Isolate only: this is a single-line NAME, so it must keep the
+    // surrounding UI alignment while still ordering its own characters
+    // correctly. `dir="auto"` here would left-align it inside an RTL page.
+    unicodeBidi: "isolate",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: { default: "1.85rem", "@media (min-width: 48rem)": "2rem" },
@@ -208,7 +213,7 @@ const styles = stylex.create({
     fontFamily: fontFamily.serif,
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
-    marginRight: spacing["1"],
+    marginInlineEnd: spacing["1"],
   },
   heroActs: {
     alignItems: "center",
@@ -234,14 +239,14 @@ const styles = stylex.create({
   },
   tabBarInner: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "1320px",
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
@@ -259,8 +264,8 @@ const styles = stylex.create({
     width: "100%",
   },
   tabPanel: {
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["6"],
   },
   emptyNote: {
@@ -385,8 +390,11 @@ function ListFeedPanel({
   if (!hasMembers) {
     return (
       <div {...stylex.props(styles.emptyNote)}>
-        This list is empty
-        {isOwner ? " — add publications or people to it." : "."}
+        {isOwner ? (
+          <Trans>This list is empty — add publications or people to it.</Trans>
+        ) : (
+          <Trans>This list is empty.</Trans>
+        )}
       </div>
     );
   }
@@ -403,7 +411,9 @@ function ListFeedPanel({
   if (items.length === 0) {
     return (
       <div {...stylex.props(styles.emptyNote)}>
-        No articles from this list&apos;s publications or people yet.
+        <Trans>
+          No articles from this list&apos;s publications or people yet.
+        </Trans>
       </div>
     );
   }
@@ -411,8 +421,10 @@ function ListFeedPanel({
   if (visibleItems.length === 0) {
     return (
       <div {...stylex.props(styles.emptyNote)}>
-        You&apos;ve read every article here. Show read articles to see them
-        again.
+        <Trans>
+          You&apos;ve read every article here. Show read articles to see them
+          again.
+        </Trans>
       </div>
     );
   }
@@ -431,7 +443,9 @@ function ListFeedPanel({
         ))}
       </div>
       {nextOffset == null ? (
-        <p {...stylex.props(styles.endNote)}>You&apos;ve reached the end.</p>
+        <p {...stylex.props(styles.endNote)}>
+          <Trans>You&apos;ve reached the end.</Trans>
+        </p>
       ) : (
         <>
           <div
@@ -440,7 +454,9 @@ function ListFeedPanel({
             {...stylex.props(styles.loadSentinel)}
           />
           {loadingMore ? (
-            <p {...stylex.props(styles.endNote)}>Loading…</p>
+            <p {...stylex.props(styles.endNote)}>
+              <Trans>Loading…</Trans>
+            </p>
           ) : null}
         </>
       )}
@@ -458,8 +474,13 @@ function ListPublicationsPanel({
   if (publications.length === 0) {
     return (
       <div {...stylex.props(styles.emptyNote)}>
-        No publications in this list
-        {isOwner ? " — add some from the edit dialog." : "."}
+        {isOwner ? (
+          <Trans>
+            No publications in this list — add some from the edit dialog.
+          </Trans>
+        ) : (
+          <Trans>No publications in this list.</Trans>
+        )}
       </div>
     );
   }
@@ -489,8 +510,11 @@ function ListPeoplePanel({
   if (users.length === 0) {
     return (
       <div {...stylex.props(styles.emptyNote)}>
-        No people in this list
-        {isOwner ? " — add some from the edit dialog." : "."}
+        {isOwner ? (
+          <Trans>No people in this list — add some from the edit dialog.</Trans>
+        ) : (
+          <Trans>No people in this list.</Trans>
+        )}
       </div>
     );
   }
@@ -540,6 +564,7 @@ function ListPeoplePanel({
 }
 
 function ListPage() {
+  const { t } = useLingui();
   const { did, rkey } = Route.useParams();
   const { view } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -622,7 +647,7 @@ function ListPage() {
     return (
       <ReaderContent>
         <div {...stylex.props(styles.emptyNote)}>
-          We couldn’t find that list.
+          <Trans>We couldn’t find that list.</Trans>
         </div>
       </ReaderContent>
     );
@@ -630,6 +655,10 @@ function ListPage() {
 
   const { list, owner, publications, users, viewer } = page;
 
+  const listName = list.name;
+  const ownerHandle = owner?.handle ?? "";
+  const publicationCount = list.publications.length;
+  const userCount = list.users.length;
   const hasPublications = list.publications.length > 0;
   const hasUsers = list.users.length > 0;
   // Only Articles + the populated member tabs are shown; if the URL points at a
@@ -646,8 +675,8 @@ function ListPage() {
   // Filtering read articles only makes sense once reading history is tracked.
   const showReadToggle = signedIn && trackReading;
   const readToggleLabel = hideRead
-    ? "Show read articles"
-    : "Hide read articles";
+    ? t`Show read articles`
+    : t`Hide read articles`;
 
   const toggleHideRead = () => setHideRead((value: boolean) => !value);
   const onCopyLink = () => {
@@ -665,10 +694,14 @@ function ListPage() {
     <div>
       <div {...stylex.props(styles.heroInner)}>
         <div {...stylex.props(styles.heroInfo)}>
-          <Kicker>Publication list</Kicker>
+          <Kicker>
+            <Trans>Publication list</Trans>
+          </Kicker>
           <h1 {...stylex.props(styles.heroName)}>{list.name}</h1>
           {list.description ? (
-            <p {...stylex.props(styles.heroDesc)}>{list.description}</p>
+            <p dir="auto" {...stylex.props(styles.heroDesc)}>
+              {list.description}
+            </p>
           ) : null}
           <div {...stylex.props(styles.stats)}>
             {owner?.handle ? (
@@ -677,25 +710,27 @@ function ListPage() {
                 params={{ did: owner.did }}
                 {...stylex.props(styles.handleLink)}
               >
-                <Handle>by @{owner.handle}</Handle>
+                <Handle>
+                  <Trans>by @{ownerHandle}</Trans>
+                </Handle>
               </Link>
             ) : null}
             {list.publications.length > 0 ? (
               <span>
                 <span {...stylex.props(styles.statValue)}>
-                  {list.publications.length}
+                  {publicationCount}
                 </span>
-                {list.publications.length === 1
-                  ? "publication"
-                  : "publications"}
+                <Plural
+                  value={publicationCount}
+                  one="publication"
+                  other="publications"
+                />
               </span>
             ) : null}
             {list.users.length > 0 ? (
               <span>
-                <span {...stylex.props(styles.statValue)}>
-                  {list.users.length}
-                </span>
-                {list.users.length === 1 ? "user" : "users"}
+                <span {...stylex.props(styles.statValue)}>{userCount}</span>
+                <Plural value={userCount} one="user" other="users" />
               </span>
             ) : null}
           </div>
@@ -706,7 +741,7 @@ function ListPage() {
             <IconButton
               variant="secondary"
               size="lg"
-              label="Read as magazine"
+              label={t`Read as magazine`}
               onPress={openMagazine}
             >
               <BookOpen size={18} />
@@ -735,7 +770,7 @@ function ListPage() {
               <IconButton
                 variant="secondary"
                 size="lg"
-                label="Edit list"
+                label={t`Edit list`}
                 onPress={() => setEditOpen(true)}
               >
                 <Pencil size={18} />
@@ -743,7 +778,7 @@ function ListPage() {
               <IconButton
                 variant="critical-outline"
                 size="lg"
-                label="Delete list"
+                label={t`Delete list`}
                 onPress={() => setDeleteOpen(true)}
               >
                 <Trash2 size={18} />
@@ -754,7 +789,7 @@ function ListPage() {
               <IconButton
                 variant="secondary"
                 size="lg"
-                label="Remove list"
+                label={t`Remove list`}
                 isPending={toggling}
                 onPress={() => unsaveMutation.mutate(list.uri)}
               >
@@ -764,7 +799,7 @@ function ListPage() {
               <IconButton
                 variant="primary"
                 size="lg"
-                label="Subscribe to list"
+                label={t`Subscribe to list`}
                 isPending={toggling}
                 onPress={() => saveMutation.mutate(list.uri)}
               >
@@ -777,14 +812,14 @@ function ListPage() {
         <div {...stylex.props(styles.heroActsMobile)}>
           <Menu
             trigger={
-              <IconButton variant="secondary" size="lg" label="More actions">
+              <IconButton variant="secondary" size="lg" label={t`More actions`}>
                 <MoreHorizontal size={18} />
               </IconButton>
             }
           >
             {showMagazine ? (
               <MenuItem onPress={openMagazine} suffix={<BookOpen size={14} />}>
-                Read as magazine
+                <Trans>Read as magazine</Trans>
               </MenuItem>
             ) : null}
             {showReadToggle ? (
@@ -796,10 +831,10 @@ function ListPage() {
               </MenuItem>
             ) : null}
             <MenuItem onPress={onCopyLink} suffix={<LinkIcon size={14} />}>
-              Copy link
+              <Trans>Copy link</Trans>
             </MenuItem>
             <MenuItem onPress={onShareBluesky} suffix={<Share2 size={14} />}>
-              Share on Bluesky
+              <Trans>Share on Bluesky</Trans>
             </MenuItem>
             {nativeShareAvailable ? (
               <MenuItem
@@ -807,14 +842,14 @@ function ListPage() {
                   void shareLinkUrl(pageUrl);
                 }}
               >
-                Share elsewhere
+                <Trans>Share elsewhere</Trans>
               </MenuItem>
             ) : null}
             <MenuItem
               onPress={() => setRssOpen(true)}
               suffix={<Rss size={14} />}
             >
-              RSS feed
+              <Trans>RSS feed</Trans>
             </MenuItem>
             {viewer.isOwner ? (
               <>
@@ -822,14 +857,14 @@ function ListPage() {
                   onPress={() => setEditOpen(true)}
                   suffix={<Pencil size={14} />}
                 >
-                  Edit list
+                  <Trans>Edit list</Trans>
                 </MenuItem>
                 <MenuItem
                   variant="destructive"
                   onPress={() => setDeleteOpen(true)}
                   suffix={<Trash2 size={14} />}
                 >
-                  Delete list
+                  <Trans>Delete list</Trans>
                 </MenuItem>
               </>
             ) : signedIn ? (
@@ -838,14 +873,14 @@ function ListPage() {
                   onPress={() => unsaveMutation.mutate(list.uri)}
                   suffix={<BookmarkCheck size={14} />}
                 >
-                  Remove list
+                  <Trans>Remove list</Trans>
                 </MenuItem>
               ) : (
                 <MenuItem
                   onPress={() => saveMutation.mutate(list.uri)}
                   suffix={<BookmarkPlus size={14} />}
                 >
-                  Subscribe to list
+                  <Trans>Subscribe to list</Trans>
                 </MenuItem>
               )
             ) : null}
@@ -860,12 +895,20 @@ function ListPage() {
       >
         <div {...stylex.props(styles.tabBar)}>
           <div {...stylex.props(styles.tabBarInner)}>
-            <TabList aria-label="List views" style={styles.tabList}>
-              <Tab id="feed">Articles</Tab>
+            <TabList aria-label={t`List views`} style={styles.tabList}>
+              <Tab id="feed">
+                <Trans>Articles</Trans>
+              </Tab>
               {hasPublications ? (
-                <Tab id="publications">Publications</Tab>
+                <Tab id="publications">
+                  <Trans>Publications</Trans>
+                </Tab>
               ) : null}
-              {hasUsers ? <Tab id="users">Users</Tab> : null}
+              {hasUsers ? (
+                <Tab id="users">
+                  <Trans>Users</Trans>
+                </Tab>
+              ) : null}
             </TabList>
           </div>
           <div {...stylex.props(styles.tabRule)} aria-hidden />
@@ -912,14 +955,18 @@ function ListPage() {
             onOpenChange={setDeleteOpen}
             trigger={<span hidden aria-hidden />}
           >
-            <AlertDialogHeader>Delete list?</AlertDialogHeader>
+            <AlertDialogHeader>
+              <Trans>Delete list?</Trans>
+            </AlertDialogHeader>
             <AlertDialogDescription>
-              “{list.name}” will be removed from your account. Anyone who saved
-              it will no longer see it in their sidebar. This can’t be undone.
+              <Trans>
+                “{listName}” will be removed from your account. Anyone who saved
+                it will no longer see it in their sidebar. This can’t be undone.
+              </Trans>
             </AlertDialogDescription>
             <AlertDialogFooter>
               <AlertDialogCancelButton isDisabled={deleteMutation.isPending}>
-                Cancel
+                <Trans>Cancel</Trans>
               </AlertDialogCancelButton>
               <AlertDialogActionButton
                 variant="critical"
@@ -927,7 +974,7 @@ function ListPage() {
                 isPending={deleteMutation.isPending}
                 onPress={() => deleteMutation.mutate(rkey)}
               >
-                Delete list
+                <Trans>Delete list</Trans>
               </AlertDialogActionButton>
             </AlertDialogFooter>
           </AlertDialog>

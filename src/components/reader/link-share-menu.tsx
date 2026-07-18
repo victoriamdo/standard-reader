@@ -1,5 +1,7 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
+
 import { Menu, MenuItem, MenuSeparator, SubMenu } from "#/design-system/menu";
 import { shareLinkUrl, useNativeShareAvailable } from "#/lib/native-share";
 import {
@@ -31,6 +33,7 @@ export function LinkShareMenu({
   onOpenChange?: (open: boolean) => void;
   children?: React.ReactNode;
 }) {
+  const { t } = useLingui();
   const nativeShareAvailable = useNativeShareAvailable();
   const resolveLinkUrl = () => getLinkUrl();
 
@@ -53,12 +56,18 @@ export function LinkShareMenu({
         onPress={() => {
           void openShareUrl(buildBlueskyComposeUrl);
         }}
+        textValue={t`Share to Bluesky`}
       >
-        Share to Bluesky
+        <Trans>Share to Bluesky</Trans>
       </MenuItem>
       <SubMenu
         trigger={
-          <MenuItem isDisabled={!canShare}>Share to Alternate Client</MenuItem>
+          <MenuItem
+            isDisabled={!canShare}
+            textValue={t`Share to Alternate Client`}
+          >
+            <Trans>Share to Alternate Client</Trans>
+          </MenuItem>
         }
       >
         {AT_PROTO_COMPOSE_CLIENTS.map((client) => (
@@ -80,8 +89,9 @@ export function LinkShareMenu({
         onPress={() => {
           void openShareUrl(buildDisperseShareUrl);
         }}
+        textValue={t`Send to Disperse`}
       >
-        Send to Disperse
+        <Trans>Send to Disperse</Trans>
       </MenuItem>
       {nativeShareAvailable ? (
         <>
@@ -98,8 +108,9 @@ export function LinkShareMenu({
                 if (shared) onShare?.();
               })();
             }}
+            textValue={t`Share elsewhere`}
           >
-            Share elsewhere
+            <Trans>Share elsewhere</Trans>
           </MenuItem>
         </>
       ) : null}

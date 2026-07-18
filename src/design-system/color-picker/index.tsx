@@ -55,12 +55,12 @@ const styles = stylex.create({
     display: "flex",
     fontSize: fontSize["sm"],
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
     paddingBottom: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
     paddingTop: 0,
     outline: {
       default: "none",
@@ -73,8 +73,8 @@ const styles = stylex.create({
   },
   defaultPicker: {
     paddingBottom: verticalSpace["xl"],
-    paddingLeft: horizontalSpace["md"],
-    paddingRight: horizontalSpace["md"],
+    paddingInlineStart: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
     paddingTop: verticalSpace["md"],
   },
   popover: {
@@ -83,8 +83,8 @@ const styles = stylex.create({
     width: 328,
   },
   separator: {
-    marginLeft: `calc(${horizontalSpace["sm"]} * -1)`,
-    marginRight: `calc(${horizontalSpace["sm"]} * -1)`,
+    marginInlineStart: `calc(${horizontalSpace["sm"]} * -1)`,
+    marginInlineEnd: `calc(${horizontalSpace["sm"]} * -1)`,
     width: `calc(100% + ${sizeSpace["sm"]} * 2)`,
   },
   grow: {
@@ -94,8 +94,8 @@ const styles = stylex.create({
     minWidth: 0,
   },
   controls: {
-    paddingLeft: horizontalSpace["xs"],
-    paddingRight: horizontalSpace["xs"],
+    paddingInlineStart: horizontalSpace["xs"],
+    paddingInlineEnd: horizontalSpace["xs"],
   },
 });
 

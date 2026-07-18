@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useCallback } from "react";
 
@@ -14,6 +15,7 @@ import { useDocsScrollSpyActive } from "./docs-scroll-spy-context";
 const groups = publishingDocsJumpNavGroups();
 
 export function DocsPublishingMobileJumpNav() {
+  const { t } = useLingui();
   const active = useDocsScrollSpyActive();
   const value = active ?? PUBLISHING_DOCS_SCROLL_SPY_IDS[0] ?? "";
 
@@ -34,14 +36,14 @@ export function DocsPublishingMobileJumpNav() {
         {...stylex.props(docsStyles.mobileJumpLabel)}
         htmlFor="docs-publishing-jump-nav"
       >
-        Jump to
+        <Trans>Jump to</Trans>
       </label>
       <select
         id="docs-publishing-jump-nav"
         {...stylex.props(docsStyles.mobileJumpSelect)}
         value={value}
         onChange={onChange}
-        aria-label="Jump to section"
+        aria-label={t`Jump to section`}
       >
         {groups.map((group) => (
           <optgroup key={group.label} label={group.label}>

@@ -40,7 +40,7 @@ const styles = stylex.create({
   },
   itemInner: {
     gap: gap["xs"],
-    paddingLeft: horizontalSpace["xxs"],
+    paddingInlineStart: horizontalSpace["xxs"],
   },
   selected: {
     backgroundColor: primaryColor.component2,
@@ -67,7 +67,10 @@ const styles = stylex.create({
     },
     outlineOffset: "2px",
     transform: {
-      default: "rotate(0deg)",
+      // Mirrors the collapsed chevron under RTL (`--dir` is -1 there). The
+      // expanded state points down, which reads the same in both directions,
+      // so it drops the mirror rather than compounding with the rotation.
+      default: "scaleX(var(--dir))",
       ":is([aria-expanded=true] *)": "rotate(90deg)",
     },
     transitionDuration: {
@@ -80,8 +83,8 @@ const styles = stylex.create({
     },
     transitionTimingFunction: "ease-in-out",
     paddingBottom: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
     paddingTop: 0,
 
     // eslint-disable-next-line @stylexjs/no-legacy-contextual-styles, @stylexjs/valid-styles
@@ -101,11 +104,13 @@ const styles = stylex.create({
       ":is([data-react-aria-pressable=true][data-hovered]:not([data-disabled]) *)": 1,
     },
     position: "absolute",
-    transform: "translate(-100%, -50%)",
+    // Pulls the expander outside the row's start edge; `insetInlineStart: 0`
+    // flips under RTL but this transform would not (see src/styles.css).
+    transform: "translate(calc(var(--dir) * -100%), -50%)",
     transitionDuration: animationDuration.fast,
     transitionProperty: "opacity",
     transitionTimingFunction: "ease-in-out",
-    left: 0,
+    insetInlineStart: 0,
     top: "50%",
   },
   dragButton: {

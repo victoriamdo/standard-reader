@@ -59,14 +59,14 @@ const styles = stylex.create({
     position: "relative",
     minHeight: sizeSpace["4xl"],
     paddingBottom: verticalSpace["lg"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["lg"],
   },
   alertWithDescription: {
     alignItems: "flex-start",
     paddingBottom: verticalSpace["3xl"],
-    paddingRight: horizontalSpace["xl"],
+    paddingInlineEnd: horizontalSpace["xl"],
     paddingTop: verticalSpace["3xl"],
   },
   alertWithClose: {
@@ -78,7 +78,7 @@ const styles = stylex.create({
       default: "auto 1fr auto",
       [maxBreakpoints.sm]: "auto 1fr auto",
     },
-    paddingRight: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
   },
   alertWithAction: {
     gridTemplateAreas: {
@@ -89,7 +89,7 @@ const styles = stylex.create({
       default: "auto 1fr auto",
       [maxBreakpoints.sm]: "auto 1fr",
     },
-    paddingRight: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
   },
   alertWithActionAndClose: {
     gridTemplateAreas: {
@@ -100,7 +100,7 @@ const styles = stylex.create({
       default: "auto 1fr auto auto",
       [maxBreakpoints.sm]: "auto 1fr auto",
     },
-    paddingRight: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
   },
   content: {
     gap: gap["xl"],

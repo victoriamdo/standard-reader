@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -40,6 +41,7 @@ export function ReadingCustomFontPicker({
   label?: string;
   isDisabled?: boolean;
 }) {
+  const { t } = useLingui();
   const [search, setSearch] = useState(value);
 
   useEffect(() => {
@@ -76,9 +78,9 @@ export function ReadingCustomFontPicker({
   return (
     <ComboBox
       label={label}
-      aria-label={label == null ? "Google Font" : undefined}
+      aria-label={label == null ? t`Google Font` : undefined}
       size="lg"
-      placeholder="Search Google Fonts"
+      placeholder={t`Search Google Fonts`}
       items={items}
       inputValue={search}
       onInputChange={setSearch}

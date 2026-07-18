@@ -1,5 +1,8 @@
 "use client";
 
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   useInfiniteQuery,
@@ -50,11 +53,12 @@ export type LabelerView = "labels" | "documents";
 
 // Each label is a simple three-way toggle: off (ignore), warn (content warning /
 // blur), or hide (filter it out entirely).
-const VISIBILITY_OPTIONS: Array<{ id: Visibility; label: string }> = [
-  { id: "ignore", label: "Off" },
-  { id: "warn", label: "Warn" },
-  { id: "hide", label: "Hide" },
-];
+const VISIBILITY_OPTIONS: Array<{ id: Visibility; label: MessageDescriptor }> =
+  [
+    { id: "ignore", label: msg`Off` },
+    { id: "warn", label: msg`Warn` },
+    { id: "hide", label: msg`Hide` },
+  ];
 
 function defName(def: LabelValueDef): string {
   return def.locales?.[0]?.name ?? def.identifier ?? "label";
@@ -78,6 +82,7 @@ export function LabelerDetailView({
   did: string;
   view: LabelerView;
 }) {
+  const { t, i18n } = useLingui();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const labeler = useQuery(labelerApi.getLabelerQueryOptions(did));
@@ -155,7 +160,9 @@ export function LabelerDetailView({
         </div>
 
         <div {...stylex.props(styles.heroInfo)}>
-          <Kicker>Labeler</Kicker>
+          <Kicker>
+            <Trans>Labeler</Trans>
+          </Kicker>
           <h1 {...stylex.props(styles.heroName)}>{name}</h1>
           {card.description ? (
             <p {...stylex.props(styles.heroDesc)}>{card.description}</p>
@@ -165,13 +172,17 @@ export function LabelerDetailView({
             {defs.length > 0 ? (
               <span>
                 <span {...stylex.props(styles.statValue)}>{defs.length}</span>
-                {defs.length === 1 ? "label" : "labels"}
+                <Plural value={defs.length} one="label" other="labels" />
               </span>
             ) : null}
             {documentCount > 0 ? (
               <span>
                 <span {...stylex.props(styles.statValue)}>{documentCount}</span>
-                {documentCount === 1 ? "document" : "documents"}
+                <Plural
+                  value={documentCount}
+                  one="document"
+                  other="documents"
+                />
               </span>
             ) : null}
           </div>
@@ -189,7 +200,7 @@ export function LabelerDetailView({
             }
           >
             {subscribed ? <Check size={18} aria-hidden /> : null}
-            {subscribed ? "Subscribed" : "Subscribe"}
+            {subscribed ? <Trans>Subscribed</Trans> : <Trans>Subscribe</Trans>}
           </Button>
         </div>
       </div>
@@ -201,9 +212,13 @@ export function LabelerDetailView({
       >
         <div {...stylex.props(styles.tabBar)}>
           <div {...stylex.props(styles.tabBarInner)}>
-            <TabList aria-label="Labeler views" style={styles.tabList}>
-              <Tab id="labels">Labels</Tab>
-              <Tab id="documents">Documents</Tab>
+            <TabList aria-label={t`Labeler views`} style={styles.tabList}>
+              <Tab id="labels">
+                <Trans>Labels</Trans>
+              </Tab>
+              <Tab id="documents">
+                <Trans>Documents</Trans>
+              </Tab>
             </TabList>
           </div>
           <div {...stylex.props(styles.tabRule)} aria-hidden />
@@ -214,7 +229,9 @@ export function LabelerDetailView({
             <div {...stylex.props(styles.settingGroup)}>
               {defs.length === 0 ? (
                 <p {...stylex.props(styles.note)}>
-                  This labeler didn’t publish any label definitions.
+                  <Trans>
+                    This labeler didn’t publish any label definitions.
+                  </Trans>
                 </p>
               ) : (
                 defs.map((def) => {
@@ -255,7 +272,7 @@ export function LabelerDetailView({
                       >
                         {VISIBILITY_OPTIONS.map((opt) => (
                           <SegmentedControlItem key={opt.id} id={opt.id}>
-                            {opt.label}
+                            {i18n._(opt.label)}
                           </SegmentedControlItem>
                         ))}
                       </SegmentedControl>
@@ -265,8 +282,10 @@ export function LabelerDetailView({
               )}
               {!subscribed && defs.length > 0 ? (
                 <p {...stylex.props(styles.note)}>
-                  Subscribe to choose how these labels are applied while you
-                  read.
+                  <Trans>
+                    Subscribe to choose how these labels are applied while you
+                    read.
+                  </Trans>
                 </p>
               ) : null}
             </div>
@@ -274,13 +293,19 @@ export function LabelerDetailView({
 
           <TabPanel id="documents" style={styles.tabPanel}>
             {labeledIsLoading ? (
-              <p {...stylex.props(styles.emptyNote)}>Loading…</p>
+              <p {...stylex.props(styles.emptyNote)}>
+                <Trans>Loading…</Trans>
+              </p>
             ) : documents.length === 0 ? (
               <EmptyState>
-                <EmptyStateTitle>Nothing labeled yet</EmptyStateTitle>
+                <EmptyStateTitle>
+                  <Trans>Nothing labeled yet</Trans>
+                </EmptyStateTitle>
                 <EmptyStateDescription>
-                  This labeler hasn’t labeled any documents in the read-model
-                  yet.
+                  <Trans>
+                    This labeler hasn’t labeled any documents in the read-model
+                    yet.
+                  </Trans>
                 </EmptyStateDescription>
               </EmptyState>
             ) : (
@@ -299,7 +324,9 @@ export function LabelerDetailView({
                   />
                 ))}
                 {isFetchingNextPage ? (
-                  <p {...stylex.props(styles.note)}>Loading…</p>
+                  <p {...stylex.props(styles.note)}>
+                    <Trans>Loading…</Trans>
+                  </p>
                 ) : null}
                 {hasNextPage ? (
                   <div
@@ -325,15 +352,15 @@ const styles = stylex.create({
     display: "flex",
     flexWrap: "wrap",
     rowGap: spacing["4"],
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "1320px",
     paddingBottom: spacing["0"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
@@ -389,7 +416,7 @@ const styles = stylex.create({
     fontFamily: fontFamily.serif,
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
-    marginRight: spacing["1"],
+    marginInlineEnd: spacing["1"],
   },
   did: {
     fontFamily: "monospace",
@@ -412,14 +439,14 @@ const styles = stylex.create({
   },
   tabBarInner: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "1320px",
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
@@ -437,8 +464,8 @@ const styles = stylex.create({
     width: "100%",
   },
   tabPanel: {
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["6"],
   },
   settingGroup: {

@@ -63,8 +63,8 @@ const styles = stylex.create({
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
     paddingBottom: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
     paddingTop: 0,
     outline: {
       default: "none",
@@ -77,7 +77,7 @@ const styles = stylex.create({
     backgroundColor: uiColor.component1,
     display: "flex",
     justifyContent: "space-between",
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["md"],
       ":is(:first-child > *)": horizontalSpace["sm"],
     },
@@ -109,7 +109,7 @@ const styles = stylex.create({
       default: 1,
       ":is([aria-disabled=true] *)": 0.5,
     },
-    textAlign: "left",
+    textAlign: "start",
     minHeight: {
       default: sizeSpace["3xl"],
       ":is([data-table-size=lg] *)": sizeSpace["5xl"],
@@ -120,12 +120,12 @@ const styles = stylex.create({
       ":is([data-table-size=lg] *)": verticalSpace["md"],
       ":is([data-table-size=md] *)": verticalSpace["sm"],
     },
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["3xl"],
       ":is([data-table-size=lg] *:not(:first-child))": horizontalSpace["2xl"],
       ":is([data-table-size=md] *:not(:first-child))": horizontalSpace["md"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: horizontalSpace["3xl"],
       ":is([data-table-size=lg] *:not(:last-child))": horizontalSpace["2xl"],
       ":is([data-table-size=md] *:not(:last-child))": horizontalSpace["md"],
@@ -185,7 +185,7 @@ const styles = stylex.create({
     position: "absolute",
     transform: "translateX(-50%)",
     bottom: 0,
-    left: "50%",
+    insetInlineStart: "50%",
     top: 0,
     width: sizeSpace["xxs"],
   },

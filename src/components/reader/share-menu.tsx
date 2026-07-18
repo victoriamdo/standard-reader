@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { Code, Link as LinkIcon, Share2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -66,8 +67,8 @@ const styles = stylex.create({
     backgroundColor: uiColor.component1,
     flexShrink: 0,
     paddingBottom: verticalSpace.lg,
-    paddingLeft: verticalSpace.lg,
-    paddingRight: verticalSpace.lg,
+    paddingInlineStart: verticalSpace.lg,
+    paddingInlineEnd: verticalSpace.lg,
     paddingTop: verticalSpace.lg,
     width: "100%",
   },
@@ -121,6 +122,7 @@ export function ShareMenu({
   variant?: "button" | "icon";
   size?: Size;
 }) {
+  const { t } = useLingui();
   const [embedOpen, setEmbedOpen] = useState(false);
   const [embedTab, setEmbedTab] = useState<SubscribeEmbedTab>("landscape");
   const [copied, setCopied] = useState<"link" | "embed" | "anchor" | null>(
@@ -129,6 +131,8 @@ export function ShareMenu({
   const nativeShareAvailable = useNativeShareAvailable();
 
   const baseUrl = getPublicUrlClient();
+
+  const publicationName = embed?.name ?? "";
 
   const subscribeHref = embed
     ? subscribePageUrl({ did: embed.did, rkey: embed.rkey, baseUrl })
@@ -198,31 +202,44 @@ export function ShareMenu({
 
   const trigger =
     variant === "icon" ? (
-      <IconButton variant="secondary" size={size} label="Share">
+      <IconButton variant="secondary" size={size} label={t`Share`}>
         <Share2 size={iconSize} />
       </IconButton>
     ) : (
       <Button variant="secondary" size={size === "sm" ? "sm" : undefined}>
-        <Share2 size={14} /> Share
+        <Share2 size={14} /> <Trans>Share</Trans>
       </Button>
     );
 
   return (
     <>
       <Menu trigger={trigger}>
-        <MenuItem onPress={onCopyLink} suffix={<LinkIcon size={14} />}>
-          {copied === "link" ? "Copied!" : "Copy link"}
+        <MenuItem
+          onPress={onCopyLink}
+          suffix={<LinkIcon size={14} />}
+          textValue={copied === "link" ? t`Copied!` : t`Copy link`}
+        >
+          {copied === "link" ? (
+            <Trans>Copied!</Trans>
+          ) : (
+            <Trans>Copy link</Trans>
+          )}
         </MenuItem>
-        <MenuItem onPress={onShareBluesky} suffix={<Share2 size={14} />}>
-          Share on Bluesky
+        <MenuItem
+          onPress={onShareBluesky}
+          suffix={<Share2 size={14} />}
+          textValue={t`Share on Bluesky`}
+        >
+          <Trans>Share on Bluesky</Trans>
         </MenuItem>
         {nativeShareAvailable ? (
           <MenuItem
             onPress={() => {
               void shareLinkUrl(pageUrl);
             }}
+            textValue={t`Share elsewhere`}
           >
-            Share elsewhere
+            <Trans>Share elsewhere</Trans>
           </MenuItem>
         ) : null}
         {embed ? (
@@ -231,8 +248,9 @@ export function ShareMenu({
               setEmbedOpen(true);
             }}
             suffix={<Code size={14} />}
+            textValue={t`Embed subscribe`}
           >
-            Embed subscribe
+            <Trans>Embed subscribe</Trans>
           </MenuItem>
         ) : null}
       </Menu>
@@ -246,7 +264,9 @@ export function ShareMenu({
           trigger={<span hidden aria-hidden />}
         >
           <DialogHeader>
-            <span {...stylex.props(styles.dialogTitle)}>Embed subscribe</span>
+            <span {...stylex.props(styles.dialogTitle)}>
+              <Trans>Embed subscribe</Trans>
+            </span>
           </DialogHeader>
           <DialogBody style={styles.body}>
             <Flex direction="column" gap="sm" style={styles.layoutControl}>
@@ -255,12 +275,14 @@ export function ShareMenu({
                 onSelectionChange={onEmbedTabChange}
               >
                 <SegmentedControlItem id="landscape">
-                  Landscape
+                  <Trans>Landscape</Trans>
                 </SegmentedControlItem>
                 <SegmentedControlItem id="portrait">
-                  Portrait
+                  <Trans>Portrait</Trans>
                 </SegmentedControlItem>
-                <SegmentedControlItem id="link">Link</SegmentedControlItem>
+                <SegmentedControlItem id="link">
+                  <Trans>Link</Trans>
+                </SegmentedControlItem>
               </SegmentedControl>
             </Flex>
             <div {...stylex.props(styles.previewPanel)}>
@@ -272,7 +294,7 @@ export function ShareMenu({
                     rel="noopener noreferrer"
                     {...stylex.props(styles.linkPreview)}
                   >
-                    Subscribe to {embed.name}
+                    <Trans>Subscribe to {publicationName}</Trans>
                   </a>
                 </div>
               ) : (
@@ -285,16 +307,28 @@ export function ShareMenu({
             </div>
             <Flex direction="column" gap="2xl" style={styles.snippetSection}>
               <SmallBody variant="secondary">
-                {embedTab === "link"
-                  ? "Add this anchor anywhere on your site and style it however you like. It opens the subscribe flow when clicked."
-                  : embedTab === "portrait"
-                    ? "Portrait stacks the card vertically. Height adjusts automatically once the embed loads. Change the iframe width as needed."
-                    : "Landscape fits a compact row. Height adjusts automatically once the embed loads. Change the iframe width as needed."}
+                {embedTab === "link" ? (
+                  <Trans>
+                    Add this anchor anywhere on your site and style it however
+                    you like. It opens the subscribe flow when clicked.
+                  </Trans>
+                ) : embedTab === "portrait" ? (
+                  <Trans>
+                    Portrait stacks the card vertically. Height adjusts
+                    automatically once the embed loads. Change the iframe width
+                    as needed.
+                  </Trans>
+                ) : (
+                  <Trans>
+                    Landscape fits a compact row. Height adjusts automatically
+                    once the embed loads. Change the iframe width as needed.
+                  </Trans>
+                )}
               </SmallBody>
               <textarea
                 readOnly
                 aria-label={
-                  embedTab === "link" ? "Subscribe link code" : "Embed code"
+                  embedTab === "link" ? t`Subscribe link code` : t`Embed code`
                 }
                 value={embedSnippet}
                 {...stylex.props(styles.snippet)}
@@ -303,16 +337,16 @@ export function ShareMenu({
           </DialogBody>
           <DialogFooter>
             <Button variant="secondary" onPress={() => setEmbedOpen(false)}>
-              Close
+              <Trans>Close</Trans>
             </Button>
             <Button variant="primary" onPress={onCopySnippet}>
-              {copied === "anchor"
-                ? "Copied!"
-                : copied === "embed"
-                  ? "Copied!"
-                  : embedTab === "link"
-                    ? "Copy link code"
-                    : "Copy embed code"}
+              {copied === "anchor" || copied === "embed" ? (
+                <Trans>Copied!</Trans>
+              ) : embedTab === "link" ? (
+                <Trans>Copy link code</Trans>
+              ) : (
+                <Trans>Copy embed code</Trans>
+              )}
             </Button>
           </DialogFooter>
         </Dialog>

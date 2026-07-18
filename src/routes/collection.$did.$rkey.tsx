@@ -1,5 +1,7 @@
 "use client";
 
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import {
   createFileRoute,
@@ -55,8 +57,8 @@ const collectionSearchSchema = z.object({
 
 function collectionPendingLabel(shell: MagazineShellData | null | undefined) {
   return shell?.isCollection === false
-    ? "Opening the issue…"
-    : "Opening the collection…";
+    ? msg`Opening the issue…`
+    : msg`Opening the collection…`;
 }
 
 export const Route = createFileRoute("/collection/$did/$rkey")({
@@ -180,6 +182,7 @@ function CollectionRouteView({
   loaderIsListMode: boolean | null;
   loaderCollection: CollectionMagazineData | null;
 }) {
+  const { i18n } = useLingui();
   const isListMode = loaderIsListMode === true;
 
   const { data: collection = loaderCollection ?? undefined } = useQuery({
@@ -268,18 +271,22 @@ function CollectionRouteView({
 
   let shellContent: ReactNode;
   if (!shell || waitingForList || waitingForCollection) {
-    shellContent = <MagazineBuilding label={collectionPendingLabel(shell)} />;
+    shellContent = (
+      <MagazineBuilding label={i18n._(collectionPendingLabel(shell))} />
+    );
   } else if (!issue || issue.features.length === 0) {
     shellContent = (
       <div className="building">
         <div>
-          <div style={{ marginBottom: 12 }}>Nothing to read here yet.</div>
+          <div style={{ marginBottom: 12 }}>
+            <Trans>Nothing to read here yet.</Trans>
+          </div>
           <button
             className="toc-btn show"
             style={{ position: "static" }}
             onClick={closeViewer}
           >
-            Go back
+            <Trans>Go back</Trans>
           </button>
         </div>
       </div>

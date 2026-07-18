@@ -15,7 +15,7 @@ import { fontSize, lineHeight } from "../theme/typography.stylex";
 
 const IndeterminateAnimation = stylex.keyframes({
   from: {
-    transform: "translateX(-1.86%)",
+    transform: "translateX(calc(var(--dir) * -1.86%))",
   },
   to: {
     transform: "translateX(0%)",
@@ -73,7 +73,9 @@ const styles = stylex.create({
   },
   fill: {
     backgroundColor: primaryColor.solid1,
-    transform: "translateX(-100%)",
+    // The bar fills from the start of the line, so the offscreen resting
+    // position flips with the writing direction (`--dir`, see styles.css).
+    transform: "translateX(calc(var(--dir) * -100%))",
     transitionDuration: animationDuration.default,
     transitionProperty: "none",
     transitionTimingFunction: "linear",
@@ -81,7 +83,7 @@ const styles = stylex.create({
     width: "100%",
   },
   progress: (percentage: number) => ({
-    transform: `translateX(calc(${percentage.toString()}% - 100%))`,
+    transform: `translateX(calc(var(--dir) * (${percentage.toString()}% - 100%)))`,
   }),
   indeterminateFill: {
     animationDuration: "1s",

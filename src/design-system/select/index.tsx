@@ -46,8 +46,8 @@ const styles = stylex.create({
     maxHeight: "40vh",
   },
   searchField: {
-    paddingLeft: horizontalSpace["xs"],
-    paddingRight: horizontalSpace["xs"],
+    paddingInlineStart: horizontalSpace["xs"],
+    paddingInlineEnd: horizontalSpace["xs"],
     paddingTop: verticalSpace["xs"],
   },
 });

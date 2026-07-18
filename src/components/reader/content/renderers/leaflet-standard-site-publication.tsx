@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -68,7 +69,11 @@ export function LeafletStandardSitePublicationBlockView({
 
   if (!meta) {
     if (isLoading) return <PublicationCardSkeleton />;
-    return <p {...stylex.props(styles.notFound)}>Publication not found.</p>;
+    return (
+      <p {...stylex.props(styles.notFound)}>
+        <Trans>Publication not found.</Trans>
+      </p>
+    );
   }
 
   const themeVars = applyTheme ? publicationThemeVars(meta, dark) : null;

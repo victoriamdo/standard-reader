@@ -9,9 +9,11 @@ import { size as sizeSpace } from "../theme/semantic-spacing.stylex";
 import { shadow } from "../theme/shadow.stylex";
 import type { Size, StyleXComponentProps } from "../theme/types";
 
+// The sweep should travel with the reading direction, so the offset is negated
+// under RTL (see `--dir` in src/styles.css).
 const shimmer = stylex.keyframes({
   "0%": {
-    transform: "translateX(-65%)",
+    transform: "translateX(calc(var(--dir) * -65%))",
   },
   "100%": {
     transform: "translateX(0%)",
@@ -46,8 +48,8 @@ const styles = stylex.create({
     backgroundSize: "100%",
     position: "absolute",
     bottom: 0,
-    left: 0,
-    right: 0,
+    insetInlineStart: 0,
+    insetInlineEnd: 0,
     top: 0,
     width: "300%",
   },

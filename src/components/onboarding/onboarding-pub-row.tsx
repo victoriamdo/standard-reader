@@ -34,10 +34,10 @@ const styles = stylex.create({
     height: "auto",
     justifyContent: "flex-start",
     paddingBottom: verticalSpace.xl,
-    paddingLeft: horizontalSpace.xl,
-    paddingRight: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    paddingInlineEnd: horizontalSpace.xl,
     paddingTop: verticalSpace.xl,
-    textAlign: "left",
+    textAlign: "start",
     width: "100%",
   },
   body: {
@@ -105,8 +105,8 @@ const styles = stylex.create({
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,
     paddingBottom: verticalSpace.xs,
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
     paddingTop: verticalSpace.xs,
   },
 });
@@ -140,14 +140,20 @@ export function OnboardingPubRow({
       <PublicationAvatar pub={pub} size="lg" />
       <span {...stylex.props(styles.body)}>
         <span {...stylex.props(styles.titleLine)}>
-          <span {...stylex.props(styles.name)}>{pub.name}</span>
+          <span dir="auto" {...stylex.props(styles.name)}>
+            {pub.name}
+          </span>
           {trending ? <Badge variant="primary">Trending</Badge> : null}
         </span>
         {pub.ownerHandle ? (
-          <span {...stylex.props(styles.handle)}>@{pub.ownerHandle}</span>
+          <span dir="auto" {...stylex.props(styles.handle)}>
+            @{pub.ownerHandle}
+          </span>
         ) : null}
         {pub.description ? (
-          <p {...stylex.props(styles.description)}>{pub.description}</p>
+          <p dir="auto" {...stylex.props(styles.description)}>
+            {pub.description}
+          </p>
         ) : null}
         {pub.topic || readers ? (
           <span {...stylex.props(styles.metaLine)}>

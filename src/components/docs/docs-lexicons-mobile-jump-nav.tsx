@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useCallback, useMemo } from "react";
 
@@ -17,6 +18,7 @@ export function DocsLexiconsMobileJumpNav({
 }: {
   entries: Array<LexiconDocsEntry>;
 }) {
+  const { t } = useLingui();
   const active = useDocsScrollSpyActive();
   const scrollSpyIds = useMemo(
     () => lexiconDocsScrollSpyIds(entries),
@@ -44,14 +46,14 @@ export function DocsLexiconsMobileJumpNav({
         {...stylex.props(docsStyles.mobileJumpLabel)}
         htmlFor="lexicon-docs-jump-nav"
       >
-        Jump to
+        <Trans>Jump to</Trans>
       </label>
       <select
         id="lexicon-docs-jump-nav"
         {...stylex.props(docsStyles.mobileJumpSelect)}
         value={value}
         onChange={onChange}
-        aria-label="Jump to section"
+        aria-label={t`Jump to section`}
       >
         {groups.map((group) => (
           <optgroup key={group.label} label={group.label}>

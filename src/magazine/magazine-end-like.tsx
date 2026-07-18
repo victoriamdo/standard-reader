@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
 
@@ -24,7 +25,9 @@ export function MagazineEndLike({
 
   return (
     <div className="endcard-like">
-      <p className="endcard-like-dek">Did you enjoy this issue?</p>
+      <p className="endcard-like-dek">
+        <Trans>Did you enjoy this issue?</Trans>
+      </p>
       <MagHoverButton
         type="button"
         className={`endcard-like-btn${recommended ? " is-liked" : ""}`}
@@ -38,7 +41,13 @@ export function MagazineEndLike({
           strokeWidth={2}
           fill={recommended ? "currentColor" : "none"}
         />
-        <span>{recommended ? "Recommended" : "Recommend this issue"}</span>
+        <span>
+          {recommended ? (
+            <Trans>Recommended</Trans>
+          ) : (
+            <Trans>Recommend this issue</Trans>
+          )}
+        </span>
         <span className="endcard-like-divider" aria-hidden />
         <span className="endcard-like-count">
           {formatReaders(recommendCount)}

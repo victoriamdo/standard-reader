@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
 
@@ -56,6 +57,14 @@ function CodePanel({ tag, code }: { tag: string; code: string }) {
 
 const SUBSCRIBE_EMBED_RESIZE_MESSAGE = "standard-reader-subscribe-resize";
 
+/**
+ * Kept as a const rather than an inline JSX literal: Lingui inlines string
+ * literals into the extracted message, and the braces here would then be parsed
+ * as an ICU placeholder — which fails catalog compilation for every locale. As
+ * a variable reference it extracts as a placeholder instead.
+ */
+const HTML_PAYLOAD_EXAMPLE = '{ html: "..." }';
+
 // A real, live publication — placeholder ids wouldn't render anything.
 const SAMPLE_PUBLICATION = {
   did: "did:plc:s2rczyxit2v5vzedxqs326ri",
@@ -64,6 +73,7 @@ const SAMPLE_PUBLICATION = {
 };
 
 function SubscribeEmbedSample({ origin }: { origin: string }) {
+  const { t } = useLingui();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [height, setHeight] = useState(322);
 
@@ -84,6 +94,7 @@ function SubscribeEmbedSample({ origin }: { origin: string }) {
   }, []);
 
   const src = `${origin}/embed/subscribe/${SAMPLE_PUBLICATION.did}/${SAMPLE_PUBLICATION.rkey}?layout=portrait`;
+  const publicationName = SAMPLE_PUBLICATION.name;
 
   return (
     <div
@@ -95,6 +106,9 @@ function SubscribeEmbedSample({ origin }: { origin: string }) {
         width: "400px",
       }}
     >
+      {/* oxlint-disable-next-line iframe-has-title --
+          the title IS set below; the rule can't statically resolve a
+          tagged-template expression. */}
       <iframe
         ref={iframeRef}
         src={src}
@@ -106,7 +120,7 @@ function SubscribeEmbedSample({ origin }: { origin: string }) {
           display: "block",
           width: "100%",
         }}
-        title={`Subscribe to ${SAMPLE_PUBLICATION.name}`}
+        title={t`Subscribe to ${publicationName}`}
         loading="lazy"
       />
     </div>
@@ -123,16 +137,22 @@ export function PublishingDocsPage() {
       mobileJumpNav={<DocsPublishingMobileJumpNav />}
     >
       <div {...stylex.props(docsStyles.masthead)}>
-        <div {...stylex.props(docsStyles.kicker)}>Developer docs</div>
+        <div {...stylex.props(docsStyles.kicker)}>
+          <Trans>Developer docs</Trans>
+        </div>
         <h1 {...stylex.props(docsStyles.title)}>
-          Publishing without a platform
+          <Trans>Publishing without a platform</Trans>
         </h1>
         <p {...stylex.props(docsStyles.dek)}>
-          How to wire a personal site&apos;s own{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>site.standard.*</code>{" "}
-          records so Standard Reader can find it and read articles inline,
-          without going through Leaflet, Pckt, Offprint, or another publishing
-          tool.
+          <Trans>
+            How to wire a personal site&apos;s own{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              site.standard.*
+            </code>{" "}
+            records so Standard Reader can find it and read articles inline,
+            without going through Leaflet, Pckt, Offprint, or another publishing
+            tool.
+          </Trans>
         </p>
       </div>
 
@@ -141,209 +161,237 @@ export function PublishingDocsPage() {
           {...stylex.props(docsStyles.h2, docsStyles.h2First)}
           id={PUBLISHING_DOCS_IDS.overview}
         >
-          Overview
+          <Trans>Overview</Trans>
         </h2>
         <p {...stylex.props(docsStyles.prose)}>
-          Standard Reader indexes{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            site.standard.document
-          </code>{" "}
-          and{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            site.standard.publication
-          </code>{" "}
-          records out of AT Proto repos. Platforms like Leaflet, Pckt, and
-          Offprint write these records for you as part of publishing, so their
-          authors get the full reader treatment automatically. If you run your
-          own site and hand-roll your own{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>site.standard</code>{" "}
-          integration instead, you write those records yourself — this page
-          covers what to add, including Markpub, the markdown format we
-          recommend for a hand-rolled body.
+          <Trans>
+            Standard Reader indexes{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              site.standard.document
+            </code>{" "}
+            and{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              site.standard.publication
+            </code>{" "}
+            records out of AT Proto repos. Platforms like Leaflet, Pckt, and
+            Offprint write these records for you as part of publishing, so their
+            authors get the full reader treatment automatically. If you run your
+            own site and hand-roll your own{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>site.standard</code>{" "}
+            integration instead, you write those records yourself — this page
+            covers what to add, including Markpub, the markdown format we
+            recommend for a hand-rolled body.
+          </Trans>
         </p>
 
         <h2 {...stylex.props(docsStyles.h2)} id={PUBLISHING_DOCS_IDS.discovery}>
-          Discovery
+          <Trans>Discovery</Trans>
         </h2>
         <p {...stylex.props(docsStyles.prose)}>
-          Discovery hints are part of the site.standard spec itself, and our
-          browser extension uses it too! When you land on a URL it hasn&apos;t
-          indexed yet, it looks in that page&apos;s{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>head</code> for a{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>link</code> tag whose{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>rel</code> matches the
-          record&apos;s collection and whose{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>href</code> is the
-          record&apos;s{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>at://</code> URI.
+          <Trans>
+            Discovery hints are part of the site.standard spec itself, and our
+            browser extension uses it too! When you land on a URL it hasn&apos;t
+            indexed yet, it looks in that page&apos;s{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>head</code> for a{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>link</code> tag whose{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>rel</code> matches
+            the record&apos;s collection and whose{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>href</code> is the
+            record&apos;s{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>at://</code> URI.
+          </Trans>
         </p>
         <CodePanel tag="head" code={DISCOVERY_SNIPPET} />
         <p {...stylex.props(docsStyles.prose)}>
-          Include the{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            site.standard.publication
-          </code>{" "}
-          hint only if the document belongs to a publication record. Add both
-          regardless of which reader you care about — they&apos;re how any
-          client on the network resolves your page to its record, not just our
-          extension.
+          <Trans>
+            Include the{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              site.standard.publication
+            </code>{" "}
+            hint only if the document belongs to a publication record. Add both
+            regardless of which reader you care about — they&apos;re how any
+            client on the network resolves your page to its record, not just our
+            extension.
+          </Trans>
         </p>
 
         <h2
           {...stylex.props(docsStyles.h2)}
           id={PUBLISHING_DOCS_IDS.subscribeEmbed}
         >
-          Subscribe embed
+          <Trans>Subscribe embed</Trans>
         </h2>
         <p {...stylex.props(docsStyles.prose)}>
-          Every publication page also serves a themed, embeddable subscribe
-          widget — an iframe you can drop on your own site so visitors can
-          subscribe without leaving your page. The easiest way to get it: open
-          your publication&apos;s page on Standard Reader, use{" "}
-          <strong>Share → Embed subscribe</strong>, pick landscape or portrait,
-          and copy the snippet — no account or ownership check required to
-          generate it.
+          <Trans>
+            Every publication page also serves a themed, embeddable subscribe
+            widget — an iframe you can drop on your own site so visitors can
+            subscribe without leaving your page. The easiest way to get it: open
+            your publication&apos;s page on Standard Reader, use{" "}
+            <strong>Share → Embed subscribe</strong>, pick landscape or
+            portrait, and copy the snippet — no account or ownership check
+            required to generate it.
+          </Trans>
         </p>
         <p {...stylex.props(docsStyles.prose)}>
-          It reads the publication&apos;s{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>basicTheme</code>{" "}
-          colors automatically, so the card matches your brand with no extra
-          params — fonts aren&apos;t picked up though; the card always uses
-          Standard Reader&apos;s own type. Here&apos;s a live one:
+          <Trans>
+            It reads the publication&apos;s{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>basicTheme</code>{" "}
+            colors automatically, so the card matches your brand with no extra
+            params — fonts aren&apos;t picked up though; the card always uses
+            Standard Reader&apos;s own type. Here&apos;s a live one:
+          </Trans>
         </p>
         <SubscribeEmbedSample origin={origin} />
         <p {...stylex.props(docsStyles.prose)}>
-          Clicking Subscribe opens Standard Reader itself, not your page —
-          subscribing writes a{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            site.standard.graph.subscription
-          </code>{" "}
-          record to the reader&apos;s own PDS via their own OAuth session, so it
-          has to happen on our domain. If you&apos;d rather skip the iframe,
-          link straight to{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            /subscribe/{"{did}"}/{"{rkey}"}
-          </code>{" "}
-          and style your own button.
+          <Trans>
+            Clicking Subscribe opens Standard Reader itself, not your page —
+            subscribing writes a{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              site.standard.graph.subscription
+            </code>{" "}
+            record to the reader&apos;s own PDS via their own OAuth session, so
+            it has to happen on our domain. If you&apos;d rather skip the
+            iframe, link straight to{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              /subscribe/{"{did}"}/{"{rkey}"}
+            </code>{" "}
+            and style your own button.
+          </Trans>
         </p>
 
         <h2
           {...stylex.props(docsStyles.h2)}
           id={PUBLISHING_DOCS_IDS.inlineReading}
         >
-          Rendering Content in Standard Reader
+          <Trans>Rendering Content in Standard Reader</Trans>
         </h2>
         <p {...stylex.props(docsStyles.prose)}>
-          Whether tapping an article opens it inline in Standard Reader, or
-          takes the reader straight to your site, depends on one thing: does the
-          record&apos;s{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>content</code> field
-          hold a body in a format Standard Reader knows how to render? If{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>content</code> is
-          missing, or set to a format we don&apos;t recognize, the article is
-          treated as an external post and always opens on your site — even if{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>textContent</code>{" "}
-          carries a plain-text excerpt. To get inline reading, publish the
-          article body in{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>content</code> using
-          one of the recognized formats below.
+          <Trans>
+            Whether tapping an article opens it inline in Standard Reader, or
+            takes the reader straight to your site, depends on one thing: does
+            the record&apos;s{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>content</code> field
+            hold a body in a format Standard Reader knows how to render? If{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>content</code> is
+            missing, or set to a format we don&apos;t recognize, the article is
+            treated as an external post and always opens on your site — even if{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>textContent</code>{" "}
+            carries a plain-text excerpt. To get inline reading, publish the
+            article body in{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>content</code> using
+            one of the recognized formats below.
+          </Trans>
         </p>
 
         <h3
           {...stylex.props(docsStyles.h3)}
           id={PUBLISHING_DOCS_IDS.contentFormats}
         >
-          Supported content formats
+          <Trans>Supported content formats</Trans>
         </h3>
         <p {...stylex.props(docsStyles.prose)}>
-          <strong>
-            <a
-              href="https://markpub.at"
-              target="_blank"
-              rel="noreferrer"
-              {...stylex.props(docsStyles.proseLink)}
-            >
-              Markpub
-            </a>{" "}
-            (recommended).
-          </strong>{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            at.markpub.markdown
-          </code>{" "}
-          — markdown with facets for rich text. It&apos;s not part of the
-          site.standard spec either — no markdown format is — but it&apos;s the
-          only one that&apos;s actually spec&apos;d in a meaningful, reusable
-          way, rather than one app&apos;s own ad hoc shape. Use this for a
-          hand-rolled integration unless you already produce one of the platform
-          formats below.
+          <Trans>
+            <strong>
+              <a
+                href="https://markpub.at"
+                target="_blank"
+                rel="noreferrer"
+                {...stylex.props(docsStyles.proseLink)}
+              >
+                Markpub
+              </a>{" "}
+              (recommended).
+            </strong>{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              at.markpub.markdown
+            </code>{" "}
+            — markdown with facets for rich text. It&apos;s not part of the
+            site.standard spec either — no markdown format is — but it&apos;s
+            the only one that&apos;s actually spec&apos;d in a meaningful,
+            reusable way, rather than one app&apos;s own ad hoc shape. Use this
+            for a hand-rolled integration unless you already produce one of the
+            platform formats below.
+          </Trans>
         </p>
         <p {...stylex.props(docsStyles.prose)}>
-          <strong>Leaflet, Pckt, Offprint.</strong>{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            pub.leaflet.content
-          </code>
-          ,{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            blog.pckt.content
-          </code>
-          , and{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            app.offprint.content
-          </code>{" "}
-          — the block-based formats those tools write natively.
+          <Trans>
+            <strong>Leaflet, Pckt, Offprint.</strong>{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              pub.leaflet.content
+            </code>
+            ,{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              blog.pckt.content
+            </code>
+            , and{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              app.offprint.content
+            </code>{" "}
+            — the block-based formats those tools write natively.
+          </Trans>
         </p>
         <p {...stylex.props(docsStyles.prose)}>
-          Everything below is compatibility support for formats already out
-          there in other apps&apos; own repos — none of it is part of the
-          site.standard spec, and none of it is something to model a new
-          integration on.
+          <Trans>
+            Everything below is compatibility support for formats already out
+            there in other apps&apos; own repos — none of it is part of the
+            site.standard spec, and none of it is something to model a new
+            integration on.
+          </Trans>
         </p>
         <p {...stylex.props(docsStyles.prose)}>
-          <strong>HTML-in-record.</strong> Formats whose payload is{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            {'{ html: "..." }'}
-          </code>{" "}
-          — each from a different, unrelated app, e.g.{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            org.wordpress.html
-          </code>{" "}
-          (WordPress) or{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>co.idno.html</code>{" "}
-          (Idno). Sanitized before render, never injected raw.
+          <Trans>
+            <strong>HTML-in-record.</strong> Formats whose payload is{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              {HTML_PAYLOAD_EXAMPLE}
+            </code>{" "}
+            — each from a different, unrelated app, e.g.{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              org.wordpress.html
+            </code>{" "}
+            (WordPress) or{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>co.idno.html</code>{" "}
+            (Idno). Sanitized before render, never injected raw.
+          </Trans>
         </p>
         <p {...stylex.props(docsStyles.prose)}>
-          <strong>Structured blocks.</strong> Rich block-editor documents, each
-          in that editor&apos;s own schema — e.g.{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            org.blocknote.document#content
-          </code>{" "}
-          (BlockNote) or{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            pub.oxa.document.document
-          </code>{" "}
-          (Oxa). Only useful if you&apos;re already producing one of these; not
-          worth adopting from scratch.
+          <Trans>
+            <strong>Structured blocks.</strong> Rich block-editor documents,
+            each in that editor&apos;s own schema — e.g.{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              org.blocknote.document#content
+            </code>{" "}
+            (BlockNote) or{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              pub.oxa.document.document
+            </code>{" "}
+            (Oxa). Only useful if you&apos;re already producing one of these;
+            not worth adopting from scratch.
+          </Trans>
         </p>
         <p {...stylex.props(docsStyles.prose)}>
-          <strong>Other markdown shapes (avoid).</strong>{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            site.standard.content.markdown
-          </code>{" "}
-          and a scattering of third-party{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>#markdown</code> shapes
-          — e.g.{" "}
-          <code {...stylex.props(docsStyles.codeInline)}>
-            site.standard.document#markdown
-          </code>{" "}
-          — carry a raw markdown string under a format-specific key. Don&apos;t
-          add another one — publish Markpub instead.
+          <Trans>
+            <strong>Other markdown shapes (avoid).</strong>{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              site.standard.content.markdown
+            </code>{" "}
+            and a scattering of third-party{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>#markdown</code>{" "}
+            shapes — e.g.{" "}
+            <code {...stylex.props(docsStyles.codeInline)}>
+              site.standard.document#markdown
+            </code>{" "}
+            — carry a raw markdown string under a format-specific key.
+            Don&apos;t add another one — publish Markpub instead.
+          </Trans>
         </p>
 
         <h3 {...stylex.props(docsStyles.h3)} id={PUBLISHING_DOCS_IDS.example}>
-          Example record
+          <Trans>Example record</Trans>
         </h3>
         <p {...stylex.props(docsStyles.prose)}>
-          A minimal loose document — no publication, Markpub markdown body:
+          <Trans>
+            A minimal loose document — no publication, Markpub markdown body:
+          </Trans>
         </p>
         <div {...stylex.props(docsStyles.reqPanel)}>
           <div {...stylex.props(docsStyles.reqBar)}>

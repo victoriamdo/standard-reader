@@ -31,8 +31,8 @@ const styles = stylex.create({
     outline: "none",
     position: "relative",
     paddingBottom: verticalSpace["md"],
-    paddingLeft: horizontalSpace["md"],
-    paddingRight: horizontalSpace["md"],
+    paddingInlineStart: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
     paddingTop: verticalSpace["md"],
   },
 });

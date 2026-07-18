@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 
 import type { LeafletFootnote } from "#/lib/leaflet/footnotes";
@@ -18,12 +19,14 @@ export function FootnotesSection({
 }: {
   footnotes: Array<LeafletFootnote>;
 }) {
+  const { t } = useLingui();
+
   if (footnotes.length === 0) return null;
 
   return (
     <section
       {...stylex.props(articleBodyStyles.footnotes)}
-      aria-label="Footnotes"
+      aria-label={t`Footnotes`}
     >
       <hr {...stylex.props(articleBodyStyles.footnotesDivider)} />
       <ol {...stylex.props(articleBodyStyles.footnotesList)}>
@@ -39,7 +42,7 @@ export function FootnotesSection({
             />{" "}
             <a
               href={`#fnref-${footnote.id}`}
-              aria-label="Back to content"
+              aria-label={t`Back to content`}
               {...stylex.props(articleBodyStyles.footnoteBackLink)}
             >
               ↩
