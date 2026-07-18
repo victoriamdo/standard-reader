@@ -70,7 +70,7 @@ export type ExtensionSessionResponse = {
 };
 
 export type ExtensionDiscussionComment = {
-  source: "bluesky" | "margin" | "semble" | "note";
+  source: "bluesky" | "margin" | "semble" | "note" | "leaflet";
   kind: "link" | "quote";
   postUri: string;
   postUrl: string;

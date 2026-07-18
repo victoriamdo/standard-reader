@@ -398,7 +398,7 @@ msgstr "発行物、ハンドル、#タグ、見出し…"
 msgid "No matches"
 msgstr "一致するものがありません"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{count, plural, one {# tagged post} other {{value} tagged posts}}"
 msgstr "{count, plural, one {タグ付き投稿 #件} other {タグ付き投稿 {value}件}}"
 
@@ -2355,7 +2355,7 @@ msgstr "画像ギャラリー"
 msgid "Track reading history"
 msgstr "閲覧履歴を記録"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{readCount, plural, one {# read} other {{value} reads}}"
 msgstr "{readCount, plural, one {# 回読了} other {{value} 回読了}}"
 
@@ -2464,6 +2464,10 @@ msgstr "テーマとフォント"
 #: src/components/user-settings-view.tsx
 msgid "Personal data"
 msgstr "個人データ"
+
+#: src/components/reader/comments/comment-card.tsx
+msgid "on Leaflet"
+msgstr "Leaflet で"
 
 #: src/components/reader/collections-upgrade-gate.tsx
 #: src/components/user-settings-view.tsx

@@ -6,6 +6,10 @@
  */
 
 import {
+  LEAFLET_COMMENT_COLLECTION,
+  LEAFLET_COMMENT_SUBJECT_PATH,
+} from "#/lib/leaflet/comment";
+import {
   MINI_POST_COLLECTION,
   MINI_POST_PUBLICATION_PATH,
   MINI_POST_QUOTE_PATHS,
@@ -604,6 +608,27 @@ export async function getNoteBacklinksForDocument(
     ),
   );
   return mergeBacklinkRecords(results, new Set([MINI_POST_COLLECTION]));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Leaflet comments (`pub.leaflet.comment`) — `.subject` is the commented-on
+// document, which for Leaflet-hosted publications is a `site.standard.document`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Constellation source for Leaflet comments on a document. */
+export const LEAFLET_COMMENT_LINK_SOURCE =
+  `${LEAFLET_COMMENT_COLLECTION}:${LEAFLET_COMMENT_SUBJECT_PATH}` as const;
+
+/** Leaflet comments whose subject is the given document AT-URI. */
+export async function getLeafletCommentBacklinksForDocument(
+  documentUri: string,
+): Promise<Array<ConstellationBacklinkRecord>> {
+  const records = await getAllBacklinksForSource(
+    documentUri,
+    LEAFLET_COMMENT_LINK_SOURCE,
+    true,
+  );
+  return mergeBacklinkRecords([records], new Set([LEAFLET_COMMENT_COLLECTION]));
 }
 
 /** Notes (mini.posts) published under the given publication AT-URI. */

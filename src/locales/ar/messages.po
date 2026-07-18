@@ -398,7 +398,7 @@ msgstr "منشورات، معرّفات، وسوم، عناوين…"
 msgid "No matches"
 msgstr "لا توجد نتائج"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{count, plural, one {# tagged post} other {{value} tagged posts}}"
 msgstr "{count, plural, zero {لا منشورات موسومة} one {منشور موسوم واحد} two {منشوران موسومان} few {# منشورات موسومة} many {# منشورًا موسومًا} other {# منشور موسوم}}"
 
@@ -2355,7 +2355,7 @@ msgstr "معرض الصور"
 msgid "Track reading history"
 msgstr "تتبّع سجل القراءة"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{readCount, plural, one {# read} other {{value} reads}}"
 msgstr "{readCount, plural, zero {لا قراءات} one {قراءة واحدة} two {قراءتان} few {# قراءات} many {# قراءةً} other {{value} قراءة}}"
 
@@ -2464,6 +2464,10 @@ msgstr "المظهر والخطوط"
 #: src/components/user-settings-view.tsx
 msgid "Personal data"
 msgstr "البيانات الشخصية"
+
+#: src/components/reader/comments/comment-card.tsx
+msgid "on Leaflet"
+msgstr "على Leaflet"
 
 #: src/components/reader/collections-upgrade-gate.tsx
 #: src/components/user-settings-view.tsx

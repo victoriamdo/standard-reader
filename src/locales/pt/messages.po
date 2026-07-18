@@ -398,7 +398,7 @@ msgstr "Publicações, handles, #etiquetas, títulos…"
 msgid "No matches"
 msgstr "Sem resultados"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{count, plural, one {# tagged post} other {{value} tagged posts}}"
 msgstr "{count, plural, one {# publicação etiquetada} other {{value} publicações etiquetadas}}"
 
@@ -2355,7 +2355,7 @@ msgstr "Galeria de imagens"
 msgid "Track reading history"
 msgstr "Registar histórico de leitura"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{readCount, plural, one {# read} other {{value} reads}}"
 msgstr "{readCount, plural, one {# leitura} other {{value} leituras}}"
 
@@ -2464,6 +2464,10 @@ msgstr "Tema e tipos de letra"
 #: src/components/user-settings-view.tsx
 msgid "Personal data"
 msgstr "Dados pessoais"
+
+#: src/components/reader/comments/comment-card.tsx
+msgid "on Leaflet"
+msgstr "no Leaflet"
 
 #: src/components/reader/collections-upgrade-gate.tsx
 #: src/components/user-settings-view.tsx

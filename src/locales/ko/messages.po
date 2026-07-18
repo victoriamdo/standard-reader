@@ -398,7 +398,7 @@ msgstr "발행물, 핸들, #태그, 헤드라인…"
 msgid "No matches"
 msgstr "결과 없음"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{count, plural, one {# tagged post} other {{value} tagged posts}}"
 msgstr "{count, plural, one {태그된 글 #개} other {태그된 글 {value}개}}"
 
@@ -2355,7 +2355,7 @@ msgstr "이미지 갤러리"
 msgid "Track reading history"
 msgstr "읽기 기록 추적"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{readCount, plural, one {# read} other {{value} reads}}"
 msgstr "{readCount, plural, one {# 읽음} other {{value} 읽음}}"
 
@@ -2464,6 +2464,10 @@ msgstr "테마 및 글꼴"
 #: src/components/user-settings-view.tsx
 msgid "Personal data"
 msgstr "개인 정보"
+
+#: src/components/reader/comments/comment-card.tsx
+msgid "on Leaflet"
+msgstr "Leaflet에서"
 
 #: src/components/reader/collections-upgrade-gate.tsx
 #: src/components/user-settings-view.tsx

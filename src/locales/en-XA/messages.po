@@ -398,7 +398,7 @@ msgstr ""
 msgid "No matches"
 msgstr ""
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{count, plural, one {# tagged post} other {{value} tagged posts}}"
 msgstr ""
 
@@ -2355,7 +2355,7 @@ msgstr ""
 msgid "Track reading history"
 msgstr ""
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{readCount, plural, one {# read} other {{value} reads}}"
 msgstr ""
 
@@ -2463,6 +2463,10 @@ msgstr ""
 
 #: src/components/user-settings-view.tsx
 msgid "Personal data"
+msgstr ""
+
+#: src/components/reader/comments/comment-card.tsx
+msgid "on Leaflet"
 msgstr ""
 
 #: src/components/reader/collections-upgrade-gate.tsx

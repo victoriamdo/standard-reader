@@ -30,6 +30,11 @@ import {
   fetchMarginNotesForUrls,
 } from "#/server/atproto/margin-notes";
 import { buildCanonicalUrl } from "#/server/ingest/mappers";
+import type { LeafletCommentContext } from "#/server/leaflet/comments";
+import {
+  countLeafletCommentsForDocument,
+  fetchLeafletCommentsForDocument,
+} from "#/server/leaflet/comments";
 import {
   countNotesForDocument,
   fetchNotesForDocument,
@@ -44,7 +49,7 @@ export interface DocumentCommentAuthor {
 }
 
 export interface DocumentComment {
-  source: "bluesky" | "margin" | "semble" | "note";
+  source: "bluesky" | "margin" | "semble" | "note" | "leaflet";
   kind: "link" | "quote";
   postUri: string;
   postUrl: string;
@@ -277,14 +282,16 @@ async function refreshCommentCount(
     }
 
     const linkUrls = context.targets.map((target) => target.url);
-    const [backlinkCount, replyCount, marginCount, noteCount] =
+    const [backlinkCount, replyCount, marginCount, noteCount, leafletCount] =
       await Promise.all([
         countConstellationBacklinksForTargets(context.targets),
         countAuthorPostReplies(context.bskyPostUri),
         countMarginNotesForUrls(linkUrls),
         countNotesForDocument(documentUri),
+        countLeafletCommentsForDocument(documentUri),
       ]);
-    const count = backlinkCount + replyCount + marginCount + noteCount;
+    const count =
+      backlinkCount + replyCount + marginCount + noteCount + leafletCount;
     commentCountCache.set(documentUri, {
       count,
       updatedAt: Date.now(),
@@ -420,6 +427,7 @@ async function loadDocumentCommentTargets(
   targets: Array<CommentTarget>;
   stripUrls: Array<string>;
   bskyPostUri: string | null;
+  leaflet: LeafletCommentContext;
 } | null> {
   const d = schemaModule.documents;
   const p = schemaModule.publications;
@@ -433,6 +441,7 @@ async function loadDocumentCommentTargets(
       publicationUrl: p.url,
       bskyPostUri: d.bskyPostUri,
       publishedAt: d.publishedAt,
+      contentJson: d.contentJson,
     })
     .from(d)
     .leftJoin(p, eq(d.publicationUri, p.uri))
@@ -468,6 +477,7 @@ async function loadDocumentCommentTargets(
     targets,
     stripUrls: linkTargets,
     bskyPostUri,
+    leaflet: { content: doc.contentJson, canonicalUrl },
   };
 }
 
@@ -520,16 +530,22 @@ export async function fetchDocumentComments(
   );
   if (!context) return [];
 
-  const { targets, stripUrls, bskyPostUri } = context;
+  const { targets, stripUrls, bskyPostUri, leaflet } = context;
   const linkUrls = targets.map((target) => target.url);
 
-  const [discovery, marginComments, noteComments] = await Promise.all([
-    discoverDocumentComments(targets, bskyPostUri),
-    fetchMarginNotesForUrls(linkUrls),
-    fetchNotesForDocument(documentUri),
-  ]);
+  const [discovery, marginComments, noteComments, leafletComments] =
+    await Promise.all([
+      discoverDocumentComments(targets, bskyPostUri),
+      fetchMarginNotesForUrls(linkUrls),
+      fetchNotesForDocument(documentUri),
+      fetchLeafletCommentsForDocument(documentUri, leaflet),
+    ]);
 
-  const comments: Array<DocumentComment> = [...marginComments, ...noteComments];
+  const comments: Array<DocumentComment> = [
+    ...marginComments,
+    ...noteComments,
+    ...leafletComments,
+  ];
 
   if (discovery.postMeta.size > 0) {
     const posts = await getPosts([...discovery.postMeta.keys()]);

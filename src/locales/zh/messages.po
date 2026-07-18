@@ -398,7 +398,7 @@ msgstr "刊物、用户名、#标签、标题…"
 msgid "No matches"
 msgstr "无匹配结果"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{count, plural, one {# tagged post} other {{value} tagged posts}}"
 msgstr "{count, plural, one {# 篇带标签的文章} other {{value} 篇带标签的文章}}"
 
@@ -2355,7 +2355,7 @@ msgstr "图片库"
 msgid "Track reading history"
 msgstr "记录阅读历史"
 
-#: src/components/reader/format.ts
+#: src/components/reader/format-i18n.ts
 msgid "{readCount, plural, one {# read} other {{value} reads}}"
 msgstr "{readCount, plural, one {# 次阅读} other {{value} 次阅读}}"
 
@@ -2464,6 +2464,10 @@ msgstr "主题与字体"
 #: src/components/user-settings-view.tsx
 msgid "Personal data"
 msgstr "个人数据"
+
+#: src/components/reader/comments/comment-card.tsx
+msgid "on Leaflet"
+msgstr "在 Leaflet 上"
 
 #: src/components/reader/collections-upgrade-gate.tsx
 #: src/components/user-settings-view.tsx
