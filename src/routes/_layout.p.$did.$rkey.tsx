@@ -39,10 +39,8 @@ import {
 } from "../components/reader/format";
 import {
   Handle,
-  Kicker,
   PublicationAvatar,
   ReaderContent,
-  Topic,
 } from "../components/reader/primitives";
 import { PublicationLatestNote } from "../components/reader/publication-latest-note";
 import { PublicationSocialProofLine } from "../components/reader/publication-social-proof";
@@ -734,11 +732,6 @@ function PublicationProfileContent({
             </div>
 
             <div {...stylex.props(styles.heroInfo)}>
-              {pub.topic ? (
-                <Kicker>
-                  <Topic name={pub.topic} />
-                </Kicker>
-              ) : null}
               <h1 {...stylex.props(styles.heroName)}>{pub.name}</h1>
               {owner.handle ? (
                 <Link
