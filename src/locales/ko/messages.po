@@ -2483,6 +2483,10 @@ msgstr "테마 및 글꼴"
 msgid "Personal data"
 msgstr "개인 정보"
 
+#: src/components/reader/comments/comment-card.tsx
+msgid "on Leaflet"
+msgstr "Leaflet에서"
+
 #: src/components/reader/collections-upgrade-gate.tsx
 #: src/components/user-settings-view.tsx
 msgid "Not now"

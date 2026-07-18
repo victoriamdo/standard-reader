@@ -187,7 +187,9 @@ export function CommentCard({ comment }: { comment: DocumentComment }) {
         ? t`on Semble`
         : comment.source === "note"
           ? t`on pckt`
-          : t`on Bluesky`;
+          : comment.source === "leaflet"
+            ? t`on Leaflet`
+            : t`on Bluesky`;
   const hasLink = comment.postUrl.trim().length > 0;
 
   const body = (

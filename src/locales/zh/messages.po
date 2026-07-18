@@ -2483,6 +2483,10 @@ msgstr "主题与字体"
 msgid "Personal data"
 msgstr "个人数据"
 
+#: src/components/reader/comments/comment-card.tsx
+msgid "on Leaflet"
+msgstr "在 Leaflet 上"
+
 #: src/components/reader/collections-upgrade-gate.tsx
 #: src/components/user-settings-view.tsx
 msgid "Not now"

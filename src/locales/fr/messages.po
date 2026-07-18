@@ -2483,6 +2483,10 @@ msgstr "Thème et polices"
 msgid "Personal data"
 msgstr "Données personnelles"
 
+#: src/components/reader/comments/comment-card.tsx
+msgid "on Leaflet"
+msgstr "sur Leaflet"
+
 #: src/components/reader/collections-upgrade-gate.tsx
 #: src/components/user-settings-view.tsx
 msgid "Not now"

@@ -2483,6 +2483,10 @@ msgstr ""
 msgid "Personal data"
 msgstr ""
 
+#: src/components/reader/comments/comment-card.tsx
+msgid "on Leaflet"
+msgstr ""
+
 #: src/components/reader/collections-upgrade-gate.tsx
 #: src/components/user-settings-view.tsx
 msgid "Not now"

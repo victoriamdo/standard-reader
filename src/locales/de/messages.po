@@ -2483,6 +2483,10 @@ msgstr "Design & Schriften"
 msgid "Personal data"
 msgstr "Persönliche Daten"
 
+#: src/components/reader/comments/comment-card.tsx
+msgid "on Leaflet"
+msgstr "auf Leaflet"
+
 #: src/components/reader/collections-upgrade-gate.tsx
 #: src/components/user-settings-view.tsx
 msgid "Not now"
