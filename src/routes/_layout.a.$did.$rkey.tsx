@@ -9,7 +9,11 @@ import { quoteShareApi } from "#/integrations/tanstack-query/api-quote-share.fun
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
-import { buildQuoteOgImageUrl, decodeQuoteParam } from "#/lib/quote-share";
+import {
+  buildQuoteOgImageUrl,
+  decodeQuoteParam,
+  truncateQuoteForDisplay,
+} from "#/lib/quote-share";
 import { articleOgImageUrl, siteSocialMeta } from "#/lib/site-metadata";
 import { useOpenLinks } from "#/lib/use-open-links";
 
@@ -174,12 +178,16 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
       baseUrl,
     );
 
+    // Surface the highlighted quote itself as the card description so the
+    // shared excerpt reads in the link preview, not the article's own blurb.
+    const quoteDescription = `“${truncateQuoteForDisplay(quote, 1000)}”`;
+
     return {
       meta: [
         { title: pageTitle },
-        { name: "description", content: description },
+        { name: "description", content: quoteDescription },
         { property: "og:title", content: pageTitle },
-        { property: "og:description", content: description },
+        { property: "og:description", content: quoteDescription },
         { property: "og:type", content: "article" },
         { property: "og:url", content: shareUrl },
         { property: "og:image", content: ogImage },
@@ -187,7 +195,7 @@ export const Route = createFileRoute("/_layout/a/$did/$rkey")({
         { property: "og:image:height", content: "630" },
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: pageTitle },
-        { name: "twitter:description", content: description },
+        { name: "twitter:description", content: quoteDescription },
         { name: "twitter:image", content: ogImage },
       ],
       links,
