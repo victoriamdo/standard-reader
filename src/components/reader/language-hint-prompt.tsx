@@ -4,7 +4,7 @@ import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 import { toasts } from "#/design-system/toast";
-import { LOCALE_LABELS } from "#/lib/locale";
+import { DEFAULT_LOCALE, LOCALE_LABELS } from "#/lib/locale";
 import { useLocale } from "#/lib/use-locale";
 import { useLocaleHint } from "#/lib/use-locale-hint";
 
@@ -20,6 +20,10 @@ import { LanguageDialog } from "./language-dialog";
  * indicator only ever shows one time. The module-level guard additionally keeps
  * it from re-firing on remounts within a single session (e.g. React strict
  * mode, route changes).
+ *
+ * Readers who resolve to the default language (English) see nothing — there's
+ * no non-default default to announce — and their hint stays unmarked so it can
+ * still fire if their detected language later changes.
  */
 let hasShownLanguageHint = false;
 
@@ -31,6 +35,10 @@ export function LanguageHintPrompt() {
 
   useEffect(() => {
     if (!shouldShow) return;
+    // Don't nudge readers who already resolved to the default language — there's
+    // nothing to announce. Leave the hint unmarked so it can still fire if their
+    // detected language later changes to a non-default one.
+    if (locale === DEFAULT_LOCALE) return;
     if (hasShownLanguageHint) return;
     hasShownLanguageHint = true;
 
