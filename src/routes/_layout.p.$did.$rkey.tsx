@@ -28,6 +28,7 @@ import {
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 
 import { AddToListButton } from "../components/reader/add-to-list-modal";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import {
   ArticleRow,
   FeatureArticle,
@@ -636,7 +637,6 @@ function PublicationProfileContent({
   );
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const [markAllReadCloseSignal, setMarkAllReadCloseSignal] = useState(0);
 
   useEffect(() => {
@@ -715,24 +715,11 @@ function PublicationProfileContent({
     }
   }, [nextOffset, uri]);
 
-  useEffect(() => {
-    if (nextOffset == null) return;
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel) return;
-
-    // Viewport observer — the page scrolls at the document level.
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void loadMore();
-        }
-      },
-      { root: null, rootMargin: "1200px 0px", threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [nextOffset, loadMore]);
+  const loadMoreSentinelRef = useInfiniteScrollSentinel(
+    loadMore,
+    nextOffset != null,
+    nextOffset ?? 0,
+  );
 
   const lead = documents[0];
   const rest = documents.slice(1);

@@ -16,6 +16,7 @@ import {
   PubDirectoryRow,
   PubDirectoryRowSkeleton,
 } from "../components/reader/cards";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import {
   Kicker,
   ReaderContent,
@@ -356,7 +357,6 @@ function Search() {
   const { q: urlQ = "" } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const inputRef = useRef<HTMLInputElement>(null);
-  const loadMoreArticlesRef = useRef<HTMLDivElement>(null);
   const loadingMorePubsRef = useRef(false);
   const committedQRef = useRef(urlQ.trim());
   const [input, setInput] = useState(urlQ);
@@ -451,25 +451,17 @@ function Search() {
     }
   }, [debouncedQ, pubNextOffset]);
 
-  useEffect(() => {
-    if (!hasNextPage || isFetchingNextPage) return;
+  const loadMoreArticles = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-    const sentinel = loadMoreArticlesRef.current;
-    if (!sentinel) return;
-
-    // Viewport observer — the page scrolls at the document level.
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void fetchNextPage();
-        }
-      },
-      { root: null, rootMargin: "1200px 0px", threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, articles.length]);
+  const loadMoreArticlesRef = useInfiniteScrollSentinel(
+    loadMoreArticles,
+    hasNextPage,
+    articles.length,
+  );
 
   const trimmedInput = input.trim();
   const hasQuery = debouncedQ.length > 0;

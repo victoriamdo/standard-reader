@@ -45,6 +45,7 @@ import { usePersistentToggle } from "#/lib/use-persistent-toggle";
 import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 
 import { AuthorProfileLink } from "../components/reader/author-profile-link";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
 import { initials } from "../components/reader/format";
 import { ListEditModal } from "../components/reader/list-edit-modal";
@@ -346,7 +347,6 @@ function ListFeedPanel({
     () => feed.nextOffset,
   );
   const [loadingMore, setLoadingMore] = useState(false);
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
 
   useEffect(() => {
@@ -376,24 +376,11 @@ function ListFeedPanel({
     }
   }, [did, nextOffset, rkey]);
 
-  useEffect(() => {
-    if (nextOffset == null) return;
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel) return;
-
-    // Viewport observer — the page scrolls at the document level.
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void loadMore();
-        }
-      },
-      { root: null, rootMargin: "1200px 0px", threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [loadMore, nextOffset]);
+  const loadMoreSentinelRef = useInfiniteScrollSentinel(
+    loadMore,
+    nextOffset != null,
+    nextOffset ?? 0,
+  );
 
   if (!hasMembers) {
     return (

@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-router";
 import { ExternalLink, ListPlus, Settings } from "lucide-react";
 import type { RefObject } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Link as AriaLink } from "react-aria-components";
 import { z } from "zod";
 
@@ -43,6 +43,7 @@ import {
 } from "#/lib/site-metadata";
 
 import { AddToListButton } from "../components/reader/add-to-list-button";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { AuthorProfileLink } from "../components/reader/author-profile-link";
 import { ArticleRow, PubDirectoryRow } from "../components/reader/cards";
 import { FollowUserButton } from "../components/reader/follow-user-button";
@@ -438,7 +439,6 @@ function useInfiniteScroll(
 ) {
   const loadingMoreRef = useRef(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     if (nextOffset == null || loadingMoreRef.current) return;
@@ -452,24 +452,11 @@ function useInfiniteScroll(
     }
   }, [loadMore, nextOffset]);
 
-  useEffect(() => {
-    if (nextOffset == null) return;
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    // Viewport observer — the page scrolls at the document level.
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void load();
-        }
-      },
-      { root: null, rootMargin: "1200px 0px", threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [nextOffset, load]);
+  const sentinelRef = useInfiniteScrollSentinel(
+    load,
+    nextOffset != null,
+    nextOffset ?? 0,
+  );
 
   return { loadingMore, sentinelRef };
 }

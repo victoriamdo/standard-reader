@@ -34,6 +34,7 @@ import { useTrackReadingHistory } from "#/lib/use-track-reading-history";
 import { useLoginSearch } from "#/utils/use-login-search";
 
 import { ArticleRow } from "../components/reader/cards";
+import { useInfiniteScrollSentinel } from "../components/reader/use-infinite-scroll-sentinel";
 import { Masthead, ReaderContent } from "../components/reader/primitives";
 import {
   applyMarkReadManyOptimisticUpdate,
@@ -325,7 +326,6 @@ function LatestFeedPanel({
   const [extraItems, setExtraItems] = useState<Array<ArticleCard>>([]);
   const [nextOffset, setNextOffset] = useState<number | null>(feed.nextOffset);
   const [loadingMore, setLoadingMore] = useState(false);
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
 
   useEffect(() => {
@@ -365,25 +365,11 @@ function LatestFeedPanel({
     }
   }, [filter, nextOffset, pageSize]);
 
-  useEffect(() => {
-    if (nextOffset == null) return;
-
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel) return;
-
-    // Viewport observer — the page scrolls at the document level.
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void loadMoreFeed();
-        }
-      },
-      { root: null, rootMargin: "1200px 0px", threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [loadMoreFeed, nextOffset]);
+  const loadMoreSentinelRef = useInfiniteScrollSentinel(
+    loadMoreFeed,
+    nextOffset != null,
+    nextOffset ?? 0,
+  );
 
   const isTrending = filter === "trending";
   const isNetwork = !signedIn || filter === "all" || isTrending;
