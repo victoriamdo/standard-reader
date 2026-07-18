@@ -50,8 +50,8 @@ export interface DatePickerProps<T extends DateValue>
 const styles = stylex.create({
   popoverContent: {
     paddingBottom: verticalSpace["sm"],
-    paddingLeft: horizontalSpace["sm"],
-    paddingRight: horizontalSpace["sm"],
+    paddingInlineStart: horizontalSpace["sm"],
+    paddingInlineEnd: horizontalSpace["sm"],
     paddingTop: verticalSpace["sm"],
   },
 });

@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Pressable } from "react-aria";
@@ -60,8 +61,8 @@ const styles = stylex.create({
     },
     justifyContent: "space-between",
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
     rowGap: gap.lg,
   },
@@ -112,6 +113,7 @@ function Row({
 }
 
 export function StepSettings() {
+  const { t } = useLingui();
   const { openExternally, setOpenExternally } = useOpenLinks();
   const { enabled: trackReading, setEnabled: setTrackReading } =
     useTrackReadingHistory();
@@ -126,57 +128,61 @@ export function StepSettings() {
   return (
     <Flex direction="column" gap="6xl">
       <div>
-        <h2 {...stylex.props(styles.sectionHeading)}>Reading &amp; privacy</h2>
+        <h2 {...stylex.props(styles.sectionHeading)}>
+          <Trans>Reading &amp; privacy</Trans>
+        </h2>
         <div {...stylex.props(styles.group)}>
           <Row
-            label="Keep reading history"
-            description="Marks what you've read for unread counts. Stored publicly on your account — turn off to read privately."
+            label={t`Keep reading history`}
+            description={t`Marks what you've read for unread counts. Stored publicly on your account — turn off to read privately.`}
           >
             <Switch
               isSelected={trackReading}
               onChange={setTrackReading}
-              aria-label="Keep reading history"
+              aria-label={t`Keep reading history`}
             />
           </Row>
           <Separator />
           <Row
-            label="Open posts on their original site"
-            description="When on, links open on the original website instead of the in-app reader."
+            label={t`Open posts on their original site`}
+            description={t`When on, links open on the original website instead of the in-app reader.`}
           >
             <Switch
               isSelected={openExternally}
               onChange={setOpenExternally}
-              aria-label="Open posts on their original site"
+              aria-label={t`Open posts on their original site`}
             />
           </Row>
           <Separator />
           <Row
-            label="Mark old posts as unread"
-            description="When on, a publication's whole back catalogue counts as unread when you subscribe. Turn off to only see posts published after you subscribe as new."
+            label={t`Mark old posts as unread`}
+            description={t`When on, a publication's whole back catalogue counts as unread when you subscribe. Turn off to only see posts published after you subscribe as new.`}
           >
             <Switch
               isSelected={countOldAsUnread}
               onChange={setCountOldAsUnread}
-              aria-label="Mark old posts as unread"
+              aria-label={t`Mark old posts as unread`}
             />
           </Row>
         </div>
       </div>
 
       <div>
-        <h2 {...stylex.props(styles.sectionHeading)}>Weekly digest</h2>
+        <h2 {...stylex.props(styles.sectionHeading)}>
+          <Trans>Weekly digest</Trans>
+        </h2>
         <div {...stylex.props(styles.group)}>
           <Row
-            label="Weekly digest email"
-            description="A weekly email with the best of what you subscribe to, plus a couple of publications worth discovering."
+            label={t`Weekly digest email`}
+            description={t`A weekly email with the best of what you subscribe to, plus a couple of publications worth discovering.`}
           >
-            <Tooltip text="Coming soon">
+            <Tooltip text={t`Coming soon`}>
               <Pressable>
                 <div {...stylex.props(styles.control)}>
                   <Switch
                     isSelected={digestEnabled}
                     isDisabled
-                    aria-label="Weekly digest email"
+                    aria-label={t`Weekly digest email`}
                   />
                 </div>
               </Pressable>

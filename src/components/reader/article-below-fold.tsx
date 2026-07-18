@@ -1,5 +1,8 @@
 "use client";
 
+import type { I18n } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
 
@@ -34,11 +37,11 @@ import { useArticleExtras } from "./use-article-extras";
 const styles = stylex.create({
   moreFrom: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     paddingBottom: spacing["20"],
-    paddingLeft: spacing["6"],
-    paddingRight: spacing["6"],
+    paddingInlineStart: spacing["6"],
+    paddingInlineEnd: spacing["6"],
     width: "100%",
   },
   moreRow: {
@@ -55,6 +58,10 @@ const styles = stylex.create({
     paddingTop: spacing["3"],
   },
   moreTitle: {
+    // Single-line NAME/TITLE in a UI row: isolate for correct character
+    // ordering, but let alignment follow the surrounding UI (right under
+    // RTL). `dir="auto"` here would left-align it and break the column.
+    unicodeBidi: "isolate",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: fontSize.lg,
@@ -64,6 +71,9 @@ const styles = stylex.create({
   bylineMeta: {
     color: uiColor.text2,
     fontSize: fontSize.sm,
+  },
+  bidiIsolate: {
+    unicodeBidi: "isolate",
   },
   connectionLabel: {
     color: uiColor.text2,
@@ -79,6 +89,7 @@ const styles = stylex.create({
 });
 
 function mergeRelatedReading(
+  i18n: I18n,
   marginConnections: ArticleExtras["marginConnections"],
   relatedArticles: ArticleExtras["relatedArticles"],
 ): Array<{
@@ -94,9 +105,10 @@ function mergeRelatedReading(
   for (const item of marginConnections) {
     if (seen.has(item.article.uri)) continue;
     seen.add(item.article.uri);
+    const connectionLabel = item.connectionLabel;
     merged.push({
       article: item.article,
-      subtitle: `${item.connectionLabel} via Semble`,
+      subtitle: i18n._(msg`${connectionLabel} via Semble`),
     });
   }
 
@@ -133,7 +145,11 @@ function MoreFromRow({
         {minutes == null ? null : (
           <>
             <span aria-hidden> · </span>
-            {minutes} min
+            {/* Digits + a localized unit: isolate so the bidi algorithm can't
+                interleave it with the publication name under an RTL UI. */}
+            <span {...stylex.props(styles.bidiIsolate)}>
+              <Trans>{minutes} min</Trans>
+            </span>
           </>
         )}
       </span>
@@ -222,6 +238,7 @@ function MoreFromSection({
   pub: PublicationCard;
   moreFrom: ArticleExtras["moreFrom"];
 }) {
+  const { t } = useLingui();
   const { preference } = useReadingTypography();
   if (moreFrom.length === 0) return null;
 
@@ -230,14 +247,14 @@ function MoreFromSection({
       <Flex direction="column">
         <SectionHead
           kicker={
-            <>
+            <Trans>
               More from{" "}
               <PublicationNameLink publicationUri={pub.uri}>
                 {pub.name}
               </PublicationNameLink>
-            </>
+            </Trans>
           }
-          title="Keep reading"
+          title={t`Keep reading`}
         />
         <div>
           {moreFrom.map((doc) => (
@@ -261,21 +278,25 @@ function RelatedArticlesSection({
   relatedArticles: ArticleExtras["relatedArticles"];
   marginConnections: ArticleExtras["marginConnections"];
 }) {
+  const { t, i18n } = useLingui();
   const { preference } = useReadingTypography();
-  const items = mergeRelatedReading(marginConnections, relatedArticles);
+  const items = mergeRelatedReading(i18n, marginConnections, relatedArticles);
   if (items.length === 0) return null;
 
   return (
     <div {...stylex.props(styles.moreFrom, articleMeasureStyle(preference))}>
       <Flex direction="column">
-        <SectionHead kicker="Across the network" title="Related reading" />
+        <SectionHead
+          kicker={t`Across the network`}
+          title={t`Related reading`}
+        />
         <div>
           {items.map((item) => (
             <MoreFromRow
               key={item.article.uri}
               article={item.article}
               publicationName={
-                item.article.publicationName?.trim() || "Publication"
+                item.article.publicationName?.trim() || t`Publication`
               }
               publicationUri={item.article.publicationUri}
               subtitle={item.subtitle}
@@ -288,19 +309,20 @@ function RelatedArticlesSection({
 }
 
 function CitedInSection({ citedIn }: { citedIn: ArticleExtras["citedIn"] }) {
+  const { t } = useLingui();
   const { preference } = useReadingTypography();
   if (citedIn.length === 0) return null;
 
   return (
     <div {...stylex.props(styles.moreFrom, articleMeasureStyle(preference))}>
       <Flex direction="column">
-        <SectionHead kicker="Across the network" title="Cited in" />
+        <SectionHead kicker={t`Across the network`} title={t`Cited in`} />
         <div>
           {citedIn.map((doc) => (
             <MoreFromRow
               key={doc.uri}
               article={doc}
-              publicationName={doc.publicationName?.trim() || "Publication"}
+              publicationName={doc.publicationName?.trim() || t`Publication`}
               publicationUri={doc.publicationUri}
             />
           ))}
@@ -315,13 +337,14 @@ function ReadersAlsoFollowSection({
 }: {
   readersAlsoFollow: ArticleExtras["readersAlsoFollow"];
 }) {
+  const { t } = useLingui();
   const { preference } = useReadingTypography();
   if (readersAlsoFollow.length === 0) return null;
 
   return (
     <div {...stylex.props(styles.moreFrom, articleMeasureStyle(preference))}>
       <Flex direction="column">
-        <SectionHead kicker="Discover" title="Worth subscribing to" />
+        <SectionHead kicker={t`Discover`} title={t`Worth subscribing to`} />
         <div>
           {readersAlsoFollow.map((suggestedPub, i, pubs) => (
             <MiniPubRow

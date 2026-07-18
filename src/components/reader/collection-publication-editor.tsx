@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus } from "lucide-react";
@@ -108,10 +109,13 @@ function PublicationDetailsFields({
   onIconFile: (file: File) => void;
   onRemoveIcon: () => void;
 }) {
+  const { t } = useLingui();
   return (
     <Flex direction="column" gap="2xl">
       <Flex direction="column" gap="md">
-        <Label size="lg">Icon</Label>
+        <Label size="lg">
+          <Trans>Icon</Trans>
+        </Label>
         {iconUrl ? (
           <PublicationAvatar
             pub={{ name, iconUrl }}
@@ -131,26 +135,26 @@ function PublicationDetailsFields({
             <ImagePlus size={16} aria-hidden />
             <span>
               {iconPending
-                ? "Uploading…"
+                ? t`Uploading…`
                 : iconUrl
-                  ? "Drop or choose a new image"
-                  : "Drop a square image, or choose a file"}
+                  ? t`Drop or choose a new image`
+                  : t`Drop a square image, or choose a file`}
             </span>
           </Flex>
           <FileDropDefaultTrigger>
-            {iconUrl ? "Replace icon" : null}
+            {iconUrl ? t`Replace icon` : null}
           </FileDropDefaultTrigger>
         </FileDropZone>
         {iconUrl ? (
           <Button variant="tertiary" size="lg" onPress={onRemoveIcon}>
-            Remove icon
+            <Trans>Remove icon</Trans>
           </Button>
         ) : null}
       </Flex>
 
       <TextField
-        label="Series name"
-        placeholder="e.g. Dispatches from the Atmosphere"
+        label={t`Series name`}
+        placeholder={t`e.g. Dispatches from the Atmosphere`}
         value={name}
         onChange={setName}
         isRequired
@@ -158,8 +162,8 @@ function PublicationDetailsFields({
       />
 
       <TextArea
-        label="Description"
-        placeholder="What is this series about?"
+        label={t`Description`}
+        placeholder={t`What is this series about?`}
         value={description}
         onChange={setDescription}
         rows={4}
@@ -228,14 +232,14 @@ function CreatePublicationForm({
       </DialogBody>
       <DialogFooter>
         <Button variant="secondary" onPress={close}>
-          Cancel
+          <Trans>Cancel</Trans>
         </Button>
         <Button
           variant="primary"
           isDisabled={name.trim().length === 0 || createMutation.isPending}
           onPress={create}
         >
-          Create series
+          <Trans>Create series</Trans>
         </Button>
       </DialogFooter>
     </>
@@ -308,14 +312,14 @@ function PublicationForm({
       </DialogBody>
       <DialogFooter>
         <Button variant="secondary" onPress={close}>
-          Cancel
+          <Trans>Cancel</Trans>
         </Button>
         <Button
           variant="primary"
           isDisabled={name.trim().length === 0 || saveMutation.isPending}
           onPress={save}
         >
-          Save series
+          <Trans>Save series</Trans>
         </Button>
       </DialogFooter>
     </>
@@ -340,7 +344,9 @@ export function CollectionPublicationCreateDialog({
       trigger={<span hidden aria-hidden />}
     >
       <DialogHeader>
-        <span {...stylex.props(styles.headerTitle)}>New series</span>
+        <span {...stylex.props(styles.headerTitle)}>
+          <Trans>New series</Trans>
+        </span>
       </DialogHeader>
       <CreatePublicationForm
         key={isOpen ? "open" : "closed"}
@@ -369,7 +375,9 @@ export function CollectionPublicationEditor({
       trigger={<span hidden aria-hidden />}
     >
       <DialogHeader>
-        <span {...stylex.props(styles.headerTitle)}>Edit series</span>
+        <span {...stylex.props(styles.headerTitle)}>
+          <Trans>Edit series</Trans>
+        </span>
       </DialogHeader>
       <PublicationForm
         key={isOpen ? publication.rkey : "closed"}

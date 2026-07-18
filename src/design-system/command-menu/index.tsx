@@ -27,19 +27,19 @@ import { useDialogStyles } from "../theme/useDialogStyles";
 const styles = stylex.create({
   menu: {
     flexGrow: 1,
-    marginLeft: `calc(${horizontalSpace["xxs"]} * -1)`,
-    marginRight: `calc(${horizontalSpace["xxs"]} * -1)`,
+    marginInlineStart: `calc(${horizontalSpace["xxs"]} * -1)`,
+    marginInlineEnd: `calc(${horizontalSpace["xxs"]} * -1)`,
     minHeight: 0,
     overflowY: "auto",
     paddingBottom: verticalSpace["md"],
-    paddingLeft: horizontalSpace["xl"],
-    paddingRight: horizontalSpace["xl"],
+    paddingInlineStart: horizontalSpace["xl"],
+    paddingInlineEnd: horizontalSpace["xl"],
     paddingTop: verticalSpace["md"],
   },
   searchField: {
     paddingBottom: verticalSpace["xl"],
-    paddingLeft: horizontalSpace["xl"],
-    paddingRight: horizontalSpace["xl"],
+    paddingInlineStart: horizontalSpace["xl"],
+    paddingInlineEnd: horizontalSpace["xl"],
     paddingTop: verticalSpace["xl"],
   },
 });

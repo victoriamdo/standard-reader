@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -119,6 +120,8 @@ export function SaveToCollectionDialog({
   passage,
   ensureQuoteShareUrl,
 }: SaveToCollectionDialogProps) {
+  const { t } = useLingui();
+  const appLabel = APP_LABEL[app];
   const [selected, setSelected] = useState<string>("");
   const [newName, setNewName] = useState("");
   const [useOriginalUrl, setUseOriginalUrl] = useState(false);
@@ -284,12 +287,12 @@ export function SaveToCollectionDialog({
         selected === NEW_COLLECTION_VALUE
           ? newName.trim()
           : (collections.find((c) => c.uri === selected)?.name ??
-            "your collection");
+            t`your collection`);
       toasts.add(
         {
           variant: "success",
-          title: "Saved",
-          description: `Saved to ${savedName} on ${APP_LABEL[app]}.`,
+          title: t`Saved`,
+          description: t`Saved to ${savedName} on ${appLabel}.`,
         },
         { timeout: 3000 },
       );
@@ -301,11 +304,11 @@ export function SaveToCollectionDialog({
       toasts.add(
         {
           variant: "critical",
-          title: `Could not save to ${APP_LABEL[app]}`,
+          title: t`Could not save to ${appLabel}`,
           description:
             error instanceof Error
               ? error.message
-              : "Something went wrong. Please try again.",
+              : t`Something went wrong. Please try again.`,
         },
         { timeout: 5000 },
       );
@@ -331,29 +334,38 @@ export function SaveToCollectionDialog({
       fitContent
       trigger={<span hidden aria-hidden {...stylex.props(styles.trigger)} />}
     >
-      <DialogHeader>Save to {APP_LABEL[app]}</DialogHeader>
+      <DialogHeader>
+        <Trans>Save to {appLabel}</Trans>
+      </DialogHeader>
       <DialogDescription>
-        Saves a link to your{" "}
-        <Link
-          href={APP_HOMEPAGE[app]}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {APP_LABEL[app]}
-        </Link>{" "}
-        collection.
-        {needsScopeUpgrade
-          ? " You may be asked to grant permission the first time."
-          : null}
+        <Trans>
+          Saves a link to your{" "}
+          <Link
+            href={APP_HOMEPAGE[app]}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {appLabel}
+          </Link>{" "}
+          collection.
+        </Trans>
+        {needsScopeUpgrade ? (
+          <>
+            {" "}
+            <Trans>You may be asked to grant permission the first time.</Trans>
+          </>
+        ) : null}
       </DialogDescription>
       <Separator />
       <DialogBody style={styles.body}>
         <Flex direction="column" gap="2xl" style={styles.content}>
           {collectionsQuery.isLoading ? (
-            <span {...stylex.props(styles.empty)}>Loading collections…</span>
+            <span {...stylex.props(styles.empty)}>
+              <Trans>Loading collections…</Trans>
+            </span>
           ) : collections.length > 0 ? (
             <RadioGroup
-              aria-label="Collection"
+              aria-label={t`Collection`}
               size="lg"
               value={selected}
               onChange={setSelected}
@@ -363,16 +375,18 @@ export function SaveToCollectionDialog({
                   {c.name}
                 </Radio>
               ))}
-              <Radio value={NEW_COLLECTION_VALUE}>New collection…</Radio>
+              <Radio value={NEW_COLLECTION_VALUE}>
+                <Trans>New collection…</Trans>
+              </Radio>
             </RadioGroup>
           ) : null}
 
           {selected === NEW_COLLECTION_VALUE ? (
             <TextField
-              label="Collection name"
+              label={t`Collection name`}
               value={newName}
               onChange={setNewName}
-              placeholder="e.g. To Read"
+              placeholder={t`e.g. To Read`}
               isRequired
               style={styles.content}
             />
@@ -380,9 +394,9 @@ export function SaveToCollectionDialog({
 
           {app === "margin" ? (
             <TextArea
-              label="Note"
-              aria-label="Note"
-              placeholder="Optional: add a note about why you're saving this"
+              label={t`Note`}
+              aria-label={t`Note`}
+              placeholder={t`Optional: add a note about why you're saving this`}
               value={note}
               onChange={setNote}
               rows={3}
@@ -393,7 +407,9 @@ export function SaveToCollectionDialog({
 
           {error ? (
             <span {...stylex.props(styles.error)}>
-              {error instanceof Error ? error.message : "Something went wrong."}
+              {error instanceof Error
+                ? error.message
+                : t`Something went wrong.`}
             </span>
           ) : null}
         </Flex>
@@ -405,7 +421,7 @@ export function SaveToCollectionDialog({
             isSelected={useOriginalUrl}
             onChange={setUseOriginalUrl}
           >
-            Use original link
+            <Trans>Use original link</Trans>
           </Checkbox>
         ) : null}
         <Button
@@ -414,7 +430,7 @@ export function SaveToCollectionDialog({
           isPending={submitOrUpgrade.isPending}
           onPress={() => submitOrUpgrade.mutate()}
         >
-          Save
+          <Trans>Save</Trans>
         </Button>
       </DialogFooter>
     </Dialog>

@@ -41,6 +41,9 @@ const styles = stylex.create({
     fontFamily: fontFamily.mono,
     fontSize: fontSize.xs,
     letterSpacing: tracking.tight,
+    // Handles/stat runs are Latin+digits sitting inside RTL UI lines; isolate
+    // them so the bidi algorithm can't reorder them with neighbouring text.
+    unicodeBidi: "isolate",
   },
   meta: {
     color: uiColor.text1,
@@ -89,15 +92,15 @@ const styles = stylex.create({
   },
   content: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "1320px",
     paddingBottom: spacing["20"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
@@ -141,7 +144,7 @@ const styles = stylex.create({
   mastheadMeta: {
     display: { default: "none", "@media (min-width: 48rem)": "flex" },
     flexShrink: 0,
-    textAlign: "right",
+    textAlign: "end",
   },
   mastheadMetaWithAccessory: {
     display: "flex",
@@ -212,8 +215,8 @@ const styles = stylex.create({
   },
   divider: {
     borderBottomWidth: 0,
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
+    borderInlineStartWidth: 0,
+    borderInlineEndWidth: 0,
     height: 0,
     marginBottom: spacing["11"],
     marginTop: spacing["11"],
@@ -247,6 +250,23 @@ export function Kicker({
   );
 }
 
+/**
+ * Same visual treatment as {@link Handle}, but for TRANSLATED UI text (counts,
+ * stat labels) rather than user content — so it inherits the UI direction
+ * instead of forcing `dir="auto"`. Using `Handle` here would resolve an Arabic
+ * label's direction from its own characters, which is right by accident but
+ * wrong in intent, and breaks for locales whose script matches the content.
+ */
+export function MetaText({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: stylex.StyleXStyles;
+}) {
+  return <span {...stylex.props(styles.handle, style)}>{children}</span>;
+}
+
 export function Handle({
   children,
   style,
@@ -254,6 +274,9 @@ export function Handle({
   children: React.ReactNode;
   style?: stylex.StyleXStyles;
 }) {
+  // `dir="auto"` — handles and stat runs are user content with no language
+  // metadata; let the browser resolve direction from the first strong char
+  // instead of inheriting the (possibly RTL) UI direction.
   return <span {...stylex.props(styles.handle, style)}>{children}</span>;
 }
 

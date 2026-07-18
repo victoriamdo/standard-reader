@@ -69,10 +69,10 @@ const styles = stylex.create({
   small: {
     fontSize: fontSize["xs"],
     height: sizeSpace["2xl"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["md"],
     },
-    paddingRight: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
 
     // eslint-disable-next-line @stylexjs/no-legacy-contextual-styles, @stylexjs/valid-styles
     ":is(*) svg": {
@@ -86,31 +86,31 @@ const styles = stylex.create({
     gap: gap["sm"],
     fontSize: fontSize["sm"],
     height: sizeSpace["3xl"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["xl"],
       ":has(svg+*)": horizontalSpace["md"],
     },
-    paddingRight: horizontalSpace["xl"],
+    paddingInlineEnd: horizontalSpace["xl"],
   },
   large: {
     gap: gap["md"],
     fontSize: fontSize["sm"],
     height: sizeSpace["4xl"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["3xl"],
       ":has(svg+*)": horizontalSpace["md"],
     },
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
   },
   xl: {
     gap: gap["md"],
     fontSize: fontSize["lg"],
     height: sizeSpace["5xl"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["4xl"],
       ":has(svg+*)": horizontalSpace["2xl"],
     },
-    paddingRight: horizontalSpace["4xl"],
+    paddingInlineEnd: horizontalSpace["4xl"],
   },
   secondary: {
     borderColor: {
@@ -128,20 +128,20 @@ const styles = stylex.create({
   },
 
   groupHorizontal: {
-    borderBottomLeftRadius: { ":not(:first-child)": `0 !important` },
-    borderBottomRightRadius: { ":not(:last-child)": `0 !important` },
-    borderLeftWidth: { ":not(:first-child)": `0 !important` },
-    borderTopLeftRadius: { ":not(:first-child)": `0 !important` },
-    borderTopRightRadius: { ":not(:last-child)": `0 !important` },
+    borderEndStartRadius: { ":not(:first-child)": `0 !important` },
+    borderEndEndRadius: { ":not(:last-child)": `0 !important` },
+    borderInlineStartWidth: { ":not(:first-child)": `0 !important` },
+    borderStartStartRadius: { ":not(:first-child)": `0 !important` },
+    borderStartEndRadius: { ":not(:last-child)": `0 !important` },
   },
   secondaryGroupedHorizontal: {
-    borderRightColor: { ":not(:last-child)": uiColor.border2 },
+    borderInlineEndColor: { ":not(:last-child)": uiColor.border2 },
   },
   groupVertical: {
-    borderBottomLeftRadius: { ":not(:last-child)": `0 !important` },
-    borderBottomRightRadius: { ":not(:last-child)": `0 !important` },
-    borderTopLeftRadius: { ":not(:first-child)": `0 !important` },
-    borderTopRightRadius: { ":not(:first-child)": `0 !important` },
+    borderEndStartRadius: { ":not(:last-child)": `0 !important` },
+    borderEndEndRadius: { ":not(:last-child)": `0 !important` },
+    borderStartStartRadius: { ":not(:first-child)": `0 !important` },
+    borderStartEndRadius: { ":not(:first-child)": `0 !important` },
     borderTopWidth: { ":not(:first-child)": `0 !important` },
   },
   secondaryGroupedVertical: {

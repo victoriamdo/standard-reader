@@ -37,8 +37,8 @@ const styles = stylex.create({
     position: "sticky",
     zIndex: 1,
     paddingBottom: verticalSpace["md"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["md"],
     top: 0,
 
@@ -55,14 +55,14 @@ const styles = stylex.create({
     color: uiColor.text1,
     marginBottom: verticalSpace["3xl"],
     marginTop: verticalSpace["2xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
   },
   body: {
     marginBottom: verticalSpace["3xl"],
     marginTop: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
   },
   /* eslint-disable @stylexjs/sort-keys -- footer layout + padding order */
   footer: {
@@ -74,8 +74,8 @@ const styles = stylex.create({
     zIndex: 1,
     bottom: 0,
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
 
     borderTopColor: uiColor.border1,

@@ -1,5 +1,8 @@
 "use client";
 
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   keepPreviousData,
@@ -23,7 +26,7 @@ import {
   discoverApi,
 } from "#/integrations/tanstack-query/api-discover.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { formatCount } from "#/lib/format-count";
+import { useFormatters } from "#/lib/formatters";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
 
@@ -211,11 +214,11 @@ const styles = stylex.create({
   },
 });
 
-const SORT_OPTIONS = [
-  { id: "readers", label: "Readers" },
-  { id: "active", label: "Active" },
-  { id: "az", label: "A–Z" },
-] as const;
+const SORT_OPTIONS: ReadonlyArray<{ id: string; label: MessageDescriptor }> = [
+  { id: "readers", label: msg`Readers` },
+  { id: "active", label: msg`Active` },
+  { id: "az", label: msg`A–Z` },
+];
 
 function HorizontalRail({
   pubs,
@@ -243,10 +246,12 @@ function DiscoverDirectorySkeleton({
   view: "grid" | "list";
   count?: number;
 }) {
+  const { t } = useLingui();
+
   if (view === "grid") {
     return (
       <Grid
-        aria-label="Loading publications"
+        aria-label={t`Loading publications`}
         columnGap="lg"
         rowGap="lg"
         style={styles.directoryGrid}
@@ -259,7 +264,7 @@ function DiscoverDirectorySkeleton({
   }
 
   return (
-    <div aria-label="Loading publications">
+    <div aria-label={t`Loading publications`}>
       {Array.from({ length: count }, (_, index) => (
         <PubDirectoryRowSkeleton key={index} isLast={index === count - 1} />
       ))}
@@ -348,12 +353,17 @@ function DiscoverDirectoryToolbarSkeleton() {
 }
 
 function DiscoverDirectorySectionSkeleton({ view }: { view: "grid" | "list" }) {
+  const { t } = useLingui();
+
   return (
     <div
       {...stylex.props(styles.section)}
-      aria-label="Loading publication directory"
+      aria-label={t`Loading publication directory`}
     >
-      <SectionHead kicker="Browse everything" title="All publications" />
+      <SectionHead
+        kicker={<Trans>Browse everything</Trans>}
+        title={<Trans>All publications</Trans>}
+      />
       <DiscoverDirectoryToolbarSkeleton />
       <DiscoverDirectorySkeleton view={view} />
     </div>
@@ -367,7 +377,8 @@ function DiscoverRecommendedSection({
   signedIn: boolean;
   recommended: Array<PublicationCard> | undefined;
 }) {
-  const recommendedTitle = signedIn ? "Recommended for you" : "Recommended";
+  const { t } = useLingui();
+  const recommendedTitle = signedIn ? t`Recommended for you` : t`Recommended`;
 
   if (recommended === undefined) return null;
 
@@ -378,7 +389,9 @@ function DiscoverRecommendedSection({
         <HorizontalRail pubs={recommended} aria-label={recommendedTitle} />
       ) : (
         <p {...stylex.props(styles.emptyRail)}>
-          Subscribe to a few publications to unlock recommendations.
+          <Trans>
+            Subscribe to a few publications to unlock recommendations.
+          </Trans>
         </p>
       )}
     </div>
@@ -390,19 +403,21 @@ function DiscoverSocialProofSection({
 }: {
   followedBy: Array<PublicationCard> | undefined;
 }) {
+  const { t } = useLingui();
+  const socialProofTitle = t`Subscribed to by people you follow`;
+
   if (followedBy === undefined) return null;
 
   return (
     <div {...stylex.props(styles.section)}>
-      <SectionHead title="Subscribed to by people you follow" />
+      <SectionHead title={socialProofTitle} />
       {followedBy.length > 0 ? (
-        <HorizontalRail
-          pubs={followedBy}
-          aria-label="Subscribed to by people you follow"
-        />
+        <HorizontalRail pubs={followedBy} aria-label={socialProofTitle} />
       ) : (
         <p {...stylex.props(styles.emptyRail)}>
-          Subscribe to more publications to see what similar readers enjoy.
+          <Trans>
+            Subscribe to more publications to see what similar readers enjoy.
+          </Trans>
         </p>
       )}
     </div>
@@ -410,6 +425,8 @@ function DiscoverSocialProofSection({
 }
 
 function DiscoverTrendingSection() {
+  const { t } = useLingui();
+  const trendingTitle = t`Trending publications`;
   const [trendingLimit, setTrendingLimit] = useState(DEFAULT_TRENDING_LIMIT);
   const { data: trending = [], isPending } = useQuery({
     ...discoverApi.getTrendingPublicationsQueryOptions({
@@ -421,10 +438,10 @@ function DiscoverTrendingSection() {
   return (
     <div {...stylex.props(styles.section)}>
       <SectionHead
-        title="Trending publications"
+        title={trendingTitle}
         action={
           <Select
-            aria-label="Publications shown"
+            aria-label={t`Publications shown`}
             items={TRENDING_LIMIT_OPTIONS.map((limit) => ({
               id: limit,
               label: String(limit),
@@ -461,16 +478,19 @@ function DiscoverTrendingSection() {
           layout="list"
           variant="row"
           showRank
-          aria-label="Trending publications"
+          aria-label={trendingTitle}
         />
       ) : (
-        <p {...stylex.props(styles.emptyRail)}>No trending publications yet.</p>
+        <p {...stylex.props(styles.emptyRail)}>
+          <Trans>No trending publications yet.</Trans>
+        </p>
       )}
     </div>
   );
 }
 
 function DiscoverDirectorySection({ signedIn }: { signedIn: boolean }) {
+  const { t, i18n } = useLingui();
   const { topic, sort, view } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const [directoryItems, setDirectoryItems] = useState<Array<PublicationCard>>(
@@ -635,12 +655,12 @@ function DiscoverDirectorySection({ signedIn }: { signedIn: boolean }) {
   return (
     <div {...stylex.props(styles.section)}>
       <SectionHead
-        kicker="Browse everything"
-        title="All publications"
+        kicker={<Trans>Browse everything</Trans>}
+        title={<Trans>All publications</Trans>}
         action={
           <SearchField
-            aria-label="Search publications"
-            placeholder="Search by name, handle, or topic…"
+            aria-label={t`Search publications`}
+            placeholder={t`Search by name, handle, or topic…`}
             value={searchInput}
             onChange={setSearchInput}
             style={styles.directorySearch}
@@ -662,9 +682,11 @@ function DiscoverDirectorySection({ signedIn }: { signedIn: boolean }) {
               onSelectionChange={onFollowFilterChange}
               size="sm"
             >
-              <SegmentedControlItem id="all">All</SegmentedControlItem>
+              <SegmentedControlItem id="all">
+                <Trans>All</Trans>
+              </SegmentedControlItem>
               <SegmentedControlItem id="not-following">
-                Not subscribed
+                <Trans>Not subscribed</Trans>
               </SegmentedControlItem>
             </SegmentedControl>
           ) : null}
@@ -676,7 +698,7 @@ function DiscoverDirectorySection({ signedIn }: { signedIn: boolean }) {
           >
             {SORT_OPTIONS.map((option) => (
               <SegmentedControlItem key={option.id} id={option.id}>
-                {option.label}
+                {i18n._(option.label)}
               </SegmentedControlItem>
             ))}
           </SegmentedControl>
@@ -686,10 +708,10 @@ function DiscoverDirectorySection({ signedIn }: { signedIn: boolean }) {
             onSelectionChange={onViewChange}
             size="sm"
           >
-            <SegmentedControlItem id="list" aria-label="List view">
+            <SegmentedControlItem id="list" aria-label={t`List view`}>
               <List size={16} />
             </SegmentedControlItem>
-            <SegmentedControlItem id="grid" aria-label="Grid view">
+            <SegmentedControlItem id="grid" aria-label={t`Grid view`}>
               <LayoutGrid size={16} />
             </SegmentedControlItem>
           </SegmentedControl>
@@ -701,24 +723,24 @@ function DiscoverDirectorySection({ signedIn }: { signedIn: boolean }) {
       ) : visibleDirectoryItems.length === 0 ? (
         <p {...stylex.props(styles.emptyRail)}>
           {hideFollowing && directoryItems.length > 0
-            ? "You're subscribed to every publication on this page — scroll for more, or turn off the filter."
+            ? t`You're subscribed to every publication on this page — scroll for more, or turn off the filter.`
             : debouncedQ
-              ? "No publications match your search."
-              : "No publications match this topic yet."}
+              ? t`No publications match your search.`
+              : t`No publications match this topic yet.`}
         </p>
       ) : view === "grid" ? (
         <PubGridList
           pubs={visibleDirectoryItems}
           layout="grid"
           variant="card"
-          aria-label="Publications"
+          aria-label={t`Publications`}
         />
       ) : (
         <PubGridList
           pubs={visibleDirectoryItems}
           layout="list"
           variant="row"
-          aria-label="Publications"
+          aria-label={t`Publications`}
         />
       )}
 
@@ -736,7 +758,7 @@ function DiscoverDirectorySection({ signedIn }: { signedIn: boolean }) {
             />
           ) : directoryNextOffset == null ? (
             <p {...stylex.props(styles.endNote)}>
-              You&apos;ve reached the end.
+              <Trans>You&apos;ve reached the end.</Trans>
             </p>
           ) : null}
         </>
@@ -763,25 +785,29 @@ function DiscoverMastheadDek({
 }: {
   knownPublicationCount: number;
 }) {
+  const fmt = useFormatters();
   if (knownPublicationCount <= 0) {
     return (
-      <>
+      <Trans>
         Every publication the network knows about — subscribe to the ones worth
         your mornings.
-      </>
+      </Trans>
     );
   }
 
+  const publicationCount = fmt.compactNumber(knownPublicationCount);
+
   return (
-    <>
-      Every publication the network knows about —{" "}
-      {formatCount(knownPublicationCount)} and counting. Subscribe to the ones
-      worth your mornings.
-    </>
+    <Trans>
+      Every publication the network knows about — {publicationCount} and
+      counting. Subscribe to the ones worth your mornings.
+    </Trans>
   );
 }
 
 function Discover() {
+  const { t } = useLingui();
+  const fmt = useFormatters();
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
 
@@ -802,15 +828,15 @@ function Discover() {
   return (
     <ReaderContent>
       <Masthead
-        kicker="The directory"
-        title="Discover"
+        kicker={<Trans>The directory</Trans>}
+        title={<Trans>Discover</Trans>}
         dek={
           <DiscoverMastheadDek knownPublicationCount={knownPublicationCount} />
         }
-        metaLabel="Known publications"
+        metaLabel={t`Known publications`}
         metaValue={
           knownPublicationCount > 0
-            ? formatCount(knownPublicationCount)
+            ? fmt.compactNumber(knownPublicationCount)
             : undefined
         }
       />

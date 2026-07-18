@@ -56,8 +56,8 @@ const styles = stylex.create({
       default: "var(--card-gap)",
       ":last-child": "var(--card-y-padding)",
     },
-    paddingLeft: "var(--card-x-padding)",
-    paddingRight: "var(--card-x-padding)",
+    paddingInlineStart: "var(--card-x-padding)",
+    paddingInlineEnd: "var(--card-x-padding)",
     paddingTop: { ":first-child": "var(--card-y-padding)" },
   },
   cardHeader: {
@@ -118,8 +118,8 @@ const styles = stylex.create({
     gridRowStart: "description",
     lineHeight: lineHeight["sm"],
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
   },
   cardBody: {
@@ -144,10 +144,10 @@ const styles = stylex.create({
   },
   cardImage: {
     overflow: "hidden",
-    borderBottomLeftRadius: { default: 0, ":last-child": radius.md },
-    borderBottomRightRadius: { default: 0, ":last-child": radius.md },
-    borderTopLeftRadius: { default: 0, ":first-child": radius.md },
-    borderTopRightRadius: { default: 0, ":first-child": radius.md },
+    borderEndStartRadius: { default: 0, ":last-child": radius.md },
+    borderEndEndRadius: { default: 0, ":last-child": radius.md },
+    borderStartStartRadius: { default: 0, ":first-child": radius.md },
+    borderStartEndRadius: { default: 0, ":first-child": radius.md },
     marginBottom: "var(--card-y-padding)",
   },
 });

@@ -81,12 +81,12 @@ const styles = stylex.create({
       ":is([data-size=md] *)": sizeSpace["3xl"],
       ":is([data-size=sm] *)": sizeSpace["xl"],
     },
-    paddingLeft: {
+    paddingInlineStart: {
       ":is([data-size=lg] *)": horizontalSpace["xl"],
       ":is([data-size=md] *)": horizontalSpace["md"],
       ":is([data-size=sm] *)": horizontalSpace["sm"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       ":is([data-size=lg] *)": horizontalSpace["xl"],
       ":is([data-size=md] *)": horizontalSpace["md"],
       ":is([data-size=sm] *)": horizontalSpace["sm"],

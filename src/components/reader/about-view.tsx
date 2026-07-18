@@ -1,5 +1,7 @@
 "use client";
 
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -22,6 +24,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { DirectionalIcon } from "#/design-system/directional-icon";
 import { discoverApi } from "#/integrations/tanstack-query/api-discover.functions";
 import type { PublicationCard } from "#/integrations/tanstack-query/api-shapes";
 import { CHROME_STORE_URL, FIREFOX_STORE_URL } from "#/lib/extension-links";
@@ -58,22 +61,21 @@ function groupCount(n: number): string {
 }
 
 const RSS_FEEDS = [
-  "A single publication",
-  "Everything by one author",
-  "A topic or tag",
-  "One of your saved lists",
-  "The latest across everyone you subscribe to",
+  msg`A single publication`,
+  msg`Everything by one author`,
+  msg`A topic or tag`,
+  msg`One of your saved lists`,
+  msg`The latest across everyone you subscribe to`,
 ] as const;
 
 /** Exactly the prose shown in the mock reading card, for the Listen button. */
-const READING_EXAMPLE =
-  "There is a particular pleasure in reading something that was made to be read, and not to be measured. It asks nothing of you but your attention. The page gets quiet, and the sentence gets loud. So we built the reader we wanted: a column you can size, a font you can choose, and a margin wide enough to think in.";
+const READING_EXAMPLE = msg`There is a particular pleasure in reading something that was made to be read, and not to be measured. It asks nothing of you but your attention. The page gets quiet, and the sentence gets loud. So we built the reader we wanted: a column you can size, a font you can choose, and a margin wide enough to think in.`;
 
 const INLINE_FEATS = [
-  { icon: Sparkles, label: "Recommendations from real reading patterns" },
-  { icon: Flame, label: "Trending this week" },
-  { icon: Users, label: "Subscribed to by people you follow" },
-  { icon: Search, label: "Fast full-text search" },
+  { icon: Sparkles, label: msg`Recommendations from real reading patterns` },
+  { icon: Flame, label: msg`Trending this week` },
+  { icon: Users, label: msg`Subscribed to by people you follow` },
+  { icon: Search, label: msg`Fast full-text search` },
 ] as const;
 
 /* ── styles ─────────────────────────────────────────────────────────────── */
@@ -81,15 +83,15 @@ const INLINE_FEATS = [
 const styles = stylex.create({
   root: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "1040px",
     paddingBottom: spacing["24"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["10"],
       [MOBILE]: spacing["5"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["10"],
       [MOBILE]: spacing["5"],
     },
@@ -161,8 +163,8 @@ const styles = stylex.create({
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
     paddingBottom: spacing["3"],
-    paddingLeft: spacing["5"],
-    paddingRight: spacing["5"],
+    paddingInlineStart: spacing["5"],
+    paddingInlineEnd: spacing["5"],
     paddingTop: spacing["3"],
     textDecoration: "none",
     whiteSpace: "nowrap",
@@ -208,8 +210,8 @@ const styles = stylex.create({
     fontWeight: fontWeight.semibold,
     marginTop: verticalSpace["3xl"],
     paddingBottom: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
     paddingTop: 0,
     textDecoration: "none",
     width: "fit-content",
@@ -237,8 +239,8 @@ const styles = stylex.create({
     letterSpacing: tracking.tight,
     lineHeight: 1.02,
     marginBottom: verticalSpace.none,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     marginTop: verticalSpace["4xl"],
     maxWidth: "15ch",
     textWrap: "balance",
@@ -249,8 +251,8 @@ const styles = stylex.create({
     fontSize: "clamp(1.125rem, 2vw, 1.3125rem)",
     lineHeight: lineHeight.sm,
     marginBottom: verticalSpace.none,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     marginTop: verticalSpace["5xl"],
     maxWidth: "58ch",
     textWrap: "pretty",
@@ -282,8 +284,8 @@ const styles = stylex.create({
     display: "flex",
     flexWrap: "wrap",
     justifyContent: "center",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     marginTop: spacing["11"],
     maxWidth: "760px",
     // eslint-disable-next-line @stylexjs/valid-styles
@@ -339,8 +341,8 @@ const styles = stylex.create({
     borderWidth: 1,
     boxShadow: shadow.lg,
     paddingBottom: spacing["8"],
-    paddingLeft: spacing["8"],
-    paddingRight: spacing["8"],
+    paddingInlineStart: spacing["8"],
+    paddingInlineEnd: spacing["8"],
     paddingTop: spacing["8"],
     position: "relative",
   },
@@ -388,18 +390,18 @@ const styles = stylex.create({
   },
   dropCap: {
     color: primaryColor.text2,
-    float: "left",
+    float: "inline-start",
     fontFamily: fontFamily.serif,
     fontSize: "3em",
     fontWeight: fontWeight.semibold,
     lineHeight: 0.78,
-    paddingRight: spacing["2.5"],
+    paddingInlineEnd: spacing["2.5"],
     paddingTop: spacing["1"],
   },
   readPull: {
-    borderLeftColor: primaryColor.solid1,
-    borderLeftStyle: "solid",
-    borderLeftWidth: 3,
+    borderInlineStartColor: primaryColor.solid1,
+    borderInlineStartStyle: "solid",
+    borderInlineStartWidth: 3,
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: fontSize.lg,
@@ -407,7 +409,7 @@ const styles = stylex.create({
     lineHeight: 1.34,
     marginBottom: spacing["4"],
     marginTop: spacing["4"],
-    paddingLeft: spacing["4"],
+    paddingInlineStart: spacing["4"],
   },
   readListen: {
     alignItems: "center",
@@ -424,11 +426,11 @@ const styles = stylex.create({
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,
     paddingBottom: spacing["2"],
-    paddingLeft: spacing["3.5"],
-    paddingRight: spacing["3.5"],
+    paddingInlineStart: spacing["3.5"],
+    paddingInlineEnd: spacing["3.5"],
     paddingTop: spacing["2"],
     position: "absolute",
-    right: spacing["5"],
+    insetInlineEnd: spacing["5"],
   },
 
   /* mini feature triplet */
@@ -524,8 +526,8 @@ const styles = stylex.create({
     borderStyle: "solid",
     borderWidth: 1,
     paddingBottom: { default: spacing["11"], [MOBILE]: spacing["7"] },
-    paddingLeft: { default: spacing["11"], [MOBILE]: spacing["7"] },
-    paddingRight: { default: spacing["11"], [MOBILE]: spacing["7"] },
+    paddingInlineStart: { default: spacing["11"], [MOBILE]: spacing["7"] },
+    paddingInlineEnd: { default: spacing["11"], [MOBILE]: spacing["7"] },
     paddingTop: { default: spacing["11"], [MOBILE]: spacing["7"] },
   },
   panelSplit: {
@@ -587,8 +589,8 @@ const styles = stylex.create({
     fontFamily: fontFamily.mono,
     fontSize: fontSize.xs,
     paddingBottom: spacing["0.5"],
-    paddingLeft: spacing["2"],
-    paddingRight: spacing["2"],
+    paddingInlineStart: spacing["2"],
+    paddingInlineEnd: spacing["2"],
     paddingTop: spacing["0.5"],
   },
 
@@ -611,8 +613,8 @@ const styles = stylex.create({
     columnGap: spacing["2.5"],
     display: "flex",
     paddingBottom: spacing["3"],
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["4"],
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["4"],
     paddingTop: spacing["3"],
   },
   mailBarIcon: {
@@ -629,12 +631,12 @@ const styles = stylex.create({
     color: uiColor.text1,
     fontFamily: fontFamily.mono,
     fontSize: fontSize.xs,
-    marginLeft: "auto",
+    marginInlineStart: "auto",
   },
   mailBody: {
     paddingBottom: spacing["6"],
-    paddingLeft: spacing["6"],
-    paddingRight: spacing["6"],
+    paddingInlineStart: spacing["6"],
+    paddingInlineEnd: spacing["6"],
     paddingTop: spacing["5"],
   },
   mailKicker: {
@@ -711,8 +713,8 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     paddingBottom: spacing["7"],
-    paddingLeft: spacing["7"],
-    paddingRight: spacing["7"],
+    paddingInlineStart: spacing["7"],
+    paddingInlineEnd: spacing["7"],
     paddingTop: spacing["7"],
   },
   intFeature: {
@@ -727,13 +729,13 @@ const styles = stylex.create({
   intFigure: {
     alignItems: "center",
     alignSelf: { default: "stretch", [TABLET]: "auto" },
-    borderRightColor: { default: uiColor.border1, [TABLET]: "transparent" },
-    borderRightStyle: "solid",
-    borderRightWidth: { default: 1, [TABLET]: 0 },
+    borderInlineEndColor: { default: uiColor.border1, [TABLET]: "transparent" },
+    borderInlineEndStyle: "solid",
+    borderInlineEndWidth: { default: 1, [TABLET]: 0 },
     display: "flex",
     flexShrink: 0,
     justifyContent: "center",
-    paddingRight: { default: spacing["8"], [TABLET]: 0 },
+    paddingInlineEnd: { default: spacing["8"], [TABLET]: 0 },
     width: { default: "180px", [TABLET]: "auto" },
   },
   intFigureChip: {
@@ -778,8 +780,8 @@ const styles = stylex.create({
     flexWrap: "wrap",
     marginTop: spacing["6"],
     paddingBottom: spacing["4"],
-    paddingLeft: spacing["5"],
-    paddingRight: spacing["5"],
+    paddingInlineStart: spacing["5"],
+    paddingInlineEnd: spacing["5"],
     paddingTop: spacing["4"],
     rowGap: spacing["2"],
   },
@@ -814,8 +816,8 @@ const styles = stylex.create({
     letterSpacing: tracking.tight,
     lineHeight: 1.08,
     marginBottom: verticalSpace.none,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     marginTop: verticalSpace.none,
     maxWidth: "16ch",
     textWrap: "balance",
@@ -826,8 +828,8 @@ const styles = stylex.create({
     fontSize: fontSize.lg,
     lineHeight: lineHeight.sm,
     marginBottom: verticalSpace.none,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     marginTop: verticalSpace["5xl"],
     maxWidth: "52ch",
     textWrap: "pretty",
@@ -866,7 +868,7 @@ function CtaButton({
         <LeadingIcon size={16} strokeWidth={2.2} aria-hidden />
       ) : null}
       {children}
-      {trailingArrow ? <ArrowRight size={16} aria-hidden /> : null}
+      {trailingArrow ? <DirectionalIcon as={ArrowRight} size={16} /> : null}
     </>
   );
   if (to) {
@@ -900,7 +902,7 @@ function TextLink({
 }) {
   return (
     <Link to={to} {...stylex.props(styles.tlink, style)}>
-      {children} <ArrowRight size={15} aria-hidden />
+      {children} <DirectionalIcon as={ArrowRight} size={15} />
     </Link>
   );
 }
@@ -908,15 +910,17 @@ function TextLink({
 /** A hero-shelf publication avatar that links to its page (falls back to a
  * plain avatar when the publication has no resolvable route). */
 function ShelfAvatar({ pub }: { pub: PublicationCard }) {
+  const { t } = useLingui();
   const params = publicationLinkParams(pub.uri);
   if (!params) {
     return <PublicationAvatar pub={pub} size="lg" />;
   }
+  const pubName = pub.name;
   return (
     <Link
       to="/p/$did/$rkey"
       params={params}
-      aria-label={`Open ${pub.name}`}
+      aria-label={t`Open ${pubName}`}
       {...stylex.props(styles.shelfLink)}
     >
       <PublicationAvatar pub={pub} size="lg" />
@@ -941,7 +945,7 @@ function ExtLink({
       rel="noopener noreferrer"
       {...stylex.props(styles.tlink, style)}
     >
-      {children} <ArrowRight size={15} aria-hidden />
+      {children} <DirectionalIcon as={ArrowRight} size={15} />
     </a>
   );
 }
@@ -961,6 +965,7 @@ function ListenChip({
   text: string;
   publicationName: string | null;
 }) {
+  const { t } = useLingui();
   const { state, nowPlaying, playSample, stop } = usePageReader();
   const isThis = nowPlaying?.uri === SAMPLE_URI;
   const loading =
@@ -975,7 +980,7 @@ function ListenChip({
     }
     playSample({
       uri: SAMPLE_URI,
-      title: "The Slow Web, Revisited",
+      title: t`The Slow Web, Revisited`,
       publicationName,
       text,
     });
@@ -987,13 +992,13 @@ function ListenChip({
       onClick={onClick}
       aria-label={
         active
-          ? "Stop reading this example aloud"
-          : "Listen to this example read aloud"
+          ? t`Stop reading this example aloud`
+          : t`Listen to this example read aloud`
       }
       {...stylex.props(styles.readListen)}
     >
       <Headphones size={15} aria-hidden />{" "}
-      {loading ? "Loading…" : active ? "Stop" : "Listen"}
+      {loading ? t`Loading…` : active ? t`Stop` : t`Listen`}
     </button>
   );
 }
@@ -1066,6 +1071,7 @@ function IntegrationCard({
 /* ── view ───────────────────────────────────────────────────────────────── */
 
 export function AboutView() {
+  const { t, i18n } = useLingui();
   const { data: knownPublicationCount } = useSuspenseQuery(
     discoverApi.getKnownPublicationCountQueryOptions(),
   );
@@ -1085,6 +1091,9 @@ export function AboutView() {
   const previewPubs = (trending.length > 0 ? trending : pubs).slice(0, 3);
   const firstPub = pubs[0];
   const secondPub = pubs[1];
+  const discoverDek = countLabel
+    ? t`Most readers stop at what you already subscribe to. Standard Reader treats finding your next favourite as part of the job. Browse all ${countLabel} publications on the network — not just the handful you've heard of.`
+    : t`Most readers stop at what you already subscribe to. Standard Reader treats finding your next favourite as part of the job. Browse every publications on the network — not just the handful you've heard of.`;
 
   return (
     <article {...stylex.props(styles.root)} data-screen-label="About">
@@ -1092,34 +1101,39 @@ export function AboutView() {
       <header {...stylex.props(styles.hero)}>
         <span {...stylex.props(styles.eyebrow)}>Standard Reader</span>
         <h1 {...stylex.props(styles.heroTitle)}>
-          A home for the writing you love
+          <Trans>A home for the writing you love</Trans>
         </h1>
         <p {...stylex.props(styles.lede)}>
-          Subscribe to the publications on{" "}
-          <a
-            href="https://standard.site"
-            target="_blank"
-            rel="noopener noreferrer"
-            {...stylex.props(styles.inlineLink)}
-          >
-            standard.site
-          </a>{" "}
-          you care about. New writing simply arrives, in the order it was
-          written — no feed to fight, nothing shouting for your attention. Just
-          good long-form, and a genuinely nice way to keep finding more of it.
+          <Trans>
+            Subscribe to the publications on{" "}
+            <a
+              href="https://standard.site"
+              target="_blank"
+              rel="noopener noreferrer"
+              {...stylex.props(styles.inlineLink)}
+            >
+              standard.site
+            </a>{" "}
+            you care about. New writing simply arrives, in the order it was
+            written — no feed to fight, nothing shouting for your attention.
+            Just good long-form, and a genuinely nice way to keep finding more
+            of it.
+          </Trans>
         </p>
         <div {...stylex.props(styles.ctaRow, styles.heroCtaRow)}>
           <CtaButton to="/login" variant="ghost">
-            Sign in
+            <Trans>Sign in</Trans>
           </CtaButton>
           <CtaButton to="/discover" variant="primary" trailingArrow>
-            Start exploring
+            <Trans>Start exploring</Trans>
           </CtaButton>
         </div>
         {countLabel ? (
           <div {...stylex.props(styles.count)}>
-            <span {...stylex.props(styles.countNum)}>{countLabel}</span>{" "}
-            publications indexed — and counting
+            <Trans>
+              <span {...stylex.props(styles.countNum)}>{countLabel}</span>{" "}
+              publications indexed — and counting
+            </Trans>
           </div>
         ) : null}
 
@@ -1137,21 +1151,29 @@ export function AboutView() {
         <div {...stylex.props(styles.split)}>
           <div {...stylex.props(styles.splitText)}>
             <div {...stylex.props(styles.kickerBlock)}>
-              <Kicker>The reading experience</Kicker>
+              <Kicker>
+                <Trans>The reading experience</Trans>
+              </Kicker>
             </div>
-            <h2 {...stylex.props(styles.splitTitle)}>A quiet place to read</h2>
+            <h2 {...stylex.props(styles.splitTitle)}>
+              <Trans>A quiet place to read</Trans>
+            </h2>
             <p {...stylex.props(styles.splitPara)}>
-              What you get is a reading view made for long-form: a centered
-              column, drop caps and pull quotes, full-bleed images you can open
-              into a gallery. The page gets out of the way so the writing can do
-              its work.
+              <Trans>
+                What you get is a reading view made for long-form: a centered
+                column, drop caps and pull quotes, full-bleed images you can
+                open into a gallery. The page gets out of the way so the writing
+                can do its work.
+              </Trans>
             </p>
             <p {...stylex.props(styles.splitPara, styles.splitParaLast)}>
-              And it never feels sealed off. We connect each article to the
-              conversation happening across the Atmosphere — the open network
-              beyond this app — gathering the Bluesky posts and replies about a
-              piece, the notes left in its margins, and the other writing that
-              cites it, quietly beneath what you&rsquo;re reading.
+              <Trans>
+                And it never feels sealed off. We connect each article to the
+                conversation happening across the Atmosphere — the open network
+                beyond this app — gathering the Bluesky posts and replies about
+                a piece, the notes left in its margins, and the other writing
+                that cites it, quietly beneath what you&rsquo;re reading.
+              </Trans>
             </p>
           </div>
 
@@ -1169,44 +1191,56 @@ export function AboutView() {
               ) : null}
             </div>
             <h3 {...stylex.props(styles.readTitle)} aria-hidden>
-              The Slow Web, Revisited
+              <Trans>The Slow Web, Revisited</Trans>
             </h3>
             <div {...stylex.props(styles.readBody)} aria-hidden>
               <p {...stylex.props(styles.readPara)}>
-                <span {...stylex.props(styles.dropCap)}>T</span>here is a
-                particular pleasure in reading something that was made to be
-                read, and not to be measured. It asks nothing of you but your
-                attention.
+                <Trans>
+                  <span {...stylex.props(styles.dropCap)}>T</span>here is a
+                  particular pleasure in reading something that was made to be
+                  read, and not to be measured. It asks nothing of you but your
+                  attention.
+                </Trans>
               </p>
               <p {...stylex.props(styles.readPull)}>
-                “The page gets quiet, and the sentence gets loud.”
+                <Trans>
+                  “The page gets quiet, and the sentence gets loud.”
+                </Trans>
               </p>
               <p {...stylex.props(styles.readPara)}>
-                So we built the reader we wanted: a column you can size, a font
-                you can choose, and a margin wide enough to think in.
+                <Trans>
+                  So we built the reader we wanted: a column you can size, a
+                  font you can choose, and a margin wide enough to think in.
+                </Trans>
               </p>
             </div>
             <ListenChip
-              text={READING_EXAMPLE}
+              text={i18n._(READING_EXAMPLE)}
               publicationName={firstPub?.name ?? null}
             />
           </div>
         </div>
 
         <div {...stylex.props(styles.miniGrid)}>
-          <MiniFeature icon={SlidersHorizontal} title="Set your own type">
-            Choose body text size, column width, and font — serif, sans, or any
-            Google Font. Read the way that’s easy on your eyes.
+          <MiniFeature icon={SlidersHorizontal} title={t`Set your own type`}>
+            <Trans>
+              Choose body text size, column width, and font — serif, sans, or
+              any Google Font. Read the way that’s easy on your eyes.
+            </Trans>
           </MiniFeature>
-          <MiniFeature icon={Headphones} title="Listen to anything">
-            A Listen button reads any article aloud, right on your device, and
-            highlights each word as it goes. The player follows you around the
-            app — it’ll even read an embedded Bluesky post. Signed in, you can
-            pick a voice.
+          <MiniFeature icon={Headphones} title={t`Listen to anything`}>
+            <Trans>
+              A Listen button reads any article aloud, right on your device, and
+              highlights each word as it goes. The player follows you around the
+              app — it’ll even read an embedded Bluesky post. Signed in, you can
+              pick a voice.
+            </Trans>
           </MiniFeature>
-          <MiniFeature icon={Globe} title="Prefer the original?">
-            Flip one setting and article links open on the publication’s own
-            site instead. Read wherever feels right to you.
+          <MiniFeature icon={Globe} title={t`Prefer the original?`}>
+            <Trans>
+              Flip one setting and article links open on the publication’s own
+              site instead. Read wherever feels right to you.
+            </Trans>
           </MiniFeature>
         </div>
       </section>
@@ -1214,11 +1248,9 @@ export function AboutView() {
       {/* ── Discover ── */}
       <section {...stylex.props(styles.section)}>
         <SectionHead
-          kicker="Discovery"
-          title="Find the ones you didn't know you wanted"
-          dek={`Most readers stop at what you already subscribe to. Standard Reader treats finding your next favourite as part of the job. Browse${
-            countLabel ? ` all ${countLabel}` : " every"
-          } publications on the network — not just the handful you've heard of.`}
+          kicker={t`Discovery`}
+          title={t`Find the ones you didn't know you wanted`}
+          dek={discoverDek}
         />
 
         {previewPubs.length > 0 ? (
@@ -1231,20 +1263,20 @@ export function AboutView() {
 
         <div {...stylex.props(styles.inlineFeats)}>
           {INLINE_FEATS.map(({ icon: Icon, label }) => (
-            <span key={label} {...stylex.props(styles.inlineFeat)}>
+            <span key={label.id} {...stylex.props(styles.inlineFeat)}>
               <Icon
                 size={17}
                 aria-hidden
                 {...stylex.props(styles.inlineFeatIcon)}
               />
-              {label}
+              {i18n._(label)}
             </span>
           ))}
         </div>
 
         <div {...stylex.props(styles.discoverCta)}>
           <CtaButton to="/discover" variant="ink" trailingArrow>
-            Browse publications
+            <Trans>Browse publications</Trans>
           </CtaButton>
         </div>
       </section>
@@ -1252,9 +1284,9 @@ export function AboutView() {
       {/* ── Integrations ── */}
       <section {...stylex.props(styles.section)}>
         <SectionHead
-          kicker="Integrations"
-          title="Standard Reader meets you where you read"
-          dek="It doesn't ask you to leave the rest of the web behind. It reaches out to it — and stays a good citizen of the wider network."
+          kicker={t`Integrations`}
+          title={t`Standard Reader meets you where you read`}
+          dek={t`It doesn't ask you to leave the rest of the web behind. It reaches out to it — and stays a good citizen of the wider network.`}
         />
 
         <div {...stylex.props(styles.intGrid)}>
@@ -1267,20 +1299,22 @@ export function AboutView() {
             </div>
             <div {...stylex.props(styles.intBody)}>
               <h4 {...stylex.props(styles.intTitle)}>
-                Save from anywhere you browse
+                <Trans>Save from anywhere you browse</Trans>
               </h4>
               <p {...stylex.props(styles.intDesc)}>
-                A lightweight browser extension lets you save and subscribe to
-                publications while you’re out on the web — with subtle badges on
-                bsky.app and a one-click overlay on any page you land on. Your
-                reading list fills itself.
+                <Trans>
+                  A lightweight browser extension lets you save and subscribe to
+                  publications while you’re out on the web — with subtle badges
+                  on bsky.app and a one-click overlay on any page you land on.
+                  Your reading list fills itself.
+                </Trans>
               </p>
               <div {...stylex.props(styles.storeLinks)}>
                 <ExtLink href={CHROME_STORE_URL} style={styles.storeLink}>
-                  Add to Chrome
+                  <Trans>Add to Chrome</Trans>
                 </ExtLink>
                 <ExtLink href={FIREFOX_STORE_URL} style={styles.storeLink}>
-                  Add to Firefox
+                  <Trans>Add to Firefox</Trans>
                 </ExtLink>
               </div>
             </div>
@@ -1288,43 +1322,53 @@ export function AboutView() {
 
           <IntegrationCard
             icon={Heart}
-            title="Save, like, subscribe — everywhere"
+            title={t`Save, like, subscribe — everywhere`}
           >
-            One tap from the reading view, on any device, instantly in sync.
-            Your library is always where you left it.
+            <Trans>
+              One tap from the reading view, on any device, instantly in sync.
+              Your library is always where you left it.
+            </Trans>
           </IntegrationCard>
 
-          <IntegrationCard icon={Users} title="The conversation, gathered">
-            Under each article you see the discussion from across the open
-            network — Bluesky posts and replies, margin notes, links from other
-            pieces that cite it, and related reading. All read-only, all linking
-            back to the source.
+          <IntegrationCard icon={Users} title={t`The conversation, gathered`}>
+            <Trans>
+              Under each article you see the discussion from across the open
+              network — Bluesky posts and replies, margin notes, links from
+              other pieces that cite it, and related reading. All read-only, all
+              linking back to the source.
+            </Trans>
           </IntegrationCard>
 
-          <IntegrationCard icon={Share2} title="Shareable everywhere">
-            Publications, lists, and collections each get a clean link with a
-            rich preview card — plus a subscribe button a publication can drop
-            on its own site.
+          <IntegrationCard icon={Share2} title={t`Shareable everywhere`}>
+            <Trans>
+              Publications, lists, and collections each get a clean link with a
+              rich preview card — plus a subscribe button a publication can drop
+              on its own site.
+            </Trans>
           </IntegrationCard>
 
           <IntegrationCard
             icon={Bookmark}
-            title="Curated lists & collections"
-            link={{ to: "/collections", label: "See collections" }}
+            title={t`Curated lists & collections`}
+            link={{ to: "/collections", label: t`See collections` }}
           >
-            Build named, shareable lists of publications — a playlist for
-            reading. Anyone can add your list to their own reader in a single
-            tap.
+            <Trans>
+              Build named, shareable lists of publications — a playlist for
+              reading. Anyone can add your list to their own reader in a single
+              tap.
+            </Trans>
           </IntegrationCard>
         </div>
 
         <div {...stylex.props(styles.builder)}>
           <Info size={18} aria-hidden {...stylex.props(styles.builderIcon)} />
           <p {...stylex.props(styles.builderText)}>
-            Building something on the same index? There’s a public API.
+            <Trans>
+              Building something on the same index? There’s a public API.
+            </Trans>
           </p>
           <TextLink to="/docs/api" style={styles.builderLink}>
-            Read the API docs
+            <Trans>Read the API docs</Trans>
           </TextLink>
         </div>
       </section>
@@ -1342,19 +1386,23 @@ export function AboutView() {
                   {...stylex.props(styles.mailBarIcon)}
                 />
                 <span {...stylex.props(styles.mailFrom)}>Standard Reader</span>
-                <span {...stylex.props(styles.mailWhen)}>Sun · 8:00 AM</span>
+                <span {...stylex.props(styles.mailWhen)}>
+                  <Trans>Sun · 8:00 AM</Trans>
+                </span>
               </div>
               <div {...stylex.props(styles.mailBody)}>
-                <div {...stylex.props(styles.mailKicker)}>Your week</div>
+                <div {...stylex.props(styles.mailKicker)}>
+                  <Trans>Your week</Trans>
+                </div>
                 <h3 {...stylex.props(styles.mailTitle)}>
-                  The best of what you subscribe to
+                  <Trans>The best of what you subscribe to</Trans>
                 </h3>
                 <div {...stylex.props(styles.mailItem)}>
                   <div {...stylex.props(styles.mailSrc)}>
                     {firstPub?.name ?? "The Almanac"}
                   </div>
                   <div {...stylex.props(styles.mailHl)}>
-                    The Slow Web, Revisited
+                    <Trans>The Slow Web, Revisited</Trans>
                   </div>
                 </div>
                 <div {...stylex.props(styles.mailItem)}>
@@ -1362,39 +1410,45 @@ export function AboutView() {
                     {secondPub?.name ?? "Marginalia"}
                   </div>
                   <div {...stylex.props(styles.mailHl)}>
-                    On keeping a commonplace book
+                    <Trans>On keeping a commonplace book</Trans>
                   </div>
                 </div>
                 <div {...stylex.props(styles.mailItem)}>
                   <div {...stylex.props(styles.mailSrc, styles.mailSrcMuted)}>
-                    Worth discovering
+                    <Trans>Worth discovering</Trans>
                   </div>
                   <div {...stylex.props(styles.mailHl)}>
                     {previewPubs[0]?.name ?? "Tidepool"}
                   </div>
                 </div>
                 <div {...stylex.props(styles.mailFoot)}>
-                  <Check size={14} strokeWidth={2.2} aria-hidden /> Unsubscribe
-                  in one click, any time
+                  <Trans>
+                    <Check size={14} strokeWidth={2.2} aria-hidden />{" "}
+                    Unsubscribe in one click, any time
+                  </Trans>
                 </div>
               </div>
             </div>
 
             <div>
               <div {...stylex.props(styles.kickerBlock)}>
-                <Kicker>In your inbox</Kicker>
+                <Kicker>
+                  <Trans>In your inbox</Trans>
+                </Kicker>
               </div>
               <h2 {...stylex.props(styles.splitTitle, styles.h2Panel)}>
-                One tasteful email a week
+                <Trans>One tasteful email a week</Trans>
               </h2>
               <p {...stylex.props(styles.panelPara, styles.panelParaSpaced)}>
-                Don’t want another app to check? Opt into a weekly email with
-                the best of the publications you subscribe to, plus a couple
-                worth discovering. One email, one click to leave — and you can
-                preview exactly what it looks like before you ever turn it on.
+                <Trans>
+                  Don’t want another app to check? Opt into a weekly email with
+                  the best of the publications you subscribe to, plus a couple
+                  worth discovering. One email, one click to leave — and you can
+                  preview exactly what it looks like before you ever turn it on.
+                </Trans>
               </p>
               <CtaButton to="/settings" variant="ghost" icon={Mail}>
-                Turn on in Settings
+                <Trans>Turn on in Settings</Trans>
               </CtaButton>
             </div>
           </div>
@@ -1407,21 +1461,25 @@ export function AboutView() {
           <div {...stylex.props(styles.panelSplit)}>
             <div>
               <div {...stylex.props(styles.kickerBlock)}>
-                <Kicker>Plays nice with the open web</Kicker>
+                <Kicker>
+                  <Trans>Plays nice with the open web</Trans>
+                </Kicker>
               </div>
               <h2 {...stylex.props(styles.splitTitle, styles.h2Panel)}>
-                Take any of it as RSS
+                <Trans>Take any of it as RSS</Trans>
               </h2>
               <p {...stylex.props(styles.panelPara)}>
-                Standard Reader doesn’t trap your reading inside one app. Any
-                slice of the network comes with its own RSS feed — pipe it
-                straight into whatever reader you already use.
+                <Trans>
+                  Standard Reader doesn’t trap your reading inside one app. Any
+                  slice of the network comes with its own RSS feed — pipe it
+                  straight into whatever reader you already use.
+                </Trans>
               </p>
             </div>
             <div {...stylex.props(styles.feeds)}>
               {RSS_FEEDS.map((what, i) => (
                 <div
-                  key={what}
+                  key={what.id}
                   {...stylex.props(
                     styles.feed,
                     i === RSS_FEEDS.length - 1 && styles.feedLast,
@@ -1432,7 +1490,7 @@ export function AboutView() {
                     aria-hidden
                     {...stylex.props(styles.feedIcon)}
                   />
-                  <span {...stylex.props(styles.feedWhat)}>{what}</span>
+                  <span {...stylex.props(styles.feedWhat)}>{i18n._(what)}</span>
                   <span {...stylex.props(styles.feedTag)}>/ rss</span>
                 </div>
               ))}
@@ -1444,16 +1502,18 @@ export function AboutView() {
       {/* ── Closing ── */}
       <section {...stylex.props(styles.close)}>
         <h2 {...stylex.props(styles.closeTitle)}>
-          Start with a single publication
+          <Trans>Start with a single publication</Trans>
         </h2>
         <p {...stylex.props(styles.closeDek)}>
-          Read without an account. Sign in with Bluesky when you want to
-          subscribe, like, and save — and take all of it with you, wherever you
-          choose to read next.
+          <Trans>
+            Read without an account. Sign in with Bluesky when you want to
+            subscribe, like, and save — and take all of it with you, wherever
+            you choose to read next.
+          </Trans>
         </p>
         <div {...stylex.props(styles.ctaRow, styles.heroCtaRow)}>
           <CtaButton to="/discover" variant="primary" trailingArrow>
-            Get started
+            <Trans>Get started</Trans>
           </CtaButton>
         </div>
       </section>

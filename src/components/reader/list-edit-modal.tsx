@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { GripVertical, X } from "lucide-react";
@@ -50,8 +51,8 @@ const styles = stylex.create({
   },
   body: {
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
   list: {
@@ -71,8 +72,8 @@ const styles = stylex.create({
     fontSize: fontSize.sm,
     fontStyle: "italic",
     paddingBottom: verticalSpace.lg,
-    paddingLeft: horizontalSpace.xl,
-    paddingRight: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    paddingInlineEnd: horizontalSpace.xl,
     paddingTop: verticalSpace.lg,
   },
   grip: {
@@ -154,6 +155,7 @@ function ListEditForm({
   close: () => void;
   onDeleted?: () => void;
 }) {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
   const [name, setName] = useState(list?.name ?? "");
   const [description, setDescription] = useState(list?.description ?? "");
@@ -289,24 +291,24 @@ function ListEditForm({
       <div {...stylex.props(styles.body)}>
         <Flex direction="column" gap="2xl">
           <TextField
-            label="Name"
+            label={t`Name`}
             size="lg"
-            placeholder="e.g. Tech, Friends, Cooking"
+            placeholder={t`e.g. Tech, Friends, Cooking`}
             value={name}
             onChange={setName}
             isRequired
           />
 
           <TextField
-            label="Description"
+            label={t`Description`}
             size="lg"
-            placeholder="What this list is about (shown on its public page)"
+            placeholder={t`What this list is about (shown on its public page)`}
             value={description}
             onChange={setDescription}
           />
 
           <ListBox
-            aria-label="List members"
+            aria-label={t`List members`}
             size="lg"
             items={items}
             selectionMode="none"
@@ -314,53 +316,58 @@ function ListEditForm({
             style={styles.list}
             renderEmptyState={() => (
               <span {...stylex.props(styles.emptyList)}>
-                Nothing added yet — add publications or people below.
+                <Trans>
+                  Nothing added yet — add publications or people below.
+                </Trans>
               </span>
             )}
           >
-            {(item) => (
-              <ListBoxItem
-                id={item.id}
-                textValue={item.name}
-                prefix={
-                  <Flex align="center" gap="md">
-                    <GripVertical
-                      aria-hidden
-                      size={14}
-                      {...stylex.props(styles.grip)}
-                    />
-                    <Avatar
+            {(item) => {
+              const memberName = item.name;
+              return (
+                <ListBoxItem
+                  id={item.id}
+                  textValue={item.name}
+                  prefix={
+                    <Flex align="center" gap="md">
+                      <GripVertical
+                        aria-hidden
+                        size={14}
+                        {...stylex.props(styles.grip)}
+                      />
+                      <Avatar
+                        size="sm"
+                        src={item.iconUrl ?? undefined}
+                        fallback={initials(item.name)}
+                        alt={item.name}
+                      />
+                    </Flex>
+                  }
+                  suffix={
+                    <IconButton
+                      aria-label={t`Remove ${memberName} from list`}
                       size="sm"
-                      src={item.iconUrl ?? undefined}
-                      fallback={initials(item.name)}
-                      alt={item.name}
-                    />
-                  </Flex>
-                }
-                suffix={
-                  <IconButton
-                    aria-label={`Remove ${item.name} from list`}
-                    size="sm"
-                    variant="tertiary"
-                    onPress={() => removeMember(item.id)}
-                  >
-                    <X />
-                  </IconButton>
-                }
-              >
-                {item.name}
-              </ListBoxItem>
-            )}
+                      variant="tertiary"
+                      onPress={() => removeMember(item.id)}
+                    >
+                      <X />
+                    </IconButton>
+                  }
+                >
+                  {item.name}
+                </ListBoxItem>
+              );
+            }}
           </ListBox>
 
           <Flex align="end" gap="lg" style={styles.addRow}>
             <ComboBox
-              aria-label="Choose an item to add to the list"
+              aria-label={t`Choose an item to add to the list`}
               size="lg"
               placeholder={
                 mode === "pub"
-                  ? "Search your subscriptions"
-                  : "Search people you follow"
+                  ? t`Search your subscriptions`
+                  : t`Search people you follow`
               }
               items={matches}
               inputValue={search}
@@ -379,11 +386,11 @@ function ListEditForm({
                 <span {...stylex.props(styles.emptyList)}>
                   {candidates.length === 0
                     ? mode === "pub"
-                      ? "All subscriptions are in this list."
-                      : "Everyone you follow is in this list."
+                      ? t`All subscriptions are in this list.`
+                      : t`Everyone you follow is in this list.`
                     : mode === "pub"
-                      ? "No matching subscriptions."
-                      : "No matching people."}
+                      ? t`No matching subscriptions.`
+                      : t`No matching people.`}
                 </span>
               )}
             >
@@ -406,7 +413,7 @@ function ListEditForm({
             </ComboBox>
             <Select
               size="lg"
-              aria-label="Member type to add"
+              aria-label={t`Member type to add`}
               selectedKey={mode}
               onSelectionChange={(key) => {
                 setMode(String(key) as MemberKind);
@@ -414,8 +421,8 @@ function ListEditForm({
               }}
               style={styles.addSelect}
               items={[
-                { id: "pub", label: "Subscriptions" },
-                { id: "user", label: "Follows" },
+                { id: "pub", label: t`Subscriptions` },
+                { id: "user", label: t`Follows` },
               ]}
             >
               {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
@@ -424,7 +431,9 @@ function ListEditForm({
 
           {error ? (
             <span {...stylex.props(styles.errorNote)}>
-              {error instanceof Error ? error.message : "Something went wrong."}
+              {error instanceof Error
+                ? error.message
+                : t`Something went wrong.`}
             </span>
           ) : null}
         </Flex>
@@ -437,7 +446,7 @@ function ListEditForm({
             isDisabled={busy}
             onPress={removeList}
           >
-            Delete list
+            <Trans>Delete list</Trans>
           </Button>
         ) : null}
         <span {...stylex.props(styles.footerSpacer)} aria-hidden />
@@ -446,7 +455,7 @@ function ListEditForm({
           isDisabled={busy || name.trim().length === 0}
           onPress={save}
         >
-          {list ? "Save list" : "Create list"}
+          {list ? <Trans>Save list</Trans> : <Trans>Create list</Trans>}
         </Button>
       </DialogFooter>
     </>
@@ -485,7 +494,7 @@ export function ListEditModal({
     >
       <DialogHeader>
         <span {...stylex.props(styles.headerTitle)}>
-          {list ? "Edit list" : "New list"}
+          {list ? <Trans>Edit list</Trans> : <Trans>New list</Trans>}
         </span>
       </DialogHeader>
       <ListEditForm

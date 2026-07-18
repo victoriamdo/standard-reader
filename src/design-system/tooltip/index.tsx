@@ -32,8 +32,8 @@ const tooltipStyle = stylex.create({
     fontSize: fontSize["sm"],
     lineHeight: lineHeight["sm"],
     paddingBottom: verticalSpace["xs"],
-    paddingLeft: horizontalSpace["md"],
-    paddingRight: horizontalSpace["md"],
+    paddingInlineStart: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
     paddingTop: verticalSpace["xs"],
 
     "--origin": {

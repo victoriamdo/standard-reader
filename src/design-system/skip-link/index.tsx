@@ -18,7 +18,7 @@ const styles = stylex.create({
   link: {
     position: "fixed",
     top: verticalSpace.lg,
-    left: horizontalSpace.lg,
+    insetInlineStart: horizontalSpace.lg,
     // Above the sticky sidebar and page chrome; below toasts (9999).
     zIndex: 1000,
 
@@ -50,8 +50,8 @@ const styles = stylex.create({
 
     paddingTop: verticalSpace.md,
     paddingBottom: verticalSpace.md,
-    paddingLeft: horizontalSpace.xl,
-    paddingRight: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    paddingInlineEnd: horizontalSpace.xl,
 
     // Blue focus ring — the shared, high-visibility focus color.
     outlineColor: focusColor.ring,

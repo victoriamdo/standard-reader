@@ -1,3 +1,4 @@
+import { Plural, Trans } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 
@@ -47,7 +48,7 @@ const styles = stylex.create({
     justifyContent: "center",
   },
   clusterItem: {
-    marginLeft: "-0.6rem",
+    marginInlineStart: "-0.6rem",
     borderColor: primaryColor.bgSubtle,
     borderRadius: "50%",
     borderStyle: "solid",
@@ -64,16 +65,21 @@ export function StepIntro() {
   );
   const count = countQuery.data ?? null;
   const cluster = (trendingQuery.data ?? []).slice(0, 6);
+  const formattedCount = count == null ? "" : count.toLocaleString();
 
   return (
     <div {...stylex.props(styles.center)}>
-      <span {...stylex.props(styles.kicker)}>Welcome to</span>
+      <span {...stylex.props(styles.kicker)}>
+        <Trans>Welcome to</Trans>
+      </span>
       <Text font="title" size="4xl" weight="bold">
         Standard Reader
       </Text>
       <Body variant="secondary" style={styles.dek}>
-        A calm reading room for the open web. Let&apos;s take two minutes to
-        make it yours.
+        <Trans>
+          A calm reading room for the open web. Let&apos;s take two minutes to
+          make it yours.
+        </Trans>
       </Body>
 
       {cluster.length > 0 ? (
@@ -88,7 +94,11 @@ export function StepIntro() {
 
       {count == null ? null : (
         <span {...stylex.props(styles.stat)}>
-          {count.toLocaleString()} publications across the Atmosphere
+          <Plural
+            value={count}
+            one={`${formattedCount} publication across the Atmosphere`}
+            other={`${formattedCount} publications across the Atmosphere`}
+          />
         </span>
       )}
     </div>

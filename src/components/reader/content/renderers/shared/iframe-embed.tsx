@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 
 import { articleBodyStyles } from "../../body-styles";
@@ -42,6 +43,8 @@ export function IframeEmbedView({
   height?: number;
   aspectRatio?: { width?: number; height?: number };
 }) {
+  const { t } = useLingui();
+
   if (!url.trim()) return null;
 
   const ratioWidth = parseDimension(aspectRatio?.width);
@@ -72,9 +75,10 @@ export function IframeEmbedView({
               : undefined,
         }}
       >
+        {/* oxlint-disable-next-line iframe-has-title */}
         <iframe
           src={url}
-          title="Embedded content"
+          title={t`Embedded content`}
           loading="lazy"
           referrerPolicy={iframeReferrerPolicy(url)}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

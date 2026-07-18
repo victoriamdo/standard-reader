@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { Rss } from "lucide-react";
 import { useState } from "react";
@@ -84,6 +85,7 @@ export function RssFeedButton({
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useLingui();
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
@@ -100,7 +102,7 @@ export function RssFeedButton({
         <IconButton
           variant="secondary"
           size={size}
-          label="RSS feed"
+          label={t`RSS feed`}
           onPress={() => setOpen(true)}
         >
           <Rss size={iconSize} />
@@ -123,17 +125,21 @@ export function RssFeedButton({
         trigger={<span hidden aria-hidden />}
       >
         <DialogHeader>
-          <span {...stylex.props(styles.dialogTitle)}>RSS feed</span>
+          <span {...stylex.props(styles.dialogTitle)}>
+            <Trans>RSS feed</Trans>
+          </span>
         </DialogHeader>
         <DialogBody style={styles.body}>
           <SmallBody variant="secondary">
-            Subscribe to {name} in any RSS reader — new articles show up there
-            as soon as they publish.
+            <Trans>
+              Subscribe to {name} in any RSS reader — new articles show up there
+              as soon as they publish.
+            </Trans>
           </SmallBody>
           <Flex align="center" gap="sm">
             <input
               readOnly
-              aria-label="RSS feed URL"
+              aria-label={t`RSS feed URL`}
               value={feedUrl}
               onFocus={(event) => event.currentTarget.select()}
               {...stylex.props(styles.field)}
@@ -143,7 +149,7 @@ export function RssFeedButton({
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary" onPress={() => setOpen(false)}>
-            Close
+            <Trans>Close</Trans>
           </Button>
         </DialogFooter>
       </Dialog>

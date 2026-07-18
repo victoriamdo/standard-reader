@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 
 import { MenuItem, MenuSeparator, SubMenu } from "#/design-system/menu";
@@ -37,6 +38,7 @@ function SelectedSuffix({ selected }: { selected: boolean }) {
 }
 
 export function ReadingTypographySubMenu() {
+  const { t } = useLingui();
   const { preference, setPreference } = useReadingTypography();
   const summary = readingTypographySummary(preference);
 
@@ -44,16 +46,19 @@ export function ReadingTypographySubMenu() {
     <SubMenu
       trigger={
         <MenuItem
+          textValue={t`Reading`}
           suffix={
             <span {...stylex.props(styles.currentSummary)}>{summary}</span>
           }
         >
-          Reading
+          <Trans>Reading</Trans>
         </MenuItem>
       }
     >
-      <MenuItem isDisabled>
-        <span {...stylex.props(styles.sectionLabel)}>Text size</span>
+      <MenuItem isDisabled textValue={t`Text size`}>
+        <span {...stylex.props(styles.sectionLabel)}>
+          <Trans>Text size</Trans>
+        </span>
       </MenuItem>
       {READING_FONT_SIZES.map((fontSize: ReadingFontSize) => (
         <MenuItem
@@ -67,8 +72,10 @@ export function ReadingTypographySubMenu() {
         </MenuItem>
       ))}
       <MenuSeparator />
-      <MenuItem isDisabled>
-        <span {...stylex.props(styles.sectionLabel)}>Column width</span>
+      <MenuItem isDisabled textValue={t`Column width`}>
+        <span {...stylex.props(styles.sectionLabel)}>
+          <Trans>Column width</Trans>
+        </span>
       </MenuItem>
       {READING_MEASURES.map((measure: ReadingMeasure) => (
         <MenuItem
@@ -80,8 +87,10 @@ export function ReadingTypographySubMenu() {
         </MenuItem>
       ))}
       <MenuSeparator />
-      <MenuItem isDisabled>
-        <span {...stylex.props(styles.sectionLabel)}>Body font</span>
+      <MenuItem isDisabled textValue={t`Body font`}>
+        <span {...stylex.props(styles.sectionLabel)}>
+          <Trans>Body font</Trans>
+        </span>
       </MenuItem>
       {READING_BODY_FONTS.map((bodyFont: ReadingBodyFont) => (
         <MenuItem

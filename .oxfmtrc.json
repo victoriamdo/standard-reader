@@ -19,6 +19,7 @@
     "**/drizzle/meta/**",
     "package-lock.json",
     "pnpm-lock.yaml",
-    "yarn.lock"
+    "yarn.lock",
+    "**/src/locales/**/messages.ts"
   ]
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Plural, Trans } from "@lingui/react/macro";
 import { ExternalLink } from "lucide-react";
 import { forwardRef } from "react";
 
@@ -53,7 +54,9 @@ function Byline({ meta }: { meta: MagMeta }) {
     <div className="byline">
       <span className="by">{meta.author}</span>
       {meta.date ? <span className="mono">{meta.date}</span> : null}
-      <span className="mono">{meta.minutes} min read</span>
+      <span className="mono">
+        <Trans>{meta.minutes} min read</Trans>
+      </span>
       {meta.externalUrl ? (
         <a
           className="byline-original"
@@ -61,7 +64,9 @@ function Byline({ meta }: { meta: MagMeta }) {
           target="_blank"
           rel="noreferrer"
         >
-          <span>Original</span>
+          <span>
+            <Trans>Original</Trans>
+          </span>
           <ExternalLink size={12} aria-hidden />
         </a>
       ) : null}
@@ -94,12 +99,16 @@ export function CoverFlow({
         </div>
         <div className="cover-sub">
           {issue.ownerHandle ? `@${issue.ownerHandle} · ` : ""}
-          {issue.features.length} features
+          <Plural
+            value={issue.features.length}
+            one="# feature"
+            other="# features"
+          />
         </div>
       </section>
       <section className="flow-col cover-right">
         <div className="cover-toc-title" style={{ paddingTop: "1.4em" }}>
-          In this issue
+          <Trans>In this issue</Trans>
         </div>
         <div className="cover-toc-list">
           {issue.features.map((f, i) => (
@@ -175,7 +184,9 @@ export const FeatureFlow = forwardRef<
         </header>
         {feature.note ? (
           <aside className="feature-note">
-            <div className="feature-note-label">Editor’s note</div>
+            <div className="feature-note-label">
+              <Trans>Editor’s note</Trans>
+            </div>
             <MagMarkdown className="feature-note-body">
               {feature.note}
             </MagMarkdown>
@@ -200,14 +211,21 @@ export const EndCardFlow = forwardRef<HTMLElement, { issue: MagIssue }>(
 
     const endActions = (
       <>
-        <h1 className="headline md">The End.</h1>
+        <h1 className="headline md">
+          <Trans>The End.</Trans>
+        </h1>
         {subscribe ? (
           <div className="endcard-subscribe">
             <h2 className="headline lg endcard-cta-title">{ctaName}</h2>
             <p className="endcard-cta-dek">
-              {subscribe.kind === "publication"
-                ? "Subscribe to get new writing in your feed."
-                : "Subscribe to this list to read new articles from its publications."}
+              {subscribe.kind === "publication" ? (
+                <Trans>Subscribe to get new writing in your feed.</Trans>
+              ) : (
+                <Trans>
+                  Subscribe to this list to read new articles from its
+                  publications.
+                </Trans>
+              )}
             </p>
             <MagazineEndSubscribe target={subscribe} />
           </div>
@@ -247,8 +265,16 @@ export const EndCardFlow = forwardRef<HTMLElement, { issue: MagIssue }>(
         <div className="colophon">
           {issue.name} · {issue.no}
           <br />
-          {issue.features.length} features
-          {issue.ownerHandle ? ` · edited by @${issue.ownerHandle}` : ""}
+          <Plural
+            value={issue.features.length}
+            one="# feature"
+            other="# features"
+          />
+          {issue.ownerHandle ? (
+            <Trans> · edited by @{issue.ownerHandle}</Trans>
+          ) : (
+            ""
+          )}
         </div>
       </section>
     );

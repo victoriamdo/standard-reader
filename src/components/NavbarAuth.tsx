@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -64,14 +65,14 @@ const styles = stylex.create({
     fontFamily: fontFamily.sans,
     justifyContent: "flex-start",
     rowGap: gapSpace.md,
-    textAlign: "left",
+    textAlign: "start",
     transitionDuration: animationDuration.fast,
     transitionProperty: "background-color",
     transitionTimingFunction: "ease-in-out",
     userSelect: "none",
     paddingBottom: verticalSpace.sm,
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
     paddingTop: verticalSpace.sm,
     width: "100%",
   },
@@ -154,6 +155,7 @@ export function NavbarAuth({
   variant?: "compact" | "sidebar";
   menuPlacement?: PopoverProps["placement"];
 }) {
+  const { t } = useLingui();
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const { enabled: trackReading } = useTrackReadingHistory();
   const queryClient = useQueryClient();
@@ -209,27 +211,48 @@ export function NavbarAuth({
             to="/u/$did"
             params={{ did: profileRef }}
             suffix={<User />}
+            textValue={t`View profile`}
           >
-            View profile
+            <Trans>View profile</Trans>
           </MenuItemLink>
         ) : null}
         {trackReading ? (
-          <MenuItemLink to="/history" suffix={<History />}>
-            Reading history
+          <MenuItemLink
+            to="/history"
+            suffix={<History />}
+            textValue={t`Reading history`}
+          >
+            <Trans>Reading history</Trans>
           </MenuItemLink>
         ) : null}
-        <MenuItemLink to="/recommended" suffix={<Heart />}>
-          Recommended articles
+        <MenuItemLink
+          to="/recommended"
+          suffix={<Heart />}
+          textValue={t`Recommended articles`}
+        >
+          <Trans>Recommended articles</Trans>
         </MenuItemLink>
-        <MenuItemLink to="/feedback" suffix={<MessageSquareText />}>
-          Feedback
+        <MenuItemLink
+          to="/feedback"
+          suffix={<MessageSquareText />}
+          textValue={t`Feedback`}
+        >
+          <Trans>Feedback</Trans>
         </MenuItemLink>
-        <MenuItemLink to="/settings" suffix={<Settings />}>
-          Settings
+        <MenuItemLink
+          to="/settings"
+          suffix={<Settings />}
+          textValue={t`Settings`}
+        >
+          <Trans>Settings</Trans>
         </MenuItemLink>
         <MenuSeparator />
-        <MenuItem onPress={() => logoutMutation.mutate()} suffix={<LogOut />}>
-          Log out
+        <MenuItem
+          onPress={() => logoutMutation.mutate()}
+          suffix={<LogOut />}
+          textValue={t`Log out`}
+        >
+          <Trans>Log out</Trans>
         </MenuItem>
       </Menu>
     );
@@ -244,7 +267,7 @@ export function NavbarAuth({
         size="md"
         style={styles.sidebarLogin}
       >
-        Log in
+        <Trans>Log in</Trans>
       </ButtonLink>
     );
   }
@@ -257,7 +280,7 @@ export function NavbarAuth({
         variant="secondary"
         size="md"
       >
-        Log in
+        <Trans>Log in</Trans>
       </ButtonLink>
     </Flex>
   );

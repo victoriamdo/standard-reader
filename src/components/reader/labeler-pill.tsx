@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -67,7 +68,9 @@ export function LabelerPill({ src, val }: { src: string; val: string }) {
             fallback={initials(labelerName)}
           />
           <div {...stylex.props(styles.meta)}>
-            <Kicker muted>Content label</Kicker>
+            <Kicker muted>
+              <Trans>Content label</Trans>
+            </Kicker>
             <span {...stylex.props(styles.title)}>{name}</span>
           </div>
         </div>
@@ -82,7 +85,7 @@ export function LabelerPill({ src, val }: { src: string; val: string }) {
             params={{ did: src }}
             {...stylex.props(styles.action)}
           >
-            View labeler
+            <Trans>View labeler</Trans>
             <span aria-hidden {...stylex.props(styles.arrow)}>
               →
             </span>
@@ -145,10 +148,10 @@ const styles = stylex.create({
     borderTopWidth: 1,
     // Full-bleed footer: the popover content pads with `horizontalSpace.md`,
     // so negate it so the divider + footer span the card edge to edge.
-    marginLeft: `calc(-1 * ${horizontalSpace.md})`,
-    marginRight: `calc(-1 * ${horizontalSpace.md})`,
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.md,
+    marginInlineStart: `calc(-1 * ${horizontalSpace.md})`,
+    marginInlineEnd: `calc(-1 * ${horizontalSpace.md})`,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.md,
     paddingTop: verticalSpace.sm,
   },
   source: {
@@ -178,7 +181,8 @@ const styles = stylex.create({
     display: "inline-block",
     transform: {
       default: "translateX(0)",
-      ":is([data-labeler-action]:hover *)": "translateX(3px)",
+      ":is([data-labeler-action]:hover *)":
+        "translateX(calc(var(--dir) * 3px))",
     },
     transitionDuration: animationDuration.default,
     transitionProperty: "transform",

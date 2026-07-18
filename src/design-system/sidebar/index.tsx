@@ -10,6 +10,7 @@ import {
   Heading,
 } from "react-aria-components";
 
+import { DirectionalIcon } from "../directional-icon";
 import { Flex } from "../flex";
 import { animationDuration } from "../theme/animations.stylex";
 import { focusColor, primaryColor, uiColor } from "../theme/color.stylex";
@@ -39,8 +40,8 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     paddingBottom: verticalSpace["10xl"],
-    paddingLeft: horizontalSpace["5xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["5xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["5xl"],
     width: sizeSpace["11xl"],
   },
@@ -49,8 +50,8 @@ const styles = stylex.create({
     display: "flex",
     justifyContent: "space-between",
     paddingBottom: verticalSpace["xl"],
-    paddingLeft: horizontalSpace["md"],
-    paddingRight: horizontalSpace["md"],
+    paddingInlineStart: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
     paddingTop: verticalSpace["xl"],
   },
   sidebarHeaderLink: {
@@ -58,8 +59,8 @@ const styles = stylex.create({
   },
   sidebarSectionTitle: {
     height: sizeSpace["xl"],
-    paddingLeft: horizontalSpace["xl"],
-    paddingRight: horizontalSpace["xl"],
+    paddingInlineStart: horizontalSpace["xl"],
+    paddingInlineEnd: horizontalSpace["xl"],
     paddingTop: {
       ":is([data-sidebar-group] *)": verticalSpace["3xl"],
     },
@@ -69,12 +70,12 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
     paddingBottom: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
     paddingTop: 0,
   },
   sidebarItemWrapper: {
@@ -109,8 +110,8 @@ const styles = stylex.create({
       ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
     },
     outlineOffset: "2px",
-    paddingLeft: horizontalSpace["xl"],
-    paddingRight: horizontalSpace["xl"],
+    paddingInlineStart: horizontalSpace["xl"],
+    paddingInlineEnd: horizontalSpace["xl"],
     width: "100%",
   },
   sidebarItemActive: {
@@ -124,8 +125,8 @@ const styles = stylex.create({
   },
   sidebarGroupHeading: {
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
   },
   sidebarGroup: {
@@ -142,16 +143,16 @@ const styles = stylex.create({
     fontFamily: fontFamily["sans"],
     fontSize: fontSize["base"],
     fontWeight: fontWeight["medium"],
-    textAlign: "left",
-    marginLeft: `calc(${horizontalSpace["md"]} * -1)`,
+    textAlign: "start",
+    marginInlineStart: `calc(${horizontalSpace["md"]} * -1)`,
     outline: {
       default: "none",
       ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
     },
     outlineOffset: "2px",
     paddingBottom: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
     paddingTop: 0,
     width: "100%",
   },
@@ -271,7 +272,11 @@ export function SidebarGroup({
     >
       <Heading {...stylex.props(styles.sidebarGroupHeading)}>
         <Button slot="trigger" {...stylex.props(styles.sidebarGroupButton)}>
-          <ChevronRight size={16} {...stylex.props(styles.chevronIcon)} />
+          <DirectionalIcon
+            as={ChevronRight}
+            size={16}
+            style={styles.chevronIcon}
+          />
           {title}
         </Button>
       </Heading>

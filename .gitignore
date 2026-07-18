@@ -159,3 +159,7 @@ test-results/
 __unconfig*
 src/routeTree.gen.ts
 todos.json
+
+# Lingui compiled catalogs (generated from .po by `pnpm i18n:compile`;
+# the Vite plugin compiles .po directly, so these are build artifacts)
+src/locales/*/messages.ts

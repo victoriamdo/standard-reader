@@ -1,3 +1,4 @@
+import { I18nProvider as LinguiProvider } from "@lingui/react";
 import * as stylex from "@stylexjs/stylex";
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
@@ -8,6 +9,10 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect } from "react";
+// React Aria ships its own `I18nProvider` (drives locale-aware date/number
+// primitives); Lingui's drives message translation. Both are needed, so alias
+// them apart.
+import { I18nProvider as AriaI18nProvider } from "react-aria-components";
 
 import { NavTelemetry } from "../components/nav-telemetry";
 import {
@@ -25,6 +30,8 @@ import {
   savedListsQueryOptions,
   sidebarQueryOptions,
 } from "../integrations/tanstack-query/shell-queries";
+import { i18nForLocale } from "../lib/i18n";
+import { intlLocale } from "../lib/locale";
 import { getPublicUrlClient } from "../lib/public-url";
 import { siteOgImageUrl, siteSocialMeta } from "../lib/site-metadata";
 import {
@@ -32,6 +39,7 @@ import {
   RESOLVED_SCHEME_SCRIPT,
   THEME_COLOR_BY_SCHEME,
 } from "../lib/theme";
+import { useLocale } from "../lib/use-locale";
 import { ReloadPrompt } from "../pwa/reload-prompt";
 import { saveHandle } from "../utils/saved-handles";
 
@@ -133,6 +141,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     context.queryClient.setQueryData(
       user.getThemePreferenceQueryOptions.queryKey,
       bootstrap.theme,
+    );
+    context.queryClient.setQueryData(
+      user.getLocalePreferenceQueryOptions.queryKey,
+      bootstrap.locale,
     );
     context.queryClient.setQueryData(
       user.getTrackReadingHistoryPreferenceQueryOptions.queryKey,
@@ -239,6 +251,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     refetchOnWindowFocus: false,
   });
   const themeMode = themePreference?.mode ?? DEFAULT_THEME_MODE;
+  // Resolved server-side (DB -> cookie -> Accept-Language) and hydrated with
+  // the shell bootstrap, so `lang`/`dir` are correct on the first paint and
+  // there is no flash of mis-directed layout.
+  const { locale, direction } = useLocale();
   // SSR can't see the OS preference, so "system" defaults to light for the
   // initial paint; RESOLVED_SCHEME_SCRIPT corrects it synchronously before the
   // first paint, and the effect below keeps it in sync afterwards.
@@ -269,7 +285,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
   return (
     <html
-      lang="en"
+      lang={locale}
+      dir={direction}
       data-theme={themeMode}
       data-embed={isSubscribeEmbed ? "subscribe" : undefined}
       suppressHydrationWarning
@@ -306,7 +323,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <NavTelemetry />
         {isEmbedPath(pathname) ? null : <PlausibleAnalytics />}
         {isEmbedPath(pathname) ? null : <ReloadPrompt />}
-        {children}
+        {/* Aria: locale-aware dates/numbers in the React Aria primitives
+            (calendar, date picker, number field), which until now silently fell
+            back to the browser default. Lingui: message translation. */}
+        <AriaI18nProvider locale={intlLocale(locale)}>
+          <LinguiProvider i18n={i18nForLocale(locale)}>
+            {children}
+          </LinguiProvider>
+        </AriaI18nProvider>
 
         <Scripts />
       </body>

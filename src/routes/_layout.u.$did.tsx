@@ -1,3 +1,4 @@
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   useMutation,
@@ -165,15 +166,15 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     rowGap: spacing["4"],
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "1320px",
     paddingBottom: spacing["4"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["5"],
       [HERO_DESKTOP]: spacing["10"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["5"],
       [HERO_DESKTOP]: spacing["10"],
     },
@@ -203,6 +204,10 @@ const styles = stylex.create({
     paddingTop: spacing["0.5"],
   },
   heroName: {
+    // Isolate only: this is a single-line NAME, so it must keep the
+    // surrounding UI alignment while still ordering its own characters
+    // correctly. `dir="auto"` here would left-align it inside an RTL page.
+    unicodeBidi: "isolate",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: { default: "1.85rem", "@media (min-width: 48rem)": "2rem" },
@@ -248,14 +253,14 @@ const styles = stylex.create({
   },
   tabBarInner: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "1320px",
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["5"],
       [HERO_DESKTOP]: spacing["10"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["5"],
       [HERO_DESKTOP]: spacing["10"],
     },
@@ -267,7 +272,7 @@ const styles = stylex.create({
     borderBottomWidth: 0,
   },
   tabCount: {
-    marginLeft: spacing["2"],
+    marginInlineStart: spacing["2"],
   },
   tabRule: {
     borderBottomColor: uiColor.border1,
@@ -276,8 +281,8 @@ const styles = stylex.create({
     width: "100%",
   },
   tabPanel: {
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["6"],
   },
   listRow: {
@@ -290,8 +295,8 @@ const styles = stylex.create({
     flexDirection: "column",
     marginTop: spacing["2"],
     paddingBottom: spacing["5"],
-    paddingLeft: spacing["3"],
-    paddingRight: spacing["3"],
+    paddingInlineStart: spacing["3"],
+    paddingInlineEnd: spacing["3"],
     paddingTop: spacing["6"],
     rowGap: spacing["1"],
     textDecoration: "none",
@@ -372,11 +377,11 @@ const styles = stylex.create({
     marginTop: spacing["8"],
     maxWidth: "100%",
     paddingBottom: spacing["10"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["6"],
       [HERO_DESKTOP]: spacing["8"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["6"],
       [HERO_DESKTOP]: spacing["8"],
     },
@@ -427,10 +432,10 @@ const styles = stylex.create({
 function authorDisplayName(profile: {
   displayName: string | null;
   handle: string | null;
-}): string {
+}): string | null {
   if (profile.displayName?.trim()) return profile.displayName.trim();
   if (profile.handle) return `@${profile.handle}`;
-  return "Author";
+  return null;
 }
 
 function useInfiniteScroll(
@@ -474,7 +479,9 @@ function LoadMoreFooter({
 }) {
   if (nextOffset == null) {
     return showEndNote ? (
-      <div {...stylex.props(styles.endNote)}>You&apos;ve reached the end.</div>
+      <div {...stylex.props(styles.endNote)}>
+        <Trans>You&apos;ve reached the end.</Trans>
+      </div>
     ) : null;
   }
 
@@ -486,7 +493,9 @@ function LoadMoreFooter({
         {...stylex.props(styles.loadSentinel)}
       />
       {loadingMore ? (
-        <div {...stylex.props(styles.endNote)}>Loading more…</div>
+        <div {...stylex.props(styles.endNote)}>
+          <Trans>Loading more…</Trans>
+        </div>
       ) : null}
     </div>
   );
@@ -515,6 +524,7 @@ function AuthorProfileContent({
   did: string;
   initialPage: AuthorProfile;
 }) {
+  const { t } = useLingui();
   const { data: lists } = useQuery(listApi.getAuthorListsQueryOptions(did));
 
   const { data: session } = useQuery(user.getSessionQueryOptions);
@@ -587,14 +597,14 @@ function AuthorProfileContent({
     return (
       <ReaderContent>
         <div {...stylex.props(styles.emptyNote)}>
-          We couldn&apos;t find that author.
+          <Trans>We couldn&apos;t find that author.</Trans>
         </div>
       </ReaderContent>
     );
   }
 
   const { profile, stats } = initialPage;
-  const name = authorDisplayName(profile);
+  const name = authorDisplayName(profile) ?? t`Author`;
   const pageUrl = `${getPublicUrlClient()}/u/${did}`;
   // Three profile kinds drive the hero label and empty state:
   //  - "author": has published work of their own (posts or publications).
@@ -653,7 +663,11 @@ function AuthorProfileContent({
             <div {...stylex.props(styles.heroInfo)}>
               {profileKind === "empty" ? null : (
                 <Kicker>
-                  {profileKind === "author" ? "Author" : "Reader"}
+                  {profileKind === "author" ? (
+                    <Trans>Author</Trans>
+                  ) : (
+                    <Trans>Reader</Trans>
+                  )}
                 </Kicker>
               )}
               <h1 {...stylex.props(styles.heroName)}>{name}</h1>
@@ -673,7 +687,7 @@ function AuthorProfileContent({
                 <IconButton
                   variant="secondary"
                   size="md"
-                  label="View on Bluesky"
+                  label={t`View on Bluesky`}
                   onPress={() => {
                     window.open(
                       `https://bsky.app/profile/${profile.handle}`,
@@ -694,7 +708,7 @@ function AuthorProfileContent({
                 <IconButton
                   variant="secondary"
                   size="md"
-                  label="Profile settings"
+                  label={t`Profile settings`}
                   onPress={() => setSettingsOpen(true)}
                 >
                   <Settings size={15} />
@@ -734,7 +748,7 @@ function AuthorProfileContent({
               <IconButton
                 variant="secondary"
                 size="md"
-                label="View on Bluesky"
+                label={t`View on Bluesky`}
                 onPress={() => {
                   window.open(
                     `https://bsky.app/profile/${profile.handle}`,
@@ -755,7 +769,7 @@ function AuthorProfileContent({
               <IconButton
                 variant="secondary"
                 size="md"
-                label="Profile settings"
+                label={t`Profile settings`}
                 onPress={() => setSettingsOpen(true)}
               >
                 <Settings size={15} />
@@ -796,10 +810,10 @@ function AuthorProfileContent({
         >
           <div {...stylex.props(styles.tabBar)}>
             <div {...stylex.props(styles.tabBarInner)}>
-              <TabList aria-label="Author sections" style={styles.tabList}>
+              <TabList aria-label={t`Author sections`} style={styles.tabList}>
                 {visibleTabs.includes("posts") ? (
                   <Tab id="posts">
-                    Posts
+                    <Trans>Posts</Trans>
                     <Badge size="sm" style={styles.tabCount}>
                       {stats.documentCount}
                     </Badge>
@@ -807,7 +821,7 @@ function AuthorProfileContent({
                 ) : null}
                 {visibleTabs.includes("publications") ? (
                   <Tab id="publications">
-                    Publications
+                    <Trans>Publications</Trans>
                     <Badge size="sm" style={styles.tabCount}>
                       {stats.publicationCount}
                     </Badge>
@@ -815,7 +829,7 @@ function AuthorProfileContent({
                 ) : null}
                 {visibleTabs.includes("subscriptions") ? (
                   <Tab id="subscriptions">
-                    Subscriptions
+                    <Trans>Subscriptions</Trans>
                     <Badge size="sm" style={styles.tabCount}>
                       {stats.subscriptionCount}
                     </Badge>
@@ -823,7 +837,7 @@ function AuthorProfileContent({
                 ) : null}
                 {visibleTabs.includes("readers") ? (
                   <Tab id="readers">
-                    Readers
+                    <Trans>Readers</Trans>
                     <Badge size="sm" style={styles.tabCount}>
                       {formatReaders(stats.subscriberCount)}
                     </Badge>
@@ -831,7 +845,7 @@ function AuthorProfileContent({
                 ) : null}
                 {visibleTabs.includes("lists") && lists ? (
                   <Tab id="lists">
-                    Lists
+                    <Trans>Lists</Trans>
                     <Badge size="sm" style={styles.tabCount}>
                       {lists.length}
                     </Badge>
@@ -839,7 +853,7 @@ function AuthorProfileContent({
                 ) : null}
                 {visibleTabs.includes("likes") ? (
                   <Tab id="likes">
-                    Recommendations
+                    <Trans>Recommendations</Trans>
                     <Badge size="sm" style={styles.tabCount}>
                       {stats.recommendationCount}
                     </Badge>
@@ -938,19 +952,21 @@ function ProfileEmptyState({
     return (
       <div {...stylex.props(styles.profileEmptyCard)}>
         <h2 {...stylex.props(styles.profileEmptyTitle)}>
-          Your profile is quiet for now
+          <Trans>Your profile is quiet for now</Trans>
         </h2>
         <p {...stylex.props(styles.profileEmptyDek)}>
-          Follow the publications you love and build reading lists worth sharing
-          — they&apos;ll gather here for others to discover. Everything you do
-          lives in your own repo, owned by you.
+          <Trans>
+            Follow the publications you love and build reading lists worth
+            sharing — they&apos;ll gather here for others to discover.
+            Everything you do lives in your own repo, owned by you.
+          </Trans>
         </p>
         <div {...stylex.props(styles.profileEmptyActions)}>
           <ButtonLink to="/discover" variant="primary" size="lg">
-            Discover publications
+            <Trans>Discover publications</Trans>
           </ButtonLink>
           <ButtonLink to="/" variant="secondary" size="lg">
-            Browse your feed
+            <Trans>Browse your feed</Trans>
           </ButtonLink>
         </div>
       </div>
@@ -963,11 +979,19 @@ function ProfileEmptyState({
     return (
       <div {...stylex.props(styles.profileEmptyCard)}>
         <h2 {...stylex.props(styles.profileEmptyTitle)}>
-          Not on Standard Reader yet
+          <Trans>Not on Standard Reader yet</Trans>
         </h2>
         <p {...stylex.props(styles.profileEmptyDek)}>
-          {name} hasn&apos;t started reading or publishing here.
-          {handle ? " You can find them on Bluesky." : ""}
+          {handle ? (
+            <Trans>
+              {name} hasn&apos;t started reading or publishing here. You can
+              find them on Bluesky.
+            </Trans>
+          ) : (
+            <Trans>
+              {name} hasn&apos;t started reading or publishing here.
+            </Trans>
+          )}
         </p>
         {handle ? (
           <div {...stylex.props(styles.profileEmptyActions)}>
@@ -983,7 +1007,7 @@ function ProfileEmptyState({
               }}
             >
               <ExternalLink size={16} aria-hidden />
-              View on Bluesky
+              <Trans>View on Bluesky</Trans>
             </Button>
           </div>
         ) : null}
@@ -995,10 +1019,14 @@ function ProfileEmptyState({
   // the owner hid every tab).
   return (
     <div {...stylex.props(styles.profileEmptyCard)}>
-      <h2 {...stylex.props(styles.profileEmptyTitle)}>Nothing here yet</h2>
+      <h2 {...stylex.props(styles.profileEmptyTitle)}>
+        <Trans>Nothing here yet</Trans>
+      </h2>
       <p {...stylex.props(styles.profileEmptyDek)}>
-        {name} hasn&apos;t published or shared anything public yet. Follow along
-        to catch their work when it arrives.
+        <Trans>
+          {name} hasn&apos;t published or shared anything public yet. Follow
+          along to catch their work when it arrives.
+        </Trans>
       </p>
     </div>
   );
@@ -1032,7 +1060,7 @@ function AuthorPublicationsPanel({
   if (items.length === 0) {
     return (
       <div {...stylex.props(styles.emptyNote)}>
-        No publications indexed yet.
+        <Trans>No publications indexed yet.</Trans>
       </div>
     );
   }
@@ -1086,7 +1114,11 @@ function AuthorPostsPanel({
   const scroll = useInfiniteScroll(nextOffset, loadMore);
 
   if (items.length === 0) {
-    return <div {...stylex.props(styles.emptyNote)}>No posts indexed yet.</div>;
+    return (
+      <div {...stylex.props(styles.emptyNote)}>
+        <Trans>No posts indexed yet.</Trans>
+      </div>
+    );
   }
 
   return (
@@ -1138,7 +1170,9 @@ function AuthorLikesPanel({
 
   if (items.length === 0) {
     return (
-      <div {...stylex.props(styles.emptyNote)}>No liked articles yet.</div>
+      <div {...stylex.props(styles.emptyNote)}>
+        <Trans>No liked articles yet.</Trans>
+      </div>
     );
   }
 
@@ -1189,7 +1223,7 @@ function AuthorSubscriptionsPanel({
   if (items.length === 0) {
     return (
       <div {...stylex.props(styles.emptyNote)}>
-        Subscriptions aren&apos;t indexed yet.
+        <Trans>Subscriptions aren&apos;t indexed yet.</Trans>
       </div>
     );
   }
@@ -1240,7 +1274,9 @@ function AuthorReadersPanel({
 
   if (items.length === 0) {
     return (
-      <div {...stylex.props(styles.emptyNote)}>No readers indexed yet.</div>
+      <div {...stylex.props(styles.emptyNote)}>
+        <Trans>No readers indexed yet.</Trans>
+      </div>
     );
   }
 
@@ -1269,7 +1305,8 @@ function AuthorReaderRow({
   reader: AuthorReader;
   isFirst: boolean;
 }) {
-  const name = reader.displayName?.trim() || reader.handle || "Reader";
+  const { t } = useLingui();
+  const name = reader.displayName?.trim() || reader.handle || t`Reader`;
 
   return (
     <div {...stylex.props(styles.readerRow, isFirst && styles.readerRowFirst)}>
@@ -1318,16 +1355,20 @@ function AuthorListsPanel({
             index === 0 && styles.listRowFirst,
           )}
         >
-          <span {...stylex.props(styles.listRowLink)}>
+          <span dir="auto" {...stylex.props(styles.listRowLink)}>
             <ListPlus size={14} aria-hidden /> {list.name}
           </span>
           {list.description ? (
-            <p {...stylex.props(styles.listRowDesc)}>{list.description}</p>
+            <p dir="auto" {...stylex.props(styles.listRowDesc)}>
+              {list.description}
+            </p>
           ) : null}
           <span {...stylex.props(styles.listRowMeta)}>
-            {list.publications.length === 1
-              ? "1 publication"
-              : `${list.publications.length} publications`}
+            <Plural
+              value={list.publications.length}
+              one="# publication"
+              other="# publications"
+            />
           </span>
         </ListRowLink>
       ))}

@@ -898,18 +898,18 @@
   border-top: 1px solid var(--line);
   background: none;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   font-family: var(--serif);
   transition:
     background 0.13s,
-    padding-left 0.13s;
+    padding-inline-start 0.13s;
 }
 .mag .cover-toc-row:first-of-type {
   border-top: 2px solid var(--line-strong);
 }
 .mag .cover-toc-row[data-hovered] {
   background: var(--paper-sunk);
-  padding-left: 0.5em;
+  padding-inline-start: 0.5em;
 }
 .mag .cover-toc-row .n {
   font-family: var(--mono);
@@ -1109,7 +1109,7 @@
 }
 .mag .endcard-like-divider {
   align-self: stretch;
-  border-left: 1px solid var(--line-strong);
+  border-inline-start: 1px solid var(--line-strong);
   margin-inline: 0.15em;
   width: 0;
 }
@@ -1170,11 +1170,13 @@
   border: none;
   padding: 0;
 }
+/* Logical, so the zones follow the mirrored flow: under RTL reading advances
+   leftward, so "next" is the left edge and "prev" the right. */
 .mag .click-zone.prev {
-  left: 0;
+  inset-inline-start: 0;
 }
 .mag .click-zone.next {
-  right: 0;
+  inset-inline-end: 0;
 }
 .mag .click-zone:disabled {
   cursor: default;
@@ -1485,7 +1487,7 @@
   align-items: baseline;
   gap: 14px;
   width: 100%;
-  text-align: left;
+  text-align: start;
   border: none;
   background: none;
   cursor: pointer;
@@ -1716,8 +1718,9 @@
 .mag .feature-note {
   break-inside: avoid;
   margin: 0 0 1.6em;
-  border-left: 3px solid var(--accent);
-  padding: 0.1em 0 0.1em 1em;
+  border-inline-start: 3px solid var(--accent);
+  padding: 0.1em 0;
+  padding-inline-start: 1em;
 }
 .mag .feature-note-label {
   font-family: var(--sans);

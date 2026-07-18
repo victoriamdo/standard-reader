@@ -26,6 +26,16 @@ import {
   homeScopeToDbValue,
   parseHomeScope,
 } from "#/lib/home-scope";
+import type { Locale } from "#/lib/locale";
+import {
+  LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE_SECONDS,
+  LOCALES,
+  DEFAULT_LOCALE,
+  dbValueToLocale,
+  isLocale,
+  negotiateLocale,
+} from "#/lib/locale";
 import {
   ONBOARDING_COMPLETED_COOKIE,
   ONBOARDING_COMPLETED_COOKIE_MAX_AGE_SECONDS,
@@ -125,6 +135,7 @@ async function loadSessionFromToken(sessionToken: string) {
           createdAt: true,
           updatedAt: true,
           themeMode: true,
+          locale: true,
           trackReadingHistory: true,
           homeScope: true,
           readerVoice: true,
@@ -229,6 +240,14 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
     const guestBootstrap = {
       session: null,
       theme: { mode: parseThemeMode(cookies[THEME_COOKIE]) },
+      // Guests have no stored pref, so fall back to Accept-Language rather
+      // than English — this is what makes `<html lang>` correct on first paint.
+      locale: {
+        locale: isLocale(cookies[LOCALE_COOKIE])
+          ? cookies[LOCALE_COOKIE]
+          : (negotiateLocale(request.headers.get("accept-language")) ??
+            DEFAULT_LOCALE),
+      },
       trackReading: {
         enabled: parseTrackReadingHistoryCookie(
           cookies[TRACK_READING_HISTORY_COOKIE],
@@ -286,6 +305,7 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
             createdAt: true,
             updatedAt: true,
             themeMode: true,
+            locale: true,
             trackReadingHistory: true,
             countOldPostsAsUnread: true,
             homeScope: true,
@@ -393,6 +413,14 @@ const getShellBootstrap = createServerFn({ method: "GET" }).handler(
           null,
       },
       theme: { mode: dbValueToThemeMode(userRow.themeMode) },
+      // `null` = never picked a language, so keep negotiating from the browser
+      // instead of pinning the reader to English.
+      locale: {
+        locale: isLocale(userRow.locale)
+          ? userRow.locale
+          : (negotiateLocale(request.headers.get("accept-language")) ??
+            DEFAULT_LOCALE),
+      },
       trackReading: { enabled: trackReading },
       homeScope: { scope: dbValueToHomeScope(userRow.homeScope) },
       readerVoice: {
@@ -511,6 +539,64 @@ const setThemePreference = createServerFn({ method: "POST" })
     }
 
     return { mode: data.mode };
+  });
+
+/**
+ * Resolve the reader's locale: DB -> cookie -> `Accept-Language` -> `en`.
+ *
+ * `user.locale = null` means "never picked one", so we keep negotiating from
+ * the browser instead of pinning those readers to English.
+ */
+const getLocalePreference = createServerFn({ method: "GET" })
+  .middleware([maybeAuthMiddleware])
+  .handler(async ({ context }): Promise<{ locale: Locale }> => {
+    const session = context?.session;
+    if (session?.user) {
+      const [{ db }, schema] = await Promise.all([
+        import("#/db/index.server"),
+        import("#/db/schema"),
+      ]);
+      const row = await db.query.user.findFirst({
+        where: eq(schema.user.id, session.user.id),
+        columns: { locale: true },
+      });
+      if (isLocale(row?.locale)) return { locale: dbValueToLocale(row.locale) };
+    }
+
+    const cookie = getCookie(LOCALE_COOKIE);
+    if (isLocale(cookie)) return { locale: cookie };
+
+    const header = getRequest().headers.get("accept-language");
+    return { locale: negotiateLocale(header) ?? DEFAULT_LOCALE };
+  });
+
+const getLocalePreferenceQueryOptions = queryOptions({
+  queryKey: ["localePreference"] as const,
+  queryFn: () => getLocalePreference(),
+  staleTime: Number.POSITIVE_INFINITY,
+});
+
+const setLocalePreference = createServerFn({ method: "POST" })
+  .middleware([dbMiddleware, maybeAuthMiddleware])
+  .validator(z.object({ locale: z.enum(LOCALES) }))
+  .handler(async ({ data, context }): Promise<{ locale: Locale }> => {
+    setCookie(LOCALE_COOKIE, data.locale, {
+      path: "/",
+      sameSite: "lax",
+      maxAge: LOCALE_COOKIE_MAX_AGE_SECONDS,
+    });
+
+    if (context?.session?.user) {
+      await context.db
+        .update(context.schema.user)
+        // Stored verbatim (not null-for-default like themeMode): `null` means
+        // "never picked", which keeps Accept-Language negotiation alive. An
+        // explicit pick of `en` must stick.
+        .set({ locale: data.locale })
+        .where(eq(context.schema.user.id, context.session.user.id));
+    }
+
+    return { locale: data.locale };
   });
 
 const getReaderVoicePreference = createServerFn({ method: "GET" })
@@ -1066,6 +1152,9 @@ export const user = {
   getThemePreference,
   getThemePreferenceQueryOptions,
   setThemePreference,
+  getLocalePreference,
+  getLocalePreferenceQueryOptions,
+  setLocalePreference,
   getReaderVoicePreference,
   getReaderVoicePreferenceQueryOptions,
   setReaderVoicePreference,

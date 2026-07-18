@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   useMutation,
@@ -48,13 +49,13 @@ const styles = stylex.create({
     width: "100%",
   },
   tabList: {
-    paddingLeft: horizontalSpace["2xl"],
-    paddingRight: horizontalSpace["2xl"],
+    paddingInlineStart: horizontalSpace["2xl"],
+    paddingInlineEnd: horizontalSpace["2xl"],
   },
   tabPanel: {
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace.xl,
-    paddingRight: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    paddingInlineEnd: horizontalSpace.xl,
     paddingTop: verticalSpace["2xl"],
   },
   list: {
@@ -75,8 +76,8 @@ const styles = stylex.create({
     fontSize: fontSize.sm,
     fontStyle: "italic",
     paddingBottom: verticalSpace.lg,
-    paddingLeft: horizontalSpace.xl,
-    paddingRight: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    paddingInlineEnd: horizontalSpace.xl,
     paddingTop: verticalSpace.lg,
   },
   check: {
@@ -115,6 +116,7 @@ function AddToListForm({
   publicationUri: string;
   close: () => void;
 }) {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
   const { data: lists } = useSuspenseQuery(listApi.getListsQueryOptions());
   const listRows = useMemo(() => toListRows(lists), [lists]);
@@ -193,15 +195,19 @@ function AddToListForm({
           defaultSelectedKey="existing"
           size="sm"
         >
-          <TabList aria-label="Add to list" style={styles.tabList}>
-            <Tab id="existing">Your lists</Tab>
-            <Tab id="new">New list</Tab>
+          <TabList aria-label={t`Add to list`} style={styles.tabList}>
+            <Tab id="existing">
+              <Trans>Your lists</Trans>
+            </Tab>
+            <Tab id="new">
+              <Trans>New list</Trans>
+            </Tab>
           </TabList>
 
           <TabPanel id="existing" style={styles.tabPanel}>
             <Flex direction="column" gap="2xl">
               <ListBox
-                aria-label="Your lists"
+                aria-label={t`Your lists`}
                 items={listRows}
                 selectionMode="none"
                 size="lg"
@@ -216,7 +222,9 @@ function AddToListForm({
                 }}
                 renderEmptyState={() => (
                   <span {...stylex.props(styles.emptyList)}>
-                    No lists yet — switch to New list to create one.
+                    <Trans>
+                      No lists yet — switch to New list to create one.
+                    </Trans>
                   </span>
                 )}
               >
@@ -246,7 +254,7 @@ function AddToListForm({
                 <span {...stylex.props(styles.errorNote)}>
                   {error instanceof Error
                     ? error.message
-                    : "Something went wrong."}
+                    : t`Something went wrong.`}
                 </span>
               ) : null}
             </Flex>
@@ -255,8 +263,8 @@ function AddToListForm({
           <TabPanel id="new" style={styles.tabPanel}>
             <Flex direction="column" gap="2xl">
               <TextField
-                label="Name"
-                placeholder="e.g. Tech, Friends, Cooking"
+                label={t`Name`}
+                placeholder={t`e.g. Tech, Friends, Cooking`}
                 value={newName}
                 onChange={setNewName}
                 isRequired
@@ -267,7 +275,7 @@ function AddToListForm({
                 <span {...stylex.props(styles.errorNote)}>
                   {error instanceof Error
                     ? error.message
-                    : "Something went wrong."}
+                    : t`Something went wrong.`}
                 </span>
               ) : null}
             </Flex>
@@ -283,7 +291,7 @@ function AddToListForm({
             isDisabled={saveMutation.isPending || newName.trim().length === 0}
             onPress={createList}
           >
-            Create list
+            <Trans>Create list</Trans>
           </Button>
         </DialogFooter>
       ) : null}
@@ -309,7 +317,9 @@ export function AddToListModal({
       trigger={<span hidden aria-hidden />}
     >
       <DialogHeader>
-        <span {...stylex.props(styles.headerTitle)}>Add to list</span>
+        <span {...stylex.props(styles.headerTitle)}>
+          <Trans>Add to list</Trans>
+        </span>
       </DialogHeader>
       <AddToListForm
         key={isOpen ? publicationUri : "closed"}
@@ -341,7 +351,7 @@ export function AddToListButton({
         variant="secondary"
         size={size}
       >
-        <ListPlus size={14} aria-hidden /> Add to list
+        <ListPlus size={14} aria-hidden /> <Trans>Add to list</Trans>
       </ButtonLink>
     );
   }
@@ -349,7 +359,7 @@ export function AddToListButton({
   return (
     <>
       <Button variant="secondary" size={size} onPress={() => setOpen(true)}>
-        <ListPlus size={14} aria-hidden /> Add to list
+        <ListPlus size={14} aria-hidden /> <Trans>Add to list</Trans>
       </Button>
       <AddToListModal
         isOpen={open}

@@ -1,5 +1,8 @@
 "use client";
 
+import type { I18n } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -110,8 +113,8 @@ const styles = stylex.create({
     outlineStyle: "none",
     minWidth: 0,
     paddingBottom: spacing["0"],
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["0"],
   },
   searchInputPlaceholder: {
@@ -211,13 +214,17 @@ function PublicationResultsSkeleton({
 }: {
   isFirstSection?: boolean;
 }) {
+  const { t } = useLingui();
   return (
     <div
       aria-busy="true"
-      aria-label="Loading publication matches"
+      aria-label={t`Loading publication matches`}
       {...stylex.props(styles.section, isFirstSection && styles.sectionFirst)}
     >
-      <SectionHead kicker="Publications" title={<SectionTitleSkeleton />} />
+      <SectionHead
+        kicker={<Trans>Publications</Trans>}
+        title={<SectionTitleSkeleton />}
+      />
       {Array.from({ length: SKELETON_ROWS }, (_, index) => (
         <PubDirectoryRowSkeleton
           key={index}
@@ -234,13 +241,17 @@ function ArticleResultsSkeleton({
 }: {
   isFirstSection?: boolean;
 }) {
+  const { t } = useLingui();
   return (
     <div
       aria-busy="true"
-      aria-label="Loading article matches"
+      aria-label={t`Loading article matches`}
       {...stylex.props(styles.section, isFirstSection && styles.sectionFirst)}
     >
-      <SectionHead kicker="Articles" title={<SectionTitleSkeleton />} />
+      <SectionHead
+        kicker={<Trans>Articles</Trans>}
+        title={<SectionTitleSkeleton />}
+      />
       {Array.from({ length: SKELETON_ROWS }, (_, index) => (
         <ArticleRowSkeleton
           key={index}
@@ -267,9 +278,12 @@ function SearchChrome({
   onClear?: () => void;
   readOnly?: boolean;
 }) {
+  const { t } = useLingui();
   return (
     <div {...stylex.props(styles.header)}>
-      <Kicker>Search the network</Kicker>
+      <Kicker>
+        <Trans>Search the network</Trans>
+      </Kicker>
       <div {...stylex.props(styles.searchField)}>
         <SearchIcon
           aria-hidden
@@ -289,13 +303,13 @@ function SearchChrome({
               ? undefined
               : (event) => onInputChange(event.target.value)
           }
-          placeholder="Publications, handles, #tags, headlines…"
-          aria-label="Search publications and articles"
+          placeholder={t`Publications, handles, #tags, headlines…`}
+          aria-label={t`Search publications and articles`}
           {...stylex.props(styles.searchInput, styles.searchInputPlaceholder)}
         />
         {input && onClear ? (
           <IconButton
-            label="Clear search"
+            label={t`Clear search`}
             size="sm"
             variant="secondary"
             onPress={onClear}
@@ -310,6 +324,7 @@ function SearchChrome({
 }
 
 function SearchPending() {
+  const { t } = useLingui();
   const { q: urlQ = "" } = Route.useSearch();
   const trimmedQ = urlQ.trim();
 
@@ -319,8 +334,8 @@ function SearchPending() {
         input={urlQ}
         hint={
           trimmedQ
-            ? "Searching…"
-            : 'Try "climate", a #tag like #essay, or a handle like stdout.dev'
+            ? t`Searching…`
+            : t`Try "climate", a #tag like #essay, or a handle like stdout.dev`
         }
         readOnly
       />
@@ -334,12 +349,12 @@ function SearchPending() {
   );
 }
 
-function formatMatchCount(shown: number, total: number): string {
-  if (total === 0) return "No matches";
+function formatMatchCount(i18n: I18n, shown: number, total: number): string {
+  if (total === 0) return i18n._(msg`No matches`);
   if (shown < total) {
-    return `${shown} of ${total} matches`;
+    return i18n._(msg`${shown} of ${total} matches`);
   }
-  return `${total} match${total === 1 ? "" : "es"}`;
+  return i18n._(msg`${plural(total, { one: "# match", other: "# matches" })}`);
 }
 
 /**
@@ -347,13 +362,14 @@ function formatMatchCount(shown: number, total: number): string {
  * match set was too costly), so show the number loaded plus a "+" when more
  * pages remain.
  */
-function formatShownCount(shown: number, hasMore: boolean): string {
-  if (shown === 0) return "No matches";
-  const plus = hasMore ? "+" : "";
-  return `${shown}${plus} match${shown === 1 && !hasMore ? "" : "es"}`;
+function formatShownCount(i18n: I18n, shown: number, hasMore: boolean): string {
+  if (shown === 0) return i18n._(msg`No matches`);
+  if (hasMore) return i18n._(msg`${shown}+ matches`);
+  return i18n._(msg`${plural(shown, { one: "# match", other: "# matches" })}`);
 }
 
 function Search() {
+  const { t, i18n } = useLingui();
   const { q: urlQ = "" } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -473,12 +489,22 @@ function Search() {
     hasQuery && !articlesReady && (inputPending || articlesFetching);
   const resultsReady = hasQuery && pubsReady && articlesReady;
 
+  const publicationCountText = i18n._(
+    msg`${plural(pubTotal, { one: "# publication", other: "# publications" })}`,
+  );
+  const articleCountText = hasNextPage
+    ? i18n._(msg`${articles.length}+ articles`)
+    : i18n._(
+        msg`${plural(articles.length, { one: "# article", other: "# articles" })}`,
+      );
+
   const hint = hasQuery
     ? pubsPending || articlesPending
-      ? "Searching…"
-      : `${pubTotal} publication${pubTotal === 1 ? "" : "s"} · ${articles.length}${hasNextPage ? "+" : ""} article${articles.length === 1 && !hasNextPage ? "" : "s"}`
-    : 'Try "climate", "typography", or a handle like stdout.dev';
+      ? t`Searching…`
+      : t`${publicationCountText} · ${articleCountText}`
+    : t`Try "climate", "typography", or a handle like stdout.dev`;
 
+  const remainingPublications = pubTotal - publications.length;
   const showEmpty =
     resultsReady && publications.length === 0 && articles.length === 0;
   const showPublicationSection =
@@ -515,8 +541,8 @@ function Search() {
                 )}
               >
                 <SectionHead
-                  kicker="Publications"
-                  title={formatMatchCount(publications.length, pubTotal)}
+                  kicker={<Trans>Publications</Trans>}
+                  title={formatMatchCount(i18n, publications.length, pubTotal)}
                 />
                 {publications.map((pub, index) => (
                   <PubDirectoryRow
@@ -536,9 +562,13 @@ function Search() {
                       isDisabled={loadingMorePubs}
                       onPress={() => void loadMorePublications()}
                     >
-                      {loadingMorePubs
-                        ? "Loading…"
-                        : `Load more (${pubTotal - publications.length} remaining)`}
+                      {loadingMorePubs ? (
+                        <Trans>Loading…</Trans>
+                      ) : (
+                        <Trans>
+                          Load more ({remainingPublications} remaining)
+                        </Trans>
+                      )}
                     </Button>
                   </div>
                 )}
@@ -557,8 +587,8 @@ function Search() {
                 )}
               >
                 <SectionHead
-                  kicker="Articles"
-                  title={formatShownCount(articles.length, hasNextPage)}
+                  kicker={<Trans>Articles</Trans>}
+                  title={formatShownCount(i18n, articles.length, hasNextPage)}
                 />
                 {articles.map((article, index) => (
                   <ArticleRow
@@ -589,8 +619,10 @@ function Search() {
 
           {showEmpty ? (
             <p {...stylex.props(styles.emptyNote)}>
-              Nothing matches &ldquo;{debouncedQ}&rdquo; — yet. The network is
-              always growing.
+              <Trans>
+                Nothing matches &ldquo;{debouncedQ}&rdquo; — yet. The network is
+                always growing.
+              </Trans>
             </p>
           ) : null}
         </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { msg } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   keepPreviousData,
@@ -73,7 +75,7 @@ import type {
 } from "#/integrations/tanstack-query/api-tag.functions";
 import { tagApi } from "#/integrations/tanstack-query/api-tag.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
-import { formatCount } from "#/lib/format-count";
+import { useFormatters } from "#/lib/formatters";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { SITE_NAME, siteSocialMeta, tagFeedUrl } from "#/lib/site-metadata";
 import { useDelayedLoading } from "#/lib/use-delayed-loading";
@@ -174,15 +176,15 @@ const styles = stylex.create({
     display: "flex",
     flexWrap: "wrap",
     rowGap: spacing["4"],
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "1320px",
     paddingBottom: spacing["0"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
@@ -206,6 +208,10 @@ const styles = stylex.create({
     paddingTop: spacing["1"],
   },
   heroName: {
+    // Isolate only: this is a single-line NAME, so it must keep the
+    // surrounding UI alignment while still ordering its own characters
+    // correctly. `dir="auto"` here would left-align it inside an RTL page.
+    unicodeBidi: "isolate",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: { default: "1.85rem", "@media (min-width: 48rem)": "2rem" },
@@ -240,7 +246,7 @@ const styles = stylex.create({
     fontFamily: fontFamily.serif,
     fontSize: fontSize.base,
     fontWeight: fontWeight.semibold,
-    marginRight: spacing["1"],
+    marginInlineEnd: spacing["1"],
   },
   tabs: {
     paddingBottom: spacing["10"],
@@ -250,14 +256,14 @@ const styles = stylex.create({
   },
   tabBarInner: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "1320px",
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["5"],
       "@media (min-width: 40rem)": spacing["10"],
     },
@@ -275,8 +281,8 @@ const styles = stylex.create({
     width: "100%",
   },
   tabPanel: {
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["6"],
   },
   directoryGrid: {
@@ -345,10 +351,10 @@ const styles = stylex.create({
 });
 
 const SORT_OPTIONS = [
-  { id: "tagged", label: "Most posts" },
-  { id: "readers", label: "Readers" },
-  { id: "active", label: "Active" },
-  { id: "az", label: "A–Z" },
+  { id: "tagged", label: msg`Most posts` },
+  { id: "readers", label: msg`Readers` },
+  { id: "active", label: msg`Active` },
+  { id: "az", label: msg`A–Z` },
 ] as const;
 
 function ArticleRowSkeleton({
@@ -387,8 +393,9 @@ function TagArticlesSkeleton({
 }: {
   rows?: number;
 }) {
+  const { t } = useLingui();
   return (
-    <div aria-busy="true" aria-label="Loading articles">
+    <div aria-busy="true" aria-label={t`Loading articles`}>
       {Array.from({ length: rows }, (_, index) => (
         <ArticleRowSkeleton
           key={index}
@@ -407,11 +414,12 @@ function TagDirectorySkeleton({
   layout: "grid" | "list";
   count?: number;
 }) {
+  const { t } = useLingui();
   if (layout === "grid") {
     return (
       <Grid
         aria-busy="true"
-        aria-label="Loading publications"
+        aria-label={t`Loading publications`}
         columnGap="lg"
         rowGap="lg"
         style={styles.directoryGrid}
@@ -424,7 +432,7 @@ function TagDirectorySkeleton({
   }
 
   return (
-    <div aria-busy="true" aria-label="Loading publications">
+    <div aria-busy="true" aria-label={t`Loading publications`}>
       {Array.from({ length: count }, (_, index) => (
         <PubDirectoryRowSkeleton key={index} isLast={index === count - 1} />
       ))}
@@ -433,6 +441,7 @@ function TagDirectorySkeleton({
 }
 
 function TagArticlesPanel({ tag }: { tag: string }) {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -506,12 +515,14 @@ function TagArticlesPanel({ tag }: { tag: string }) {
   }
 
   if (isLoading) {
-    return <div aria-busy="true" aria-label="Loading articles" />;
+    return <div aria-busy="true" aria-label={t`Loading articles`} />;
   }
 
   if (items.length === 0) {
     return (
-      <p {...stylex.props(styles.empty)}>No articles match this tag yet.</p>
+      <p {...stylex.props(styles.empty)}>
+        <Trans>No articles match this tag yet.</Trans>
+      </p>
     );
   }
 
@@ -543,7 +554,7 @@ function TagArticlesPanel({ tag }: { tag: string }) {
             <TagArticlesSkeleton rows={LOAD_MORE_SKELETON_COUNT} />
           ) : nextOffset == null ? (
             <p {...stylex.props(styles.endNote)}>
-              You&apos;ve reached the end.
+              <Trans>You&apos;ve reached the end.</Trans>
             </p>
           ) : null}
         </>
@@ -561,6 +572,7 @@ function TagPublicationsPanel({
   sort: "tagged" | "readers" | "active" | "az";
   layout: "grid" | "list";
 }) {
+  const { t, i18n } = useLingui();
   const navigate = useNavigate({ from: Route.fullPath });
 
   const [loadedMore, setLoadedMore] = useState<Array<TagPublicationCard>>([]);
@@ -661,7 +673,7 @@ function TagPublicationsPanel({
   return (
     <>
       <SectionHead
-        title="All publications"
+        title={t`All publications`}
         action={
           <div {...stylex.props(styles.directoryToolbarControls)}>
             <SegmentedControl
@@ -671,7 +683,7 @@ function TagPublicationsPanel({
             >
               {SORT_OPTIONS.map((option) => (
                 <SegmentedControlItem key={option.id} id={option.id}>
-                  {option.label}
+                  {i18n._(option.label)}
                 </SegmentedControlItem>
               ))}
             </SegmentedControl>
@@ -681,10 +693,10 @@ function TagPublicationsPanel({
               onSelectionChange={onLayoutChange}
               size="sm"
             >
-              <SegmentedControlItem id="list" aria-label="List view">
+              <SegmentedControlItem id="list" aria-label={t`List view`}>
                 <List size={16} />
               </SegmentedControlItem>
-              <SegmentedControlItem id="grid" aria-label="Grid view">
+              <SegmentedControlItem id="grid" aria-label={t`Grid view`}>
                 <LayoutGrid size={16} />
               </SegmentedControlItem>
             </SegmentedControl>
@@ -695,10 +707,10 @@ function TagPublicationsPanel({
       {showDirectorySkeleton ? (
         <TagDirectorySkeleton layout={layout} />
       ) : isDirectoryLoading ? (
-        <div aria-busy="true" aria-label="Loading publications" />
+        <div aria-busy="true" aria-label={t`Loading publications`} />
       ) : directoryItems.length === 0 ? (
         <p {...stylex.props(styles.empty)}>
-          No publications match this tag yet.
+          <Trans>No publications match this tag yet.</Trans>
         </p>
       ) : layout === "grid" ? (
         <Grid columnGap="lg" rowGap="lg" style={styles.directoryGrid}>
@@ -739,7 +751,7 @@ function TagPublicationsPanel({
             />
           ) : nextOffset == null ? (
             <p {...stylex.props(styles.endNote)}>
-              You&apos;ve reached the end.
+              <Trans>You&apos;ve reached the end.</Trans>
             </p>
           ) : null}
         </>
@@ -771,6 +783,7 @@ function TagFollowAllButton({
   tag: string;
   publicationCount: number;
 }) {
+  const fmt = useFormatters();
   const queryClient = useQueryClient();
   const loginSearch = useLoginSearch();
   const displayTag = tagDisplayTitle(tag);
@@ -834,26 +847,27 @@ function TagFollowAllButton({
   if (!signedIn) {
     return (
       <ButtonLink to="/login" search={loginSearch} variant="primary" size="md">
-        <Plus size={15} aria-hidden /> Subscribe all
+        <Plus size={15} aria-hidden /> <Trans>Subscribe all</Trans>
       </ButtonLink>
     );
   }
 
   const unfollowedCount = followSummary?.unfollowedCount ?? publicationCount;
+  const formattedUnfollowedCount = fmt.compactNumber(unfollowedCount);
   const followingAll = unfollowedCount === 0;
   const needsConfirm = unfollowedCount > FOLLOW_ALL_CONFIRM_THRESHOLD;
 
   if (followingAll) {
     return (
       <Button variant="secondary" size="md" isDisabled>
-        <Check size={15} aria-hidden /> Subscribed
+        <Check size={15} aria-hidden /> <Trans>Subscribed</Trans>
       </Button>
     );
   }
 
   const followAllLabel = (
     <>
-      <Plus size={15} aria-hidden /> Subscribe all
+      <Plus size={15} aria-hidden /> <Trans>Subscribe all</Trans>
     </>
   );
 
@@ -869,23 +883,29 @@ function TagFollowAllButton({
         }
       >
         <AlertDialogHeader>
-          Subscribe to {formatCount(unfollowedCount)} publications?
+          <Plural
+            value={unfollowedCount}
+            one={`Subscribe to ${formattedUnfollowedCount} publication?`}
+            other={`Subscribe to ${formattedUnfollowedCount} publications?`}
+          />
         </AlertDialogHeader>
         <AlertDialogDescription>
-          You&apos;re about to subscribe to {formatCount(unfollowedCount)}{" "}
-          publications tagged {displayTag}. That&apos;s a lot to add to your
-          feed — only continue if you really want them all.
+          <Trans>
+            You&apos;re about to subscribe to {formattedUnfollowedCount}{" "}
+            publications tagged {displayTag}. That&apos;s a lot to add to your
+            feed — only continue if you really want them all.
+          </Trans>
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogCancelButton isDisabled={followAllMutation.isPending}>
-            Cancel
+            <Trans>Cancel</Trans>
           </AlertDialogCancelButton>
           <AlertDialogActionButton
             closeOnPress={false}
             isPending={followAllMutation.isPending}
             onPress={() => followAllMutation.mutate(tag)}
           >
-            Follow all
+            <Trans>Follow all</Trans>
           </AlertDialogActionButton>
         </AlertDialogFooter>
       </AlertDialog>
@@ -905,6 +925,8 @@ function TagFollowAllButton({
 }
 
 function TagPage() {
+  const { t } = useLingui();
+  const fmt = useFormatters();
   const { tag: rawTag } = Route.useParams();
   const tag = decodeURIComponent(rawTag);
   const { view, sort, layout } = Route.useSearch();
@@ -981,23 +1003,32 @@ function TagPage() {
     <div>
       <div {...stylex.props(styles.heroInner)}>
         <div {...stylex.props(styles.heroInfo)}>
-          <Kicker icon={<Tag size={13} aria-hidden />}>Tag</Kicker>
+          <Kicker icon={<Tag size={13} aria-hidden />}>
+            <Trans>Tag</Trans>
+          </Kicker>
           <h1 {...stylex.props(styles.heroName)}>{displayTag}</h1>
           <p {...stylex.props(styles.heroDesc)}>
-            Articles and publications tagged {displayTag} across the Atmosphere.
+            <Trans>
+              Articles and publications tagged {displayTag} across the
+              Atmosphere.
+            </Trans>
           </p>
           <div {...stylex.props(styles.stats)}>
             <span>
               <span {...stylex.props(styles.statValue)}>
-                {formatCount(articleCount)}
+                {fmt.compactNumber(articleCount)}
               </span>
-              {articleCount === 1 ? "article" : "articles"}
+              <Plural value={articleCount} one="article" other="articles" />
             </span>
             <span>
               <span {...stylex.props(styles.statValue)}>
-                {formatCount(publicationCount)}
+                {fmt.compactNumber(publicationCount)}
               </span>
-              {publicationCount === 1 ? "publication" : "publications"}
+              <Plural
+                value={publicationCount}
+                one="publication"
+                other="publications"
+              />
             </span>
           </div>
         </div>
@@ -1021,9 +1052,13 @@ function TagPage() {
       >
         <div {...stylex.props(styles.tabBar)}>
           <div {...stylex.props(styles.tabBarInner)}>
-            <TabList aria-label="Tag views" style={styles.tabList}>
-              <Tab id="feed">Articles</Tab>
-              <Tab id="publications">Publications</Tab>
+            <TabList aria-label={t`Tag views`} style={styles.tabList}>
+              <Tab id="feed">
+                <Trans>Articles</Trans>
+              </Tab>
+              <Tab id="publications">
+                <Trans>Publications</Trans>
+              </Tab>
             </TabList>
           </div>
           <div {...stylex.props(styles.tabRule)} aria-hidden />

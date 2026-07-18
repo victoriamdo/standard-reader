@@ -1,5 +1,7 @@
 "use client";
 
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -19,11 +21,13 @@ import { AuthorProfileLink } from "#/components/reader/author-profile-link";
 import { PublicationNameLink } from "#/components/reader/publication-name-link";
 import { SearchHeadline } from "#/components/reader/search-headline";
 import { ButtonLink } from "#/components/router-links";
+import { DirectionalIcon } from "#/design-system/directional-icon";
 import { gap } from "#/design-system/theme/semantic-spacing.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex.tsx";
 import type { FollowStatus } from "#/integrations/tanstack-query/api-reader.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { useFormatters } from "#/lib/formatters";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { tsHeadlineHasMatch } from "#/lib/search-headline";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
@@ -62,7 +66,6 @@ import {
 } from "./follow-optimistic";
 import {
   documentLinkParams,
-  formatDate,
   formatReaders,
   formatTaggedPostCount,
   publicationLinkParams,
@@ -73,6 +76,7 @@ import {
   Handle,
   MetaGroup,
   MetaLine,
+  MetaText,
   PublicationAvatar,
   Topic,
 } from "./primitives";
@@ -119,6 +123,9 @@ const styles = stylex.create({
     fontWeight: fontWeight.medium,
   },
   bylineName: {
+    // Single-line NAME/TITLE in a UI row: isolate for ordering, but let
+    // alignment follow the surrounding UI (right under RTL).
+    unicodeBidi: "isolate",
     color: uiColor.text2,
   },
   bylineEyebrow: {
@@ -328,6 +335,9 @@ const styles = stylex.create({
     width: "1.4rem",
   },
   compactTitle: {
+    // Single-line NAME/TITLE in a UI row: isolate for ordering, but let
+    // alignment follow the surrounding UI (right under RTL).
+    unicodeBidi: "isolate",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: fontSize.lg,
@@ -341,10 +351,10 @@ const styles = stylex.create({
       ":hover": uiColor.component1,
     },
     display: "block",
-    marginLeft: `calc(-1 * ${spacing["4"]})`,
-    marginRight: `calc(-1 * ${spacing["4"]})`,
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["4"],
+    marginInlineStart: `calc(-1 * ${spacing["4"]})`,
+    marginInlineEnd: `calc(-1 * ${spacing["4"]})`,
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["4"],
   },
   miniRowBody: {
     alignItems: "center",
@@ -363,6 +373,9 @@ const styles = stylex.create({
     flexShrink: 0,
   },
   miniName: {
+    // Single-line NAME/TITLE in a UI row: isolate for ordering, but let
+    // alignment follow the surrounding UI (right under RTL).
+    unicodeBidi: "isolate",
     overflow: "hidden",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
@@ -382,6 +395,9 @@ const styles = stylex.create({
     width: "100%",
   },
   titleInRow: {
+    // Single-line NAME/TITLE in a UI row: isolate for ordering, but let
+    // alignment follow the surrounding UI (right under RTL).
+    unicodeBidi: "isolate",
     flexBasis: "0%",
     flexGrow: "1",
     flexShrink: "1",
@@ -443,8 +459,8 @@ const styles = stylex.create({
     },
     height: "100%",
     paddingBottom: spacing["5"],
-    paddingLeft: spacing["5"],
-    paddingRight: spacing["5"],
+    paddingInlineStart: spacing["5"],
+    paddingInlineEnd: spacing["5"],
     paddingTop: spacing["5"],
   },
   pubCardRail: {
@@ -459,6 +475,9 @@ const styles = stylex.create({
     width: "100%",
   },
   pubCardName: {
+    // Single-line NAME/TITLE in a UI row: isolate for ordering, but let
+    // alignment follow the surrounding UI (right under RTL).
+    unicodeBidi: "isolate",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: fontSize.xl,
@@ -673,6 +692,9 @@ const styles = stylex.create({
     },
   },
   pubDirName: {
+    // Single-line NAME/TITLE in a UI row: isolate for ordering, but let
+    // alignment follow the surrounding UI (right under RTL).
+    unicodeBidi: "isolate",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: fontSize.xl,
@@ -743,6 +765,9 @@ const styles = stylex.create({
     minWidth: 0,
   },
   modalPubName: {
+    // Single-line NAME/TITLE in a UI row: isolate for ordering, but let
+    // alignment follow the surrounding UI (right under RTL).
+    unicodeBidi: "isolate",
     overflow: "hidden",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
@@ -759,6 +784,11 @@ const styles = stylex.create({
     fontFamily: fontFamily.mono,
     fontSize: fontSize.xs,
     letterSpacing: tracking.tight,
+  },
+  // Keeps a Latin/numeric run (handle, topic, counts) from being reordered by
+  // the bidi algorithm when it shares a line with RTL UI text.
+  bidiIsolate: {
+    unicodeBidi: "isolate",
   },
   followResponsiveIcon: {
     alignItems: "center",
@@ -810,6 +840,7 @@ export function FollowButton({
   responsive?: boolean;
   style?: stylex.StyleXStyles;
 }) {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
   const loginSearch = useLoginSearch();
   const { data: followStatus } = useQuery({
@@ -828,7 +859,7 @@ export function FollowButton({
   const unfollowMutation = useMutation(
     readerApi.unfollowPublicationMutationOptions(),
   );
-  const followLabel = following ? "Subscribed" : "Subscribe";
+  const followLabel = following ? t`Subscribed` : t`Subscribe`;
   const mobileIconSize = 20;
   const icon = following ? (
     <Check size={mobileIconSize} aria-hidden />
@@ -853,7 +884,7 @@ export function FollowButton({
           style={style}
           onClick={stopFollowBubble}
         >
-          {desktopIcon} Follow
+          {desktopIcon} <Trans>Follow</Trans>
         </ButtonLink>
       );
     }
@@ -863,7 +894,7 @@ export function FollowButton({
           to="/login"
           search={loginSearch}
           variant="secondary"
-          aria-label="Subscribe"
+          aria-label={t`Subscribe`}
           style={styles.followResponsiveIcon}
           onClick={stopFollowBubble}
         >
@@ -877,7 +908,7 @@ export function FollowButton({
           style={styles.followResponsiveFull}
           onClick={stopFollowBubble}
         >
-          {desktopIcon} Follow
+          {desktopIcon} <Trans>Follow</Trans>
         </ButtonLink>
       </>
     );
@@ -995,7 +1026,8 @@ function Byline({
   article: ArticleCard;
   includeDate?: boolean;
 }) {
-  const date = formatDate(article.publishedAt);
+  const fmt = useFormatters();
+  const date = fmt.date(article.publishedAt);
 
   // Loose documents have no publication row, so the byline shows the author's
   // profile (handle / avatar) and links to `/u/$did` instead of a publication.
@@ -1062,7 +1094,8 @@ function TitleRowDate({
   publishedAt: string;
   style?: stylex.StyleXStyles;
 }) {
-  const date = formatDate(publishedAt);
+  const fmt = useFormatters();
+  const date = fmt.date(publishedAt);
   if (!date) return null;
   return (
     <span {...stylex.props(styles.bylineWhen, styles.titleRowDate, style)}>
@@ -1102,7 +1135,11 @@ function ArticleSearchDek({
   }
 
   if (article.description) {
-    return <span {...stylex.props(style)}>{article.description}</span>;
+    return (
+      <span dir="auto" {...stylex.props(style)}>
+        {article.description}
+      </span>
+    );
   }
 
   return null;
@@ -1541,7 +1578,7 @@ export function FeatureArticle({
           dateStyle={showByline ? undefined : styles.titleRowDateFeature}
         />
         {article.description ? (
-          <span {...stylex.props(styles.featureDek)}>
+          <span dir="auto" {...stylex.props(styles.featureDek)}>
             {article.description}
           </span>
         ) : null}
@@ -1590,13 +1627,14 @@ export function SaveButton({
   /** Skip per-row status fetch when the parent already knows bookmark state. */
   assumeBookmarked?: boolean;
 }) {
+  const { t } = useLingui();
   const { bookmarked, toggle, isPending } = useArticleBookmark(
     documentUri,
     signedIn,
     assumeBookmarked === undefined ? undefined : { assumeBookmarked },
   );
   const iconSize = size === "md" ? 18 : 16;
-  const label = bookmarked ? "Saved for later" : "Save for later";
+  const label = bookmarked ? t`Saved for later` : t`Save for later`;
 
   return (
     <IconButton
@@ -1631,6 +1669,7 @@ export function MarkUnreadButton({
   publicationUri?: string | null;
   size?: "sm" | "md";
 }) {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
@@ -1653,7 +1692,7 @@ export function MarkUnreadButton({
     <IconButton
       variant="secondary"
       size={size}
-      label="Mark as unread"
+      label={t`Mark as unread`}
       isDisabled={isPending}
       onPress={onPress}
       onClick={stopSaveClick}
@@ -1824,7 +1863,9 @@ export function CompactRow({
               authorRef={article.did}
               linkStyle={styles.bylineEyebrow}
             >
-              <span>@{article.authorHandle}</span>
+              <span {...stylex.props(styles.bidiIsolate)}>
+                @{article.authorHandle}
+              </span>
             </AuthorProfileLink>
           ) : (
             <span>Unknown</span>
@@ -1870,10 +1911,10 @@ export function MiniPubRow({
           ) : null}
           <PubMetaRow pub={pub} />
         </Flex>
-        <ArrowRight
-          aria-hidden
+        <DirectionalIcon
+          as={ArrowRight}
           size={15}
-          {...stylex.props(styles.miniRowArrow)}
+          style={styles.miniRowArrow}
         />
       </Flex>
     </PublicationLink>
@@ -1889,11 +1930,21 @@ export function PubMetaRow({
   pub: PublicationCard;
   hideTopic?: boolean;
 }) {
+  const { i18n } = useLingui();
+  // These are UI strings, not user content — they must translate and follow the
+  // UI direction. `formatReaders` supplies the abbreviated count ("1.2k") for
+  // the plural branch, matching the pattern in `format.ts`.
+  const subscriberLabel = formatReaders(pub.subscriberCount);
+  const documentLabel = formatReaders(pub.documentCount);
   const readers =
     pub.subscriberCount > 0
-      ? `${formatReaders(pub.subscriberCount)} readers`
+      ? i18n._(
+          msg`${plural(pub.subscriberCount, { one: "# reader", other: `${subscriberLabel} readers` })}`,
+        )
       : pub.documentCount > 0
-        ? `${formatReaders(pub.documentCount)} articles`
+        ? i18n._(
+            msg`${plural(pub.documentCount, { one: "# article", other: `${documentLabel} articles` })}`,
+          )
         : null;
 
   const showTopic = !hideTopic && Boolean(pub.topic);
@@ -1904,14 +1955,21 @@ export function PubMetaRow({
   return (
     <MetaLine>
       {showTopic ? <Topic name={pub.topic} nested /> : null}
-      {readers ? <Handle>{readers}</Handle> : null}
+      {readers ? <MetaText>{readers}</MetaText> : null}
     </MetaLine>
   );
 }
 
 function PubReadersMeta({ pub }: { pub: PublicationCard }) {
+  const { i18n } = useLingui();
   if (pub.subscriberCount <= 0) return null;
-  return <Handle>{formatReaders(pub.subscriberCount)} readers</Handle>;
+  return (
+    <MetaText>
+      {i18n._(
+        msg`${plural(pub.subscriberCount, { one: "# reader", other: `${formatReaders(pub.subscriberCount)} readers` })}`,
+      )}
+    </MetaText>
+  );
 }
 
 function PubDirectoryStats({
@@ -1924,29 +1982,45 @@ function PubDirectoryStats({
   /** Tagged-post tally for tag directory rows. */
   tagPostCount?: number;
 }) {
+  const { i18n } = useLingui();
   const stats: Array<string> = [];
   if (tagPostCount != null) {
-    stats.push(formatTaggedPostCount(tagPostCount));
+    stats.push(formatTaggedPostCount(i18n, tagPostCount));
   }
   if (pub.subscriberCount > 0) {
-    stats.push(`${formatReaders(pub.subscriberCount)} readers`);
+    stats.push(
+      i18n._(
+        msg`${plural(pub.subscriberCount, { one: "# reader", other: `${formatReaders(pub.subscriberCount)} readers` })}`,
+      ),
+    );
   }
   if (tagPostCount == null && pub.documentCount > 0) {
-    stats.push(`${formatReaders(pub.documentCount)} posts`);
+    stats.push(
+      i18n._(
+        msg`${plural(pub.documentCount, { one: "# post", other: `${formatReaders(pub.documentCount)} posts` })}`,
+      ),
+    );
   }
-  const statsText = stats.join(" · ");
-
   const showTopic = !hideTopic && Boolean(pub.topic);
-  if (!showTopic && !statsText) {
+  if (!showTopic && stats.length === 0) {
     return null;
   }
 
   return (
     <MetaLine>
       {showTopic ? <Topic name={pub.topic} nested /> : null}
-      {statsText ? (
+      {stats.length > 0 ? (
         <MetaGroup>
-          <Handle>{statsText}</Handle>
+          <Handle>
+            {stats.map((part, index) => (
+              <span key={part}>
+                {index > 0 ? <span aria-hidden> · </span> : null}
+                {/* Each stat is its own bidi run (digits + a localized word);
+                    isolate so an RTL UI can't interleave them. */}
+                <span {...stylex.props(styles.bidiIsolate)}>{part}</span>
+              </span>
+            ))}
+          </Handle>
         </MetaGroup>
       ) : null}
     </MetaLine>
@@ -1962,9 +2036,10 @@ function PubCardFoot({
   hideTopic?: boolean;
   tagPostCount?: number;
 }) {
+  const { i18n } = useLingui();
   const showTopic = !hideTopic && Boolean(pub.topic);
   const taggedMeta =
-    tagPostCount == null ? null : formatTaggedPostCount(tagPostCount);
+    tagPostCount == null ? null : formatTaggedPostCount(i18n, tagPostCount);
   if (!showTopic && !taggedMeta && pub.subscriberCount <= 0) {
     return null;
   }
@@ -2052,6 +2127,7 @@ export function PubCard({
       ) : null}
       {pub.description ? (
         <p
+          dir="auto"
           {...stylex.props(
             styles.pubCardDesc,
             clampDescription && styles.pubCardDescClamp,
@@ -2101,7 +2177,6 @@ export function ModalPubRow({
   if (pub.topic) {
     metaParts.push(pub.topic);
   }
-  const meta = metaParts.join(" · ");
 
   return (
     <div
@@ -2115,8 +2190,15 @@ export function ModalPubRow({
         <PublicationAvatar pub={pub} size="lg" />
         <Flex direction="column" gap="xs" style={styles.grow}>
           <span {...stylex.props(styles.modalPubName)}>{pub.name}</span>
-          {meta ? (
-            <span {...stylex.props(styles.modalPubMeta)}>{meta}</span>
+          {metaParts.length > 0 ? (
+            <span {...stylex.props(styles.modalPubMeta)}>
+              {metaParts.map((part, index) => (
+                <span key={part}>
+                  {index > 0 ? <span aria-hidden> · </span> : null}
+                  <span {...stylex.props(styles.bidiIsolate)}>{part}</span>
+                </span>
+              ))}
+            </span>
           ) : null}
         </Flex>
       </PublicationLink>
@@ -2156,6 +2238,7 @@ export function PubDirectoryRow({
    */
   markHidden?: boolean;
 }) {
+  const { t } = useLingui();
   const { data: session } = useQuery(user.getSessionQueryOptions);
   const signedIn = Boolean(session?.user);
   const hasRank = rank != null;
@@ -2213,10 +2296,10 @@ export function PubDirectoryRow({
           {isHidden ? (
             <span
               {...stylex.props(styles.pubHiddenBadge)}
-              title="This publication opted out of discovery, so it's hidden everywhere except here on your own profile."
+              title={t`This publication opted out of discovery, so it's hidden everywhere except here on your own profile.`}
             >
               <EyeOff size={12} aria-hidden />
-              Hidden from discovery
+              <Trans>Hidden from discovery</Trans>
             </span>
           ) : null}
         </div>
@@ -2239,7 +2322,9 @@ export function PubDirectoryRow({
                 style={styles.pubDirDesc}
               />
             ) : pub.description ? (
-              <p {...stylex.props(styles.pubDirDesc)}>{pub.description}</p>
+              <p dir="auto" {...stylex.props(styles.pubDirDesc)}>
+                {pub.description}
+              </p>
             ) : null}
             <PubDirectoryStats
               pub={pub}

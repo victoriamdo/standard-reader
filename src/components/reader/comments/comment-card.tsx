@@ -1,5 +1,6 @@
 "use client";
 
+import { Plural, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { MessageCircle } from "lucide-react";
 import { Fragment } from "react";
@@ -11,6 +12,7 @@ import { Flex } from "#/design-system/flex";
 import type { DocumentComment } from "#/integrations/tanstack-query/api-comments.functions";
 import type { JsonValue } from "#/integrations/tanstack-query/api-shapes";
 import { authorProfilePath } from "#/lib/author-profile";
+import { useFormatters } from "#/lib/formatters";
 import { segmentFacetedText, shiftFacets } from "#/lib/leaflet/facets";
 import { utf8ByteLength } from "#/lib/leaflet/utf8";
 
@@ -19,7 +21,7 @@ import {
   findFacetFeature,
   hasFacetKind,
 } from "../content/renderers/shared/facets";
-import { formatRelativeTime, initials } from "../format";
+import { initials } from "../format";
 import { commentStyles } from "./comments-styles";
 
 function CommentFacetSegment({
@@ -124,7 +126,9 @@ function CommentFacetedParagraph({
 }) {
   const segments = segmentFacetedText(text, facets ?? undefined);
   return (
-    <p {...stylex.props(commentStyles.commentaryParagraph)}>
+    // Comment text is user content in an unknown language — resolve direction
+    // from the text itself rather than inheriting the UI direction.
+    <p dir="auto" {...stylex.props(commentStyles.commentaryParagraph)}>
       {segments.map((segment, index) => (
         <Fragment key={index}>
           <CommentFacetSegment
@@ -172,24 +176,24 @@ function authorLabel(comment: DocumentComment): string {
 }
 
 export function CommentCard({ comment }: { comment: DocumentComment }) {
+  const { t } = useLingui();
+  const fmt = useFormatters();
   const name = authorLabel(comment);
   const handle = comment.author.handle ? `@${comment.author.handle}` : null;
-  const replyLabel =
-    comment.replyCount === 1 ? "1 reply" : `${comment.replyCount} replies`;
   const replyContext =
     comment.source === "margin"
-      ? "on Margin"
+      ? t`on Margin`
       : comment.source === "semble"
-        ? "on Semble"
+        ? t`on Semble`
         : comment.source === "note"
-          ? "on pckt"
-          : "on Bluesky";
+          ? t`on pckt`
+          : t`on Bluesky`;
   const hasLink = comment.postUrl.trim().length > 0;
 
   const body = (
     <>
       {comment.kind === "quote" && comment.quote ? (
-        <blockquote {...stylex.props(commentStyles.blockquote)}>
+        <blockquote dir="auto" {...stylex.props(commentStyles.blockquote)}>
           {comment.quote}
         </blockquote>
       ) : null}
@@ -202,7 +206,16 @@ export function CommentCard({ comment }: { comment: DocumentComment }) {
       <Flex align="center" gap="sm" style={commentStyles.footer}>
         <MessageCircle size={16} aria-hidden />
         <span>
-          {replyLabel} {replyContext}
+          <span {...stylex.props(commentStyles.bidiIsolate)}>
+            <Plural
+              value={comment.replyCount}
+              one="# reply"
+              other="# replies"
+            />
+          </span>{" "}
+          <span {...stylex.props(commentStyles.bidiIsolate)}>
+            {replyContext}
+          </span>
         </span>
       </Flex>
     </>
@@ -234,7 +247,7 @@ export function CommentCard({ comment }: { comment: DocumentComment }) {
           dateTime={comment.indexedAt}
           {...stylex.props(commentStyles.timestamp)}
         >
-          {formatRelativeTime(comment.indexedAt)}
+          {fmt.relativeTime(comment.indexedAt)}
         </time>
       </div>
 
@@ -246,7 +259,7 @@ export function CommentCard({ comment }: { comment: DocumentComment }) {
             href={comment.postUrl}
             target="_blank"
             rel="noreferrer"
-            aria-label="Open this reply on Bluesky"
+            aria-label={t`Open this reply on Bluesky`}
             {...stylex.props(commentStyles.cardBodyOverlay)}
           />
           {body}

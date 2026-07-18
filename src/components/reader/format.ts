@@ -1,5 +1,8 @@
 /** Formatting helpers shared by the reader UI (kept apart from components). */
 
+import type { I18n } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import { STANDARD_NSID } from "#/lib/atproto/nsids";
 
@@ -212,62 +215,30 @@ export function formatReaders(n: number): string {
   return String(n);
 }
 
-/** Tag directory meta: posts on a publication carrying the page tag. */
-export function formatTaggedPostCount(count: number): string {
-  return count === 1 ? "1 tagged post" : `${formatReaders(count)} tagged posts`;
+/**
+ * Tag directory meta: posts on a publication carrying the page tag.
+ *
+ * Takes an `i18n` rather than being a hook so it stays a plain module function
+ * (matching `formatMatchCount` in `_layout.search.tsx`); every call site is a
+ * component that can pull one off `useLingui()`.
+ */
+export function formatTaggedPostCount(i18n: I18n, count: number): string {
+  const value = formatReaders(count);
+  return i18n._(
+    msg`${plural(count, { one: "# tagged post", other: `${value} tagged posts` })}`,
+  );
 }
 
 /** Article byline meta: read count only (omits zero). Likes use `LikeCount`. */
-export function formatArticleReadStats(readCount: number): string | null {
+export function formatArticleReadStats(
+  i18n: I18n,
+  readCount: number,
+): string | null {
   if (readCount <= 0) return null;
-  return `${formatReaders(readCount)} ${readCount === 1 ? "read" : "reads"}`;
-}
-
-const DATE_FMT = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
-
-const MONTH_YEAR_FMT = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  year: "numeric",
-});
-
-/** Month + year only (e.g. "Jun 2026") for collection issue rows. */
-export function formatMonthYear(iso: string | null): string {
-  if (!iso) return "";
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return "";
-  return MONTH_YEAR_FMT.format(new Date(t));
-}
-
-export function formatDate(iso: string | null): string {
-  if (!iso) return "";
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return "";
-  return DATE_FMT.format(new Date(t));
-}
-
-const RELATIVE_FMT = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-/** Compact relative label for recent timestamps (e.g. "2h ago", "3d ago"). */
-export function formatRelativeTime(iso: string | null): string {
-  if (!iso) return "";
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return "";
-
-  const diffSec = Math.round((t - Date.now()) / 1000);
-  const abs = Math.abs(diffSec);
-
-  if (abs < 60) return RELATIVE_FMT.format(diffSec, "second");
-  const diffMin = Math.round(diffSec / 60);
-  if (Math.abs(diffMin) < 60) return RELATIVE_FMT.format(diffMin, "minute");
-  const diffHour = Math.round(diffSec / 3600);
-  if (Math.abs(diffHour) < 24) return RELATIVE_FMT.format(diffHour, "hour");
-  const diffDay = Math.round(diffSec / 86_400);
-  if (Math.abs(diffDay) < 7) return RELATIVE_FMT.format(diffDay, "day");
-  return formatDate(iso);
+  const value = formatReaders(readCount);
+  return i18n._(
+    msg`${plural(readCount, { one: "# read", other: `${value} reads` })}`,
+  );
 }
 
 /** `m:ss` clock time for the page-reader transport. */

@@ -58,10 +58,10 @@ const styles = stylex.create({
     },
   },
   sm: {
-    paddingLeft: {
+    paddingInlineStart: {
       ":has(> * + *, > *:not(svg):only-child)": horizontalSpace["md"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       ":has(> * + *, > *:not(svg):only-child)": horizontalSpace["md"],
     },
     width: {
@@ -69,10 +69,10 @@ const styles = stylex.create({
     },
   },
   md: {
-    paddingLeft: {
+    paddingInlineStart: {
       ":has(> * + *, > *:not(svg):only-child)": horizontalSpace["xl"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       ":has(> * + *, > *:not(svg):only-child)": horizontalSpace["xl"],
     },
     width: {
@@ -80,10 +80,10 @@ const styles = stylex.create({
     },
   },
   lg: {
-    paddingLeft: {
+    paddingInlineStart: {
       ":has(> * + *, > *:not(svg):only-child)": horizontalSpace["3xl"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       ":has(> * + *, > *:not(svg):only-child)": horizontalSpace["3xl"],
     },
     width: {

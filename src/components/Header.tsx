@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
 
@@ -25,15 +26,15 @@ const styles = stylex.create({
   },
   nav: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "var(--page-content-max-width)",
     paddingBottom: verticalSpace["2xl"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
     },
@@ -57,7 +58,7 @@ const styles = stylex.create({
     fontWeight: fontWeight.semibold,
   },
   pushRight: {
-    marginLeft: "auto",
+    marginInlineStart: "auto",
   },
 });
 
@@ -77,14 +78,14 @@ export default function Header() {
             {...stylex.props(styles.link)}
             activeProps={stylex.props(styles.link, styles.linkActive)}
           >
-            Home
+            <Trans>Home</Trans>
           </Link>
           <Link
             to="/about"
             {...stylex.props(styles.link)}
             activeProps={stylex.props(styles.link, styles.linkActive)}
           >
-            About
+            <Trans>About</Trans>
           </Link>
         </Flex>
 

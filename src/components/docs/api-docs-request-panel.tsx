@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation } from "@tanstack/react-query";
 import { Play } from "lucide-react";
@@ -57,6 +58,7 @@ export const ApiDocsRequestPanel = memo(function RequestPanel({
 }: {
   entry: ApiDocsCatalogEntry;
 }) {
+  const { t } = useLingui();
   const { fixtures, tagOptions, signedIn, sessionDid } =
     useApiDocsPageContext();
   const controls = useMemo(
@@ -128,6 +130,8 @@ export const ApiDocsRequestPanel = memo(function RequestPanel({
     (useSessionAuth && entry.method === "procedure");
 
   const ok = result != null && result.status >= 200 && result.status < 300;
+  const durationMs = result?.durationMs ?? 0;
+  const fetchedAt = result?.fetchedAt ?? "";
 
   return (
     <div {...stylex.props(docsStyles.reqPanel)}>
@@ -139,7 +143,7 @@ export const ApiDocsRequestPanel = memo(function RequestPanel({
           {...stylex.props(docsStyles.reqBtn)}
           onClick={onCopy}
         >
-          {copied ? "Copied" : "Copy"}
+          {copied ? <Trans>Copied</Trans> : <Trans>Copy</Trans>}
         </button>
         {canRun ? (
           <button
@@ -157,7 +161,13 @@ export const ApiDocsRequestPanel = memo(function RequestPanel({
             ) : (
               <Play size={11} fill="currentColor" strokeWidth={0} />
             )}
-            {isPending ? "Running" : result ? "Re-run" : "Run example"}
+            {isPending ? (
+              <Trans>Running</Trans>
+            ) : result ? (
+              <Trans>Re-run</Trans>
+            ) : (
+              <Trans>Run example</Trans>
+            )}
           </button>
         ) : null}
       </div>
@@ -182,7 +192,7 @@ export const ApiDocsRequestPanel = memo(function RequestPanel({
                     aria-label={label}
                     isSearchable
                     items={options}
-                    placeholder="Select a tag"
+                    placeholder={t`Select a tag`}
                     selectedKey={selectedKey}
                     size="md"
                     style={docsStyles.reqParamControl}
@@ -244,22 +254,34 @@ export const ApiDocsRequestPanel = memo(function RequestPanel({
 
       {result != null || isPending ? (
         <p {...stylex.props(docsStyles.respMeta)} aria-live="polite">
-          {isPending
-            ? "running…"
-            : `${result?.durationMs ?? 0}ms · fetched ${result?.fetchedAt ?? ""}`}
+          {isPending ? (
+            <Trans>running…</Trans>
+          ) : (
+            <Trans>
+              {durationMs}ms · fetched {fetchedAt}
+            </Trans>
+          )}
         </p>
       ) : null}
 
       {result == null ? (
         isPending ? null : (
           <p {...stylex.props(docsStyles.respEmpty)}>
-            {entry.auth === "required" || entry.method === "procedure"
-              ? signedIn
-                ? "Click Run example to fetch a live response with your session."
-                : "Sign in to run this example (curl uses Bearer $ACCESS_TOKEN)."
-              : listBlocked
-                ? "Set API_DOCS_FIXTURE_LIST_URI to run this example."
-                : "Click Run example to fetch a live response."}
+            {entry.auth === "required" || entry.method === "procedure" ? (
+              signedIn ? (
+                <Trans>
+                  Click Run example to fetch a live response with your session.
+                </Trans>
+              ) : (
+                <Trans>
+                  Sign in to run this example (curl uses Bearer $ACCESS_TOKEN).
+                </Trans>
+              )
+            ) : listBlocked ? (
+              <Trans>Set API_DOCS_FIXTURE_LIST_URI to run this example.</Trans>
+            ) : (
+              <Trans>Click Run example to fetch a live response.</Trans>
+            )}
           </p>
         )
       ) : (

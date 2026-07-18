@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useRef } from "react";
 
@@ -16,6 +17,12 @@ const ARROW_SECONDS = 5;
 const styles = stylex.create({
   trackHit: {
     boxSizing: "border-box",
+    // Media scrubbers do not mirror: time flows left-to-right even in an RTL
+    // UI. Pinning the track to LTR keeps three things consistent that would
+    // otherwise disagree under RTL — the fill's `insetInlineStart` anchor, the
+    // physical `clientX - rect.left` seek math below, and ArrowLeft/ArrowRight
+    // meaning back/forward. No effect in LTR.
+    direction: "ltr",
     cursor: { default: "pointer", ":is([aria-disabled=true])": "default" },
     position: "relative",
     touchAction: "none",
@@ -40,7 +47,7 @@ const styles = stylex.create({
     transitionProperty: "width",
     transitionTimingFunction: "linear",
     height: "100%",
-    left: 0,
+    insetInlineStart: 0,
     top: 0,
   },
 });
@@ -65,6 +72,7 @@ export function SeekTrack({
   onPreview: (seconds: number) => void;
   onCommit: (seconds: number) => void;
 }) {
+  const { t } = useLingui();
   const trackRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
 
@@ -115,7 +123,7 @@ export function SeekTrack({
       ref={trackRef}
       {...stylex.props(styles.trackHit)}
       role="slider"
-      aria-label="Seek"
+      aria-label={t`Seek`}
       aria-valuemin={0}
       aria-valuemax={Math.round(durationSeconds)}
       aria-valuenow={Math.round(currentSeconds)}

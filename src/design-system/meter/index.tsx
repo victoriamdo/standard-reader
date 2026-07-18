@@ -81,7 +81,9 @@ const styles = stylex.create({
     },
   },
   fill: {
-    transform: "translateX(-100%)",
+    // The meter fills from the start of the line, so the offscreen resting
+    // position flips with the writing direction (`--dir`, see styles.css).
+    transform: "translateX(calc(var(--dir) * -100%))",
     transitionDuration: animationDuration.default,
     transitionProperty: "transform",
     transitionTimingFunction: "linear",
@@ -97,7 +99,7 @@ const styles = stylex.create({
     },
   },
   progress: (percentage: number) => ({
-    transform: `translateX(calc(${percentage.toString()}% - 100%))`,
+    transform: `translateX(calc(var(--dir) * (${percentage.toString()}% - 100%)))`,
   }),
 });
 

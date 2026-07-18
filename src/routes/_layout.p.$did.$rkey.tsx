@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   useMutation,
@@ -212,15 +213,15 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     rowGap: spacing["4"],
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "1320px",
     paddingBottom: spacing["6"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["5"],
       [HERO_DESKTOP]: spacing["10"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["5"],
       [HERO_DESKTOP]: spacing["10"],
     },
@@ -249,6 +250,10 @@ const styles = stylex.create({
     paddingTop: spacing["0.5"],
   },
   heroName: {
+    // Isolate only: this is a single-line NAME, so it must keep the
+    // surrounding UI alignment while still ordering its own characters
+    // correctly. `dir="auto"` here would left-align it inside an RTL page.
+    unicodeBidi: "isolate",
     color: uiColor.text2,
     fontFamily: fontFamily.serif,
     fontSize: { default: "1.85rem", "@media (min-width: 48rem)": "2rem" },
@@ -284,19 +289,19 @@ const styles = stylex.create({
     rowGap: spacing["2"],
   },
   statItem: {
-    borderRightColor: uiColor.border1,
-    borderRightStyle: "solid",
-    borderRightWidth: 1,
+    borderInlineEndColor: uiColor.border1,
+    borderInlineEndStyle: "solid",
+    borderInlineEndWidth: 1,
     display: "flex",
     flexDirection: "column",
-    marginRight: spacing["4"],
-    paddingRight: spacing["4"],
+    marginInlineEnd: spacing["4"],
+    paddingInlineEnd: spacing["4"],
     rowGap: spacing["0.5"],
   },
   statItemLast: {
-    borderRightWidth: 0,
-    marginRight: spacing["0"],
-    paddingRight: spacing["0"],
+    borderInlineEndWidth: 0,
+    marginInlineEnd: spacing["0"],
+    paddingInlineEnd: spacing["0"],
   },
   statValue: {
     color: uiColor.text2,
@@ -426,16 +431,20 @@ const styles = stylex.create({
   },
 });
 
-function lastActive(iso: string | null): string {
+type TFunction = ReturnType<typeof useLingui>["t"];
+
+function lastActive(iso: string | null, t: TFunction): string {
   if (!iso) return "—";
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return "—";
-  const days = Math.floor((Date.now() - t) / 86_400_000);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 30) return `${days}d ago`;
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-  return `${Math.floor(days / 365)}y ago`;
+  const parsed = Date.parse(iso);
+  if (Number.isNaN(parsed)) return "—";
+  const days = Math.floor((Date.now() - parsed) / 86_400_000);
+  if (days <= 0) return t`today`;
+  if (days === 1) return t`yesterday`;
+  if (days < 30) return t`${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (days < 365) return t`${months}mo ago`;
+  const years = Math.floor(days / 365);
+  return t`${years}y ago`;
 }
 
 function Stat({
@@ -502,13 +511,14 @@ function PublicationArticleRowSkeleton({
 }
 
 function PublicationPostsSkeleton() {
+  const { t } = useLingui();
   return (
     <Flex
       direction="column"
       gap="6xl"
       style={styles.writing}
       aria-busy="true"
-      aria-label="Loading recent writing"
+      aria-label={t`Loading recent writing`}
     >
       <div>
         <PublicationFeatureSkeleton />
@@ -529,8 +539,9 @@ function PublicationPostsSkeleton() {
  * while the route loader awaits header + documents + social proof.
  */
 function PublicationPending() {
+  const { t } = useLingui();
   return (
-    <div aria-busy="true" aria-label="Loading publication">
+    <div aria-busy="true" aria-label={t`Loading publication`}>
       <div {...stylex.props(styles.hero)}>
         <div {...stylex.props(styles.heroInner)}>
           <div {...stylex.props(styles.heroTop)}>
@@ -579,7 +590,7 @@ function PublicationProfile() {
     return (
       <ReaderContent>
         <div {...stylex.props(styles.emptyNote)}>
-          We couldn’t find that publication.
+          <Trans>We couldn’t find that publication.</Trans>
         </div>
       </ReaderContent>
     );
@@ -615,6 +626,7 @@ function PublicationProfileContent({
   embedMeta: PublicationEmbedMeta | null | undefined;
   socialProof: PublicationSocialProof | undefined;
 }) {
+  const { t } = useLingui();
   const { publication: pub, owner } = header;
   const queryClient = useQueryClient();
   const { data: session } = useSuspenseQuery(user.getSessionQueryOptions);
@@ -760,7 +772,7 @@ function PublicationProfileContent({
                 <IconButton
                   variant="secondary"
                   size="md"
-                  label="Open publication"
+                  label={t`Open publication`}
                   onPress={() => {
                     window.open(pub.url, "_blank", "noopener,noreferrer");
                   }}
@@ -783,15 +795,20 @@ function PublicationProfileContent({
           </div>
 
           {pub.description ? (
-            <p {...stylex.props(styles.heroDesc)}>{pub.description}</p>
+            <p dir="auto" {...stylex.props(styles.heroDesc)}>
+              {pub.description}
+            </p>
           ) : null}
 
           <div {...stylex.props(styles.statStrip)}>
-            <Stat value={formatReaders(pub.subscriberCount)} label="Readers" />
-            <Stat value={String(pub.documentCount)} label="Posts" />
             <Stat
-              value={lastActive(pub.lastDocumentAt ?? null)}
-              label="Last active"
+              value={formatReaders(pub.subscriberCount)}
+              label={t`Readers`}
+            />
+            <Stat value={String(pub.documentCount)} label={t`Posts`} />
+            <Stat
+              value={lastActive(pub.lastDocumentAt ?? null, t)}
+              label={t`Last active`}
               isLast
             />
           </div>
@@ -833,7 +850,7 @@ function PublicationProfileContent({
                 <IconButton
                   variant="secondary"
                   size="md"
-                  label="Open publication"
+                  label={t`Open publication`}
                   onPress={() => {
                     window.open(pub.url, "_blank", "noopener,noreferrer");
                   }}
@@ -851,7 +868,7 @@ function PublicationProfileContent({
           <PublicationLatestNote publicationUri={uri} />
           {documents.length === 0 ? (
             <div {...stylex.props(styles.emptyNote)}>
-              No posts indexed from this publication yet.
+              <Trans>No posts indexed from this publication yet.</Trans>
             </div>
           ) : (
             <div>
@@ -881,10 +898,12 @@ function PublicationProfileContent({
                 {...stylex.props(styles.loadSentinel)}
               />
               {loadingMore ? (
-                <div {...stylex.props(styles.endNote)}>Loading more…</div>
+                <div {...stylex.props(styles.endNote)}>
+                  <Trans>Loading more…</Trans>
+                </div>
               ) : nextOffset == null ? (
                 <div {...stylex.props(styles.endNote)}>
-                  You&apos;ve reached the end.
+                  <Trans>You&apos;ve reached the end.</Trans>
                 </div>
               ) : null}
             </div>
@@ -905,6 +924,7 @@ function MarkAllReadButton({
   closeSignal: number;
   onConfirm: () => void;
 }) {
+  const { t } = useLingui();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -916,15 +936,19 @@ function MarkAllReadButton({
       isOpen={open}
       onOpenChange={setOpen}
       trigger={
-        <IconButton variant="secondary" size="md" label="Mark all as read">
+        <IconButton variant="secondary" size="md" label={t`Mark all as read`}>
           <CheckCheck size={18} />
         </IconButton>
       }
     >
-      <AlertDialogHeader>Mark all as read?</AlertDialogHeader>
+      <AlertDialogHeader>
+        <Trans>Mark all as read?</Trans>
+      </AlertDialogHeader>
       <AlertDialogDescription>
-        Every unread article from this publication will be marked read. This
-        can’t be undone.
+        <Trans>
+          Every unread article from this publication will be marked read. This
+          can’t be undone.
+        </Trans>
       </AlertDialogDescription>
       <AlertDialogFooter>
         <AlertDialogCancelButton isDisabled={isPending} />
@@ -933,7 +957,7 @@ function MarkAllReadButton({
           isPending={isPending}
           onPress={onConfirm}
         >
-          Mark all as read
+          <Trans>Mark all as read</Trans>
         </AlertDialogActionButton>
       </AlertDialogFooter>
     </AlertDialog>

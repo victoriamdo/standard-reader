@@ -9,6 +9,7 @@ import {
   Breadcrumbs as AriaBreadcrumbs,
 } from "react-aria-components";
 
+import { directionalIconStyles } from "../directional-icon/styles";
 import { uiColor } from "../theme/color.stylex";
 import { gap } from "../theme/semantic-spacing.stylex";
 import type { StyleXComponentProps } from "../theme/types";
@@ -21,12 +22,12 @@ const styles = stylex.create({
     alignItems: "center",
     display: "flex",
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
     paddingBottom: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
     paddingTop: 0,
   },
   breadcrumb: {
@@ -101,7 +102,7 @@ export function Breadcrumb({ style, ...props }: BreadcrumbProps) {
       <ChevronRight
         size={16}
         aria-hidden="true"
-        {...stylex.props(styles.separator)}
+        {...stylex.props(directionalIconStyles.mirror, styles.separator)}
       />
     </AriaBreadcrumb>
   );

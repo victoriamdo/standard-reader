@@ -47,8 +47,8 @@ const styles = stylex.create({
         fontWeight["medium"],
     },
     paddingBottom: verticalSpace["xxs"],
-    paddingLeft: horizontalSpace["xs"],
-    paddingRight: horizontalSpace["xs"],
+    paddingInlineStart: horizontalSpace["xs"],
+    paddingInlineEnd: horizontalSpace["xs"],
     paddingTop: verticalSpace["xxs"],
   },
   sm: { minHeight: sizeSpace["2xl"] },
@@ -80,8 +80,8 @@ const styles = stylex.create({
     transitionProperty: "background-color",
     transitionTimingFunction: "ease-in-out",
     paddingBottom: verticalSpace["md"],
-    paddingLeft: horizontalSpace["xl"],
-    paddingRight: horizontalSpace["xl"],
+    paddingInlineStart: horizontalSpace["xl"],
+    paddingInlineEnd: horizontalSpace["xl"],
     paddingTop: verticalSpace["md"],
 
     /* eslint-disable-next-line @stylexjs/no-legacy-contextual-styles, @stylexjs/valid-styles */

@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import { lingui } from "@lingui/vite-plugin";
 import babel from "@rolldown/plugin-babel";
 import stylexPlugin from "@stylexjs/unplugin/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -216,6 +217,9 @@ const config = defineConfig({
         ],
       },
     }),
+    // Compiles `.po` catalogs imported from `src/locales/**` into runtime
+    // message bundles.
+    lingui(),
     // React Compiler (facebook/react#36173) via @rolldown/plugin-babel +
     // reactCompilerPreset from @vitejs/plugin-react.
     // Preserve the plugin's default `node_modules` exclusion (the compiler
@@ -224,6 +228,15 @@ const config = defineConfig({
     // "deoptimised styling" notes) while also skipping the vendored
     // hip-ui design system, which is copy-and-own and already linted.
     babel({
+      // Lingui macros (`Trans`, `t`, `Plural`, …) are compile-time only — this
+      // plugin rewrites them into runtime `@lingui/react` calls. Babel runs
+      // plugins before presets, so macros are gone before React Compiler sees
+      // the tree.
+      //
+      // NOTE: this shares the `exclude` below, so macros do NOT work inside
+      // `src/design-system/`. `lingui.config.ts` excludes that directory from
+      // extraction to keep the two in agreement.
+      plugins: ["@lingui/babel-plugin-lingui-macro"],
       presets: [
         reactCompilerPreset({
           compilationMode: "infer",

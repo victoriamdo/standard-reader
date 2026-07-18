@@ -301,7 +301,7 @@ const styles = stylex.create({
     display: "inline-flex",
     width: "1.05em",
     height: "1.05em",
-    marginRight: "0.25em",
+    marginInlineEnd: "0.25em",
     verticalAlign: "-0.2em",
   },
 });

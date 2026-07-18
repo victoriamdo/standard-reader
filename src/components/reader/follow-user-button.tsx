@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Plus } from "lucide-react";
 
@@ -87,7 +88,7 @@ export function FollowUserButton({
       onPress={onPress}
     >
       {icon}
-      {following ? "Following" : "Follow"}
+      {following ? <Trans>Following</Trans> : <Trans>Follow</Trans>}
     </Button>
   );
 }

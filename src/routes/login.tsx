@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -11,6 +12,7 @@ import { useEffect, useState } from "react";
 import { Link as AriaLink } from "react-aria-components";
 import { z } from "zod";
 
+import { DirectionalIcon } from "#/design-system/directional-icon";
 import { auth } from "#/integrations/tanstack-query/api-auth.functions";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
@@ -109,7 +111,7 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "row",
     justifyContent: "flex-start",
-    textAlign: "left",
+    textAlign: "start",
     width: "100%",
   },
   savedHandleText: {
@@ -130,13 +132,13 @@ const styles = stylex.create({
   },
   backButton: {
     position: "absolute",
-    left: horizontalSpace["3xl"],
+    insetInlineStart: horizontalSpace["3xl"],
     top: verticalSpace["3xl"],
   },
   legalLinks: {
     paddingBottom: verticalSpace["4xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
 });
@@ -174,6 +176,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function AuthPage() {
+  const { t } = useLingui();
   const {
     redirect: redirectTo,
     intent,
@@ -252,11 +255,11 @@ function AuthPage() {
       <IconButton
         variant="secondary"
         size="md"
-        label="Back"
+        label={t`Back`}
         onPress={handleBack}
         style={styles.backButton}
       >
-        <ArrowLeft size={18} />
+        <DirectionalIcon as={ArrowLeft} size={18} />
       </IconButton>
       <div {...stylex.props(styles.container)}>
         <Form style={styles.content}>
@@ -272,22 +275,29 @@ function AuthPage() {
                 Standard Reader
               </Text>
               <Body variant="secondary">
-                {intent === "subscribe"
-                  ? "Sign in with Bluesky to subscribe. We only ask permission to add this follow to your account."
-                  : "Sign in with your Atmosphere account."}
+                {intent === "subscribe" ? (
+                  <Trans>
+                    Sign in with Bluesky to subscribe. We only ask permission to
+                    add this follow to your account.
+                  </Trans>
+                ) : (
+                  <Trans>Sign in with your Atmosphere account.</Trans>
+                )}
               </Body>
             </Flex>
 
             {error === "oauth_failed" ? (
               <Text size="sm" variant="critical">
-                Sign-in failed. Try again.
+                <Trans>Sign-in failed. Try again.</Trans>
               </Text>
             ) : null}
 
             {error === "scope" ? (
               <Text size="sm" variant="critical">
-                Sign in again to refresh your permissions — your session
-                doesn&apos;t include save-for-later yet.
+                <Trans>
+                  Sign in again to refresh your permissions — your session
+                  doesn&apos;t include save-for-later yet.
+                </Trans>
               </Text>
             ) : null}
 
@@ -317,7 +327,10 @@ function AuthPage() {
                       <Text size="base" style={styles.savedHandleText}>
                         {saved.handle}
                       </Text>
-                      <ChevronRight {...stylex.props(styles.savedHandleIcon)} />
+                      <DirectionalIcon
+                        as={ChevronRight}
+                        style={styles.savedHandleIcon}
+                      />
                     </AriaLink>
                   ))}
                 </Flex>
@@ -330,8 +343,8 @@ function AuthPage() {
               <Flex direction="column" gap="md">
                 <UserHandleAutocomplete
                   size="lg"
-                  placeholder="your.handle.com"
-                  aria-label="Atmosphere account"
+                  placeholder={t`your.handle.com`}
+                  aria-label={t`Atmosphere account`}
                   value={inputValue}
                   onValueChange={(value) => {
                     setInputValue(value);
@@ -359,7 +372,7 @@ function AuthPage() {
                   isDisabled={loginMutation.isPending}
                   style={styles.signupButton}
                 >
-                  Switch account
+                  <Trans>Switch account</Trans>
                 </Button>
               )}
               {view === "login" && (
@@ -375,7 +388,7 @@ function AuthPage() {
                   }}
                   style={styles.loginButton}
                 >
-                  Log in
+                  <Trans>Log in</Trans>
                 </Button>
               )}
               <AlertDialog
@@ -388,29 +401,35 @@ function AuthPage() {
                     isDisabled={loginMutation.isPending}
                     style={styles.signupButton}
                   >
-                    Create account
+                    <Trans>Create account</Trans>
                   </Button>
                 }
               >
-                <AlertDialogHeader>Are you sure?</AlertDialogHeader>
+                <AlertDialogHeader>
+                  <Trans>Are you sure?</Trans>
+                </AlertDialogHeader>
                 <AlertDialogDescription>
-                  You can use any Atmosphere account, including accounts from
-                  Bluesky, Tangled, Semble, and all the{" "}
-                  <Link
-                    href="https://atstore.fyi"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    other apps.
-                  </Link>
+                  <Trans>
+                    You can use any Atmosphere account, including accounts from
+                    Bluesky, Tangled, Semble, and all the{" "}
+                    <Link
+                      href="https://atstore.fyi"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      other apps.
+                    </Link>
+                  </Trans>
                 </AlertDialogDescription>
                 <AlertDialogFooter>
-                  <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
+                  <AlertDialogCancelButton>
+                    <Trans>Cancel</Trans>
+                  </AlertDialogCancelButton>
                   <AlertDialogActionButton
                     isPending={handleSignup.isPending}
                     onPress={() => handleSignup.mutate()}
                   >
-                    Continue
+                    <Trans>Continue</Trans>
                   </AlertDialogActionButton>
                 </AlertDialogFooter>
               </AlertDialog>

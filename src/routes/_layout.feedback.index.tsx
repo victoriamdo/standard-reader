@@ -1,5 +1,8 @@
 "use client";
 
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   useMutation,
@@ -23,7 +26,7 @@ import {
 import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { FeedbackDialog } from "#/components/feedback/feedback-dialog";
-import { formatRelativeTime, initials } from "#/components/reader/format";
+import { initials } from "#/components/reader/format";
 import { ReaderContent } from "#/components/reader/primitives";
 import { Avatar } from "#/design-system/avatar";
 import { Button } from "#/design-system/button";
@@ -63,6 +66,7 @@ import { user } from "#/integrations/tanstack-query/api-user.functions";
 import type { UserinputDiscussion } from "#/integrations/tanstack-query/api-userinput.functions";
 import { userinputApi } from "#/integrations/tanstack-query/api-userinput.functions";
 import { isAtprotoScopeMissingError } from "#/lib/atproto/scope-error";
+import { useFormatters } from "#/lib/formatters";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { pageSocialMeta } from "#/lib/site-metadata";
 import type { FeedbackTag } from "#/lib/userinput/space";
@@ -85,11 +89,13 @@ export const Route = createFileRoute("/_layout/feedback/")({
   component: FeedbackPage,
   errorComponent: ({ error }) => (
     <Message>
-      Could not load feedback{" "}
-      <span {...stylex.props(styles.mono)}>
-        ({error instanceof Error ? "500" : "error"})
-      </span>
-      . Try again in a moment.
+      <Trans>
+        Could not load feedback{" "}
+        <span {...stylex.props(styles.mono)}>
+          ({error instanceof Error ? "500" : "error"})
+        </span>
+        . Try again in a moment.
+      </Trans>
     </Message>
   ),
 });
@@ -100,16 +106,16 @@ const TAG_ICON: Record<FeedbackTag, React.ReactNode> = {
   question: <HelpCircle size={13} strokeWidth={2} />,
 };
 
-const TAG_LABEL: Record<FeedbackTag, string> = {
-  bug: "Bug",
-  feature: "Feature request",
-  question: "Question",
+const TAG_LABEL: Record<FeedbackTag, MessageDescriptor> = {
+  bug: msg`Bug`,
+  feature: msg`Feature request`,
+  question: msg`Question`,
 };
 
-const TAG_SECTION: Record<FeedbackTag, string> = {
-  bug: "Bugs",
-  feature: "Feature requests",
-  question: "Questions",
+const TAG_SECTION: Record<FeedbackTag, MessageDescriptor> = {
+  bug: msg`Bugs`,
+  feature: msg`Feature requests`,
+  question: msg`Questions`,
 };
 
 const styles = stylex.create({
@@ -119,8 +125,8 @@ const styles = stylex.create({
   // (1320px) container — matches the feel of an article page.
   page: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "46rem",
     width: "100%",
   },
@@ -159,8 +165,8 @@ const styles = stylex.create({
     letterSpacing: tracking.tight,
     lineHeight: lineHeight.none,
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
   },
   dek: {
@@ -169,8 +175,8 @@ const styles = stylex.create({
     fontSize: fontSize.lg,
     lineHeight: lineHeight.sm,
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
     maxWidth: "54ch",
     paddingTop: spacing["3.5"],
@@ -276,15 +282,15 @@ const styles = stylex.create({
     letterSpacing: tracking.tight,
     lineHeight: lineHeight.sm,
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
   },
   groupHeadCount: {
     color: uiColor.text1,
     fontFamily: fontFamily.mono,
     fontSize: fontSize.xs,
-    marginLeft: "auto",
+    marginInlineStart: "auto",
   },
 
   // ── Card ───────────────────────────────────────────────────────────
@@ -306,8 +312,8 @@ const styles = stylex.create({
     flexDirection: "column",
     fontFamily: fontFamily.sans,
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["5xl"],
-    paddingRight: horizontalSpace["5xl"],
+    paddingInlineStart: horizontalSpace["5xl"],
+    paddingInlineEnd: horizontalSpace["5xl"],
     paddingTop: verticalSpace["3xl"],
     rowGap: gap["2xl"],
     transitionDuration: animationDuration.default,
@@ -329,8 +335,8 @@ const styles = stylex.create({
     letterSpacing: tracking.tight,
     lineHeight: lineHeight.sm,
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
     minWidth: 0,
   },
@@ -348,8 +354,8 @@ const styles = stylex.create({
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,
     paddingBottom: verticalSpace.xs,
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.lg,
     paddingTop: verticalSpace.xs,
     whiteSpace: "nowrap",
   },
@@ -375,8 +381,8 @@ const styles = stylex.create({
     fontSize: fontSize.sm,
     lineHeight: lineHeight.base,
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
     whiteSpace: "pre-line",
   },
@@ -440,8 +446,8 @@ const styles = stylex.create({
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
     paddingBottom: verticalSpace.xs,
-    paddingLeft: horizontalSpace.sm,
-    paddingRight: horizontalSpace.sm,
+    paddingInlineStart: horizontalSpace.sm,
+    paddingInlineEnd: horizontalSpace.sm,
     paddingTop: verticalSpace.xs,
     transitionDuration: animationDuration.default,
     transitionProperty: "background-color, color",
@@ -476,8 +482,8 @@ const styles = stylex.create({
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
     paddingBottom: verticalSpace.xs,
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.md,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.md,
     paddingTop: verticalSpace.xs,
     transitionDuration: animationDuration.default,
     transitionProperty: "background-color, border-color, color, transform",
@@ -518,13 +524,13 @@ const styles = stylex.create({
     fontStyle: "italic",
     lineHeight: lineHeight.sm,
     marginBottom: 0,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     marginTop: 0,
     maxWidth: "44ch",
     paddingBottom: spacing["20"],
-    paddingLeft: spacing["5"],
-    paddingRight: spacing["5"],
+    paddingInlineStart: spacing["5"],
+    paddingInlineEnd: spacing["5"],
     paddingTop: spacing["20"],
     textAlign: "center",
   },
@@ -546,8 +552,8 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["5xl"],
-    paddingRight: horizontalSpace["5xl"],
+    paddingInlineStart: horizontalSpace["5xl"],
+    paddingInlineEnd: horizontalSpace["5xl"],
     paddingTop: verticalSpace["3xl"],
     rowGap: gap["2xl"],
   },
@@ -591,9 +597,11 @@ function tagFor(discussion: UserinputDiscussion): FeedbackTag {
  * userinput.app. "Implemented" reads oddly for a question, so questions get
  * "Answered" instead. Returns `null` for every other status (or none).
  */
-function implementedLabel(discussion: UserinputDiscussion): string | null {
+function implementedLabel(
+  discussion: UserinputDiscussion,
+): MessageDescriptor | null {
   if (discussion.status !== "implemented") return null;
-  return tagFor(discussion) === "question" ? "Answered" : "Implemented";
+  return tagFor(discussion) === "question" ? msg`Answered` : msg`Implemented`;
 }
 
 function DiscussionCard({
@@ -609,11 +617,13 @@ function DiscussionCard({
   serverUpvotedUris: Set<string>;
   onUpvote: (discussion: UserinputDiscussion) => void;
 }) {
+  const fmt = useFormatters();
+  const { t, i18n } = useLingui();
   const tag = tagFor(discussion);
   const statusLabel = implementedLabel(discussion);
   const author = discussion.author;
-  const authorName = author.displayName ?? author.handle ?? "Anonymous";
-  const isAnon = authorName === "Anonymous";
+  const isAnon = !author.displayName && !author.handle;
+  const authorName = author.displayName ?? author.handle ?? t`Anonymous`;
   const upvoted = upvotedUris.has(discussion.uri);
   // `upvoteCount` is the network total from constellation, which already
   // includes the viewer's upvote when the server seeded `viewerUpvotedUris`.
@@ -630,8 +640,10 @@ function DiscussionCard({
       (isOptimisticRemove ? 1 : 0),
   );
   const title = signedIn
-    ? `${count} upvote${count === 1 ? "" : "s"} — click to ${upvoted ? "undo" : "upvote"}`
-    : `${count} upvote${count === 1 ? "" : "s"} — sign in to upvote`;
+    ? upvoted
+      ? t`${plural(count, { one: "# upvote", other: "# upvotes" })} — click to undo`
+      : t`${plural(count, { one: "# upvote", other: "# upvotes" })} — click to upvote`
+    : t`${plural(count, { one: "# upvote", other: "# upvotes" })} — sign in to upvote`;
   return (
     <article {...stylex.props(styles.card)}>
       <div {...stylex.props(styles.cardHead)}>
@@ -640,12 +652,12 @@ function DiscussionCard({
           {statusLabel ? (
             <span {...stylex.props(styles.tagPill, styles.tagImplemented)}>
               <CheckCircle2 size={13} strokeWidth={2} />
-              {statusLabel}
+              {i18n._(statusLabel)}
             </span>
           ) : (
             <span {...stylex.props(styles.tagPill, TAG_PILL_STYLE[tag])}>
               {TAG_ICON[tag]}
-              {TAG_LABEL[tag]}
+              {i18n._(TAG_LABEL[tag])}
             </span>
           )}
         </Flex>
@@ -673,7 +685,7 @@ function DiscussionCard({
             ·
           </span>
           <span {...stylex.props(styles.when)}>
-            {formatRelativeTime(discussion.createdAt)}
+            {fmt.relativeTime(discussion.createdAt)}
           </span>
         </Flex>
         <div {...stylex.props(styles.footRight)}>
@@ -683,7 +695,7 @@ function DiscussionCard({
             rel="noopener noreferrer"
             style={styles.openLink}
           >
-            <ExternalLink size={13} strokeWidth={2} /> Open
+            <ExternalLink size={13} strokeWidth={2} /> <Trans>Open</Trans>
           </Link>
           <button
             type="button"
@@ -750,11 +762,12 @@ function DiscussionCardSkeleton() {
 }
 
 function DiscussionListSkeleton() {
+  const { t } = useLingui();
   return (
     <div
       {...stylex.props(styles.list)}
       aria-busy="true"
-      aria-label="Loading feedback"
+      aria-label={t`Loading feedback`}
     >
       {Array.from({ length: 4 }).map((_, i) => (
         <DiscussionCardSkeleton key={i} />
@@ -771,11 +784,11 @@ type SortMode = "top" | "new";
 
 type TagFilter = FeedbackTag | "all";
 
-const TAG_FILTER_OPTIONS: Array<{ id: TagFilter; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "bug", label: "Bugs" },
-  { id: "feature", label: "Feature requests" },
-  { id: "question", label: "Questions" },
+const TAG_FILTER_OPTIONS: Array<{ id: TagFilter; label: MessageDescriptor }> = [
+  { id: "all", label: msg`All` },
+  { id: "bug", label: msg`Bugs` },
+  { id: "feature", label: msg`Feature requests` },
+  { id: "question", label: msg`Questions` },
 ];
 
 /**
@@ -785,6 +798,7 @@ const TAG_FILTER_OPTIONS: Array<{ id: TagFilter; label: string }> = [
  * non-blocking loader).
  */
 function FeedbackDiscussions({ signedIn }: { signedIn: boolean }) {
+  const { t, i18n } = useLingui();
   const [tagFilter, setTagFilter] = useState<TagFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("top");
   const [search, setSearch] = useState("");
@@ -965,30 +979,36 @@ function FeedbackDiscussions({ signedIn }: { signedIn: boolean }) {
     body = (
       <Message>
         <Flex direction="column" gap="md">
-          <span>No feedback yet.</span>
+          <span>
+            <Trans>No feedback yet.</Trans>
+          </span>
           <span {...stylex.props(styles.messageEm)}>
-            Be the first to share a bug, idea, or question.
+            <Trans>Be the first to share a bug, idea, or question.</Trans>
           </span>
         </Flex>
       </Message>
     );
   } else if (discussions.length === 0) {
-    body = <Message>No feedback matches your filters.</Message>;
+    body = (
+      <Message>
+        <Trans>No feedback matches your filters.</Trans>
+      </Message>
+    );
   } else if (showGroups) {
     body = (
       <div {...stylex.props(styles.list)}>
-        {STANDARD_READER_FEEDBACK_TAGS.map((t, i) => {
-          const items = grouped[t.value];
+        {STANDARD_READER_FEEDBACK_TAGS.map((option, i) => {
+          const items = grouped[option.value];
           if (items.length === 0) return null;
           const isLast = i === STANDARD_READER_FEEDBACK_TAGS.length - 1;
           return (
             <section
-              key={t.value}
+              key={option.value}
               {...stylex.props(styles.section, isLast && styles.sectionLast)}
             >
               <div {...stylex.props(styles.groupHead)}>
                 <h2 {...stylex.props(styles.groupHeadTitle)}>
-                  {TAG_SECTION[t.value]}
+                  {i18n._(TAG_SECTION[option.value])}
                 </h2>
                 <span {...stylex.props(styles.groupHeadCount)}>
                   {items.length}
@@ -1033,8 +1053,8 @@ function FeedbackDiscussions({ signedIn }: { signedIn: boolean }) {
       {allDiscussions.length === 0 ? null : (
         <div {...stylex.props(styles.toolbar)}>
           <SearchField
-            aria-label="Search feedback"
-            placeholder="Search feedback..."
+            aria-label={t`Search feedback`}
+            placeholder={t`Search feedback...`}
             size="lg"
             variant="secondary"
             style={styles.toolbarSearch}
@@ -1042,7 +1062,7 @@ function FeedbackDiscussions({ signedIn }: { signedIn: boolean }) {
             onChange={setSearch}
           />
           <Select
-            aria-label="Filter by tag"
+            aria-label={t`Filter by tag`}
             size="lg"
             variant="secondary"
             selectedKey={tagFilter}
@@ -1053,13 +1073,17 @@ function FeedbackDiscussions({ signedIn }: { signedIn: boolean }) {
             }}
           >
             {TAG_FILTER_OPTIONS.map((opt) => (
-              <SelectItem key={opt.id} id={opt.id} textValue={opt.label}>
-                {opt.label}
+              <SelectItem
+                key={opt.id}
+                id={opt.id}
+                textValue={i18n._(opt.label)}
+              >
+                {i18n._(opt.label)}
               </SelectItem>
             ))}
           </Select>
           <SegmentedControl
-            aria-label="Sort by"
+            aria-label={t`Sort by`}
             size="lg"
             style={styles.toolbarSort}
             selectedKeys={new Set([sortMode])}
@@ -1071,16 +1095,16 @@ function FeedbackDiscussions({ signedIn }: { signedIn: boolean }) {
             }}
           >
             <SegmentedControlItem key="top" id="top">
-              <ArrowUp size={13} strokeWidth={2} /> Top
+              <ArrowUp size={13} strokeWidth={2} /> <Trans>Top</Trans>
             </SegmentedControlItem>
             <SegmentedControlItem key="new" id="new">
-              New
+              <Trans>New</Trans>
             </SegmentedControlItem>
           </SegmentedControl>
           <IconButton
             size="lg"
             variant="secondary"
-            label={hideImplemented ? "Show implemented" : "Hide implemented"}
+            label={hideImplemented ? t`Show implemented` : t`Hide implemented`}
             style={styles.toolbarToggle}
             onPress={() => setHideImplemented((v) => !v)}
           >
@@ -1108,19 +1132,23 @@ function FeedbackPage() {
       <div {...stylex.props(styles.page)}>
         <header {...stylex.props(styles.masthead)}>
           <div>
-            <h1 {...stylex.props(styles.title)}>Feedback</h1>
+            <h1 {...stylex.props(styles.title)}>
+              <Trans>Feedback</Trans>
+            </h1>
             <p {...stylex.props(styles.dek)}>
-              Bug reports, feature requests, and questions for Standard Reader.
-              Feedback lives on{" "}
-              <Link
-                href="https://userinput.app/#/s/did:plc:f4os2wz5fjl56xpwcvtnqu7m/3mprrc56lgd2e"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={styles.dekLink}
-              >
-                userinput.app
-              </Link>
-              .
+              <Trans>
+                Bug reports, feature requests, and questions for Standard
+                Reader. Feedback lives on{" "}
+                <Link
+                  href="https://userinput.app/#/s/did:plc:f4os2wz5fjl56xpwcvtnqu7m/3mprrc56lgd2e"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.dekLink}
+                >
+                  userinput.app
+                </Link>
+                .
+              </Trans>
             </p>
           </div>
           {signedIn ? (
@@ -1131,7 +1159,8 @@ function FeedbackPage() {
                 onPress={() => setDialogOpen(true)}
                 style={styles.submitButton}
               >
-                <MessageSquarePlus size={16} strokeWidth={2} /> Submit feedback
+                <MessageSquarePlus size={16} strokeWidth={2} />{" "}
+                <Trans>Submit feedback</Trans>
               </Button>
             </div>
           ) : null}

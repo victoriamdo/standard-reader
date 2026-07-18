@@ -51,22 +51,22 @@ const styles = stylex.create({
     },
   },
   addonSm: {
-    paddingLeft: { ":first-child": horizontalSpace["sm"] },
-    paddingRight: {
+    paddingInlineStart: { ":first-child": horizontalSpace["sm"] },
+    paddingInlineEnd: {
       ":first-child": horizontalSpace["xs"],
       ":last-child": horizontalSpace["xs"],
     },
   },
   addonMd: {
-    paddingLeft: { ":first-child": horizontalSpace["lg"] },
-    paddingRight: {
+    paddingInlineStart: { ":first-child": horizontalSpace["lg"] },
+    paddingInlineEnd: {
       ":first-child": horizontalSpace["md"],
       ":last-child": horizontalSpace["md"],
     },
   },
   addonLg: {
-    paddingLeft: { ":first-child": horizontalSpace["xl"] },
-    paddingRight: {
+    paddingInlineStart: { ":first-child": horizontalSpace["xl"] },
+    paddingInlineEnd: {
       ":first-child": horizontalSpace["md"],
       ":last-child": horizontalSpace["md"],
     },
@@ -89,8 +89,8 @@ const styles = stylex.create({
     borderRadius: radius.md,
     borderWidth: 0,
     paddingBottom: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
     paddingTop: 0,
 
     cornerShape: "squircle",
@@ -326,24 +326,24 @@ const styles = stylex.create({
 
   inputSizeSm: {
     fontSize: fontSize["xs"],
-    paddingLeft: {
+    paddingInlineStart: {
       ":first-child": horizontalSpace["md"],
     },
-    paddingRight: horizontalSpace["xs"],
+    paddingInlineEnd: horizontalSpace["xs"],
   },
   inputSizeMd: {
     fontSize: fontSize["sm"],
-    paddingLeft: {
+    paddingInlineStart: {
       ":first-child": horizontalSpace["md"],
     },
-    paddingRight: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
   },
   inputSizeLg: {
     fontSize: fontSize["base"],
-    paddingLeft: {
+    paddingInlineStart: {
       ":first-child": horizontalSpace["xl"],
     },
-    paddingRight: horizontalSpace["xl"],
+    paddingInlineEnd: horizontalSpace["xl"],
   },
   wrapperSizeSm: {
     height: sizeSpace["xl"],
@@ -362,8 +362,8 @@ const styles = stylex.create({
   horizontalLabelText: {
     flexGrow: 1,
     minWidth: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingInlineStart: 0,
+    paddingInlineEnd: 0,
   },
   horizontalLabelTextSm: {
     lineHeight: sizeSpace["xl"],
@@ -377,12 +377,12 @@ const styles = stylex.create({
     lineHeight: sizeSpace["4xl"],
   },
   label: {
-    paddingLeft: horizontalSpace["xs"],
-    paddingRight: horizontalSpace["xs"],
+    paddingInlineStart: horizontalSpace["xs"],
+    paddingInlineEnd: horizontalSpace["xs"],
   },
   additionalText: {
-    paddingLeft: horizontalSpace["md"],
-    paddingRight: horizontalSpace["md"],
+    paddingInlineStart: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
   },
   required: {
     color: criticalColor.text1,

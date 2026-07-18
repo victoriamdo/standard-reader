@@ -44,8 +44,8 @@ const styles = stylex.create({
     boxSizing: "border-box",
     display: "flex",
     paddingBottom: verticalSpace["xs"],
-    paddingLeft: horizontalSpace["xl"],
-    paddingRight: horizontalSpace["xl"],
+    paddingInlineStart: horizontalSpace["xl"],
+    paddingInlineEnd: horizontalSpace["xl"],
     paddingTop: verticalSpace["xs"],
 
     height: {

@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { FileText } from "lucide-react";
@@ -36,12 +37,14 @@ export function SifaResumeChip({
   style?: stylex.StyleXStyles;
   variant?: "badge" | "icon";
 }) {
+  const { t } = useLingui();
+
   if (variant === "icon") {
     return (
       <IconButton
         variant="secondary"
         size="md"
-        label="Resume"
+        label={t`Resume`}
         style={style}
         onPress={() => openResume(href)}
       >
@@ -58,7 +61,7 @@ export function SifaResumeChip({
       {...stylex.props(styles.link)}
     >
       <Badge size="sm" variant="default" style={[styles.badge, style]}>
-        Resume
+        <Trans>Resume</Trans>
       </Badge>
     </a>
   );
@@ -72,12 +75,14 @@ function SifaResumeChipPlaceholder({
   style?: stylex.StyleXStyles;
   variant?: "badge" | "icon";
 }) {
+  const { t } = useLingui();
+
   if (variant === "icon") {
     return (
       <IconButton
         variant="secondary"
         size="md"
-        label="Resume"
+        label={t`Resume`}
         aria-hidden
         style={[styles.placeholder, style]}
       >
@@ -93,7 +98,7 @@ function SifaResumeChipPlaceholder({
       aria-hidden
       style={[styles.badge, styles.placeholder, style]}
     >
-      Resume
+      <Trans>Resume</Trans>
     </Badge>
   );
 }

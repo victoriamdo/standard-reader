@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
 
@@ -13,9 +14,10 @@ import {
   lineHeight,
 } from "#/design-system/theme/typography.stylex";
 import type { ArticleCard } from "#/integrations/tanstack-query/api-shapes";
+import { useFormatters } from "#/lib/formatters";
 
 import { ArticleRow } from "./cards";
-import { documentLinkParams, formatRelativeTime } from "./format";
+import { documentLinkParams } from "./format";
 
 export interface ReaderQueueRowItem {
   id: string;
@@ -46,6 +48,9 @@ const styles = stylex.create({
     fontFamily: fontFamily.sans,
     fontSize: fontSize.sm,
   },
+  bidiIsolate: {
+    unicodeBidi: "isolate",
+  },
 });
 
 export function ReaderQueueRows({
@@ -63,6 +68,8 @@ export function ReaderQueueRows({
   /** Skip per-row bookmark status fetches when rendering the save queue. */
   assumeBookmarked?: boolean;
 }) {
+  const fmt = useFormatters();
+
   return items.map((item, index) => {
     if (item.article) {
       return (
@@ -80,17 +87,19 @@ export function ReaderQueueRows({
 
     const link = documentLinkParams(item.documentUri);
     const when = item.timestamp
-      ? `${item.actionLabel} ${formatRelativeTime(item.timestamp)}`
+      ? `${item.actionLabel} ${fmt.relativeTime(item.timestamp)}`
       : item.actionLabel;
 
     return (
       <div key={item.id} {...stylex.props(styles.unavailableRow)}>
         <Flex direction="column" gap="sm">
           <span {...stylex.props(styles.unavailableTitle)}>
-            Article unavailable
+            <Trans>Article unavailable</Trans>
           </span>
           <span {...stylex.props(styles.unavailableMeta)}>
-            {when}
+            {/* Dates are numeric runs; isolate so they can't reorder against
+                the RTL label that follows the separator. */}
+            <span {...stylex.props(styles.bidiIsolate)}>{when}</span>
             {link ? (
               <>
                 {" · "}
@@ -99,7 +108,7 @@ export function ReaderQueueRows({
                   params={link}
                   {...stylex.props(styles.unavailableMeta)}
                 >
-                  View record
+                  <Trans>View record</Trans>
                 </Link>
               </>
             ) : null}

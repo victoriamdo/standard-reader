@@ -42,10 +42,10 @@ const styles = stylex.create({
   itemList: {
     listStyle: "none",
     marginBottom: 0,
-    marginLeft: 0,
-    marginRight: 0,
+    marginInlineStart: 0,
+    marginInlineEnd: 0,
     marginTop: 0,
-    paddingLeft: 0,
+    paddingInlineStart: 0,
   },
   item: {
     textDecoration: "none",
@@ -63,15 +63,15 @@ const styles = stylex.create({
     position: "relative",
     transitionDuration: animationDuration.fast,
     transitionProperty: {
-      default: "color, border-left-color",
+      default: "color, border-inline-start-color",
       "@media (prefers-reduced-motion: reduce)": "none",
     },
     transitionTimingFunction: "ease-in-out",
-    borderLeftColor: {
+    borderInlineStartColor: {
       default: uiColor.border1,
     },
-    borderLeftStyle: "solid",
-    borderLeftWidth: 1,
+    borderInlineStartStyle: "solid",
+    borderInlineStartWidth: 1,
     height: sizeSpace["3xl"],
     outline: {
       default: "none",
@@ -83,24 +83,24 @@ const styles = stylex.create({
       content: "''",
       position: "absolute",
       bottom: 0,
-      left: 0,
+      insetInlineStart: 0,
       top: 0,
       width: 1,
     },
   },
   level: (level: number) => ({
-    paddingLeft: `calc(${horizontalSpace["2xl"]} * ${level.toString()})`,
+    paddingInlineStart: `calc(${horizontalSpace["2xl"]} * ${level.toString()})`,
   }),
   active: {
     color: primaryColor.solid2,
-    borderLeftColor: primaryColor.solid1,
+    borderInlineStartColor: primaryColor.solid1,
 
     "::before": {
       backgroundColor: primaryColor.solid1,
       content: "''",
       position: "absolute",
       bottom: 0,
-      left: 0,
+      insetInlineStart: 0,
       top: 0,
       width: 1,
     },

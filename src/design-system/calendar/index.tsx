@@ -18,6 +18,7 @@ import {
   CalendarStateContext,
 } from "react-aria-components";
 
+import { DirectionalIcon } from "../directional-icon";
 import { Flex } from "../flex";
 import { IconButton } from "../icon-button";
 import { ErrorMessage } from "../label";
@@ -190,14 +191,14 @@ export function Calendar<T extends DateValue>(props: CalendarProps<T>) {
           slot="previous"
           aria-label="Previous month"
         >
-          <ChevronLeft />
+          <DirectionalIcon as={ChevronLeft} />
         </IconButton>
         <div {...stylex.props(styles.headerContent)}>
           <MonthDropdown />
           <YearDropdown />
         </div>
         <IconButton variant="secondary" slot="next" aria-label="Next month">
-          <ChevronRight />
+          <DirectionalIcon as={ChevronRight} />
         </IconButton>
       </header>
       <Flex align="start" gap="2xl">

@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { IconButtonLink } from "#/components/router-links";
 
+import { DirectionalIcon } from "../directional-icon";
 import { Flex } from "../flex";
 import type { IconButton } from "../icon-button";
 import { primaryColor, uiColor } from "../theme/color.stylex";
@@ -33,8 +34,8 @@ const smallRootStyles = stylex.create({
   root: {
     boxSizing: "border-box",
     flexGrow: 1,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "880px",
     paddingTop: {
       default: verticalSpace["3xl"],
@@ -50,8 +51,8 @@ const largeRootStyles = stylex.create({
     display: "flex",
     flexDirection: "column",
     flexGrow: 1,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "var(--page-content-max-width)",
     paddingBottom: verticalSpace["11xl"],
     paddingTop: verticalSpace["2xl"],
@@ -189,11 +190,11 @@ const stickyBaseStyles = stylex.create({
   stickyWrapper: {
     position: "sticky",
     zIndex: 10,
-    left: 0,
+    insetInlineStart: 0,
     marginBottom: verticalSpace["xl"],
-    marginLeft: `calc(-50vw + 50%)`,
-    marginRight: `calc(-50vw + 50%)`,
-    right: 0,
+    marginInlineStart: `calc(-50vw + 50%)`,
+    marginInlineEnd: `calc(-50vw + 50%)`,
+    insetInlineEnd: 0,
     top: 0,
     width: "100vw",
   },
@@ -220,20 +221,20 @@ const stickyBaseStyles = stylex.create({
     backdropFilter: "blur(32px) saturate(500%)",
     position: "absolute",
     bottom: -48,
-    left: -48,
-    right: -48,
+    insetInlineStart: -48,
+    insetInlineEnd: -48,
     top: -48,
   },
   smallStickyContent: {
     position: "relative",
     zIndex: 1,
     marginBottom: 0,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "880px",
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
   largeStickyContent: {
@@ -241,15 +242,15 @@ const stickyBaseStyles = stylex.create({
     position: "relative",
     zIndex: 1,
     marginBottom: 0,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "var(--page-content-max-width)",
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
       ":has(> [data-sidebar-layout=true])": "0 !important",
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
       ":has(> [data-sidebar-layout=true])": "0 !important",
@@ -268,11 +269,11 @@ const stickyFooterBaseStyles = stylex.create({
     position: "sticky",
     zIndex: 10,
     bottom: 0,
-    left: 0,
-    marginLeft: `calc(-50vw + 50%)`,
-    marginRight: `calc(-50vw + 50%)`,
+    insetInlineStart: 0,
+    marginInlineStart: `calc(-50vw + 50%)`,
+    marginInlineEnd: `calc(-50vw + 50%)`,
     marginTop: verticalSpace["md"],
-    right: 0,
+    insetInlineEnd: 0,
     width: "100vw",
   },
   stickyWrapperStuck: {
@@ -294,35 +295,35 @@ const stickyFooterBaseStyles = stylex.create({
     backdropFilter: "blur(32px) saturate(500%)",
     position: "absolute",
     bottom: -48,
-    left: -48,
-    right: -48,
+    insetInlineStart: -48,
+    insetInlineEnd: -48,
     top: -48,
   },
   smallStickyContent: {
     position: "relative",
     zIndex: 1,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "880px",
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
   largeStickyContent: {
     boxSizing: "border-box",
     position: "relative",
     zIndex: 1,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "var(--page-content-max-width)",
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
       ":has(> [data-sidebar-layout=true])": "0 !important",
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
       ":has(> [data-sidebar-layout=true])": "0 !important",
@@ -649,7 +650,7 @@ export const PageBackLink = ({
       variant="tertiary"
       size="lg"
     >
-      {children ?? <ArrowLeft size={20} />}
+      {children ?? <DirectionalIcon as={ArrowLeft} size={20} />}
     </IconButtonLink>
   );
 };

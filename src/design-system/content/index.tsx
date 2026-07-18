@@ -33,10 +33,10 @@ const styles = stylex.create({
     },
     ":is(*) > blockquote": {
       marginBottom: 0,
-      marginLeft: horizontalSpace["md"],
-      marginRight: 0,
+      marginInlineStart: horizontalSpace["md"],
+      marginInlineEnd: 0,
       marginTop: 0,
-      paddingLeft: horizontalSpace["3xl"],
+      paddingInlineStart: horizontalSpace["3xl"],
     },
     ":is(*) > p": {
       lineHeight: {

@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@tanstack/react-router";
 
@@ -38,8 +39,8 @@ const styles = stylex.create({
     transitionProperty: "color",
     transitionTimingFunction: "ease-in-out",
     paddingBottom: verticalSpace.xxs,
-    paddingLeft: horizontalSpace.xs,
-    paddingRight: horizontalSpace.xs,
+    paddingInlineStart: horizontalSpace.xs,
+    paddingInlineEnd: horizontalSpace.xs,
     paddingTop: verticalSpace.xxs,
   },
   linkActive: {
@@ -54,14 +55,15 @@ const styles = stylex.create({
 });
 
 export function SiteLegalLinks({ style }: { style?: stylex.StyleXStyles }) {
+  const { t } = useLingui();
   return (
-    <nav aria-label="Site" {...stylex.props(styles.nav, style)}>
+    <nav aria-label={t`Site`} {...stylex.props(styles.nav, style)}>
       <Link
         to="/about"
         {...stylex.props(styles.link)}
         activeProps={stylex.props(styles.link, styles.linkActive)}
       >
-        About
+        <Trans>About</Trans>
       </Link>
       <span {...stylex.props(styles.separator)} aria-hidden>
         ·
@@ -71,7 +73,7 @@ export function SiteLegalLinks({ style }: { style?: stylex.StyleXStyles }) {
         {...stylex.props(styles.link)}
         activeProps={stylex.props(styles.link, styles.linkActive)}
       >
-        Privacy
+        <Trans>Privacy</Trans>
       </Link>
       <span {...stylex.props(styles.separator)} aria-hidden>
         ·
@@ -92,7 +94,7 @@ export function SiteLegalLinks({ style }: { style?: stylex.StyleXStyles }) {
         rel="noopener noreferrer"
         {...stylex.props(styles.link)}
       >
-        Source
+        <Trans>Source</Trans>
       </a>
     </nav>
   );

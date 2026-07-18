@@ -39,6 +39,9 @@ const styles = stylex.create({
     color: "inherit",
     textDecorationColor: "currentColor",
     textUnderlineOffset: "2px",
+    // Handles/names are embedded mid-sentence ("Followed by @a, @b and …"), so
+    // isolate each one from the surrounding UI text's direction.
+    unicodeBidi: "isolate",
   },
   othersButton: {
     borderStyle: "none",
@@ -51,8 +54,8 @@ const styles = stylex.create({
     lineHeight: "inherit",
     textUnderlineOffset: "2px",
     paddingBottom: spacing["0"],
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["0"],
   },
   modalBody: {
@@ -61,8 +64,8 @@ const styles = stylex.create({
     maxHeight: "56vh",
     overflowY: "auto",
     paddingBottom: spacing["0"],
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["0"],
   },
   readerRow: {
@@ -76,8 +79,8 @@ const styles = stylex.create({
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
     paddingBottom: spacing["3.5"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: spacing["3.5"],
   },
   readerRowLast: {
@@ -99,6 +102,7 @@ const styles = stylex.create({
     color: uiColor.text1,
     fontFamily: fontFamily.mono,
     fontSize: fontSize.xs,
+    unicodeBidi: "isolate",
   },
 });
 

@@ -1,5 +1,8 @@
 "use client";
 
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
@@ -26,6 +29,7 @@ import {
 } from "react";
 import { useFocusRing } from "react-aria";
 
+import { DirectionalIcon } from "#/design-system/directional-icon";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import {
   listsQueryOptions,
@@ -33,6 +37,7 @@ import {
   sidebarQueryOptions,
 } from "#/integrations/tanstack-query/shell-queries";
 import { formatSidebarUnreadCount } from "#/lib/format-count";
+import { useFormatters } from "#/lib/formatters";
 import { parseInternalRoute } from "#/lib/internal-route";
 import { PageReaderProvider } from "#/lib/page-reader/page-reader-provider";
 
@@ -111,9 +116,9 @@ const styles = stylex.create({
     flexDirection: "column",
     flexShrink: 0,
     position: "sticky",
-    borderRightColor: uiColor.border1,
-    borderRightStyle: "solid",
-    borderRightWidth: 1,
+    borderInlineEndColor: uiColor.border1,
+    borderInlineEndStyle: "solid",
+    borderInlineEndWidth: 1,
     height: stylex.firstThatWorks("100dvh", "100vh"),
     // The sidebar itself doesn't scroll; its inner region does, so the foot
     // stays pinned outside the scrollport and content never hides behind it.
@@ -129,8 +134,8 @@ const styles = stylex.create({
     flexShrink: 1,
     minHeight: 0,
     overflowY: "auto",
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["8xl"],
   },
   brandLink: {
@@ -143,8 +148,8 @@ const styles = stylex.create({
     borderRadius: radius.sm,
     paddingTop: verticalSpace.xxs,
     paddingBottom: verticalSpace.xxs,
-    paddingLeft: horizontalSpace.xs,
-    paddingRight: horizontalSpace.xs,
+    paddingInlineStart: horizontalSpace.xs,
+    paddingInlineEnd: horizontalSpace.xs,
     outline: {
       default: "none",
       ":is([data-focus-visible])": `2px solid ${focusColor.ring}`,
@@ -189,8 +194,8 @@ const styles = stylex.create({
     fontWeight: fontWeight.medium,
     rowGap: gap.xl,
     paddingBottom: verticalSpace.lg,
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
     paddingTop: verticalSpace.lg,
   },
   navItemActive: {
@@ -210,8 +215,8 @@ const styles = stylex.create({
     fontFamily: fontFamily.mono,
     fontSize: "0.7rem",
     paddingBottom: verticalSpace.none,
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.md,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.md,
     paddingTop: verticalSpace.none,
   },
   sideLabel: {
@@ -223,8 +228,8 @@ const styles = stylex.create({
     letterSpacing: tracking.widest,
     textTransform: "uppercase",
     paddingBottom: verticalSpace.md,
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
     paddingTop: verticalSpace["3xl"],
   },
   sideLabelActions: {
@@ -240,8 +245,8 @@ const styles = stylex.create({
     letterSpacing: tracking.widest,
     textTransform: "uppercase",
     paddingBottom: verticalSpace.xxs,
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
     paddingTop: verticalSpace.lg,
   },
   /**
@@ -286,7 +291,7 @@ const styles = stylex.create({
   /** Header icons: muted until the header row is hovered. */
   headerIcon: {
     // No divider between grouped icon buttons.
-    borderRightColor: "transparent",
+    borderInlineEndColor: "transparent",
     color: {
       default: uiColor.text1,
       ":is([data-sidebar-label]:hover *)": uiColor.text2,
@@ -298,15 +303,15 @@ const styles = stylex.create({
     justifyContent: "center",
     height: size["2xl"],
     paddingBottom: spacing["0"],
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["0"],
     width: size["2xl"],
   },
   listPanelContent: {
     paddingBottom: spacing["0"],
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["0"],
   },
   listEmpty: {
@@ -314,8 +319,8 @@ const styles = stylex.create({
     fontFamily: fontFamily.serif,
     fontSize: fontSize.sm,
     fontStyle: "italic",
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
   },
   followList: {
     columnGap: gap.none,
@@ -341,11 +346,16 @@ const styles = stylex.create({
     display: "flex",
     rowGap: gap.lg,
     paddingBottom: verticalSpace.sm,
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
     paddingTop: verticalSpace.sm,
   },
   followName: {
+    // Isolate only, no `dir="auto"`: this is a single-line NAME in a UI row.
+    // It must stay aligned with the sidebar's nav labels (right-aligned under
+    // RTL) while still ordering its own characters correctly. `dir="auto"`
+    // here would left-align it and break the column's rhythm.
+    unicodeBidi: "isolate",
     overflow: "hidden",
     color: uiColor.text2,
     flexBasis: "0%",
@@ -369,8 +379,8 @@ const styles = stylex.create({
     textAlign: "center",
     minWidth: spacing["4"],
     paddingBottom: verticalSpace.xxs,
-    paddingLeft: horizontalSpace.sm,
-    paddingRight: horizontalSpace.sm,
+    paddingInlineStart: horizontalSpace.sm,
+    paddingInlineEnd: horizontalSpace.sm,
     paddingTop: verticalSpace.xxs,
   },
   emptyNote: {
@@ -378,16 +388,16 @@ const styles = stylex.create({
     fontFamily: fontFamily.serif,
     fontSize: fontSize.sm,
     fontStyle: "italic",
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
   },
   subscriptionsLoading: {
     gap: gap.sm,
     display: "flex",
     flexDirection: "column",
     minHeight: spacing["24"],
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
   },
   foot: {
     backgroundColor: uiColor.bgSubtle,
@@ -398,8 +408,8 @@ const styles = stylex.create({
     flexDirection: "column",
     flexShrink: 0,
     rowGap: gap.xl,
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingBottom: verticalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
@@ -415,8 +425,8 @@ const styles = stylex.create({
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
     paddingBottom: verticalSpace.xl,
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: `calc(env(safe-area-inset-top, 0px) + ${verticalSpace.xl})`,
   },
   mobileDetailTitle: {
@@ -462,8 +472,8 @@ const styles = stylex.create({
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
     paddingBottom: verticalSpace.xl,
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: `calc(env(safe-area-inset-top, 0px) + ${verticalSpace.xl})`,
   },
   mobileBarActions: {
@@ -490,10 +500,10 @@ const styles = stylex.create({
     rowGap: gap.lg,
     zIndex: 30,
     bottom: `calc(env(safe-area-inset-bottom, 0px) + ${verticalSpace["3xl"]})`,
-    left: { [DESKTOP]: "264px", default: 0 },
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
-    right: 0,
+    insetInlineStart: { [DESKTOP]: "264px", default: 0 },
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
+    insetInlineEnd: 0,
   },
   bottomNav: {
     display: { [DESKTOP]: "none", default: "flex" },
@@ -525,6 +535,11 @@ const styles = stylex.create({
     position: "absolute",
     zIndex: 0,
     height: spacing["12"],
+    // Deliberately physical: the pill is positioned by an inline
+    // `translateX(indicator.left)` measured from `el.offsetLeft`, which is
+    // always relative to the left edge even in RTL. Pairing that with a
+    // logical `insetInlineStart` would anchor right and then translate right
+    // again, putting the indicator off-screen in RTL.
     left: 0,
     top: spacing["1.5"],
   },
@@ -553,8 +568,8 @@ const styles = stylex.create({
     transitionTimingFunction: "ease",
     zIndex: 1,
     height: spacing["12"],
-    paddingLeft: horizontalSpace.xl,
-    paddingRight: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    paddingInlineEnd: horizontalSpace.xl,
   },
   bottomItemActive: { color: primaryColor.textContrast },
   bottomIconWrap: {
@@ -575,12 +590,12 @@ const styles = stylex.create({
     transitionProperty: "opacity",
     transitionTimingFunction: "ease",
     whiteSpace: "nowrap",
-    marginLeft: 0,
+    marginInlineStart: 0,
     maxWidth: 0,
   },
   bottomLabelActive: {
     opacity: 1,
-    marginLeft: horizontalSpace.md,
+    marginInlineStart: horizontalSpace.md,
     maxWidth: spacing["24"],
   },
   unreadDot: {
@@ -589,7 +604,7 @@ const styles = stylex.create({
     boxShadow: `0 0 0 2px ${uiColor.bg}`,
     position: "absolute",
     height: spacing["2"],
-    right: `calc(-1 * ${spacing["1"]})`,
+    insetInlineEnd: `calc(-1 * ${spacing["1"]})`,
     top: `calc(-1 * ${spacing["1"]})`,
     width: spacing["2"],
   },
@@ -604,26 +619,29 @@ const styles = stylex.create({
 
 interface NavLink {
   to: string;
-  label: string;
+  label: MessageDescriptor;
   icon: React.ReactNode;
 }
 
 const NAV: Array<NavLink> = [
-  { to: "/", label: "Home", icon: <Home size={18} /> },
-  { to: "/latest", label: "Latest", icon: <Newspaper size={18} /> },
-  { to: "/discover", label: "Discover", icon: <Compass size={18} /> },
-  { to: "/search", label: "Search", icon: <Search size={18} /> },
+  { to: "/", label: msg`Home`, icon: <Home size={18} /> },
+  { to: "/latest", label: msg`Latest`, icon: <Newspaper size={18} /> },
+  { to: "/discover", label: msg`Discover`, icon: <Compass size={18} /> },
+  { to: "/search", label: msg`Search`, icon: <Search size={18} /> },
 ];
 
 const SAVED_NAV: NavLink = {
   to: "/saved",
-  label: "Saved for later",
+  label: msg`Saved for later`,
   icon: <Bookmark size={18} />,
 };
 
+/** Shorter label for the bottom nav, where horizontal room is tight. */
+const SAVED_SHORT_LABEL = msg`Saved`;
+
 const COLLECTIONS_NAV: NavLink = {
   to: "/collections",
-  label: "Collections",
+  label: msg`Collections`,
   icon: <Layers size={18} />,
 };
 
@@ -657,6 +675,8 @@ function SidebarNavItem({
   count,
   compactCount = false,
 }: NavLink & { count?: number | null; compactCount?: boolean }) {
+  const { i18n } = useLingui();
+  const fmt = useFormatters();
   const focusRingProps = useFocusRingProps();
   return (
     <Link
@@ -667,10 +687,10 @@ function SidebarNavItem({
       activeProps={stylex.props(styles.navItem, styles.navItemActive)}
     >
       {icon}
-      <span {...stylex.props(styles.navLabel)}>{label}</span>
+      <span {...stylex.props(styles.navLabel)}>{i18n._(label)}</span>
       {count != null && count > 0 ? (
         <span {...stylex.props(styles.count)}>
-          {compactCount ? formatSidebarUnreadCount(count) : count}
+          {compactCount ? formatSidebarUnreadCount(fmt, count) : count}
         </span>
       ) : null}
     </Link>
@@ -695,6 +715,8 @@ function FollowingAvatar({
 }
 
 function FollowRow({ pub }: { pub: FollowingPublication }) {
+  const { t } = useLingui();
+  const fmt = useFormatters();
   const focusRingProps = useFocusRingProps();
   const rowProps = { ...focusRingProps, ...stylex.props(styles.followRow) };
   const params = publicationLinkParams(pub.uri);
@@ -705,13 +727,14 @@ function FollowRow({ pub }: { pub: FollowingPublication }) {
     />
   );
   const name = <span {...stylex.props(styles.followName)}>{pub.name}</span>;
+  const unreadCount = pub.unreadCount;
   const unreadBadge =
-    pub.unreadCount > 0 ? (
+    unreadCount > 0 ? (
       <span
         {...stylex.props(styles.followUnread)}
-        aria-label={`${pub.unreadCount} unread`}
+        aria-label={t`${unreadCount} unread`}
       >
-        {formatSidebarUnreadCount(pub.unreadCount)}
+        {formatSidebarUnreadCount(fmt, pub.unreadCount)}
       </span>
     ) : null;
   const content = (
@@ -759,6 +782,8 @@ function FollowRow({ pub }: { pub: FollowingPublication }) {
 }
 
 function FollowUserRow({ user: followed }: { user: FollowingUser }) {
+  const { t } = useLingui();
+  const fmt = useFormatters();
   const focusRingProps = useFocusRingProps();
   const rowProps = { ...focusRingProps, ...stylex.props(styles.followRow) };
   const name =
@@ -772,9 +797,9 @@ function FollowUserRow({ user: followed }: { user: FollowingUser }) {
       {unread > 0 ? (
         <span
           {...stylex.props(styles.followUnread)}
-          aria-label={`${unread} unread`}
+          aria-label={t`${unread} unread`}
         >
-          {formatSidebarUnreadCount(unread)}
+          {formatSidebarUnreadCount(fmt, unread)}
         </span>
       ) : null}
     </Link>
@@ -798,6 +823,8 @@ function SidebarList({
   isExpanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
 }) {
+  const { t } = useLingui();
+  const fmt = useFormatters();
   const link = listLinkParams(listUri);
   const unreadTotal =
     pubs.reduce((sum, pub) => sum + pub.unreadCount, 0) +
@@ -817,7 +844,7 @@ function SidebarList({
           <Link
             to="/l/$did/$rkey"
             params={link}
-            aria-label={`Open list ${name}`}
+            aria-label={t`Open list ${name}`}
             {...titleFocusRingProps}
             {...stylex.props(styles.listTitleLink)}
           >
@@ -828,12 +855,12 @@ function SidebarList({
         )}
         <div {...stylex.props(styles.sideLabelActions)}>
           {unreadTotal > 0 ? (
-            <span>{formatSidebarUnreadCount(unreadTotal)}</span>
+            <span>{formatSidebarUnreadCount(fmt, unreadTotal)}</span>
           ) : null}
           <DisclosureTitle
             style={styles.listToggle}
             chevronStyle={styles.headerIcon}
-            aria-label={`Toggle list ${name}`}
+            aria-label={t`Toggle list ${name}`}
           >
             {null}
           </DisclosureTitle>
@@ -842,7 +869,9 @@ function SidebarList({
       <DisclosurePanel contentStyle={styles.listPanelContent}>
         <div {...stylex.props(styles.followList)}>
           {pubs.length === 0 && users.length === 0 ? (
-            <span {...stylex.props(styles.listEmpty)}>Empty list.</span>
+            <span {...stylex.props(styles.listEmpty)}>
+              <Trans>Empty list.</Trans>
+            </span>
           ) : (
             <>
               {pubs.map((pub) => (
@@ -867,11 +896,13 @@ const BottomNavItem = forwardRef<
   { to, label, icon, isActive, showBadgeDot },
   ref,
 ) {
+  const { i18n } = useLingui();
+  const labelText = i18n._(label);
   return (
     <Link
       ref={ref}
       to={to}
-      aria-label={label}
+      aria-label={labelText}
       {...stylex.props(styles.bottomItem, isActive && styles.bottomItemActive)}
     >
       <span {...stylex.props(styles.bottomIconWrap)}>
@@ -891,7 +922,7 @@ const BottomNavItem = forwardRef<
           isActive && styles.bottomLabelActive,
         )}
       >
-        {label}
+        {labelText}
       </span>
     </Link>
   );
@@ -968,7 +999,7 @@ function BottomNav({
           <BottomNavItem
             key={item.to}
             {...item}
-            label={item.to === "/saved" ? "Saved" : item.label}
+            label={item.to === "/saved" ? SAVED_SHORT_LABEL : item.label}
             ref={(el) => {
               itemRefs.current[i] = el;
             }}
@@ -1001,17 +1032,18 @@ function Brand({
 }
 
 function MobileStaticPageBar({ title }: { title: string }) {
+  const { t } = useLingui();
   const router = useRouter();
 
   return (
     <div {...stylex.props(styles.mobileDetailBar)}>
       <IconButton
-        aria-label="Back"
+        aria-label={t`Back`}
         size="md"
         variant="tertiary"
         onPress={() => router.history.back()}
       >
-        <ArrowLeft size={18} />
+        <DirectionalIcon as={ArrowLeft} size={18} />
       </IconButton>
       <span {...stylex.props(styles.mobileDetailTitle)}>{title}</span>
       <span aria-hidden {...stylex.props(styles.mobileDetailSpacer)} />
@@ -1020,11 +1052,12 @@ function MobileStaticPageBar({ title }: { title: string }) {
 }
 
 function SubscriptionsSkeleton() {
+  const { t } = useLingui();
   return (
     <div
       {...stylex.props(styles.subscriptionsLoading)}
       aria-busy="true"
-      aria-label="Loading subscriptions"
+      aria-label={t`Loading subscriptions`}
     >
       <Skeleton variant="rectangle" height={spacing["8"]} width="88%" />
       <Skeleton variant="rectangle" height={spacing["8"]} width="72%" />
@@ -1034,6 +1067,7 @@ function SubscriptionsSkeleton() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const { t } = useLingui();
   const pathname = useRouterState({
     select: (s: { location: { pathname: string } }) => s.location.pathname,
   });
@@ -1045,15 +1079,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const onLabelers = pathname === "/labelers";
   const onSettings = pathname === "/settings";
   const staticPageTitle = onAbout
-    ? "About"
+    ? t`About`
     : onPrivacyExtension
-      ? "Extension privacy"
+      ? t`Extension privacy`
       : onPrivacy
-        ? "Privacy"
+        ? t`Privacy`
         : onLabelers
-          ? "Labelers"
+          ? t`Labelers`
           : onSettings
-            ? "Settings"
+            ? t`Settings`
             : null;
   const { data: sidebar, isPending: sidebarPending } = useQuery(
     sidebarQueryOptions(),
@@ -1200,15 +1234,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               data-sidebar-label="true"
               style={styles.sideLabel}
             >
-              <span>Subscriptions</span>
+              <span>
+                <Trans>Subscriptions</Trans>
+              </span>
               {signedIn ? (
                 <ButtonGroup
-                  aria-label="Subscription list actions"
+                  aria-label={t`Subscription list actions`}
                   style={styles.sideLabelActions}
                 >
                   {hasListGroups ? (
                     <IconButton
-                      aria-label="Reorder lists"
+                      aria-label={t`Reorder lists`}
                       size="sm"
                       variant="tertiary"
                       style={styles.headerIcon}
@@ -1218,7 +1254,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </IconButton>
                   ) : null}
                   <IconButton
-                    aria-label="New list"
+                    aria-label={t`New list`}
                     size="sm"
                     variant="tertiary"
                     style={styles.headerIcon}
@@ -1229,7 +1265,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {hasListGroups ? (
                     <IconButton
                       aria-label={
-                        allCollapsed ? "Expand all lists" : "Collapse all lists"
+                        allCollapsed
+                          ? t`Expand all lists`
+                          : t`Collapse all lists`
                       }
                       size="sm"
                       variant="tertiary"
@@ -1253,9 +1291,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 !hasListGroups &&
                 followingUsers.length === 0 ? (
                 <span {...stylex.props(styles.emptyNote)}>
-                  {signedIn
-                    ? "Nothing yet — go discover."
-                    : "Sign in to subscribe."}
+                  {signedIn ? (
+                    <Trans>Nothing yet — go discover.</Trans>
+                  ) : (
+                    <Trans>Sign in to subscribe.</Trans>
+                  )}
                 </span>
               ) : (
                 <>
@@ -1295,7 +1335,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               style={styles.addTrigger}
               onPress={() => setAddModalOpen(true)}
             >
-              <Plus size={16} /> Add publication
+              <Plus size={16} /> <Trans>Add publication</Trans>
             </Button>
           </Flex>
         </aside>

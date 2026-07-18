@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 
 import { API_DOCS_CATALOG, API_DOCS_SECTIONS } from "#/lib/api-docs/catalog";
@@ -15,13 +16,14 @@ import { useDocsScrollSpyActive } from "./docs-scroll-spy-context";
 
 export function DocsApiNav() {
   const active = useDocsScrollSpyActive();
+  const { t } = useLingui();
 
   return (
-    <nav {...stylex.props(docsStyles.refNav)} aria-label="API reference">
+    <nav {...stylex.props(docsStyles.refNav)} aria-label={t`API reference`}>
       <div {...stylex.props(docsStyles.refNavGroup)}>
         <div {...stylex.props(docsStyles.refNavHeadingRow)}>
           <span {...stylex.props(docsStyles.refNavHeading)}>
-            Getting started
+            <Trans>Getting started</Trans>
           </span>
         </div>
         <a
@@ -32,7 +34,7 @@ export function DocsApiNav() {
               docsStyles.refNavLinkActive,
           )}
         >
-          Overview
+          <Trans>Overview</Trans>
         </a>
         <a
           href={`#${API_DOCS_INTRO_IDS.discovery}`}
@@ -42,7 +44,7 @@ export function DocsApiNav() {
               docsStyles.refNavLinkActive,
           )}
         >
-          Service discovery
+          <Trans>Service discovery</Trans>
         </a>
         <a
           href={`#${API_DOCS_INTRO_IDS.auth}`}
@@ -51,7 +53,7 @@ export function DocsApiNav() {
             active === API_DOCS_INTRO_IDS.auth && docsStyles.refNavLinkActive,
           )}
         >
-          Authentication
+          <Trans>Authentication</Trans>
         </a>
         <a
           href={`#${API_DOCS_INTRO_IDS.labelers}`}
@@ -61,7 +63,7 @@ export function DocsApiNav() {
               docsStyles.refNavLinkActive,
           )}
         >
-          Run a labeler
+          <Trans>Run a labeler</Trans>
         </a>
       </div>
 

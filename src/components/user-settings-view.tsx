@@ -1,5 +1,8 @@
 "use client";
 
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -8,6 +11,7 @@ import { useCallback, useState } from "react";
 
 import { invalidateReadQueries } from "#/components/reader/read-optimistic";
 import { ButtonLink } from "#/components/router-links";
+import { DirectionalIcon } from "#/design-system/directional-icon";
 import { auth } from "#/integrations/tanstack-query/api-auth.functions";
 import { feedApi } from "#/integrations/tanstack-query/api-feed.functions";
 import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
@@ -15,6 +19,8 @@ import { listApi } from "#/integrations/tanstack-query/api-lists.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { DEFAULT_CUSTOM_GOOGLE_FONT } from "#/lib/google-fonts";
+import type { Locale } from "#/lib/locale";
+import { LOCALE_LABELS, LOCALES, PSEUDO_LOCALE, isLocale } from "#/lib/locale";
 import { AMERICAN_ENGLISH_VOICES } from "#/lib/page-reader/voice-catalog";
 import { isReaderVoicePreference } from "#/lib/reader-voice";
 import type { ReadingTypographyPreference } from "#/lib/reading-typography";
@@ -29,6 +35,7 @@ import {
 import type { ThemeMode } from "#/lib/theme";
 import { isThemeMode } from "#/lib/theme";
 import { useCountOldPostsAsUnread } from "#/lib/use-count-old-posts-as-unread";
+import { useLocale } from "#/lib/use-locale";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { useOpenLinks } from "#/lib/use-open-links";
 import { useReaderVoice } from "#/lib/use-reader-voice";
@@ -80,13 +87,18 @@ const MOBILE = "@media (max-width: 47.5rem)";
 
 const THEME_OPTIONS: Array<{
   id: ThemeMode;
-  label: string;
+  label: MessageDescriptor;
   icon: React.ComponentType<{ size?: number | string }>;
 }> = [
-  { id: "light", label: "Light", icon: Sun },
-  { id: "dark", label: "Dark", icon: Moon },
-  { id: "system", label: "System", icon: Monitor },
+  { id: "light", label: msg`Light`, icon: Sun },
+  { id: "dark", label: msg`Dark`, icon: Moon },
+  { id: "system", label: msg`System`, icon: Monitor },
 ];
+
+/** The pseudo-locale is a translation-coverage tool, not a language to ship. */
+const LOCALE_OPTIONS: ReadonlyArray<Locale> = LOCALES.filter(
+  (locale) => locale !== PSEUDO_LOCALE || import.meta.env.DEV,
+);
 
 const styles = stylex.create({
   section: {
@@ -124,8 +136,8 @@ const styles = stylex.create({
     justifyContent: "space-between",
     rowGap: gap["lg"],
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
   settingLabel: {
@@ -158,8 +170,8 @@ const styles = stylex.create({
     paddingBlock: verticalSpace.md,
     display: "flex",
     flexDirection: "column",
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
   },
   labelerLink: {
     borderRadius: radius.md,
@@ -173,8 +185,8 @@ const styles = stylex.create({
     fontSize: fontSize.sm,
     fontWeight: fontWeight.medium,
     justifyContent: "space-between",
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.md,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.md,
   },
   labelerMain: {
     alignItems: "center",
@@ -196,8 +208,8 @@ const styles = stylex.create({
     paddingBlock: verticalSpace["xl"],
     color: uiColor.text1,
     fontSize: fontSize.sm,
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
   },
   segmentedControl: {
     width: {
@@ -229,8 +241,8 @@ const styles = stylex.create({
     justifyContent: "space-between",
     rowGap: gap["lg"],
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
   deletionIntro: {
@@ -245,8 +257,8 @@ const styles = stylex.create({
   digestPreviewBody: {
     marginBottom: verticalSpace.none,
     marginTop: verticalSpace.none,
-    paddingLeft: horizontalSpace.none,
-    paddingRight: horizontalSpace.none,
+    paddingInlineStart: horizontalSpace.none,
+    paddingInlineEnd: horizontalSpace.none,
   },
   digestPreviewContainer: {
     minHeight: "70vh",
@@ -323,7 +335,7 @@ function DataDeletionRow({
         onOpenChange={setOpen}
         trigger={
           <Button variant="critical-outline" onPress={() => setOpen(true)}>
-            Delete
+            <Trans>Delete</Trans>
           </Button>
         }
       >
@@ -331,7 +343,7 @@ function DataDeletionRow({
         <AlertDialogDescription>{dialogDescription}</AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogCancelButton isDisabled={isPending}>
-            Cancel
+            <Trans>Cancel</Trans>
           </AlertDialogCancelButton>
           <AlertDialogActionButton
             variant="critical"
@@ -348,9 +360,11 @@ function DataDeletionRow({
 }
 
 export function UserSettingsView() {
+  const { t, i18n } = useLingui();
   const queryClient = useQueryClient();
   const labelers = useQuery(labelerApi.getLabelersQueryOptions());
   const { mode, setMode } = useTheme();
+  const { locale, setLocale } = useLocale();
   const { preference: voice, setPreference: setVoice } = useReaderVoice();
   const { preference: typography, setPreference: setTypography } =
     useReadingTypography();
@@ -484,17 +498,19 @@ export function UserSettingsView() {
   return (
     <ReaderContent>
       <Masthead
-        kicker="Account"
-        title="Settings"
-        dek="Appearance, reading preferences, and personal data."
+        kicker={<Trans>Account</Trans>}
+        title={<Trans>Settings</Trans>}
+        dek={<Trans>Appearance, reading preferences, and personal data.</Trans>}
       />
 
       <section {...stylex.props(styles.section)}>
-        <h2 {...stylex.props(styles.sectionHeading)}>Appearance</h2>
+        <h2 {...stylex.props(styles.sectionHeading)}>
+          <Trans>Appearance</Trans>
+        </h2>
         <div {...stylex.props(styles.settingGroup)}>
           <SettingRow
-            label="Theme"
-            description="Choose light, dark, or match your system setting."
+            label={t`Theme`}
+            description={t`Choose light, dark, or match your system setting.`}
           >
             <SegmentedControl
               selectedKeys={new Set([mode])}
@@ -508,73 +524,103 @@ export function UserSettingsView() {
                 <SegmentedControlItem key={id} id={id}>
                   <Flex align="center" gap="xs">
                     <Icon size={14} />
-                    {label}
+                    {i18n._(label)}
                   </Flex>
                 </SegmentedControlItem>
               ))}
             </SegmentedControl>
           </SettingRow>
+          <Separator />
+          <SettingRow
+            label={t`Language`}
+            description={t`The language used for the reader interface. Articles are shown in the language they were written in.`}
+          >
+            <Select
+              size="lg"
+              aria-label={t`Language`}
+              selectedKey={locale}
+              onSelectionChange={(key) => {
+                if (key == null) return;
+                const next = String(key);
+                if (isLocale(next)) setLocale(next);
+              }}
+            >
+              {LOCALE_OPTIONS.map((option) => (
+                <SelectItem
+                  key={option}
+                  id={option}
+                  textValue={LOCALE_LABELS[option]}
+                >
+                  {LOCALE_LABELS[option]}
+                </SelectItem>
+              ))}
+            </Select>
+          </SettingRow>
         </div>
       </section>
 
       <section {...stylex.props(styles.section)}>
-        <h2 {...stylex.props(styles.sectionHeading)}>Behavior</h2>
+        <h2 {...stylex.props(styles.sectionHeading)}>
+          <Trans>Behavior</Trans>
+        </h2>
         <div {...stylex.props(styles.settingGroup)}>
           <SettingRow
-            label="Open posts externally"
-            description="When on, links open on the original website instead of the in-app reader."
+            label={t`Open posts externally`}
+            description={t`When on, links open on the original website instead of the in-app reader.`}
           >
             <Switch
               isSelected={openExternally}
               onChange={setOpenExternally}
-              aria-label="Open posts externally"
+              aria-label={t`Open posts externally`}
             />
           </SettingRow>
           <Separator />
           <SettingRow
-            label="Open collections in magazine"
-            description="When on, collection posts open in the magazine edition instead of the reader view."
+            label={t`Open collections in magazine`}
+            description={t`When on, collection posts open in the magazine edition instead of the reader view.`}
           >
             <Switch
               isSelected={openInMagazine}
               onChange={setOpenInMagazine}
-              aria-label="Open collections in magazine"
+              aria-label={t`Open collections in magazine`}
             />
           </SettingRow>
           <Separator />
           <SettingRow
-            label="Track reading history"
-            description="When on, articles you open are recorded as public read records in your account."
+            label={t`Track reading history`}
+            description={t`When on, articles you open are recorded as public read records in your account.`}
           >
             <Switch
               isSelected={trackReading}
               onChange={setTrackReading}
-              aria-label="Track reading history"
+              aria-label={t`Track reading history`}
             />
           </SettingRow>
           <Separator />
           <SettingRow
-            label="Mark old posts as unread"
-            description="When on, everything a publication has ever posted counts as unread the moment you subscribe. Turn off to only mark posts published after you subscribe as new — older posts stay unread but lose their dot."
+            label={t`Mark old posts as unread`}
+            description={t`When on, everything a publication has ever posted counts as unread the moment you subscribe. Turn off to only mark posts published after you subscribe as new — older posts stay unread but lose their dot.`}
           >
             <Switch
               isSelected={countOldAsUnread}
               onChange={setCountOldAsUnread}
-              aria-label="Mark old posts as unread"
+              aria-label={t`Mark old posts as unread`}
             />
           </SettingRow>
         </div>
       </section>
 
       <section {...stylex.props(styles.section)}>
-        <h2 {...stylex.props(styles.sectionHeading)}>Weekly digest</h2>
+        <h2 {...stylex.props(styles.sectionHeading)}>
+          <Trans>Weekly digest</Trans>
+        </h2>
         <div {...stylex.props(styles.settingGroup)}>
           <SettingRow
-            label="Weekly digest email"
+            label={t`Weekly digest email`}
             description={
               digestEnabled && digestEmail
-                ? `On — delivered to ${digestEmail}. The best of the publications you subscribe to, plus a couple worth discovering.`
-                : "A weekly email with the best of what you subscribe to, plus a couple of publications worth discovering. Turning this on asks your PDS to share your email address."
+                ? t`On — delivered to ${digestEmail}. The best of the publications you subscribe to, plus a couple worth discovering.`
+                : t`A weekly email with the best of what you subscribe to, plus a couple of publications worth discovering. Turning this on asks your PDS to share your email address.`
             }
           >
             <Flex align="center" gap="md">
@@ -590,11 +636,13 @@ export function UserSettingsView() {
                       setDigestPreviewOpen(true);
                     }}
                   >
-                    Preview
+                    <Trans>Preview</Trans>
                   </Button>
                 }
               >
-                <DialogHeader>Your weekly digest</DialogHeader>
+                <DialogHeader>
+                  <Trans>Your weekly digest</Trans>
+                </DialogHeader>
                 <DialogBody style={styles.digestPreviewBody}>
                   {digestPreviewOpen ? (
                     <div {...stylex.props(styles.digestPreviewContainer)}>
@@ -603,12 +651,15 @@ export function UserSettingsView() {
                           <ProgressCircle
                             isIndeterminate
                             size="lg"
-                            aria-label="Loading digest preview"
+                            aria-label={t`Loading digest preview`}
                           />
                         </div>
                       ) : null}
+                      {/* oxlint-disable-next-line iframe-has-title --
+                          the title IS set below; the rule can't statically
+                          resolve a tagged-template expression. */}
                       <iframe
-                        title="Weekly digest preview"
+                        title={t`Weekly digest preview`}
                         src="/api/digest/preview"
                         onLoad={() => setDigestPreviewLoading(false)}
                         {...stylex.props(
@@ -625,7 +676,7 @@ export function UserSettingsView() {
                 isSelected={digestEnabled}
                 onChange={onToggleDigest}
                 isDisabled={digestPending || digestStatusQuery.isLoading}
-                aria-label="Weekly digest email"
+                aria-label={t`Weekly digest email`}
               />
             </Flex>
           </SettingRow>
@@ -634,26 +685,30 @@ export function UserSettingsView() {
             onOpenChange={setDigestDialogOpen}
             trigger={null}
           >
-            <AlertDialogHeader>Enable the weekly digest</AlertDialogHeader>
+            <AlertDialogHeader>
+              <Trans>Enable the weekly digest</Trans>
+            </AlertDialogHeader>
             <AlertDialogDescription>
-              To email your digest, Standard Reader needs your account email
-              address. We'll ask your PDS to share it — you'll be sent to your
-              login to approve the request, then brought right back here. Your
-              email is used only to send the weekly digest, and you can turn it
-              off any time.
+              <Trans>
+                To email your digest, Standard Reader needs your account email
+                address. We'll ask your PDS to share it — you'll be sent to your
+                login to approve the request, then brought right back here. Your
+                email is used only to send the weekly digest, and you can turn
+                it off any time.
+              </Trans>
             </AlertDialogDescription>
             <AlertDialogFooter>
               <AlertDialogCancelButton
                 isDisabled={enableDigestMutation.isPending}
               >
-                Not now
+                <Trans>Not now</Trans>
               </AlertDialogCancelButton>
               <AlertDialogActionButton
                 closeOnPress={false}
                 isPending={enableDigestMutation.isPending}
                 onPress={() => enableDigestMutation.mutate()}
               >
-                Continue to approve
+                <Trans>Continue to approve</Trans>
               </AlertDialogActionButton>
             </AlertDialogFooter>
           </AlertDialog>
@@ -661,10 +716,12 @@ export function UserSettingsView() {
       </section>
 
       <section {...stylex.props(styles.section)}>
-        <h2 {...stylex.props(styles.sectionHeading)}>Reading</h2>
+        <h2 {...stylex.props(styles.sectionHeading)}>
+          <Trans>Reading</Trans>
+        </h2>
         <div {...stylex.props(styles.settingGroup)}>
           <ReadingSettingsPreview voicePreference={voice} />
-          <SettingRow label="Text size">
+          <SettingRow label={t`Text size`}>
             <TypographySegmentedControl
               value={typography.fontSize}
               options={READING_FONT_SIZES}
@@ -674,7 +731,7 @@ export function UserSettingsView() {
             />
           </SettingRow>
           <Separator />
-          <SettingRow label="Column width">
+          <SettingRow label={t`Column width`}>
             <TypographySegmentedControl
               value={typography.measure}
               options={READING_MEASURES}
@@ -684,7 +741,7 @@ export function UserSettingsView() {
             />
           </SettingRow>
           <Separator />
-          <SettingRow label="Body font">
+          <SettingRow label={t`Body font`}>
             <TypographySegmentedControl
               value={typography.bodyFont}
               options={READING_BODY_FONTS}
@@ -697,8 +754,8 @@ export function UserSettingsView() {
             <>
               <Separator />
               <SettingRow
-                label="Google Font"
-                description="Search and pick any family from the Google Fonts catalog."
+                label={t`Google Font`}
+                description={t`Search and pick any family from the Google Fonts catalog.`}
               >
                 <ReadingCustomFontPicker
                   value={
@@ -711,12 +768,12 @@ export function UserSettingsView() {
           )}
           <Separator />
           <SettingRow
-            label="Listen aloud voice"
-            description="The voice used when you listen to an article with read aloud."
+            label={t`Listen aloud voice`}
+            description={t`The voice used when you listen to an article with read aloud.`}
           >
             <Select
               size="lg"
-              aria-label="Reader voice"
+              aria-label={t`Reader voice`}
               selectedKey={voice}
               style={styles.voiceSelect}
               onSelectionChange={(key) => {
@@ -727,10 +784,10 @@ export function UserSettingsView() {
             >
               <SelectItem
                 id="auto"
-                textValue="Auto"
+                textValue={t`Auto`}
                 prefix={<Sparkles size={14} />}
               >
-                Auto
+                <Trans>Auto</Trans>
               </SelectItem>
               {AMERICAN_ENGLISH_VOICES.map((voiceOption) => (
                 <SelectItem
@@ -747,19 +804,23 @@ export function UserSettingsView() {
       </section>
 
       <section {...stylex.props(styles.section)}>
-        <h2 {...stylex.props(styles.sectionHeading)}>Moderation</h2>
+        <h2 {...stylex.props(styles.sectionHeading)}>
+          <Trans>Moderation</Trans>
+        </h2>
         <div {...stylex.props(styles.settingGroup)}>
           <SettingRow
-            label="Labelers"
-            description="Subscribe to labelers to flag, blur, or hide content as you read."
+            label={t`Labelers`}
+            description={t`Subscribe to labelers to flag, blur, or hide content as you read.`}
           >
             <ButtonLink to="/labelers" variant="secondary" size="sm">
-              Browse labelers
+              <Trans>Browse labelers</Trans>
             </ButtonLink>
           </SettingRow>
           <Separator />
           {(labelers.data?.length ?? 0) === 0 ? (
-            <p {...stylex.props(styles.labelerEmpty)}>No labelers subscribed</p>
+            <p {...stylex.props(styles.labelerEmpty)}>
+              <Trans>No labelers subscribed</Trans>
+            </p>
           ) : (
             <div {...stylex.props(styles.labelerList)}>
               {labelers.data?.map((card) => {
@@ -784,10 +845,10 @@ export function UserSettingsView() {
                       />
                       <span {...stylex.props(styles.labelerName)}>{name}</span>
                     </span>
-                    <ChevronRight
+                    <DirectionalIcon
+                      as={ChevronRight}
                       size={16}
-                      aria-hidden
-                      {...stylex.props(styles.labelerChevron)}
+                      style={styles.labelerChevron}
                     />
                   </Link>
                 );
@@ -798,38 +859,42 @@ export function UserSettingsView() {
       </section>
 
       <section {...stylex.props(styles.section)}>
-        <h2 {...stylex.props(styles.sectionHeading)}>Personal data</h2>
+        <h2 {...stylex.props(styles.sectionHeading)}>
+          <Trans>Personal data</Trans>
+        </h2>
         <p {...stylex.props(styles.deletionIntro)}>
-          Permanently remove data stored in your account. These actions delete
-          records from your account and cannot be undone.
+          <Trans>
+            Permanently remove data stored in your account. These actions delete
+            records from your account and cannot be undone.
+          </Trans>
         </p>
         <div {...stylex.props(styles.settingGroup)}>
           <DataDeletionRow
-            label="Reading history"
-            description="All articles you have marked as read."
-            dialogTitle="Delete all reading history?"
-            dialogDescription="Every read record in your repository will be removed. Articles will appear unread again across the app. This cannot be undone."
-            confirmLabel="Delete history"
+            label={t`Reading history`}
+            description={t`All articles you have marked as read.`}
+            dialogTitle={t`Delete all reading history?`}
+            dialogDescription={t`Every read record in your repository will be removed. Articles will appear unread again across the app. This cannot be undone.`}
+            confirmLabel={t`Delete history`}
             isPending={deleteHistoryMutation.isPending}
             onConfirm={onDeleteHistory}
           />
           <Separator />
           <DataDeletionRow
-            label="Bookmarks"
-            description="All articles you have saved for later."
-            dialogTitle="Delete all bookmarks?"
-            dialogDescription="Every saved article will be removed from your repository. Your Saved for later list will be empty. This cannot be undone."
-            confirmLabel="Delete bookmarks"
+            label={t`Bookmarks`}
+            description={t`All articles you have saved for later.`}
+            dialogTitle={t`Delete all bookmarks?`}
+            dialogDescription={t`Every saved article will be removed from your repository. Your Saved for later list will be empty. This cannot be undone.`}
+            confirmLabel={t`Delete bookmarks`}
             isPending={deleteBookmarksMutation.isPending}
             onConfirm={onDeleteBookmarks}
           />
           <Separator />
           <DataDeletionRow
-            label="Publication lists"
-            description="All publication lists you created in this app."
-            dialogTitle="Delete all lists?"
-            dialogDescription="Every list you own will be removed from your account. Anyone who saved your lists will no longer see them in their sidebar. This cannot be undone."
-            confirmLabel="Delete lists"
+            label={t`Publication lists`}
+            description={t`All publication lists you created in this app.`}
+            dialogTitle={t`Delete all lists?`}
+            dialogDescription={t`Every list you own will be removed from your account. Anyone who saved your lists will no longer see them in their sidebar. This cannot be undone.`}
+            confirmLabel={t`Delete lists`}
             isPending={deleteListsMutation.isPending}
             onConfirm={onDeleteLists}
           />

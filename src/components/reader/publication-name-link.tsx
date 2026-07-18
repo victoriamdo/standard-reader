@@ -13,6 +13,12 @@ const styles = stylex.create({
     color: "inherit",
     textDecorationColor: "currentColor",
     textUnderlineOffset: "2px",
+    // Publication names are user content in an unknown script; isolate them so
+    // they can't be reordered against surrounding UI text under an RTL UI.
+    unicodeBidi: "isolate",
+  },
+  isolate: {
+    unicodeBidi: "isolate",
   },
 });
 
@@ -170,5 +176,5 @@ export function PublicationNameLink({
     );
   }
 
-  return <span>{children}</span>;
+  return <span {...stylex.props(styles.isolate)}>{children}</span>;
 }

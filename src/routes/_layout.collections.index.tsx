@@ -1,5 +1,7 @@
 "use client";
 
+import { msg } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   useMutation,
@@ -25,6 +27,7 @@ import type {
 import { collectionsApi } from "#/integrations/tanstack-query/api-collections.functions";
 import { publicationApi } from "#/integrations/tanstack-query/api-publication.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
+import { useFormatters } from "#/lib/formatters";
 import { getPublicUrlClient } from "#/lib/public-url";
 import { siteSocialMeta } from "#/lib/site-metadata";
 import { buildAuthRedirectPath } from "#/utils/auth-redirect";
@@ -36,7 +39,6 @@ import {
 import { CollectionThemeEditor } from "../components/reader/collection-theme-editor";
 import {
   documentUriFromParams,
-  formatMonthYear,
   formatReaders,
 } from "../components/reader/format";
 import {
@@ -117,9 +119,9 @@ export const Route = createFileRoute("/_layout/collections/")({
 type CollectionIssue = CollectionCard & { issueNo: number };
 
 const EMPTY_STEPS = [
-  "Name your series & pick a theme",
-  "Add collections as issues",
-  "Publish & share the run",
+  msg`Name your series & pick a theme`,
+  msg`Add collections as issues`,
+  msg`Publish & share the run`,
 ] as const;
 
 const styles = stylex.create({
@@ -245,8 +247,8 @@ const styles = stylex.create({
     borderTopStyle: "solid",
     borderTopWidth: 1,
     paddingBottom: spacing["4"],
-    paddingLeft: spacing["1.5"],
-    paddingRight: spacing["1.5"],
+    paddingInlineStart: spacing["1.5"],
+    paddingInlineEnd: spacing["1.5"],
     paddingTop: spacing["4"],
   },
   issueRowFirst: {
@@ -324,12 +326,12 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     textAlign: "center",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "35rem",
     paddingBottom: spacing["10"],
-    paddingLeft: spacing["6"],
-    paddingRight: spacing["6"],
+    paddingInlineStart: spacing["6"],
+    paddingInlineEnd: spacing["6"],
     paddingTop: spacing["20"],
   },
   emptyArt: {
@@ -354,13 +356,13 @@ const styles = stylex.create({
     backgroundColor: uiColor.bgSubtle,
     transform: "rotate(-9deg)",
     transformOrigin: "bottom center",
-    left: spacing["1.5"],
+    insetInlineStart: spacing["1.5"],
   },
   emptyCardRight: {
     backgroundColor: uiColor.bgSubtle,
     transform: "rotate(9deg)",
     transformOrigin: "bottom center",
-    right: spacing["1.5"],
+    insetInlineEnd: spacing["1.5"],
   },
   emptyCardCenter: {
     borderColor: primaryColor.border2,
@@ -371,8 +373,8 @@ const styles = stylex.create({
     justifyContent: "center",
     zIndex: 1,
     height: spacing["24"],
-    left: "50%",
-    marginLeft: `calc(${spacing["16"]} / -2)`,
+    insetInlineStart: "50%",
+    marginInlineStart: `calc(${spacing["16"]} / -2)`,
   },
   emptyTitle: {
     color: uiColor.text2,
@@ -494,7 +496,9 @@ function IssueRow({
   isDeleting: boolean;
   isFirst: boolean;
 }) {
-  const monthYear = formatMonthYear(issue.updatedAt);
+  const { t } = useLingui();
+  const fmt = useFormatters();
+  const monthYear = fmt.monthYear(issue.updatedAt);
 
   return (
     <div {...stylex.props(styles.issueRow, isFirst && styles.issueRowFirst)}>
@@ -511,7 +515,11 @@ function IssueRow({
         </Link>
         <div {...stylex.props(styles.issueSub)}>
           <span>
-            {issue.itemCount} {issue.itemCount === 1 ? "article" : "articles"}
+            <Plural
+              value={issue.itemCount}
+              one="# article"
+              other="# articles"
+            />
           </span>
           {monthYear ? (
             <>
@@ -529,7 +537,7 @@ function IssueRow({
           params={{ did: issue.did, rkey: issue.rkey }}
           variant="secondary"
           size="md"
-          label="View collection"
+          label={t`View collection`}
         >
           <Eye size={16} />
         </IconButtonLink>
@@ -541,7 +549,7 @@ function IssueRow({
         <IconButton
           variant="critical-outline"
           size="md"
-          label="Delete collection"
+          label={t`Delete collection`}
           isDisabled={isDeleting}
           onPress={() => onRemove(issue.rkey)}
         >
@@ -571,6 +579,7 @@ function SeriesBlock({
   onEdit: () => void;
   onAddCollection: () => void;
 }) {
+  const { t } = useLingui();
   return (
     <section {...stylex.props(styles.series)}>
       <div {...stylex.props(styles.seriesHead)}>
@@ -591,7 +600,11 @@ function SeriesBlock({
                       <span {...stylex.props(styles.seriesMetaStrong)}>
                         {formatReaders(publication.subscriberCount)}
                       </span>{" "}
-                      followers
+                      <Plural
+                        value={publication.subscriberCount}
+                        one="follower"
+                        other="followers"
+                      />
                     </span>
                     <span {...stylex.props(styles.seriesMetaDot)} aria-hidden>
                       ·
@@ -602,7 +615,7 @@ function SeriesBlock({
                   <span {...stylex.props(styles.seriesMetaStrong)}>
                     {issues.length}
                   </span>{" "}
-                  {issues.length === 1 ? "issue" : "issues"}
+                  <Plural value={issues.length} one="issue" other="issues" />
                 </span>
               </div>
             </div>
@@ -612,7 +625,7 @@ function SeriesBlock({
           <IconButton
             variant="secondary"
             size="lg"
-            label="Edit series"
+            label={t`Edit series`}
             onPress={onEdit}
           >
             <Pencil size={16} aria-hidden />
@@ -620,7 +633,7 @@ function SeriesBlock({
           <IconButton
             variant="secondary"
             size="lg"
-            label="Theme & fonts"
+            label={t`Theme & fonts`}
             onPress={onTheme}
           >
             <Palette size={16} aria-hidden />
@@ -630,7 +643,7 @@ function SeriesBlock({
 
       {issues.length === 0 ? (
         <div {...stylex.props(styles.seriesEmpty)}>
-          No collections in this series yet.
+          <Trans>No collections in this series yet.</Trans>
         </div>
       ) : (
         <div {...stylex.props(styles.issueList)}>
@@ -654,7 +667,7 @@ function SeriesBlock({
         style={styles.listAdd}
       >
         <Plus size={16} aria-hidden />
-        Add a collection to this series
+        <Trans>Add a collection to this series</Trans>
       </Button>
     </section>
   );
@@ -674,8 +687,8 @@ function NewSeriesButton({
       onPress={onPress}
       style={[styles.inkButton, primary.textContrast, styles.newSeriesButton]}
     >
-      <Plus size={15} aria-hidden {...stylex.props(styles.inkButtonIcon)} /> New
-      series
+      <Plus size={15} aria-hidden {...stylex.props(styles.inkButtonIcon)} />{" "}
+      <Trans>New series</Trans>
     </Button>
   );
 }
@@ -685,6 +698,7 @@ function CollectionsEmptyState({
 }: {
   onCreateSeries: () => void;
 }) {
+  const { i18n } = useLingui();
   return (
     <div {...stylex.props(styles.emptyState)}>
       <div aria-hidden {...stylex.props(styles.emptyArt)}>
@@ -694,20 +708,24 @@ function CollectionsEmptyState({
           <Layers size={26} aria-hidden />
         </span>
       </div>
-      <h2 {...stylex.props(styles.emptyTitle)}>Start your first series</h2>
+      <h2 {...stylex.props(styles.emptyTitle)}>
+        <Trans>Start your first series</Trans>
+      </h2>
       <p {...stylex.props(styles.emptyDescription)}>
-        A series is a collection of collections — like a magazine and its
-        issues. Group related editions under one masthead, give it a theme, and
-        let readers follow the whole run.
+        <Trans>
+          A series is a collection of collections — like a magazine and its
+          issues. Group related editions under one masthead, give it a theme,
+          and let readers follow the whole run.
+        </Trans>
       </p>
       <div {...stylex.props(styles.emptyActions)}>
         <NewSeriesButton size="lg" onPress={onCreateSeries} />
       </div>
       <div {...stylex.props(styles.emptySteps)}>
         {EMPTY_STEPS.map((step, index) => (
-          <div key={step} {...stylex.props(styles.emptyStep)}>
+          <div key={step.id} {...stylex.props(styles.emptyStep)}>
             <span {...stylex.props(styles.emptyStepNumber)}>{index + 1}</span>
-            <span>{step}</span>
+            <span>{i18n._(step)}</span>
           </div>
         ))}
       </div>
@@ -716,6 +734,7 @@ function CollectionsEmptyState({
 }
 
 function CollectionsPage() {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { data: collections } = useSuspenseQuery(
@@ -795,7 +814,9 @@ function CollectionsPage() {
       <div>
         <div {...stylex.props(styles.pageHeader)}>
           <div {...stylex.props(styles.topbar)}>
-            <Kicker>Your profile</Kicker>
+            <Kicker>
+              <Trans>Your profile</Trans>
+            </Kicker>
             {isFullyEmpty ? null : (
               <NewSeriesButton
                 onPress={() =>
@@ -806,9 +827,9 @@ function CollectionsPage() {
           </div>
 
           <Masthead
-            title="Collections"
-            dek="Curated, magazine-rendered editions grouped into series you can subscribe to — your special collections on the network."
-            metaLabel="Series"
+            title={t`Collections`}
+            dek={t`Curated, magazine-rendered editions grouped into series you can subscribe to — your special collections on the network.`}
+            metaLabel={t`Series`}
             metaValue={String(publications.length)}
             style={styles.mastheadAfterTopbar}
           />
@@ -842,8 +863,8 @@ function CollectionsPage() {
                   <div {...stylex.props(styles.seriesHeadMain)}>
                     <h2 {...stylex.props(styles.seriesTitle)}>
                       {publications.length === 0
-                        ? "Collections"
-                        : "Other collections"}
+                        ? t`Collections`
+                        : t`Other collections`}
                     </h2>
                     {publications.length === 0 ? (
                       <div {...stylex.props(styles.seriesMeta)}>
@@ -851,7 +872,11 @@ function CollectionsPage() {
                           <span {...stylex.props(styles.seriesMetaStrong)}>
                             {orphans.length}
                           </span>{" "}
-                          {orphans.length === 1 ? "issue" : "issues"}
+                          <Plural
+                            value={orphans.length}
+                            one="issue"
+                            other="issues"
+                          />
                         </span>
                       </div>
                     ) : null}

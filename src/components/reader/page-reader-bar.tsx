@@ -1,5 +1,6 @@
 "use client";
 
+import { useLingui } from "@lingui/react/macro";
 import { useExitAnimation } from "@react-aria/utils";
 import * as stylex from "@stylexjs/stylex";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
@@ -105,8 +106,8 @@ const styles = stylex.create({
     rowGap: gap.md,
     maxWidth: { [DESKTOP]: "min(540px, calc(100vw - 36px))", default: "480px" },
     paddingBottom: verticalSpace.lg,
-    paddingLeft: horizontalSpace.xl,
-    paddingRight: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    paddingInlineEnd: horizontalSpace.xl,
     paddingTop: verticalSpace.lg,
     width: { [DESKTOP]: "max-content", default: "calc(100vw - 24px)" },
   },
@@ -195,11 +196,11 @@ const styles = stylex.create({
     position: "absolute",
     transform: {
       [DESKTOP]: "translateY(-50%)",
-      default: "translate(40%, -40%)",
+      default: "translate(calc(var(--dir) * 40%), -40%)",
     },
     zIndex: 1,
-    left: { [DESKTOP]: `calc(100% + ${gap.md})`, default: "auto" },
-    right: { [DESKTOP]: "auto", default: 0 },
+    insetInlineStart: { [DESKTOP]: `calc(100% + ${gap.md})`, default: "auto" },
+    insetInlineEnd: { [DESKTOP]: "auto", default: 0 },
     top: { [DESKTOP]: "50%", default: 0 },
   },
   followFab: {
@@ -232,8 +233,8 @@ const styles = stylex.create({
     backgroundColor: uiColor.border1,
     flexShrink: 0,
     height: spacing["5"],
-    marginLeft: horizontalSpace.xl,
-    marginRight: horizontalSpace.sm,
+    marginInlineStart: horizontalSpace.xl,
+    marginInlineEnd: horizontalSpace.sm,
     width: spacing.px,
   },
 });
@@ -250,6 +251,7 @@ type BarSnapshot = {
 };
 
 export function PageReaderBar() {
+  const { t } = useLingui();
   const navigate = useNavigate();
   const router = useRouter();
   const {
@@ -303,16 +305,18 @@ export function PageReaderBar() {
   const isPlaying = status === "playing";
   const transportReady = status === "playing" || status === "paused";
 
-  let kickerLabel = "Reading aloud";
+  let kickerLabel = t`Reading aloud`;
   if (status === "loading-model") {
     const percent = Math.round(modelProgress * 100);
-    kickerLabel = percent > 0 ? `Loading voice… ${percent}%` : "Loading voice…";
+    kickerLabel =
+      percent > 0 ? t`Loading voice… ${percent}%` : t`Loading voice…`;
   } else if (status === "generating") {
-    kickerLabel = `Generating audio… ${Math.round(generationProgress * 100)}%`;
+    const percent = Math.round(generationProgress * 100);
+    kickerLabel = t`Generating audio… ${percent}%`;
   } else if (isError) {
-    kickerLabel = error ?? "Something went wrong";
+    kickerLabel = error ?? t`Something went wrong`;
   } else if (status === "paused") {
-    kickerLabel = "Paused";
+    kickerLabel = t`Paused`;
   }
 
   const previewTime = scrubValue ?? currentTime;
@@ -363,7 +367,7 @@ export function PageReaderBar() {
         ref={cardRef}
         data-exiting={exiting || undefined}
         {...stylex.props(styles.card)}
-        aria-label="Read aloud"
+        aria-label={t`Read aloud`}
       >
         <div {...stylex.props(styles.row)}>
           <div {...stylex.props(styles.now)}>
@@ -384,7 +388,7 @@ export function PageReaderBar() {
             <IconButton
               variant="tertiary"
               style={styles.roundBtn}
-              aria-label={`Back ${SKIP_SECONDS} seconds`}
+              aria-label={t`Back ${SKIP_SECONDS} seconds`}
               isDisabled={!transportReady}
               onPress={() => skip(-SKIP_SECONDS)}
             >
@@ -395,7 +399,7 @@ export function PageReaderBar() {
               variant="tertiary"
               size="lg"
               style={styles.playBtn}
-              aria-label={isError ? "Retry" : isPlaying ? "Pause" : "Play"}
+              aria-label={isError ? t`Retry` : isPlaying ? t`Pause` : t`Play`}
               isPending={isLoading}
               onPress={isError ? retry : toggle}
             >
@@ -417,7 +421,7 @@ export function PageReaderBar() {
               trigger={
                 <Button
                   variant="tertiary"
-                  aria-label={`Playback speed: ${formatRate(displayState.rate)}`}
+                  aria-label={t`Playback speed: ${formatRate(displayState.rate)}`}
                   style={styles.speedTrigger}
                 >
                   {formatRate(displayState.rate)}
@@ -436,7 +440,7 @@ export function PageReaderBar() {
             <IconButton
               variant="tertiary"
               style={styles.roundBtn}
-              aria-label="Stop reading"
+              aria-label={t`Stop reading`}
               onPress={stop}
             >
               <X size={18} />
@@ -468,8 +472,8 @@ export function PageReaderBar() {
             style={styles.followFab}
             aria-label={
               onPlayingArticle
-                ? "Follow along"
-                : "Return to article and follow along"
+                ? t`Follow along`
+                : t`Return to article and follow along`
             }
             onPress={onFollowAlong}
           >

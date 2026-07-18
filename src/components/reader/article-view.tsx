@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import {
   useMutation,
@@ -25,11 +26,13 @@ import { flushSync } from "react-dom";
 import { AppLink } from "#/components/reader/app-link";
 import { AuthorProfileLink } from "#/components/reader/author-profile-link";
 import { PublicationNameLink } from "#/components/reader/publication-name-link";
+import { DirectionalIcon } from "#/design-system/directional-icon";
 import { labelerApi } from "#/integrations/tanstack-query/api-labelers.functions";
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
 import { readerApi } from "#/integrations/tanstack-query/api-reader.functions";
 import { user } from "#/integrations/tanstack-query/api-user.functions";
 import { resolveArticleHeroImage } from "#/lib/document/lead-image";
+import { useFormatters } from "#/lib/formatters";
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
 import { useOpenCollectionsInMagazine } from "#/lib/use-open-collections-in-magazine";
 import { useReadingTypography } from "#/lib/use-reading-typography";
@@ -82,7 +85,6 @@ import {
   articlePublicationUrl,
   documentLinkParams,
   formatArticleReadStats,
-  formatDate,
   formatReaders,
   formatReadingTime,
   initials,
@@ -164,11 +166,11 @@ const styles = stylex.create({
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
     paddingBottom: spacing["3"],
-    paddingLeft: {
+    paddingInlineStart: {
       default: spacing["4"],
       "@media (min-width: 40rem)": spacing["5"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: spacing["4"],
       "@media (min-width: 40rem)": spacing["5"],
     },
@@ -234,11 +236,15 @@ const styles = stylex.create({
     textUnderlineOffset: "2px",
     minWidth: 0,
     paddingBottom: spacing["0"],
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["0"],
   },
   pubBylineName: {
+    // Single-line NAME/TITLE in a UI row: isolate for correct character
+    // ordering, but let alignment follow the surrounding UI (right under
+    // RTL). `dir="auto"` here would left-align it and break the column.
+    unicodeBidi: "isolate",
     overflow: "hidden",
     color: uiColor.text2,
     flexShrink: 1,
@@ -253,18 +259,18 @@ const styles = stylex.create({
     transitionProperty: "width",
     transitionTimingFunction: "linear",
     height: "100%",
-    left: 0,
+    insetInlineStart: 0,
     top: 0,
   },
   article: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "100%",
     minWidth: 0,
     paddingBottom: spacing["24"],
-    paddingLeft: spacing["6"],
-    paddingRight: spacing["6"],
+    paddingInlineStart: spacing["6"],
+    paddingInlineEnd: spacing["6"],
     paddingTop: spacing["14"],
     width: "100%",
   },
@@ -308,8 +314,8 @@ const styles = stylex.create({
     // eslint-disable-next-line @stylexjs/valid-styles
     textWrap: "balance",
     marginBottom: spacing["7"],
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     marginTop: spacing["0"],
     maxWidth: "48ch",
   },
@@ -343,7 +349,7 @@ const styles = stylex.create({
     flexDirection: "column",
     flexGrow: 1,
     flexShrink: 1,
-    textAlign: "left",
+    textAlign: "start",
     minWidth: 0,
   },
   bylineName: {
@@ -383,6 +389,13 @@ const styles = stylex.create({
     color: uiColor.text1,
     fontFamily: fontFamily.sans,
     fontSize: fontSize.sm,
+  },
+  // Each meta segment (date, reading time, read count) is its own bidi
+  // paragraph. Without isolation the Unicode bidi algorithm reorders the Latin
+  // digits/words across the `·` separators under an RTL UI, so the row renders
+  // scrambled (e.g. `قراءة min read · 13 2 2026 يوليو 17`).
+  bylineMetaItem: {
+    unicodeBidi: "isolate",
   },
   hero: {
     borderRadius: radius.lg,
@@ -439,8 +452,8 @@ const styles = stylex.create({
     fontSize: fontSize.lg,
     fontStyle: "italic",
     lineHeight: lineHeight.base,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "46ch",
   },
   emptyNote: {
@@ -498,8 +511,8 @@ const styles = stylex.create({
     transitionProperty: "background-color, border-color, color",
     transitionTimingFunction: "ease-in-out",
     paddingBottom: verticalSpace.md,
-    paddingLeft: horizontalSpace["2xl"],
-    paddingRight: horizontalSpace["2xl"],
+    paddingInlineStart: horizontalSpace["2xl"],
+    paddingInlineEnd: horizontalSpace["2xl"],
     paddingTop: verticalSpace.md,
   },
   likeButtonActive: {
@@ -521,9 +534,9 @@ const styles = stylex.create({
   },
   likeButtonDivider: {
     alignSelf: "stretch",
-    borderLeftColor: uiColor.border1,
-    borderLeftStyle: "solid",
-    borderLeftWidth: 1,
+    borderInlineStartColor: uiColor.border1,
+    borderInlineStartStyle: "solid",
+    borderInlineStartWidth: 1,
     width: spacing["0"],
   },
   likeButtonCount: {
@@ -572,11 +585,12 @@ function BookmarkButton({
   onToggle: () => void;
   isPending?: boolean;
 }) {
+  const { t } = useLingui();
   return (
     <IconButton
       variant="secondary"
       size="md"
-      label={bookmarked ? "Saved for later" : "Save for later"}
+      label={bookmarked ? t`Saved for later` : t`Save for later`}
       isDisabled={isPending}
       onPress={onToggle}
       style={bookmarked ? styles.bookmarkActive : undefined}
@@ -595,11 +609,12 @@ function ReadToggleButton({
   onToggle: () => void;
   isPending?: boolean;
 }) {
+  const { t } = useLingui();
   return (
     <IconButton
       variant="secondary"
       size="md"
-      label={isRead ? "Mark as unread" : "Mark as read"}
+      label={isRead ? t`Mark as unread` : t`Mark as read`}
       aria-pressed={isRead}
       isDisabled={isPending}
       onPress={onToggle}
@@ -635,35 +650,48 @@ function ReaderSecondaryActionsMenu({
   bookmarked: boolean;
   onToggleBookmark: () => void;
 }) {
+  const { t } = useLingui();
   return (
     <Menu
       trigger={
-        <IconButton variant="secondary" size="md" label="More actions">
+        <IconButton variant="secondary" size="md" label={t`More actions`}>
           <MoreHorizontal size={18} />
         </IconButton>
       }
     >
       {onOpenMagazine ? (
-        <MenuItem prefix={<BookOpen size={16} />} onPress={onOpenMagazine}>
-          Open magazine edition
+        <MenuItem
+          prefix={<BookOpen size={16} />}
+          onPress={onOpenMagazine}
+          textValue={t`Open magazine edition`}
+        >
+          <Trans>Open magazine edition</Trans>
         </MenuItem>
       ) : null}
       {onOpenPublication ? (
         <MenuItem
           prefix={<ExternalLink size={16} />}
           onPress={onOpenPublication}
+          textValue={
+            publicationName
+              ? t`Open on ${publicationName}`
+              : t`Open on publication`
+          }
         >
-          {publicationName
-            ? `Open on ${publicationName}`
-            : "Open on publication"}
+          {publicationName ? (
+            <Trans>Open on {publicationName}</Trans>
+          ) : (
+            <Trans>Open on publication</Trans>
+          )}
         </MenuItem>
       ) : null}
       {showReadToggle ? (
         <MenuItem
           prefix={isRead ? <CircleCheck size={16} /> : <Circle size={16} />}
           onPress={onToggleRead}
+          textValue={isRead ? t`Mark as unread` : t`Mark as read`}
         >
-          {isRead ? "Mark as unread" : "Mark as read"}
+          {isRead ? <Trans>Mark as unread</Trans> : <Trans>Mark as read</Trans>}
         </MenuItem>
       ) : null}
       <MenuItem
@@ -671,8 +699,13 @@ function ReaderSecondaryActionsMenu({
           <Bookmark size={16} fill={bookmarked ? "currentColor" : "none"} />
         }
         onPress={onToggleBookmark}
+        textValue={bookmarked ? t`Saved for later` : t`Save for later`}
       >
-        {bookmarked ? "Saved for later" : "Save for later"}
+        {bookmarked ? (
+          <Trans>Saved for later</Trans>
+        ) : (
+          <Trans>Save for later</Trans>
+        )}
       </MenuItem>
     </Menu>
   );
@@ -690,11 +723,13 @@ function ArticleLikePrompt({
   return (
     <div {...stylex.props(styles.likePrompt)}>
       <h2 {...stylex.props(styles.likePromptTitle)}>
-        Did you enjoy this article?
+        <Trans>Did you enjoy this article?</Trans>
       </h2>
       <p {...stylex.props(styles.likePromptSubtext)}>
-        Recommend it — Standard Reader surfaces well-loved writing to more
-        readers across the network.
+        <Trans>
+          Recommend it — Standard Reader surfaces well-loved writing to more
+          readers across the network.
+        </Trans>
       </p>
       <Button
         variant="secondary"
@@ -710,7 +745,11 @@ function ArticleLikePrompt({
           />
         </span>
         <span {...stylex.props(styles.likeButtonLabel)}>
-          {recommended ? "Recommended" : "Recommend this article"}
+          {recommended ? (
+            <Trans>Recommended</Trans>
+          ) : (
+            <Trans>Recommend this article</Trans>
+          )}
         </span>
         <span aria-hidden {...stylex.props(styles.likeButtonDivider)} />
         <span {...stylex.props(styles.likeButtonCount)}>
@@ -730,6 +769,7 @@ export function ArticleView(props: {
 
 /** Top-bar control to start/pause reading this article aloud. */
 function TopListenButton({ article }: { article: ArticleDetail }) {
+  const { t } = useLingui();
   const { nowPlaying, state, playArticle } = usePageReader();
   const available = useMemo(
     () => (articleSpeechText(article)?.trim().length ?? 0) > 0,
@@ -746,7 +786,7 @@ function TopListenButton({ article }: { article: ArticleDetail }) {
     <IconButton
       variant="secondary"
       size="md"
-      label="Listen"
+      label={t`Listen`}
       onPress={() => playArticle(article)}
     >
       <Headphones size={18} />
@@ -802,6 +842,8 @@ function ArticleViewBody({
   article: ArticleDetail;
   sharedQuote?: string | null;
 }) {
+  const { t, i18n } = useLingui();
+  const fmt = useFormatters();
   const router = useRouter();
   const { active: readerActive } = usePageReader();
   const { rememberOpenInMagazine } = useOpenCollectionsInMagazine();
@@ -812,6 +854,7 @@ function ArticleViewBody({
     () => Boolean(article.collection) && !hasSeenCollectionMagazineIntro(),
   );
   const pub = article.publication;
+  const publicationName = pub?.name;
   const pubParams = pub ? publicationLinkParams(pub.uri) : null;
   const authorName = primaryAuthor(article);
   const handle = authorHandle(article);
@@ -833,7 +876,7 @@ function ArticleViewBody({
     return [...byVal.values()];
   })();
   const readingLabel = formatReadingTime(articleReadingText(article));
-  const date = formatDate(article.publishedAt);
+  const date = fmt.date(article.publishedAt);
   const publicationArticleUrl = articlePublicationUrl(article);
   const linkParams = documentLinkParams(article.uri);
 
@@ -878,7 +921,7 @@ function ArticleViewBody({
     isPending: bookmarkPending,
   } = useArticleBookmark(article.uri, signedIn);
 
-  const readStats = formatArticleReadStats(article.readCount);
+  const readStats = formatArticleReadStats(i18n, article.readCount);
   const hasEngagement = article.recommendCount > 0 || article.commentCount > 0;
   const hero = useMemo(() => resolveArticleHeroImage(article), [article]);
   const [heroLightboxOpen, setHeroLightboxOpen] = useState(false);
@@ -973,12 +1016,12 @@ function ArticleViewBody({
             <IconButton
               variant="secondary"
               size="md"
-              label="Back"
+              label={t`Back`}
               onPress={() => {
                 router.history.back();
               }}
             >
-              <ArrowLeft size={18} />
+              <DirectionalIcon as={ArrowLeft} size={18} />
             </IconButton>
 
             {pub ? (
@@ -1022,7 +1065,7 @@ function ArticleViewBody({
                 <IconButton
                   variant="secondary"
                   size="md"
-                  label="Open magazine edition"
+                  label={t`Open magazine edition`}
                   onPress={handleOpenMagazine}
                 >
                   <BookOpen size={18} />
@@ -1032,7 +1075,9 @@ function ArticleViewBody({
                 <IconButton
                   variant="secondary"
                   size="md"
-                  label={pub ? `Open on ${pub.name}` : "Open on publication"}
+                  label={
+                    pub ? t`Open on ${publicationName}` : t`Open on publication`
+                  }
                   onPress={handleOpenPublication}
                 >
                   <ExternalLink size={18} />
@@ -1057,7 +1102,7 @@ function ArticleViewBody({
               <ReaderSecondaryActionsMenu
                 onOpenMagazine={handleOpenMagazine}
                 onOpenPublication={handleOpenPublication}
-                publicationName={pub?.name}
+                publicationName={publicationName}
                 showReadToggle={signedIn && trackReading}
                 isRead={isRead}
                 onToggleRead={toggleRead}
@@ -1093,15 +1138,17 @@ function ArticleViewBody({
         {showMagazineIntro ? (
           <div {...stylex.props(styles.magazineIntro)}>
             <Alert
-              title="There’s a magazine edition of this collection."
+              title={t`There’s a magazine edition of this collection.`}
               action={
                 <Button variant="primary" onPress={dismissMagazineIntro}>
-                  OK
+                  <Trans>OK</Trans>
                 </Button>
               }
             >
-              Nine pieces, laid out as spreads — made to be read slowly. Click
-              the book icon in the header.
+              <Trans>
+                Nine pieces, laid out as spreads — made to be read slowly. Click
+                the book icon in the header.
+              </Trans>
             </Alert>
           </div>
         ) : null}
@@ -1129,7 +1176,7 @@ function ArticleViewBody({
 
         {hero ? (
           <button
-            aria-label="Open image"
+            aria-label={t`Open image`}
             type="button"
             onClick={() => {
               flushSync(() => setHeroTransitionActive(true));
@@ -1152,7 +1199,7 @@ function ArticleViewBody({
         ) : null}
         {hero ? (
           <Lightbox
-            alt="Article header image"
+            alt={t`Article header image`}
             images={[
               {
                 src: hero.url,
@@ -1170,10 +1217,16 @@ function ArticleViewBody({
           />
         ) : null}
 
-        <h1 {...stylex.props(styles.title)}>{article.title}</h1>
+        {/* dir="auto" for the same reason as the article body: this is author
+            content, not UI chrome, so it must not inherit the UI direction. */}
+        <h1 dir="auto" {...stylex.props(styles.title)}>
+          {article.title}
+        </h1>
 
         {article.description && !articleDescriptionIsBodyExcerpt(article) ? (
-          <p {...stylex.props(styles.dek)}>{article.description}</p>
+          <p dir="auto" {...stylex.props(styles.dek)}>
+            {article.description}
+          </p>
         ) : null}
 
         <div {...stylex.props(styles.byline)}>
@@ -1214,9 +1267,23 @@ function ArticleViewBody({
             </div>
             <Flex align="center" gap="md" wrap style={styles.bylineMeta}>
               <span>
-                {date}
-                {readingLabel ? ` · ${readingLabel}` : null}
-                {readStats ? ` · ${readStats}` : null}
+                <span {...stylex.props(styles.bylineMetaItem)}>{date}</span>
+                {readingLabel ? (
+                  <>
+                    <span aria-hidden> · </span>
+                    <span {...stylex.props(styles.bylineMetaItem)}>
+                      {readingLabel}
+                    </span>
+                  </>
+                ) : null}
+                {readStats ? (
+                  <>
+                    <span aria-hidden> · </span>
+                    <span {...stylex.props(styles.bylineMetaItem)}>
+                      {readStats}
+                    </span>
+                  </>
+                ) : null}
               </span>
               {hasEngagement ? (
                 <>
@@ -1285,7 +1352,7 @@ function ArticleViewBody({
 export function ArticleNotFound() {
   return (
     <div {...stylex.props(styles.emptyNote)}>
-      We couldn’t find that article.
+      <Trans>We couldn’t find that article.</Trans>
     </div>
   );
 }

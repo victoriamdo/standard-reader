@@ -39,8 +39,8 @@ const styles = stylex.create({
     boxSizing: "border-box",
     containerType: "inline-size",
     flexGrow: 1,
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "var(--page-content-max-width)",
     minHeight: 0,
     paddingBottom: {
@@ -48,12 +48,12 @@ const styles = stylex.create({
       [containerBreakpoints.sm]: verticalSpace["xl"],
       ":has(> [data-sidebar-layout=true])": "0 !important",
     },
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
       ":has(> [data-sidebar-layout=true])": "0 !important",
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
       ":has(> [data-sidebar-layout=true])": "0 !important",
@@ -84,14 +84,14 @@ const styles = stylex.create({
   },
   heroContent: {
     boxSizing: "border-box",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "var(--page-content-max-width)",
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
     },

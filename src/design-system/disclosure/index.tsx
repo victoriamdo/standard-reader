@@ -34,12 +34,12 @@ const styles = stylex.create({
       ":is([data-size=md] *)": sizeSpace["xxs"],
       ":is([data-size=sm] *)": sizeSpace["sm"],
     },
-    paddingLeft: {
+    paddingInlineStart: {
       ":is([data-size=lg] *)": sizeSpace["md"],
       ":is([data-size=md] *)": sizeSpace["xxs"],
       ":is([data-size=sm] *)": sizeSpace["sm"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       ":is([data-size=lg] *)": sizeSpace["md"],
       ":is([data-size=md] *)": sizeSpace["xxs"],
       ":is([data-size=sm] *)": sizeSpace["sm"],
@@ -68,7 +68,7 @@ const styles = stylex.create({
     },
     fontWeight: fontWeight["medium"],
     justifyContent: "space-between",
-    textAlign: "left",
+    textAlign: "start",
     transitionDuration: animationDuration.fast,
     transitionProperty: {
       default: "background-color",
@@ -119,12 +119,12 @@ const styles = stylex.create({
       ":is([data-size=md] *)": sizeSpace["xxs"],
       ":is([data-size=sm] *)": sizeSpace["sm"],
     },
-    paddingLeft: {
+    paddingInlineStart: {
       ":is([data-size=lg] *)": sizeSpace["md"],
       ":is([data-size=md] *)": sizeSpace["xxs"],
       ":is([data-size=sm] *)": sizeSpace["sm"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       ":is([data-size=lg] *)": sizeSpace["md"],
       ":is([data-size=md] *)": sizeSpace["xxs"],
       ":is([data-size=sm] *)": sizeSpace["sm"],

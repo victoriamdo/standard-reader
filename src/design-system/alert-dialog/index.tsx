@@ -40,14 +40,14 @@ const styles = stylex.create({
     fontSize: fontSize["lg"],
     justifyContent: "space-between",
     height: sizeSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["md"],
   },
   description: {
     paddingBottom: verticalSpace["3xl"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
     paddingTop: verticalSpace["3xl"],
   },
   footer: {
@@ -55,8 +55,8 @@ const styles = stylex.create({
     display: "flex",
     justifyContent: "flex-end",
     paddingBottom: verticalSpace["md"],
-    paddingLeft: horizontalSpace["3xl"],
-    paddingRight: horizontalSpace["3xl"],
+    paddingInlineStart: horizontalSpace["3xl"],
+    paddingInlineEnd: horizontalSpace["3xl"],
   },
 });
 

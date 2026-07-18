@@ -47,12 +47,12 @@ const styles = stylex.create({
     },
 
     marginBottom: `calc(${verticalSpace["xxs"]} * -1)`,
-    marginLeft: `calc(${horizontalSpace["sm"]} * -1)`,
-    marginRight: `calc(${horizontalSpace["sm"]} * -1)`,
+    marginInlineStart: `calc(${horizontalSpace["sm"]} * -1)`,
+    marginInlineEnd: `calc(${horizontalSpace["sm"]} * -1)`,
     marginTop: `calc(${verticalSpace["xxs"]} * -1)`,
     paddingBottom: verticalSpace["xs"],
-    paddingLeft: horizontalSpace["md"],
-    paddingRight: horizontalSpace["md"],
+    paddingInlineStart: horizontalSpace["md"],
+    paddingInlineEnd: horizontalSpace["md"],
     paddingTop: verticalSpace["xs"],
   },
 });

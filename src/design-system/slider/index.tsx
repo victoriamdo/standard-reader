@@ -64,11 +64,11 @@ const styles = stylex.create({
     bottom: {
       ":is([data-orientation=vertical] *)::before": 0,
     },
-    left: {
+    insetInlineStart: {
       ":is([data-orientation=horizontal] *)::before": 0,
       ":is([data-orientation=vertical] *)::before": "50%",
     },
-    right: {
+    insetInlineEnd: {
       ":is([data-orientation=horizontal] *)::before": 0,
     },
     top: {
@@ -96,7 +96,7 @@ const styles = stylex.create({
     content: "''",
     forcedColorAdjust: "none",
     height: sizeSpace["md"],
-    left: {
+    insetInlineStart: {
       ":is([data-orientation=vertical] *)": "50%",
     },
     outline: {
@@ -124,7 +124,7 @@ const styles = stylex.create({
       ":is([data-orientation=horizontal] *)": sizeSpace["xxs"],
       ":is([data-orientation=vertical] *)": "100%",
     },
-    left: {
+    insetInlineStart: {
       ":is([data-orientation=vertical] *)": "50%",
     },
     top: {
@@ -153,7 +153,7 @@ const styles = stylex.create({
       ":is([data-orientation=vertical] *)":
         "calc(attr(data-progress-end number) * 1% - attr(data-progress-start number) * 1%)",
     },
-    left: {
+    insetInlineStart: {
       ":is([data-orientation=horizontal] *)":
         "calc(attr(data-progress-start number) * 1%)",
       ":is([data-orientation=vertical] *)": "50%",

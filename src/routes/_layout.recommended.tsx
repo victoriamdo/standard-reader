@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
@@ -59,8 +60,8 @@ const styles = stylex.create({
     marginTop: spacing["6"],
     maxWidth: "100%",
     paddingBottom: spacing["10"],
-    paddingLeft: spacing["8"],
-    paddingRight: spacing["8"],
+    paddingInlineStart: spacing["8"],
+    paddingInlineEnd: spacing["8"],
     paddingTop: spacing["10"],
     width: "100%",
   },
@@ -104,6 +105,7 @@ const styles = stylex.create({
 });
 
 function ReaderRecommended() {
+  const { t } = useLingui();
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery(readerApi.getLikesInfiniteQueryOptions());
 
@@ -127,16 +129,16 @@ function ReaderRecommended() {
     documentUri: item.documentUri,
     article: item.article,
     timestamp: item.likedAt,
-    actionLabel: "Recommended",
+    actionLabel: t`Recommended`,
   }));
 
   return (
     <ReaderContent>
       <Masthead
-        kicker="Your profile"
-        title="Recommended articles"
-        dek="Articles you've recommended across the network."
-        metaLabel="Recommendations"
+        kicker={t`Your profile`}
+        title={t`Recommended articles`}
+        dek={t`Articles you've recommended across the network.`}
+        metaLabel={t`Recommendations`}
         metaValue={String(total)}
       />
 
@@ -149,18 +151,20 @@ function ReaderRecommended() {
             style={styles.emptyInner}
           >
             <span {...stylex.props(styles.emptyTitle)}>
-              No recommendations yet
+              <Trans>No recommendations yet</Trans>
             </span>
             <p {...stylex.props(styles.emptyDek)}>
-              Tap the heart on any article to recommend it. Your recommendations
-              live in your repo as{" "}
-              <code {...stylex.props(styles.emptyCode)}>
-                site.standard.graph.recommend
-              </code>{" "}
-              records and help surface great writing across the network.
+              <Trans>
+                Tap the heart on any article to recommend it. Your
+                recommendations live in your repo as{" "}
+                <code {...stylex.props(styles.emptyCode)}>
+                  site.standard.graph.recommend
+                </code>{" "}
+                records and help surface great writing across the network.
+              </Trans>
             </p>
             <ButtonLink to="/" variant="secondary" size="lg">
-              Browse your feed
+              <Trans>Browse your feed</Trans>
             </ButtonLink>
           </Flex>
         </div>
@@ -168,7 +172,9 @@ function ReaderRecommended() {
         <>
           <ReaderQueueRows items={queueRows} showSaveButton={false} />
           {isFetchingNextPage ? (
-            <p {...stylex.props(styles.loadingNote)}>Loading…</p>
+            <p {...stylex.props(styles.loadingNote)}>
+              <Trans>Loading…</Trans>
+            </p>
           ) : null}
           {hasNextPage ? (
             <div

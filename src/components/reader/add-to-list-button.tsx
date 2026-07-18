@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ListPlus } from "lucide-react";
 
@@ -18,6 +19,7 @@ export function AddToListButton({
   did: string;
   size?: "sm" | "md";
 }) {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
   const { data: lists } = useQuery(listApi.getListsQueryOptions());
   const addMutation = useMutation(listApi.addUserToListMutationOptions());
@@ -38,7 +40,7 @@ export function AddToListButton({
   };
 
   const trigger = (
-    <IconButton variant="secondary" size={size} label="Add to list">
+    <IconButton variant="secondary" size={size} label={t`Add to list`}>
       <ListPlus size={iconSize} />
     </IconButton>
   );
@@ -46,7 +48,9 @@ export function AddToListButton({
   return (
     <Menu trigger={trigger}>
       {(lists ?? []).length === 0 ? (
-        <MenuItem isDisabled>No lists yet</MenuItem>
+        <MenuItem isDisabled textValue={t`No lists yet`}>
+          <Trans>No lists yet</Trans>
+        </MenuItem>
       ) : (
         (lists ?? []).map((list) => {
           const isMember = list.users.includes(did);
@@ -56,7 +60,7 @@ export function AddToListButton({
               onPress={() => toggle(list.rkey, isMember)}
               suffix={isMember ? <Check size={14} /> : undefined}
             >
-              {list.name}
+              <span dir="auto">{list.name}</span>
             </MenuItem>
           );
         })

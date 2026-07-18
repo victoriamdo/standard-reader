@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 
 import { MenuItem } from "#/design-system/menu";
@@ -12,18 +13,20 @@ const styles = stylex.create({
 
 /** Toggle for whether opens are recorded as `app.standard-reader.read` records. */
 export function TrackReadingHistoryMenuItem() {
+  const { t } = useLingui();
   const { enabled, setEnabled } = useTrackReadingHistory();
 
   return (
     <MenuItem
       onPress={() => setEnabled(!enabled)}
+      textValue={t`Track reading history`}
       suffix={
         <span {...stylex.props(styles.currentState)}>
-          {enabled ? "On" : "Off"}
+          {enabled ? t`On` : t`Off`}
         </span>
       }
     >
-      Track reading history
+      <Trans>Track reading history</Trans>
     </MenuItem>
   );
 }

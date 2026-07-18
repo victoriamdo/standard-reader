@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -57,8 +58,8 @@ const styles = stylex.create({
     },
     transitionTimingFunction: "ease-in-out",
     paddingBottom: verticalSpace["xs"],
-    paddingLeft: horizontalSpace["lg"],
-    paddingRight: horizontalSpace["lg"],
+    paddingInlineStart: horizontalSpace["lg"],
+    paddingInlineEnd: horizontalSpace["lg"],
     paddingTop: verticalSpace["xs"],
   },
   filterTriggerText: {
@@ -71,8 +72,8 @@ const styles = stylex.create({
   },
   popoverPanel: {
     paddingBottom: spacing["0"],
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["0"],
   },
   popoverHeader: {
@@ -84,8 +85,8 @@ const styles = stylex.create({
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
     paddingBottom: verticalSpace["md"],
-    paddingLeft: horizontalSpace["lg"],
-    paddingRight: horizontalSpace["sm"],
+    paddingInlineStart: horizontalSpace["lg"],
+    paddingInlineEnd: horizontalSpace["sm"],
     paddingTop: verticalSpace["md"],
   },
   popoverTitle: {
@@ -102,8 +103,8 @@ const styles = stylex.create({
     minWidth: spacing["48"],
     overflowY: "auto",
     paddingBottom: verticalSpace["lg"],
-    paddingLeft: horizontalSpace["lg"],
-    paddingRight: horizontalSpace["lg"],
+    paddingInlineStart: horizontalSpace["lg"],
+    paddingInlineEnd: horizontalSpace["lg"],
     paddingTop: verticalSpace["lg"],
   },
 });
@@ -125,13 +126,14 @@ export function DiscoverTopicFilters({
   topicItems,
   onTopicChange,
 }: DiscoverTopicFiltersProps) {
+  const { t } = useLingui();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const triggerLabel = useMemo(() => {
-    if (topicKey === "all") return "All";
+    if (topicKey === "all") return t`All`;
     const match = topicItems.find((item) => item.id === topicKey);
     return match?.name ?? topicKey;
-  }, [topicKey, topicItems]);
+  }, [t, topicKey, topicItems]);
 
   const clearTopicFilter = () => {
     onTopicChange("all");
@@ -164,9 +166,9 @@ export function DiscoverTopicFilters({
       trigger={
         <AriaButton
           {...stylex.props(styles.filterTrigger, typeramp.label)}
-          aria-label={`Filter by topic: ${triggerLabel}`}
+          aria-label={t`Filter by topic: ${triggerLabel}`}
         >
-          <span {...stylex.props(styles.filterTriggerText)}>
+          <span dir="auto" {...stylex.props(styles.filterTriggerText)}>
             {triggerLabel}
           </span>
         </AriaButton>
@@ -174,22 +176,28 @@ export function DiscoverTopicFilters({
     >
       <div {...stylex.props(styles.popoverHeader)}>
         <Heading slot="title" {...stylex.props(styles.popoverTitle)}>
-          Filter by topic
+          <Trans>Filter by topic</Trans>
         </Heading>
-        <IconButton label="Close" size="sm" variant="tertiary" slot="close">
+        <IconButton label={t`Close`} size="sm" variant="tertiary" slot="close">
           <X size={16} />
         </IconButton>
       </div>
 
       <div {...stylex.props(styles.popoverBody)}>
         <TagGroup
-          aria-label="Filter by topic"
+          aria-label={t`Filter by topic`}
           selectionMode="single"
           selectedKeys={new Set([topicKey])}
           onSelectionChange={onPickerTopicChange}
           items={topicItems}
         >
-          {(item) => <Tag id={item.id}>{item.name}</Tag>}
+          {(item) => (
+            // Topic values come from the network (author-supplied), so let the
+            // browser resolve their direction rather than inheriting the UI's.
+            <Tag id={item.id}>
+              <span dir="auto">{item.name}</span>
+            </Tag>
+          )}
         </TagGroup>
       </div>
     </Popover>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -14,7 +15,9 @@ import {
 import { Button as AriaButton } from "react-aria-components";
 
 import { AuthorProfileLink } from "#/components/reader/author-profile-link";
+import { DirectionalIcon } from "#/design-system/directional-icon";
 import { formatSidebarUnreadCount } from "#/lib/format-count";
+import { useFormatters } from "#/lib/formatters";
 
 import { Avatar } from "../../design-system/avatar";
 import { Button } from "../../design-system/button";
@@ -89,8 +92,8 @@ const styles = stylex.create({
     transitionProperty: "background-color, border-color",
     whiteSpace: "nowrap",
     height: spacing["9"],
-    paddingLeft: horizontalSpace.lg,
-    paddingRight: horizontalSpace.lg,
+    paddingInlineStart: horizontalSpace.lg,
+    paddingInlineEnd: horizontalSpace.lg,
   },
   switcherCount: {
     borderRadius: radius.full,
@@ -99,8 +102,8 @@ const styles = stylex.create({
     fontFamily: fontFamily.mono,
     fontSize: fontSize.xs,
     paddingBottom: verticalSpace.none,
-    paddingLeft: horizontalSpace.md,
-    paddingRight: horizontalSpace.md,
+    paddingInlineStart: horizontalSpace.md,
+    paddingInlineEnd: horizontalSpace.md,
     paddingTop: verticalSpace.none,
   },
   actionRow: {
@@ -121,7 +124,7 @@ const styles = stylex.create({
   },
   /** No divider between grouped icon buttons. */
   toolbarIcon: {
-    borderRightColor: "transparent",
+    borderInlineEndColor: "transparent",
   },
   list: {
     display: "flex",
@@ -140,13 +143,13 @@ const styles = stylex.create({
     cursor: "pointer",
     display: "flex",
     rowGap: gap.lg,
-    textAlign: "left",
+    textAlign: "start",
     borderBottomColor: uiColor.border1,
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
     paddingBottom: verticalSpace.lg,
-    paddingLeft: horizontalSpace.sm,
-    paddingRight: horizontalSpace.sm,
+    paddingInlineStart: horizontalSpace.sm,
+    paddingInlineEnd: horizontalSpace.sm,
     paddingTop: verticalSpace.lg,
     width: "100%",
   },
@@ -177,8 +180,8 @@ const styles = stylex.create({
     textAlign: "center",
     minWidth: spacing["4"],
     paddingBottom: verticalSpace.xxs,
-    paddingLeft: horizontalSpace.sm,
-    paddingRight: horizontalSpace.sm,
+    paddingInlineStart: horizontalSpace.sm,
+    paddingInlineEnd: horizontalSpace.sm,
     paddingTop: verticalSpace.xxs,
   },
   chevron: {
@@ -290,15 +293,15 @@ const styles = stylex.create({
     justifyContent: "center",
     height: size["2xl"],
     paddingBottom: spacing["0"],
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["0"],
     width: size["2xl"],
   },
   groupPanelContent: {
     paddingBottom: spacing["0"],
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["0"],
   },
   /** Extra separation below an expanded group; collapses with the panel. */
@@ -344,7 +347,7 @@ export function SubscriptionsSwitcher({
 }) {
   return (
     <AriaButton {...stylex.props(styles.switcher)} onPress={onPress}>
-      Subscriptions
+      <Trans>Subscriptions</Trans>
       {count > 0 ? (
         <span {...stylex.props(styles.switcherCount)}>{count}</span>
       ) : null}
@@ -359,7 +362,11 @@ function SheetPubRow({
   pub: FollowingPublication;
   onNavigate: () => void;
 }) {
+  const { t } = useLingui();
+  const fmt = useFormatters();
   const navigate = useNavigate();
+
+  const unreadCount = pub.unreadCount;
 
   const openPublication = () => {
     onNavigate();
@@ -405,12 +412,12 @@ function SheetPubRow({
       {pub.unreadCount > 0 ? (
         <span
           {...stylex.props(styles.pubUnread)}
-          aria-label={`${pub.unreadCount} unread`}
+          aria-label={t`${unreadCount} unread`}
         >
-          {formatSidebarUnreadCount(pub.unreadCount)}
+          {formatSidebarUnreadCount(fmt, pub.unreadCount)}
         </span>
       ) : null}
-      <ChevronRight aria-hidden size={16} {...stylex.props(styles.chevron)} />
+      <DirectionalIcon as={ChevronRight} size={16} style={styles.chevron} />
     </AriaButton>
   );
 }
@@ -422,10 +429,13 @@ function SheetUserRow({
   user: FollowingUser;
   onNavigate: () => void;
 }) {
+  const { t } = useLingui();
+  const fmt = useFormatters();
   const navigate = useNavigate();
   const name =
     followed.displayName ??
     (followed.handle ? `@${followed.handle}` : followed.did);
+  const unreadCount = followed.unreadCount ?? 0;
   return (
     <AriaButton
       {...stylex.props(styles.pubRow)}
@@ -439,15 +449,15 @@ function SheetUserRow({
         <div {...stylex.props(styles.pubName)}>{name}</div>
         {followed.handle ? <Handle>@{followed.handle}</Handle> : null}
       </div>
-      {(followed.unreadCount ?? 0) > 0 ? (
+      {unreadCount > 0 ? (
         <span
           {...stylex.props(styles.pubUnread)}
-          aria-label={`${followed.unreadCount} unread`}
+          aria-label={t`${unreadCount} unread`}
         >
-          {formatSidebarUnreadCount(followed.unreadCount ?? 0)}
+          {formatSidebarUnreadCount(fmt, unreadCount)}
         </span>
       ) : null}
-      <ChevronRight aria-hidden size={16} {...stylex.props(styles.chevron)} />
+      <DirectionalIcon as={ChevronRight} size={16} style={styles.chevron} />
     </AriaButton>
   );
 }
@@ -463,7 +473,10 @@ function SheetListGroup({
   isExpanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
 }) {
+  const { t } = useLingui();
+  const fmt = useFormatters();
   const link = listLinkParams(group.listUri);
+  const listName = group.name;
   const unreadTotal =
     group.pubs.reduce((sum, pub) => sum + pub.unreadCount, 0) +
     group.users.reduce((sum, person) => sum + (person.unreadCount ?? 0), 0);
@@ -475,7 +488,7 @@ function SheetListGroup({
           <Link
             to="/l/$did/$rkey"
             params={link}
-            aria-label={`Open list ${group.name}`}
+            aria-label={t`Open list ${listName}`}
             onClick={onNavigate}
             {...stylex.props(styles.groupTitleLink)}
           >
@@ -486,11 +499,11 @@ function SheetListGroup({
         )}
         <div {...stylex.props(styles.groupActions)}>
           {unreadTotal > 0 ? (
-            <span>{formatSidebarUnreadCount(unreadTotal)}</span>
+            <span>{formatSidebarUnreadCount(fmt, unreadTotal)}</span>
           ) : null}
           <DisclosureTitle
             style={styles.groupToggle}
-            aria-label={`Toggle list ${group.name}`}
+            aria-label={t`Toggle list ${listName}`}
           >
             {null}
           </DisclosureTitle>
@@ -499,7 +512,9 @@ function SheetListGroup({
       <DisclosurePanel contentStyle={styles.groupPanelContent}>
         <div {...stylex.props(styles.list)}>
           {group.pubs.length === 0 && group.users.length === 0 ? (
-            <span {...stylex.props(styles.groupEmpty)}>Empty list.</span>
+            <span {...stylex.props(styles.groupEmpty)}>
+              <Trans>Empty list.</Trans>
+            </span>
           ) : (
             <>
               {group.pubs.map((pub) => (
@@ -555,8 +570,8 @@ export function SubscriptionsSheet({
   /** Persist a single group's collapsed state. */
   onSetCollapsed?: (listUri: string, collapsed: boolean) => void;
 }) {
+  const { t } = useLingui();
   const navigate = useNavigate();
-  const countLabel = `${following.length} publication${following.length === 1 ? "" : "s"}`;
 
   const close = () => onOpenChange(false);
 
@@ -573,9 +588,15 @@ export function SubscriptionsSheet({
       size="md"
       trigger={<span hidden aria-hidden />}
     >
-      <DrawerHeader style={styles.sheetHeader}>Subscriptions</DrawerHeader>
+      <DrawerHeader style={styles.sheetHeader}>
+        <Trans>Subscriptions</Trans>
+      </DrawerHeader>
       <DrawerDescription style={styles.sheetSubtitle}>
-        {countLabel}
+        <Plural
+          value={following.length}
+          one="# publication"
+          other="# publications"
+        />
       </DrawerDescription>
       <DrawerBody scroll>
         <div {...stylex.props(styles.actionRow)}>
@@ -585,7 +606,7 @@ export function SubscriptionsSheet({
             onPress={onAddPublication}
             size="lg"
           >
-            <Plus size={17} /> Add publication
+            <Plus size={17} /> <Trans>Add publication</Trans>
           </Button>
           {onNewList ? (
             <Button
@@ -594,7 +615,7 @@ export function SubscriptionsSheet({
               onPress={onNewList}
               size="lg"
             >
-              <FolderPlus size={17} /> New list
+              <FolderPlus size={17} /> <Trans>New list</Trans>
             </Button>
           ) : null}
         </div>
@@ -602,7 +623,7 @@ export function SubscriptionsSheet({
         <div {...stylex.props(styles.list)}>
           {following.length === 0 && groups.length === 0 ? (
             <p {...stylex.props(styles.emptyNote)}>
-              You aren&apos;t following anything yet.
+              <Trans>You aren&apos;t following anything yet.</Trans>
             </p>
           ) : (
             ungrouped.map((pub) => (
@@ -612,12 +633,12 @@ export function SubscriptionsSheet({
         </div>
         {groups.length > 0 && (onToggleAll || onReorder) ? (
           <ButtonGroup
-            aria-label="Subscription list actions"
+            aria-label={t`Subscription list actions`}
             style={styles.groupToolbar}
           >
             {onReorder ? (
               <IconButton
-                aria-label="Reorder lists"
+                aria-label={t`Reorder lists`}
                 size="sm"
                 variant="tertiary"
                 style={styles.toolbarIcon}
@@ -629,7 +650,7 @@ export function SubscriptionsSheet({
             {onToggleAll ? (
               <IconButton
                 aria-label={
-                  allCollapsed ? "Expand all lists" : "Collapse all lists"
+                  allCollapsed ? t`Expand all lists` : t`Collapse all lists`
                 }
                 size="sm"
                 variant="tertiary"
@@ -662,7 +683,7 @@ export function SubscriptionsSheet({
           onPress={openDiscover}
         >
           <Compass size={16} />
-          Discover more publications
+          <Trans>Discover more publications</Trans>
         </AriaButton>
       </DrawerBody>
     </Drawer>

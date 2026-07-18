@@ -101,8 +101,8 @@ const styles = stylex.create({
       default: sizeSpace["md"],
       [containerBreakpoints.sm]: sizeSpace["3xl"],
     },
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginInlineStart: "auto",
+    marginInlineEnd: "auto",
     maxWidth: "var(--page-content-max-width)",
     minHeight: {
       default: sizeSpace["5xl"],
@@ -113,11 +113,11 @@ const styles = stylex.create({
       default: verticalSpace["xl"],
       ":is([data-navbar-open]):has([data-navbar-action])": verticalSpace["2xl"],
     },
-    paddingLeft: {
+    paddingInlineStart: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
     },
-    paddingRight: {
+    paddingInlineEnd: {
       default: horizontalSpace["3xl"],
       [containerBreakpoints.sm]: horizontalSpace["6xl"],
     },
@@ -159,8 +159,8 @@ const styles = stylex.create({
       position: "absolute",
       bottom: `calc(${verticalSpace["xxs"]} * -1)`,
       height: "2px",
-      left: 0,
-      right: 0,
+      insetInlineStart: 0,
+      insetInlineEnd: 0,
       width: "100%",
     },
   },
@@ -290,8 +290,8 @@ const styles = stylex.create({
       position: "absolute",
       bottom: `calc(${verticalSpace["xxs"]} * -1)`,
       height: "2px",
-      left: 0,
-      right: 0,
+      insetInlineStart: 0,
+      insetInlineEnd: 0,
       width: "100%",
     },
   },

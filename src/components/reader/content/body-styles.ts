@@ -40,6 +40,18 @@ export const articleBodyStyles = stylex.create({
   },
   dropCap: {
     color: primaryColor.text2,
+    // Deliberately PHYSICAL, not `inline-start`.
+    //
+    // `float: inline-start` is not Baseline 2024, so lightningcss downlevels it
+    // to `html:not([dir=rtl]) .x { float: left }` / `html[dir=rtl] .x { float:
+    // right }`. Those selectors key off the DOCUMENT direction and therefore
+    // ignore the `dir="auto"` we set on the article body — the drop cap would
+    // flip to the right for an English article merely because the UI is Arabic.
+    //
+    // Article text has no language metadata, so `dir="auto"` resolves it from
+    // content; the float has to match that, and CSS can't select on a resolved
+    // auto-direction. Physical `left` is correct for every article we can
+    // currently render. Revisit if documents gain a real language field.
     float: "left",
     fontFamily: fontFamily.serif,
     fontSize: "3.6em",
@@ -47,8 +59,8 @@ export const articleBodyStyles = stylex.create({
     fontWeight: fontWeight.semibold,
     lineHeight: 0.78,
     paddingBottom: spacing["0"],
-    paddingLeft: spacing["0"],
-    paddingRight: spacing["3"],
+    paddingInlineStart: spacing["0"],
+    paddingInlineEnd: spacing["3"],
     paddingTop: spacing["1.5"],
   },
   callout: {
@@ -60,8 +72,8 @@ export const articleBodyStyles = stylex.create({
     marginBottom: spacing["6"],
     marginTop: spacing["0"],
     paddingBottom: spacing["4"],
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["4"],
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["4"],
     paddingTop: spacing["4"],
   },
   calloutEmoji: {
@@ -87,14 +99,14 @@ export const articleBodyStyles = stylex.create({
     lineHeight: 1.32,
     // eslint-disable-next-line @stylexjs/valid-styles
     textWrap: "pretty",
-    borderLeftColor: primaryColor.solid1,
-    borderLeftStyle: "solid",
-    borderLeftWidth: 3,
+    borderInlineStartColor: primaryColor.solid1,
+    borderInlineStartStyle: "solid",
+    borderInlineStartWidth: 3,
     marginBottom: spacing["9"],
     marginTop: spacing["9"],
     paddingBottom: spacing["1"],
-    paddingLeft: spacing["6"],
-    paddingRight: spacing["0"],
+    paddingInlineStart: spacing["6"],
+    paddingInlineEnd: spacing["0"],
     paddingTop: spacing["1"],
   },
   facetBold: {
@@ -138,8 +150,8 @@ export const articleBodyStyles = stylex.create({
     fontFamily: fontFamily.mono,
     fontSize: "0.88em",
     paddingBottom: spacing["0.5"],
-    paddingLeft: spacing["1.5"],
-    paddingRight: spacing["1.5"],
+    paddingInlineStart: spacing["1.5"],
+    paddingInlineEnd: spacing["1.5"],
     paddingTop: spacing["0.5"],
   },
   /** Inline footnote reference marker (superscript number). `lineHeight: 0`
@@ -176,7 +188,7 @@ export const articleBodyStyles = stylex.create({
     lineHeight: 1.6,
     marginBottom: spacing["0"],
     marginTop: spacing["0"],
-    paddingLeft: spacing["6"],
+    paddingInlineStart: spacing["6"],
   },
   footnotesItem: {
     marginBottom: gap.sm,
@@ -187,7 +199,7 @@ export const articleBodyStyles = stylex.create({
   footnoteBackLink: {
     textDecoration: "none",
     color: primaryColor.text2,
-    marginLeft: spacing["1"],
+    marginInlineStart: spacing["1"],
   },
   codeBlock: {
     borderColor: uiColor.border1,
@@ -203,8 +215,8 @@ export const articleBodyStyles = stylex.create({
     marginTop: spacing["0"],
     overflowX: "auto",
     paddingBottom: spacing["4"],
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["4"],
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["4"],
     paddingTop: spacing["4"],
   },
   /** Highlighted blocks: shell only — padding lives on the inner Shiki `<pre>`. */
@@ -223,8 +235,8 @@ export const articleBodyStyles = stylex.create({
   },
   iframeFigure: {
     marginBottom: spacing["6"],
-    marginLeft: spacing["0"],
-    marginRight: spacing["0"],
+    marginInlineStart: spacing["0"],
+    marginInlineEnd: spacing["0"],
     marginTop: spacing["0"],
     maxWidth: "100%",
     minWidth: 0,
@@ -247,7 +259,7 @@ export const articleBodyStyles = stylex.create({
     display: "block",
     position: "absolute",
     height: "100%",
-    left: spacing["0"],
+    insetInlineStart: spacing["0"],
     top: spacing["0"],
     width: "100%",
   },
@@ -276,7 +288,7 @@ export const articleBodyStyles = stylex.create({
   list: {
     marginBottom: spacing["6"],
     marginTop: spacing["0"],
-    paddingLeft: spacing["6"],
+    paddingInlineStart: spacing["6"],
   },
   listItem: {
     marginBottom: gap.sm,
@@ -326,13 +338,13 @@ export const articleBodyStyles = stylex.create({
     marginTop: spacing["0"],
   },
   alignLeft: {
-    textAlign: "left",
+    textAlign: "start",
   },
   alignCenter: {
     textAlign: "center",
   },
   alignRight: {
-    textAlign: "right",
+    textAlign: "end",
   },
   imageDiff: {
     borderRadius: radius.md,
@@ -354,8 +366,8 @@ export const articleBodyStyles = stylex.create({
     overflow: "hidden",
     position: "absolute",
     bottom: spacing["0"],
-    left: spacing["0"],
-    right: spacing["0"],
+    insetInlineStart: spacing["0"],
+    insetInlineEnd: spacing["0"],
     top: spacing["0"],
   },
   imageDiffHandle: {
@@ -385,10 +397,10 @@ export const articleBodyStyles = stylex.create({
     fontSize: fontSize.xs,
     pointerEvents: "none",
     position: "absolute",
-    left: gap.sm,
+    insetInlineStart: gap.sm,
     paddingBottom: spacing["1"],
-    paddingLeft: spacing["2"],
-    paddingRight: spacing["2"],
+    paddingInlineStart: spacing["2"],
+    paddingInlineEnd: spacing["2"],
     paddingTop: spacing["1"],
     top: gap.sm,
   },
@@ -401,10 +413,10 @@ export const articleBodyStyles = stylex.create({
     pointerEvents: "none",
     position: "absolute",
     paddingBottom: spacing["1"],
-    paddingLeft: spacing["2"],
-    paddingRight: spacing["2"],
+    paddingInlineStart: spacing["2"],
+    paddingInlineEnd: spacing["2"],
     paddingTop: spacing["1"],
-    right: gap.sm,
+    insetInlineEnd: gap.sm,
     top: gap.sm,
   },
   pollCard: {
@@ -416,8 +428,8 @@ export const articleBodyStyles = stylex.create({
     marginBottom: spacing["6"],
     marginTop: spacing["0"],
     paddingBottom: spacing["4"],
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["4"],
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["4"],
     paddingTop: spacing["4"],
   },
   pollTitle: {
@@ -432,7 +444,7 @@ export const articleBodyStyles = stylex.create({
     listStyle: "none",
     marginBottom: spacing["0"],
     marginTop: spacing["0"],
-    paddingLeft: spacing["0"],
+    paddingInlineStart: spacing["0"],
   },
   pollOption: {
     borderColor: uiColor.border1,
@@ -445,24 +457,24 @@ export const articleBodyStyles = stylex.create({
     marginBottom: gap.sm,
     marginTop: spacing["0"],
     paddingBottom: spacing["2"],
-    paddingLeft: spacing["3"],
-    paddingRight: spacing["3"],
+    paddingInlineStart: spacing["3"],
+    paddingInlineEnd: spacing["3"],
     paddingTop: spacing["2"],
   },
   imageFigure: {
     overflow: "hidden",
     boxSizing: "border-box",
     marginBottom: spacing["6"],
-    marginLeft: spacing["0"],
-    marginRight: spacing["0"],
+    marginInlineStart: spacing["0"],
+    marginInlineEnd: spacing["0"],
     marginTop: spacing["0"],
     maxWidth: "100%",
     minWidth: 0,
     width: "100%",
   },
   imageFullBleed: {
-    marginLeft: `calc(-1 * ${spacing["6"]})`,
-    marginRight: `calc(-1 * ${spacing["6"]})`,
+    marginInlineStart: `calc(-1 * ${spacing["6"]})`,
+    marginInlineEnd: `calc(-1 * ${spacing["6"]})`,
     maxWidth: "none",
     width: `calc(100% + 2 * ${spacing["6"]})`,
   },
@@ -476,8 +488,8 @@ export const articleBodyStyles = stylex.create({
   },
   gallery: {
     marginBottom: spacing["6"],
-    marginLeft: spacing["0"],
-    marginRight: spacing["0"],
+    marginInlineStart: spacing["0"],
+    marginInlineEnd: spacing["0"],
     marginTop: spacing["0"],
     maxWidth: "100%",
     minWidth: 0,
@@ -567,8 +579,8 @@ export const articleBodyStyles = stylex.create({
     borderWidth: 1,
     verticalAlign: "top",
     paddingBottom: spacing["2"],
-    paddingLeft: spacing["3"],
-    paddingRight: spacing["3"],
+    paddingInlineStart: spacing["3"],
+    paddingInlineEnd: spacing["3"],
     paddingTop: spacing["2"],
   },
   tableHeaderCell: {
@@ -592,8 +604,8 @@ export const articleBodyStyles = stylex.create({
     alignItems: "center",
     display: "flex",
     paddingBottom: spacing["4"],
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["6"],
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["6"],
     paddingTop: spacing["4"],
   },
   websiteCardText: {
@@ -627,8 +639,8 @@ export const articleBodyStyles = stylex.create({
     fontSize: { default: "1.1875rem", "@media (min-width: 40rem)": "1.25rem" },
     lineHeight: 1.68,
     paddingBottom: spacing["4"],
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["4"],
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["4"],
     paddingTop: gap.sm,
   },
   pageEmbedBlockSpacing: {
@@ -689,7 +701,7 @@ export const articleBodyStyles = stylex.create({
     listStyle: "none",
     marginBottom: spacing["6"],
     marginTop: spacing["0"],
-    paddingLeft: spacing["0"],
+    paddingInlineStart: spacing["0"],
   },
   taskItem: {
     gap: gap.sm,
@@ -715,8 +727,8 @@ export const articleBodyStyles = stylex.create({
     marginBottom: spacing["6"],
     marginTop: spacing["0"],
     paddingBottom: spacing["3"],
-    paddingLeft: spacing["4"],
-    paddingRight: spacing["4"],
+    paddingInlineStart: spacing["4"],
+    paddingInlineEnd: spacing["4"],
     paddingTop: spacing["3"],
   },
   /** Wade Minter–style playlist cards embedded as HTML in Standard markdown. */

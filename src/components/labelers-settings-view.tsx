@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -120,6 +121,7 @@ function LabelerCardItem({ card }: { card: LabelerCard }) {
 }
 
 export function LabelersSettingsView() {
+  const { t } = useLingui();
   const known = useQuery(labelerApi.getKnownLabelersQueryOptions());
 
   const [search, setSearch] = useState("");
@@ -153,14 +155,14 @@ export function LabelersSettingsView() {
   return (
     <ReaderContent>
       <Masthead
-        kicker="Moderation"
-        title="Labelers"
-        dek="Labelers are moderation services you subscribe to by DID. Subscribe to see their labels — and blur or hide labeled posts — while you read."
+        kicker={t`Moderation`}
+        title={t`Labelers`}
+        dek={t`Labelers are moderation services you subscribe to by DID. Subscribe to see their labels — and blur or hide labeled posts — while you read.`}
       />
 
       <TextField
-        aria-label="Search labelers"
-        placeholder="Search"
+        aria-label={t`Search labelers`}
+        placeholder={t`Search`}
         value={search}
         onChange={setSearch}
         size="lg"
@@ -168,7 +170,9 @@ export function LabelersSettingsView() {
       />
 
       {searchTrim && lookup.isFetched && visibleCards.length === 0 ? (
-        <p {...stylex.props(styles.note)}>No labelers match “{searchTrim}”.</p>
+        <p {...stylex.props(styles.note)}>
+          <Trans>No labelers match “{searchTrim}”.</Trans>
+        </p>
       ) : null}
 
       <div {...stylex.props(styles.grid)}>
@@ -178,7 +182,9 @@ export function LabelersSettingsView() {
       </div>
 
       {!known.isLoading && labelers.length === 0 && !searchTrim ? (
-        <p {...stylex.props(styles.note)}>No known labelers yet.</p>
+        <p {...stylex.props(styles.note)}>
+          <Trans>No known labelers yet.</Trans>
+        </p>
       ) : null}
     </ReaderContent>
   );

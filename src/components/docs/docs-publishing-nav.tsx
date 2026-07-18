@@ -1,5 +1,7 @@
 "use client";
 
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
 
 import { PUBLISHING_DOCS_IDS } from "#/lib/publishing-docs/navigation";
@@ -8,29 +10,32 @@ import { docsStyles } from "./docs-page.stylex";
 import { useDocsScrollSpyActive } from "./docs-scroll-spy-context";
 
 const LINKS = [
-  { id: PUBLISHING_DOCS_IDS.overview, label: "Overview" },
-  { id: PUBLISHING_DOCS_IDS.discovery, label: "Discovery" },
-  { id: PUBLISHING_DOCS_IDS.subscribeEmbed, label: "Subscribe embed" },
+  { id: PUBLISHING_DOCS_IDS.overview, label: msg`Overview` },
+  { id: PUBLISHING_DOCS_IDS.discovery, label: msg`Discovery` },
+  { id: PUBLISHING_DOCS_IDS.subscribeEmbed, label: msg`Subscribe embed` },
   {
     id: PUBLISHING_DOCS_IDS.inlineReading,
-    label: "Rendering Content in Standard Reader",
+    label: msg`Rendering Content in Standard Reader`,
   },
   {
     id: PUBLISHING_DOCS_IDS.contentFormats,
-    label: "Supported content formats",
+    label: msg`Supported content formats`,
     nested: true,
   },
-  { id: PUBLISHING_DOCS_IDS.example, label: "Example record", nested: true },
+  { id: PUBLISHING_DOCS_IDS.example, label: msg`Example record`, nested: true },
 ] as const;
 
 export function DocsPublishingNav() {
+  const { t, i18n } = useLingui();
   const active = useDocsScrollSpyActive();
 
   return (
-    <nav {...stylex.props(docsStyles.refNav)} aria-label="Publishing guide">
+    <nav {...stylex.props(docsStyles.refNav)} aria-label={t`Publishing guide`}>
       <div {...stylex.props(docsStyles.refNavGroup)}>
         <div {...stylex.props(docsStyles.refNavHeadingRow)}>
-          <span {...stylex.props(docsStyles.refNavHeading)}>On this page</span>
+          <span {...stylex.props(docsStyles.refNavHeading)}>
+            <Trans>On this page</Trans>
+          </span>
         </div>
         {LINKS.map((link) => (
           <a
@@ -42,7 +47,7 @@ export function DocsPublishingNav() {
               active === link.id && docsStyles.refNavLinkActive,
             )}
           >
-            {link.label}
+            {i18n._(link.label)}
           </a>
         ))}
       </div>

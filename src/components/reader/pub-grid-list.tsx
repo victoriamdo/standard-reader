@@ -171,12 +171,12 @@ const styles = stylex.create({
     // the scroll clip region; the matching negative margins keep the cards
     // aligned with the section (same trick this rail uses vertically).
     marginTop: `calc(${spacing["3"]} * -1)`,
-    marginLeft: `calc(${spacing["2"]} * -1)`,
-    marginRight: `calc(${spacing["2"]} * -1)`,
+    marginInlineStart: `calc(${spacing["2"]} * -1)`,
+    marginInlineEnd: `calc(${spacing["2"]} * -1)`,
     overflowX: "auto",
     paddingBottom: spacing["2"],
-    paddingLeft: spacing["2"],
-    paddingRight: spacing["2"],
+    paddingInlineStart: spacing["2"],
+    paddingInlineEnd: spacing["2"],
     paddingTop: spacing["3"],
   },
   grid: {
@@ -203,8 +203,8 @@ const styles = stylex.create({
     // the container edge or hides under the masthead.
     scrollMarginTop: spacing["6"],
     scrollMarginBottom: spacing["6"],
-    scrollMarginLeft: spacing["6"],
-    scrollMarginRight: spacing["6"],
+    scrollMarginInlineStart: spacing["6"],
+    scrollMarginInlineEnd: spacing["6"],
   },
   // Match each item's ring radius to the content it wraps: cards are rounded
   // (radius.md), directory rows are near-square.
