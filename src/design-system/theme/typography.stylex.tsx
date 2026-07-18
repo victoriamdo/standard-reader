@@ -75,6 +75,8 @@ export const typeramp = stylex.create({
     fontWeight: fontWeight["extrabold"],
     letterSpacing: tracking["tight"],
     lineHeight: lineHeight.sm,
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textWrap: "pretty",
     scrollMarginBlockStart: verticalSpace["12xl"],
     marginBottom: 0,
     marginLeft: 0,
@@ -96,6 +98,8 @@ export const typeramp = stylex.create({
     fontWeight: fontWeight.semibold,
     letterSpacing: tracking["tight"],
     lineHeight: lineHeight.sm,
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textWrap: "pretty",
     scrollMarginBlockStart: verticalSpace["12xl"],
     borderBottomWidth: 1,
     marginBottom: 0,
@@ -115,6 +119,8 @@ export const typeramp = stylex.create({
     fontWeight: fontWeight["semibold"],
     letterSpacing: tracking["tight"],
     lineHeight: lineHeight.sm,
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textWrap: "pretty",
     scrollMarginBlockStart: verticalSpace["12xl"],
     marginBottom: 0,
     marginLeft: 0,
@@ -133,6 +139,8 @@ export const typeramp = stylex.create({
     fontWeight: fontWeight["semibold"],
     letterSpacing: tracking["tight"],
     lineHeight: lineHeight.sm,
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textWrap: "pretty",
     scrollMarginBlockStart: verticalSpace["12xl"],
     marginBottom: 0,
     marginLeft: 0,
@@ -151,6 +159,8 @@ export const typeramp = stylex.create({
     fontWeight: fontWeight["semibold"],
     letterSpacing: tracking["tight"],
     lineHeight: lineHeight.sm,
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textWrap: "pretty",
     scrollMarginBlockStart: verticalSpace["12xl"],
     marginBottom: 0,
     marginLeft: 0,

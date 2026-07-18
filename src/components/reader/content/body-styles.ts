@@ -257,6 +257,8 @@ export const articleBodyStyles = stylex.create({
     fontSize: fontSize["2xl"],
     fontWeight: fontWeight.semibold,
     lineHeight: 1.2,
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textWrap: "pretty",
     marginBottom: spacing["4"],
     marginTop: spacing["10"],
   },
@@ -266,6 +268,8 @@ export const articleBodyStyles = stylex.create({
     fontSize: fontSize.xl,
     fontWeight: fontWeight.semibold,
     lineHeight: 1.25,
+    // eslint-disable-next-line @stylexjs/valid-styles
+    textWrap: "pretty",
     marginBottom: spacing["3"],
     marginTop: spacing["8"],
   },
