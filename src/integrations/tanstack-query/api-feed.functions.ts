@@ -655,31 +655,41 @@ async function loadLatestFeedCritical(
         });
 
   span.set("count", items.length);
+
+  // Labels and recommend attribution are independent reads over the same rows,
+  // so fetch them concurrently rather than chaining. Both are computed over the
+  // pre-hide-filter set and hidden rows are dropped afterwards — filtering only
+  // ever removes rows, so the result is identical to filtering first.
+  //
+  // This replaced three serial round trips (hidden → labels → recommends, where
+  // the first two issued the *same* `document_labels` query) with one wave.
+  // "Recommended by" attribution only applies to followed-user rows (skips the
+  // "all" / signed-out / trending paths, which have no followed-user context).
+  const [labelsByUri, withRecs] = await Promise.all([
+    did
+      ? readLabelsForUris(
+          db,
+          schema,
+          did,
+          items.map((item) => item.uri),
+        )
+      : Promise.resolve(new Map<string, Array<ArticleCardLabel>>()),
+    did && data.filter !== "all" && followedUserDids.length > 0
+      ? attachRecommendedByToArticles(db, schema, followedUserDids, items)
+      : Promise.resolve(items),
+  ]);
+
   // Hide labeled posts for the reader, but page on the pre-filter count so
   // pagination still advances (a page may just show slightly fewer rows).
-  const visibleItems = await filterHiddenDocuments(db, schema, did, items);
+  const hidden = hiddenUrisFromLabels(labelsByUri);
+  const visibleItems = withRecs.filter((item) => !hidden.has(item.uri));
+  // No DB work: reads cached counts and schedules background revalidation.
   const enrichedItems = await attachCommentCountsToArticles(
     db,
     schema,
     trackReading ? visibleItems : articleCardsAsAllRead(visibleItems),
   );
-  const labeledItems = await attachSubscribedLabels(
-    db,
-    schema,
-    did,
-    enrichedItems,
-  );
-  // "Recommended by" attribution for followed-user rows (skips the "all" /
-  // signed-out / trending paths, which have no followed-user context).
-  const attributedItems =
-    did && data.filter !== "all" && followedUserDids.length > 0
-      ? await attachRecommendedByToArticles(
-          db,
-          schema,
-          followedUserDids,
-          labeledItems,
-        )
-      : labeledItems;
+  const attributedItems = attachLabelsFromMap(enrichedItems, labelsByUri);
 
   return {
     items: attributedItems,

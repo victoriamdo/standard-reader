@@ -493,7 +493,7 @@ export async function selectArticleCards(
 
   const rows = await query
     .where(and(...conds))
-    .orderBy(desc(d.publishedAt), desc(d.uri))
+    .orderBy(...documentsNewestFirst(d))
     .limit(opts.limit)
     .offset(opts.offset ?? 0);
 
@@ -565,7 +565,7 @@ export async function selectPublicationArticleCards(
         eq(d.publicationUri, opts.publicationUri),
       ),
     )
-    .orderBy(desc(d.publishedAt), desc(d.uri))
+    .orderBy(...documentsNewestFirst(d))
     .limit(opts.limit)
     .offset(opts.offset ?? 0);
 
@@ -666,7 +666,7 @@ export async function selectUnreadDocumentUris(
       ),
     )
     .where(and(...conds, isNull(r.uri)))
-    .orderBy(desc(d.publishedAt), desc(d.uri))
+    .orderBy(...documentsNewestFirst(d))
     .limit(limit);
 
   return rows.map((row) => row.uri);
@@ -1617,6 +1617,22 @@ function normalizedTagSql(tag: string): SQL {
  */
 function documentCarriesTagWhere(d: Schema["documents"], tag: string): SQL {
   return sql`immutable_normalized_tags(${d.tags}) @> array[${normalizedTagSql(tag)}]`;
+}
+
+/**
+ * Newest-first document ordering, spelled to match the `published_at DESC NULLS
+ * LAST` indexes (`documents_published_idx`,
+ * `documents_publication_published_idx`).
+ *
+ * Drizzle's `desc()` emits a bare `DESC`, which Postgres reads as NULLS FIRST —
+ * and it will not match a NULLS LAST index even though `published_at` is
+ * `NOT NULL`, so the ordering is semantically identical. That mismatch cost a
+ * full scan: `/latest?filter=all` planned a parallel Seq Scan over ~345k
+ * documents plus a top-N heapsort (726ms) where the index gives an ordered scan
+ * that stops after ~37 rows (0.3ms).
+ */
+function documentsNewestFirst(d: Schema["documents"]): Array<SQL> {
+  return [sql`${d.publishedAt} desc nulls last`, desc(d.uri)];
 }
 
 /** Count indexed, published articles carrying a tag on discover-eligible pubs. */
@@ -3004,7 +3020,7 @@ export async function authorDocuments(
       .leftJoin(pr, eq(pr.did, p.did))
       .leftJoin(pa, eq(pa.did, d.did))
       .where(where)
-      .orderBy(desc(d.publishedAt), desc(d.uri))
+      .orderBy(...documentsNewestFirst(d))
       .limit(opts.limit)
       .offset(opts.offset ?? 0),
   ]);
