@@ -15,11 +15,11 @@ msgstr ""
 
 #: src/routes/_layout.discover.tsx
 msgid "Every publication the network knows about — subscribe to the ones worth your mornings."
-msgstr "Todas as publicações que a rede conhece — subscreva as que merecem as suas manhãs."
+msgstr "Todas as publicações que a rede conhece — inscreva-se nas que merecem as suas manhãs."
 
 #: src/components/reader/collections-upgrade-gate.tsx
 msgid "Authoring Collections needs additional permissions to publish collections and documents on your behalf. You can revoke this any time from your account settings."
-msgstr "A criação de coleções requer permissões adicionais para publicar coleções e documentos em seu nome. Pode revogá-las a qualquer momento nas definições da conta."
+msgstr "A criação de coleções requer permissões adicionais para publicar coleções e documentos em seu nome. Pode revogá-las a qualquer momento nas configurações da conta."
 
 #: src/routes/_layout.l.$did.$rkey.tsx
 msgid "No people in this list."
@@ -31,7 +31,7 @@ msgstr "As Suas Novidades"
 
 #: src/magazine/Magazine.tsx
 msgid "Next page"
-msgstr "Página seguinte"
+msgstr "Próxima página"
 
 #: src/routes/_layout.collections.index.tsx
 msgid "Add a collection to this series"
@@ -40,7 +40,7 @@ msgstr "Adicionar uma coleção a esta série"
 #: src/components/onboarding/step-settings.tsx
 #: src/components/user-settings-view.tsx
 msgid "Mark old posts as unread"
-msgstr "Marcar publicações antigas como não lidas"
+msgstr "Marcar artigos antigos como não lidos"
 
 #: src/routes/_layout.u.$did.tsx
 msgid "{name} hasn't started reading or publishing here."
@@ -72,7 +72,7 @@ msgstr "Obrigado por dedicar o seu tempo a ajudar-nos a melhorar o Standard Read
 
 #: src/components/reader/list-edit-modal.tsx
 msgid "Search people you follow"
-msgstr "Pesquisar pessoas que segue"
+msgstr "Pesquisar pessoas que você segue"
 
 #: src/components/docs/docs-publishing-nav.tsx
 #: src/components/docs/publishing-docs-page.tsx
@@ -81,7 +81,7 @@ msgstr "Apresentação de conteúdos no Standard Reader"
 
 #: src/routes/_layout.latest.tsx
 msgid "Articles gaining attention across the network right now."
-msgstr "Artigos a ganhar atenção na rede neste momento."
+msgstr "Artigos ganhando atenção na rede neste momento."
 
 #: src/components/reader/collection-builder.tsx
 msgid "Add an article"
@@ -95,7 +95,7 @@ msgstr "Descobrir"
 
 #: src/routes/_layout.feedback.return.tsx
 msgid "The feedback draft wasn't found — it may have expired (drafts last 15 minutes) or you may have already submitted it. Try again any time."
-msgstr "O rascunho do comentário não foi encontrado — pode ter expirado (os rascunhos duram 15 minutos) ou já pode tê-lo enviado. Tente novamente quando quiser."
+msgstr "O rascunho do feedback não foi encontrado — pode ter expirado (os rascunhos duram 15 minutos) ou já pode tê-lo enviado. Tente novamente quando quiser."
 
 #: src/components/reader/about-view.tsx
 msgid "One tap from the reading view, on any device, instantly in sync. Your library is always where you left it."
@@ -115,7 +115,7 @@ msgstr "Remover ícone"
 
 #: src/components/reader/extension-privacy-view.tsx
 msgid "The {SITE_NAME} browser extension helps you save articles and follow publications on the standard.site network from any tab. It connects to the same account as the web app at <0>{siteHost}</0>. This policy covers the extension only; the <1>site privacy policy</1> describes data handling on the website itself."
-msgstr "A extensão de navegador do {SITE_NAME} ajuda-o a guardar artigos e a seguir publicações na rede standard.site a partir de qualquer separador. Liga-se à mesma conta que a aplicação web em <0>{siteHost}</0>. Esta política abrange apenas a extensão; a <1>política de privacidade do site</1> descreve o tratamento de dados no próprio site."
+msgstr "A extensão de navegador do {SITE_NAME} ajuda-o a guardar artigos e a seguir publicações na rede standard.site a partir de qualquer aba. Se conecta à mesma conta que a aplicação web em <0>{siteHost}</0>. Esta política abrange apenas a extensão; a <1>política de privacidade do site</1> descreve o tratamento de dados no próprio site."
 
 #: src/components/NavbarAuth.tsx
 #: src/components/reader/language-hint-prompt.tsx
@@ -125,7 +125,7 @@ msgstr "Alterar idioma"
 #: src/components/OpenLinksMenuItem.tsx
 #: src/components/user-settings-view.tsx
 msgid "Open posts externally"
-msgstr "Abrir publicações externamente"
+msgstr "Abrir artigos externamente"
 
 #: src/components/docs/docs-topbar.tsx
 #: src/components/docs/lexicon-docs-intro.tsx
@@ -135,7 +135,7 @@ msgstr "Lexicons"
 #: src/routes/_layout.p.$did.$rkey.tsx
 #: src/routes/_layout.u.$did.tsx
 msgid "Posts"
-msgstr "Publicações"
+msgstr "Artigos"
 
 #: src/routes/extension.connected.tsx
 msgid "You're signed in"
@@ -151,11 +151,11 @@ msgstr "Marcar como lido"
 
 #: src/routes/_layout.l.$did.$rkey.tsx
 msgid "This list is empty — add publications or people to it."
-msgstr "Esta lista está vazia — adicione-lhe publicações ou pessoas."
+msgstr "Esta lista está vazia — adicione publicações ou pessoas."
 
 #: src/components/docs/api-docs-intro.tsx
 msgid "A labeler is any DID that publishes AT Proto labels. Readers add one by DID on the <0>Labelers</0> page, and Standard Reader then shows that labeler's labels — and can warn on or hide labeled posts — as they read. Labelers are discovered the standard way; nothing about them is specific to us. To run your own:"
-msgstr "Um serviço de etiquetagem é qualquer DID que publique etiquetas AT Proto. Os leitores adicionam um por DID na página <0>Serviços de etiquetagem</0> e o Standard Reader passa a mostrar as etiquetas desse serviço — podendo avisar sobre publicações etiquetadas ou ocultá-las — durante a leitura. Os serviços de etiquetagem são descobertos da forma habitual; nada neles é específico do nosso caso. Para gerir o seu:"
+msgstr "Um rotulador é qualquer DID que publique rótulos no AT Proto. Os leitores adicionam um por DID na página <0>Rotuladores</0> e o Standard Reader passa a mostrar os rótulos desse serviço — podendo avisar sobre publicações rotuladas ou ocultá-las — durante a leitura. Os rotuladores são descobertos da forma habitual; nada neles é específico do nosso caso. Para rodar o seu:"
 
 #: src/components/reader/article-view.tsx
 msgid "Article header image"
@@ -179,7 +179,7 @@ msgstr "Adicione um título."
 
 #: src/routes/_layout.discover.tsx
 msgid "Not subscribed"
-msgstr "Sem subscrição"
+msgstr "Não inscrito"
 
 #: src/routes/_layout.search.tsx
 msgid "{publicationCountText} · {articleCountText}"
@@ -191,7 +191,7 @@ msgstr "Pesquise por título ou autor, ou cole um URL ou URI at://"
 
 #: src/routes/collection.$did.$rkey.tsx
 msgid "Opening the collection…"
-msgstr "A abrir a coleção…"
+msgstr "Abrindo a coleção…"
 
 #: src/components/reader/article-view.tsx
 msgid "Open on publication"
@@ -199,7 +199,7 @@ msgstr "Abrir na publicação"
 
 #: src/components/reader/about-view.tsx
 msgid "And it never feels sealed off. We connect each article to the conversation happening across the Atmosphere — the open network beyond this app — gathering the Bluesky posts and replies about a piece, the notes left in its margins, and the other writing that cites it, quietly beneath what you’re reading."
-msgstr "E nunca parece um mundo fechado. Ligamos cada artigo à conversa que decorre em toda a Atmosphere — a rede aberta para além desta aplicação — reunindo as publicações e respostas do Bluesky sobre um texto, as notas deixadas nas suas margens e os outros escritos que o citam, discretamente por baixo do que está a ler."
+msgstr "E nunca parece um mundo fechado. Ligamos cada artigo à conversa que decorre em toda a Atmosfera — a rede aberta para além desta aplicação — reunindo as publicações e respostas do Bluesky sobre um texto, as notas deixadas nas suas margens e os outras escritas que o citam, discretamente abaixo do que está lendo."
 
 #: src/components/docs/api-docs-request-panel.tsx
 msgid "running…"
@@ -207,7 +207,7 @@ msgstr "em execução…"
 
 #: src/components/onboarding/welcome-wizard.tsx
 msgid "Your Home feed is built from subscriptions. Three is a good start."
-msgstr "O seu feed Início é construído a partir das subscrições. Três é um bom começo."
+msgstr "O seu feed de Início é construído a partir das inscrições. Três é um bom começo."
 
 #: src/components/reader/collection-theme-editor.tsx
 msgid "Colors"
@@ -219,16 +219,16 @@ msgstr "Criar conta"
 
 #: src/components/reader/page-reader-bar.tsx
 msgid "Loading voice…"
-msgstr "A carregar voz…"
+msgstr "Carregando voz…"
 
 #: src/components/feedback/feedback-dialog.tsx
 #: src/routes/_layout.feedback.index.tsx
 msgid "Submit feedback"
-msgstr "Enviar comentário"
+msgstr "Enviar feedback"
 
 #: src/components/reader/extension-privacy-view.tsx
 msgid "<0>Session cookie.</0> After you sign in through the web app, the extension background worker reads your HttpOnly session cookie on {siteHost} to authenticate API requests. Content scripts do not read this cookie directly."
-msgstr "<0>Cookie de sessão.</0> Depois de iniciar sessão na aplicação web, o processo em segundo plano da extensão lê o seu cookie de sessão HttpOnly em {siteHost} para autenticar pedidos à API. Os content scripts não leem este cookie diretamente."
+msgstr "<0>Cookie de sessão.</0> Depois de iniciar sessão na aplicação web, o processo em segundo plano da extensão lê o seu cookie de sessão HttpOnly em {siteHost} para autenticar pedidos à API. Os scripts de conteúdo não leem este cookie diretamente."
 
 #: src/components/reader/collection-theme-editor.tsx
 #: src/components/user-settings-view.tsx
@@ -237,7 +237,7 @@ msgstr "Claro"
 
 #: src/components/docs/api-docs-intro.tsx
 msgid "For a complete, minimal reference implementation (Jetstream → detect → sign → SQLite → serve), see the <0>claudeslop</0> labeler in <1>services/claudeslop</1>."
-msgstr "Para uma implementação de referência completa e minimalista (Jetstream → detetar → assinar → SQLite → servir), consulte o serviço de etiquetagem <0>claudeslop</0> em <1>services/claudeslop</1>."
+msgstr "Para uma implementação de referência completa e minimalista (Jetstream → detetar → assinar → SQLite → servir), consulte o rotulador <0>claudeslop</0> em <1>services/claudeslop</1>."
 
 #: src/routes/_layout.feedback.index.tsx
 msgid "Open"
@@ -245,12 +245,12 @@ msgstr "Abrir"
 
 #: src/routes/_layout.p.$did.$rkey.tsx
 msgid "No posts indexed from this publication yet."
-msgstr "Ainda não há publicações indexadas desta publicação."
+msgstr "Ainda não há artigos indexados desta publicação."
 
 #: src/components/reader/subscribe-card.tsx
 #: src/magazine/magazine-end-subscribe.tsx
 msgid "Subscribing…"
-msgstr "A subscrever…"
+msgstr "Se inscrevendo…"
 
 #: src/components/reader/reorder-lists-modal.tsx
 msgid "List"
@@ -270,23 +270,23 @@ msgstr "no Bluesky"
 
 #: src/components/onboarding/welcome-wizard.tsx
 msgid "Set these now, or change them any time in Settings."
-msgstr "Defina isto agora ou altere quando quiser nas Definições."
+msgstr "Defina isto agora ou altere quando quiser nas Configurações."
 
 #: src/components/reader/about-view.tsx
 msgid "Most readers stop at what you already subscribe to. Standard Reader treats finding your next favourite as part of the job. Browse every publications on the network — not just the handful you've heard of."
-msgstr "A maioria dos leitores fica-se pelo que já subscreve. O Standard Reader trata a descoberta do seu próximo favorito como parte do trabalho. Explore todas as publicações da rede — não apenas as poucas de que já ouviu falar."
+msgstr "A maioria dos leitores para no que já está inscrito. O Standard Reader trata a descoberta do seu próximo favorito como parte do trabalho. Explore todas as publicações da rede — não apenas as de que já ouviu falar."
 
 #: src/routes/_layout.collections.index.tsx
 msgid "Name your series & pick a theme"
-msgstr "Dê um nome à série e escolha um tema"
+msgstr "Dê um nome a sua série e escolha um tema"
 
 #: src/routes/_layout.feedback.index.tsx
 msgid "Bugs"
-msgstr "Erros"
+msgstr "Bugs"
 
 #: src/components/reader/atstore-review-prompt.tsx
 msgid "Optional: tell people what you like about Standard Reader"
-msgstr "Opcional: diga-nos do que gosta no Standard Reader"
+msgstr "Opcional: diga do que gosta no Standard Reader"
 
 #: src/components/reader/save-to-collection-dialog.tsx
 msgid "New collection…"
@@ -298,7 +298,7 @@ msgstr "Podemos atualizar esta política à medida que o produto evolui. A data 
 
 #: src/components/onboarding/welcome-wizard.tsx
 msgid "Pick a few topics — we'll suggest publications to match. Optional."
-msgstr "Escolha alguns temas — sugerimos publicações a condizer. Opcional."
+msgstr "Escolha alguns temas — sugerimos publicações relacionadas. Opcional."
 
 #: src/components/reader/page-reader-bar.tsx
 msgid "Reading aloud"
@@ -306,7 +306,7 @@ msgstr "Leitura em voz alta"
 
 #: src/components/reader/collection-theme-editor.tsx
 msgid "Text on accent"
-msgstr "Texto sobre o destaque"
+msgstr "Texto em destaque"
 
 #: src/components/reader/atstore-review-prompt.tsx
 msgid "Please choose a rating."
