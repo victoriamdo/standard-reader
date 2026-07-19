@@ -93,6 +93,13 @@ const styles = stylex.create({
     color: "inherit",
     cursor: "pointer",
     display: "block",
+    // Card text is user-generated — publication names, `@handle`s and titles can
+    // all be long unbreakable tokens (`@a-very-long-handle.bsky.social`). Those
+    // offer no break opportunity, so they overflow the card and push the whole
+    // page sideways. `anywhere` (not `break-word`) also shrinks the intrinsic
+    // min-content width, which is what keeps the surrounding grid track from
+    // being forced wider. Inherited, so it covers every text node in the card.
+    overflowWrap: "anywhere",
   },
   cardShell: {
     textDecoration: "none",
@@ -100,6 +107,8 @@ const styles = stylex.create({
     cursor: "pointer",
     display: "block",
     position: "relative",
+    // See `cardLink` — long unbreakable names/handles must wrap, not overflow.
+    overflowWrap: "anywhere",
   },
   cardOverlay: {
     inset: 0,
@@ -216,6 +225,8 @@ const styles = stylex.create({
     borderBottomColor: uiColor.border1,
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
+    // See `cardLink` — long unbreakable names/handles must wrap, not overflow.
+    overflowWrap: "anywhere",
     paddingBottom: spacing["6"],
     paddingTop: spacing["6"],
   },
