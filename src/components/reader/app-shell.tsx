@@ -504,11 +504,13 @@ const styles = stylex.create({
     position: "fixed",
     rowGap: gap.lg,
     zIndex: 30,
-    // Hug the home-indicator safe area with no extra float. The safe-area inset
-    // alone supplies the OS clearance on iOS (in a standalone PWA it's the ~34px
-    // home-indicator inset); adding to it made the pill read as floating too
-    // high above the bottom.
-    bottom: "env(safe-area-inset-bottom, 0px)",
+    // Sit a floor of 16px above the bottom, or hug the home-indicator safe area
+    // where that's larger. On iOS (standalone PWA) the ~34px safe-area inset
+    // wins, so the pill hugs the home indicator with no extra float. Where there
+    // is no safe area (Android, desktop) the inset resolves to 0 and the 16px
+    // floor keeps the pill off the very bottom edge. `max()` — not env()'s
+    // second arg, which only applies when env() is entirely unsupported.
+    bottom: `max(env(safe-area-inset-bottom, 0px), ${verticalSpace["3xl"]})`,
     insetInlineStart: { [DESKTOP]: "264px", default: 0 },
     paddingInlineStart: horizontalSpace["3xl"],
     paddingInlineEnd: horizontalSpace["3xl"],
