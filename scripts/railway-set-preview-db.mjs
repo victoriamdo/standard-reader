@@ -91,9 +91,13 @@ const REDEPLOY = `
  * it may not exist yet when this job runs. Poll rather than racing it.
  */
 async function findPrEnvironment() {
-  // Railway names PR environments after the head branch, but has used
-  // `pr-<number>` in the past — accept either.
-  const candidates = [PR_BRANCH, `pr-${PR_NUMBER}`];
+  // Railway names PR environments `<project>-pr-<number>`. The head branch and
+  // bare `pr-<number>` are kept as fallbacks in case that convention shifts.
+  const candidates = [
+    `standard-reader-pr-${PR_NUMBER}`,
+    `pr-${PR_NUMBER}`,
+    PR_BRANCH,
+  ];
 
   for (let attempt = 1; attempt <= 10; attempt++) {
     const data = await gql(ENVIRONMENTS, { projectId: RAILWAY_PROJECT_ID });

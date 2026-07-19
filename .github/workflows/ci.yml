@@ -157,6 +157,8 @@ jobs:
           DATABASE_URL: ${{ steps.neon.outputs.db_url }}
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
           PR_NUMBER: ${{ github.event.number }}
-          # Services in the PR environment that read the read-model. Add
-          # `ingest` here if previews should run their own ingest worker.
-          SERVICES: web
+          # Every service in the PR environment that reads DATABASE_URL. The
+          # ingest worker *writes* to the read-model, so leaving it on the
+          # cloned production URL would have previews writing to prod. `tap`
+          # uses its own TAP_DATABASE_URL and is not in scope here.
+          SERVICES: web,ingest
