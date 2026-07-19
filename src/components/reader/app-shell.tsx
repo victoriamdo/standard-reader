@@ -504,10 +504,11 @@ const styles = stylex.create({
     position: "fixed",
     rowGap: gap.lg,
     zIndex: 30,
-    // Sit just above the home-indicator safe area. The safe-area inset already
-    // supplies the OS clearance on iOS, so only a small extra gap is needed —
-    // a larger one made the pill read as floating too high above the bottom.
-    bottom: `calc(env(safe-area-inset-bottom, 0px) + ${verticalSpace["md"]})`,
+    // Hug the home-indicator safe area with no extra float. The safe-area inset
+    // alone supplies the OS clearance on iOS (in a standalone PWA it's the ~34px
+    // home-indicator inset); adding to it made the pill read as floating too
+    // high above the bottom.
+    bottom: "env(safe-area-inset-bottom, 0px)",
     insetInlineStart: { [DESKTOP]: "264px", default: 0 },
     paddingInlineStart: horizontalSpace["3xl"],
     paddingInlineEnd: horizontalSpace["3xl"],
