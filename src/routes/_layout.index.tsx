@@ -171,8 +171,13 @@ const styles = stylex.create({
     alignItems: "start",
     columnGap: spacing["12"],
     display: "grid",
+    // `minmax(0, 1fr)`, not a bare `1fr` — a bare `1fr` is `minmax(auto, 1fr)`,
+    // so the track keeps an automatic min-content floor and refuses to shrink
+    // below its widest unbreakable content (long `@handle`s in the rail cards).
+    // That pushed the track ~22px past the grid on narrow viewports and spilled
+    // the whole page sideways; the shell's `overflow-x: clip` was hiding it.
     gridTemplateColumns: {
-      default: "1fr",
+      default: "minmax(0, 1fr)",
       "@media (min-width: 64rem)": "minmax(0, 1fr) 320px",
     },
     rowGap: spacing["12"],
