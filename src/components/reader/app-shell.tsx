@@ -465,7 +465,16 @@ const styles = stylex.create({
     flexDirection: "column",
     flexGrow: "1",
     minWidth: 0,
-    overflowX: "clip",
+    // …except for views that own a sticky header. A horizontal clip anywhere
+    // above a sticky element makes WebKit re-snap the clip rect to whole device
+    // pixels each frame while the page scrolls at fractional (trackpad /
+    // momentum) offsets, so the header jitters ~1px and leaks a sliver of
+    // content along its top edge. Those views mark themselves with
+    // `data-unclipped-sticky` and contain their own wide content instead.
+    overflowX: {
+      default: "clip",
+      ":has([data-unclipped-sticky])": "visible",
+    },
   },
   mobileBar: {
     alignItems: "center",
