@@ -90,6 +90,10 @@ import { LanguageHintPrompt } from "./language-hint-prompt";
 import { ListEditModal } from "./list-edit-modal";
 import { PageReaderBar } from "./page-reader-bar";
 import { ReorderListsModal } from "./reorder-lists-modal";
+import {
+  SelectionDockProvider,
+  useSelectionDock,
+} from "./selection-dock-context";
 import type { SubscriptionListGroup } from "./subscriptions-sheet";
 import {
   SubscriptionsSheet,
@@ -507,6 +511,13 @@ const styles = stylex.create({
     insetInlineEnd: 0,
   },
   bottomNav: {
+    display: { [DESKTOP]: "none", default: "flex" },
+    justifyContent: "center",
+    pointerEvents: "none",
+  },
+  // Same footprint as `bottomNav` so the selection toolbar lands exactly where
+  // the nav pill was, with no shift in the reader bar stacked above it.
+  selectionSlot: {
     display: { [DESKTOP]: "none", default: "flex" },
     justifyContent: "center",
     pointerEvents: "none",
@@ -1013,6 +1024,27 @@ function BottomNav({
   );
 }
 
+/**
+ * The bottom of the dock: normally the nav pill, but a text selection takes the
+ * slot over (see `selection-dock-context`) so the reader's selection toolbar
+ * sits well clear of the OS selection callout.
+ */
+function BottomNavSlot({
+  items,
+  hasUnread,
+}: {
+  items: Array<NavLink>;
+  hasUnread: boolean;
+}) {
+  const dock = useSelectionDock();
+
+  if (dock?.isActive) {
+    return <div {...stylex.props(styles.selectionSlot)} ref={dock.setSlot} />;
+  }
+
+  return <BottomNav items={items} hasUnread={hasUnread} />;
+}
+
 function Brand({
   style,
   to = "/",
@@ -1207,207 +1239,212 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <PageReaderProvider>
-      <div {...stylex.props(styles.shell)} data-app-shell>
-        <SkipLink targetId="main-content" />
-        <aside {...stylex.props(styles.sidebar)}>
-          <div {...stylex.props(styles.sidebarScroll)}>
-            <Brand style={styles.brandSidebar} to="/about" />
-            <nav {...stylex.props(styles.nav)}>
-              {primaryNav.map((item) => (
-                <SidebarNavItem
-                  key={item.to}
-                  {...item}
-                  count={
-                    item.to === "/latest"
-                      ? unreadCount
-                      : item.to === "/saved"
-                        ? savedCount
-                        : null
-                  }
-                  compactCount={item.to === "/latest"}
-                />
-              ))}
-            </nav>
+      <SelectionDockProvider>
+        <div {...stylex.props(styles.shell)} data-app-shell>
+          <SkipLink targetId="main-content" />
+          <aside {...stylex.props(styles.sidebar)}>
+            <div {...stylex.props(styles.sidebarScroll)}>
+              <Brand style={styles.brandSidebar} to="/about" />
+              <nav {...stylex.props(styles.nav)}>
+                {primaryNav.map((item) => (
+                  <SidebarNavItem
+                    key={item.to}
+                    {...item}
+                    count={
+                      item.to === "/latest"
+                        ? unreadCount
+                        : item.to === "/saved"
+                          ? savedCount
+                          : null
+                    }
+                    compactCount={item.to === "/latest"}
+                  />
+                ))}
+              </nav>
 
-            <Flex
-              align="center"
-              justify="between"
-              data-sidebar-label="true"
-              style={styles.sideLabel}
-            >
-              <span>
-                <Trans>Subscriptions</Trans>
-              </span>
-              {signedIn ? (
-                <ButtonGroup
-                  aria-label={t`Subscription list actions`}
-                  style={styles.sideLabelActions}
-                >
-                  {hasListGroups ? (
-                    <IconButton
-                      aria-label={t`Reorder lists`}
-                      size="sm"
-                      variant="tertiary"
-                      style={styles.headerIcon}
-                      onPress={openReorder}
-                    >
-                      <ArrowUpDown size={14} />
-                    </IconButton>
-                  ) : null}
-                  <IconButton
-                    aria-label={t`New list`}
-                    size="sm"
-                    variant="tertiary"
-                    style={styles.headerIcon}
-                    onPress={() => setNewListOpen(true)}
-                  >
-                    <FolderPlus size={14} />
-                  </IconButton>
-                  {hasListGroups ? (
-                    <IconButton
-                      aria-label={
-                        allCollapsed
-                          ? t`Expand all lists`
-                          : t`Collapse all lists`
-                      }
-                      size="sm"
-                      variant="tertiary"
-                      style={styles.headerIcon}
-                      onPress={toggleAllGroups}
-                    >
-                      {allCollapsed ? (
-                        <ChevronsUpDown size={14} />
-                      ) : (
-                        <ChevronsDownUp size={14} />
-                      )}
-                    </IconButton>
-                  ) : null}
-                </ButtonGroup>
-              ) : null}
-            </Flex>
-            <div {...stylex.props(styles.followList)}>
-              {shellSubscriptionsLoading ? (
-                <SubscriptionsSkeleton />
-              ) : following.length === 0 &&
-                !hasListGroups &&
-                followingUsers.length === 0 ? (
-                <span {...stylex.props(styles.emptyNote)}>
-                  {signedIn ? (
-                    <Trans>Nothing yet — go discover.</Trans>
-                  ) : (
-                    <Trans>Sign in to subscribe.</Trans>
-                  )}
+              <Flex
+                align="center"
+                justify="between"
+                data-sidebar-label="true"
+                style={styles.sideLabel}
+              >
+                <span>
+                  <Trans>Subscriptions</Trans>
                 </span>
-              ) : (
-                <>
-                  {ungrouped.map((pub) => (
-                    <FollowRow key={pub.uri} pub={pub} />
-                  ))}
-                  {/* People live under Subscriptions too — one grouping keeps
+                {signedIn ? (
+                  <ButtonGroup
+                    aria-label={t`Subscription list actions`}
+                    style={styles.sideLabelActions}
+                  >
+                    {hasListGroups ? (
+                      <IconButton
+                        aria-label={t`Reorder lists`}
+                        size="sm"
+                        variant="tertiary"
+                        style={styles.headerIcon}
+                        onPress={openReorder}
+                      >
+                        <ArrowUpDown size={14} />
+                      </IconButton>
+                    ) : null}
+                    <IconButton
+                      aria-label={t`New list`}
+                      size="sm"
+                      variant="tertiary"
+                      style={styles.headerIcon}
+                      onPress={() => setNewListOpen(true)}
+                    >
+                      <FolderPlus size={14} />
+                    </IconButton>
+                    {hasListGroups ? (
+                      <IconButton
+                        aria-label={
+                          allCollapsed
+                            ? t`Expand all lists`
+                            : t`Collapse all lists`
+                        }
+                        size="sm"
+                        variant="tertiary"
+                        style={styles.headerIcon}
+                        onPress={toggleAllGroups}
+                      >
+                        {allCollapsed ? (
+                          <ChevronsUpDown size={14} />
+                        ) : (
+                          <ChevronsDownUp size={14} />
+                        )}
+                      </IconButton>
+                    ) : null}
+                  </ButtonGroup>
+                ) : null}
+              </Flex>
+              <div {...stylex.props(styles.followList)}>
+                {shellSubscriptionsLoading ? (
+                  <SubscriptionsSkeleton />
+                ) : following.length === 0 &&
+                  !hasListGroups &&
+                  followingUsers.length === 0 ? (
+                  <span {...stylex.props(styles.emptyNote)}>
+                    {signedIn ? (
+                      <Trans>Nothing yet — go discover.</Trans>
+                    ) : (
+                      <Trans>Sign in to subscribe.</Trans>
+                    )}
+                  </span>
+                ) : (
+                  <>
+                    {ungrouped.map((pub) => (
+                      <FollowRow key={pub.uri} pub={pub} />
+                    ))}
+                    {/* People live under Subscriptions too — one grouping keeps
                       the sidebar's information architecture simple, even though
                       "subscribing" (publications) and "following" (people) are
                       technically different graph edges. People sorted into a
                       list render under that list group instead (see below). */}
-                  {ungroupedUsers.map((followed) => (
-                    <FollowUserRow key={followed.did} user={followed} />
-                  ))}
-                </>
-              )}
+                    {ungroupedUsers.map((followed) => (
+                      <FollowUserRow key={followed.did} user={followed} />
+                    ))}
+                  </>
+                )}
+              </div>
+              {orderedGroups.map((group) => (
+                <SidebarList
+                  key={group.key}
+                  name={group.name}
+                  listUri={group.listUri}
+                  pubs={group.pubs}
+                  users={group.users}
+                  isExpanded={!sidebarPref.isCollapsed(group.listUri)}
+                  onExpandedChange={(expanded) =>
+                    sidebarPref.setCollapsed(group.listUri, !expanded)
+                  }
+                />
+              ))}
             </div>
-            {orderedGroups.map((group) => (
-              <SidebarList
-                key={group.key}
-                name={group.name}
-                listUri={group.listUri}
-                pubs={group.pubs}
-                users={group.users}
-                isExpanded={!sidebarPref.isCollapsed(group.listUri)}
-                onExpandedChange={(expanded) =>
-                  sidebarPref.setCollapsed(group.listUri, !expanded)
-                }
-              />
-            ))}
-          </div>
 
-          <Flex direction="column" gap="lg" style={styles.foot}>
-            <NavbarAuth variant="sidebar" menuPlacement="right bottom" />
-            <Button
-              variant="primary"
-              style={styles.addTrigger}
-              onPress={() => setAddModalOpen(true)}
-            >
-              <Plus size={16} /> <Trans>Add publication</Trans>
-            </Button>
-          </Flex>
-        </aside>
+            <Flex direction="column" gap="lg" style={styles.foot}>
+              <NavbarAuth variant="sidebar" menuPlacement="right bottom" />
+              <Button
+                variant="primary"
+                style={styles.addTrigger}
+                onPress={() => setAddModalOpen(true)}
+              >
+                <Plus size={16} /> <Trans>Add publication</Trans>
+              </Button>
+            </Flex>
+          </aside>
 
-        <main id="main-content" tabIndex={-1} {...stylex.props(styles.main)}>
-          <div {...stylex.props(styles.scroller)}>
-            {staticPageTitle ? (
-              <MobileStaticPageBar title={staticPageTitle} />
-            ) : (
-              <Flex align="center" justify="between" style={styles.mobileBar}>
-                <Brand />
-                <div {...stylex.props(styles.mobileBarActions)}>
-                  <SubscriptionsSwitcher
-                    count={following.length}
-                    onPress={() => setSubsSheetOpen(true)}
-                  />
-                  <NavbarAuth />
-                </div>
-              </Flex>
-            )}
+          <main id="main-content" tabIndex={-1} {...stylex.props(styles.main)}>
+            <div {...stylex.props(styles.scroller)}>
+              {staticPageTitle ? (
+                <MobileStaticPageBar title={staticPageTitle} />
+              ) : (
+                <Flex align="center" justify="between" style={styles.mobileBar}>
+                  <Brand />
+                  <div {...stylex.props(styles.mobileBarActions)}>
+                    <SubscriptionsSwitcher
+                      count={following.length}
+                      onPress={() => setSubsSheetOpen(true)}
+                    />
+                    <NavbarAuth />
+                  </div>
+                </Flex>
+              )}
 
-            {children}
-            <SiteFooter />
-          </div>
+              {children}
+              <SiteFooter />
+            </div>
 
-          <div {...stylex.props(styles.dock)}>
-            <PageReaderBar />
-            <BottomNav items={primaryNav} hasUnread={hasUnread} />
-          </div>
-        </main>
+            <div {...stylex.props(styles.dock)}>
+              <PageReaderBar />
+              <BottomNavSlot items={primaryNav} hasUnread={hasUnread} />
+            </div>
+          </main>
 
-        <SubscriptionsSheet
-          isOpen={subsSheetOpen}
-          onOpenChange={setSubsSheetOpen}
-          following={following}
-          ungrouped={ungrouped}
-          groups={orderedGroups}
-          onAddPublication={openAddPublication}
-          onNewList={signedIn ? openNewList : undefined}
-          onReorder={signedIn && hasListGroups ? openReorder : undefined}
-          allCollapsed={allCollapsed}
-          onToggleAll={hasListGroups ? toggleAllGroups : undefined}
-          isCollapsed={sidebarPref.isCollapsed}
-          onSetCollapsed={sidebarPref.setCollapsed}
-        />
-        <AddPublicationModal
-          isOpen={addModalOpen}
-          onOpenChange={setAddModalOpen}
-          showTrigger={false}
-        />
-        <ListEditModal
-          isOpen={newListOpen}
-          onOpenChange={setNewListOpen}
-          list={null}
-          following={following}
-          followingUsers={followingUsers}
-        />
-        <ReorderListsModal
-          isOpen={reorderOpen}
-          onOpenChange={setReorderOpen}
-          groups={orderedGroups.map((group) => ({
-            listUri: group.listUri,
-            name: group.name,
-          }))}
-          onSave={sidebarPref.saveOrder}
-        />
-        <AtstoreReviewPrompt />
-        <LanguageHintPrompt />
-        <FeedbackDialog isOpen={feedbackOpen} onOpenChange={setFeedbackOpen} />
-        <ToastRegion />
-      </div>
+          <SubscriptionsSheet
+            isOpen={subsSheetOpen}
+            onOpenChange={setSubsSheetOpen}
+            following={following}
+            ungrouped={ungrouped}
+            groups={orderedGroups}
+            onAddPublication={openAddPublication}
+            onNewList={signedIn ? openNewList : undefined}
+            onReorder={signedIn && hasListGroups ? openReorder : undefined}
+            allCollapsed={allCollapsed}
+            onToggleAll={hasListGroups ? toggleAllGroups : undefined}
+            isCollapsed={sidebarPref.isCollapsed}
+            onSetCollapsed={sidebarPref.setCollapsed}
+          />
+          <AddPublicationModal
+            isOpen={addModalOpen}
+            onOpenChange={setAddModalOpen}
+            showTrigger={false}
+          />
+          <ListEditModal
+            isOpen={newListOpen}
+            onOpenChange={setNewListOpen}
+            list={null}
+            following={following}
+            followingUsers={followingUsers}
+          />
+          <ReorderListsModal
+            isOpen={reorderOpen}
+            onOpenChange={setReorderOpen}
+            groups={orderedGroups.map((group) => ({
+              listUri: group.listUri,
+              name: group.name,
+            }))}
+            onSave={sidebarPref.saveOrder}
+          />
+          <AtstoreReviewPrompt />
+          <LanguageHintPrompt />
+          <FeedbackDialog
+            isOpen={feedbackOpen}
+            onOpenChange={setFeedbackOpen}
+          />
+          <ToastRegion />
+        </div>
+      </SelectionDockProvider>
     </PageReaderProvider>
   );
 }
