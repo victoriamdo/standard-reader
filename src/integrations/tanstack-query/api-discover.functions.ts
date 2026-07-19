@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
@@ -7,6 +7,14 @@ import { getAtprotoSessionForRequest } from "#/middleware/auth-session.server";
 import type { Span } from "#/server/observability/log";
 import { observe } from "#/server/observability/log";
 import { attachReaderSpanContext } from "#/server/observability/span-context.ts";
+import {
+  EMPTY_FRIEND_ARTICLES,
+  EMPTY_FRIEND_PUBLISHERS,
+  FRIEND_ARTICLE_PAGE_SIZE,
+  FRIEND_PAGE_SIZE,
+  friendArticles,
+  friendPublishers,
+} from "#/server/reader/bsky-friends";
 import {
   countKnownPublications,
   discoverDirectoryPublications,
@@ -22,6 +30,12 @@ import { effectiveFollowUris } from "#/server/reader/saved-lists";
 
 import type { Db, PublicationCard, Schema } from "./api-shapes";
 import { dbMiddleware } from "./db-middleware";
+
+export type {
+  FriendArticles,
+  FriendAuthor,
+  FriendPublishers,
+} from "#/server/reader/bsky-friends";
 
 /**
  * Discover directory queries (`APP_VISION.md` §5): the topic chips, the full
@@ -168,6 +182,72 @@ const getKnownPublicationCount = createServerFn({ method: "GET" })
       const count = await countKnownPublications(context.db);
       span.set("count", count);
       return count;
+    }),
+  );
+
+/**
+ * Publications written by the Bluesky accounts you follow. Signed-out readers
+ * get the empty shape rather than an error — the surfaces that use it are
+ * hidden when there's nobody to show.
+ */
+const friendPublishersInput = z.object({
+  limit: z.number().int().min(1).max(50).default(FRIEND_PAGE_SIZE),
+  offset: z.number().int().min(0).default(0),
+});
+
+const friendArticlesInput = z.object({
+  limit: z.number().int().min(1).max(50).default(FRIEND_ARTICLE_PAGE_SIZE),
+  offset: z.number().int().min(0).default(0),
+});
+
+const getFriendPublishers = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .validator(friendPublishersInput)
+  .handler(
+    observe("discover.getFriendPublishers", async ({ data, context }, span) => {
+      const { db, schema } = context;
+      const did = await attachReaderSpanContext(span, getRequest());
+      if (!did) {
+        span.set("signedIn", false);
+        return EMPTY_FRIEND_PUBLISHERS;
+      }
+      span.set("signedIn", true);
+      span.set("offset", data.offset);
+
+      const result = await friendPublishers(db, schema, did, {
+        limit: data.limit,
+        offset: data.offset,
+      });
+      span.set("people", result.totalPeople);
+      span.set("publications", result.publicationCount);
+      span.set("degraded", result.degraded);
+      span.set("truncated", result.truncated);
+      return result;
+    }),
+  );
+
+/** The Articles tab of `/friends`: recent writing from those publications. */
+const getFriendArticles = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .validator(friendArticlesInput)
+  .handler(
+    observe("discover.getFriendArticles", async ({ data, context }, span) => {
+      const { db, schema } = context;
+      const did = await attachReaderSpanContext(span, getRequest());
+      if (!did) {
+        span.set("signedIn", false);
+        return EMPTY_FRIEND_ARTICLES;
+      }
+      span.set("signedIn", true);
+      span.set("offset", data.offset);
+
+      const result = await friendArticles(db, schema, did, {
+        limit: data.limit,
+        offset: data.offset,
+      });
+      span.set("count", result.items.length);
+      span.set("degraded", result.degraded);
+      return result;
     }),
   );
 
@@ -573,6 +653,62 @@ function getOnboardingSuggestionsQueryOptions({
   });
 }
 
+/**
+ * A single page of friends' publications. The Discover prompt and the
+ * onboarding step take a small page (they only need the counts and the first
+ * few faces); `/friends` pages through with
+ * {@link getFriendPublishersInfiniteQueryOptions}. The expensive Bluesky sweep
+ * is cached server-side per reader, so later pages are DB-only.
+ *
+ * Keyed under `friends`, deliberately *not* `discover`: subscribing invalidates
+ * the whole `["discover"]` prefix, and since the server drops publications the
+ * reader already subscribes to, that would make a row vanish the moment it was
+ * subscribed to. Rows should settle into "Subscribed" and stay put until the
+ * next visit.
+ */
+function getFriendPublishersQueryOptions({
+  limit = FRIEND_PAGE_SIZE,
+  offset = 0,
+}: z.input<typeof friendPublishersInput> = {}) {
+  return queryOptions({
+    queryKey: ["friends", "publications", limit, offset] as const,
+    queryFn: async () => getFriendPublishers({ data: { limit, offset } }),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+function getFriendPublishersInfiniteQueryOptions({
+  limit = FRIEND_PAGE_SIZE,
+}: { limit?: number } = {}) {
+  return infiniteQueryOptions({
+    queryKey: ["friends", "publications", "infinite", limit] as const,
+    queryFn: async ({ pageParam }) =>
+      getFriendPublishers({ data: { limit, offset: pageParam } }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset ?? undefined,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+function getFriendArticlesInfiniteQueryOptions({
+  limit = FRIEND_ARTICLE_PAGE_SIZE,
+}: { limit?: number } = {}) {
+  return infiniteQueryOptions({
+    // Same `friends` namespace as the Publications tab, and for the same
+    // reason: subscribing must not invalidate the list out from under the
+    // reader mid-visit.
+    queryKey: ["friends", "articles", "infinite", limit] as const,
+    queryFn: async ({ pageParam }) =>
+      getFriendArticles({ data: { limit, offset: pageParam } }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset ?? undefined,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
 function getEffectiveFollowUrisQueryOptions() {
   return queryOptions({
     queryKey: ["discover", "effectiveFollowUris"] as const,
@@ -595,6 +731,11 @@ export const discoverApi = {
   getRecommendedPublicationsQueryOptions,
   getFollowedByPeopleYouFollow,
   getFollowedByPeopleYouFollowQueryOptions,
+  getFriendArticles,
+  getFriendArticlesInfiniteQueryOptions,
+  getFriendPublishers,
+  getFriendPublishersQueryOptions,
+  getFriendPublishersInfiniteQueryOptions,
   getOnboardingSuggestions,
   getOnboardingSuggestionsQueryOptions,
   getEffectiveFollowUris,
