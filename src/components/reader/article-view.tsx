@@ -145,15 +145,44 @@ const styles = stylex.create({
     },
   },
   stickyChrome: {
-    backgroundColor: `color-mix(in oklch, ${uiColor.bg} 95%, transparent)`,
+    // Translucent base tint sampled by the blur layer below for the frosted
+    // look. The `backdrop-filter` lives on an over-extended child (see
+    // `stickyBlur`), never on the sticky bar itself — applying it directly here
+    // makes iOS Safari clip the filter to the exact sticky edge, leaving a
+    // subpixel seam at the top that reveals the scrolling content and jitters
+    // during momentum scroll.
+    backgroundColor: `color-mix(in oklch, ${uiColor.bg} 90%, transparent)`,
     position: "sticky",
     zIndex: 20,
     top: 0,
   },
+  // Clips the over-extended blur layer back to the sticky bar's box. Keeping the
+  // blurred element's own edges outside this clip is what removes the iOS seam.
+  stickyBlurContainer: {
+    inset: 0,
+    overflow: "hidden",
+    pointerEvents: "none",
+    position: "absolute",
+    zIndex: 0,
+  },
+  stickyBlur: {
+    backdropFilter: "blur(12px)",
+    position: "absolute",
+    // Over-extend past every edge so the buggy filter boundary sits outside the
+    // clip (see `stickyBlurContainer`) — only the clean interior is ever shown,
+    // matching the design-system sticky header in `Page.tsx`.
+    top: -48,
+    bottom: -48,
+    insetInlineStart: -48,
+    insetInlineEnd: -48,
+  },
+  // Rides above the blur layer so the top bar and progress track paint crisply.
+  stickyContent: {
+    position: "relative",
+    zIndex: 1,
+  },
   topBar: {
     alignItems: "center",
-    backdropFilter: "blur(12px)",
-    backgroundColor: `color-mix(in oklch, ${uiColor.bg} 90%, transparent)`,
     columnGap: {
       default: gap.sm,
       "@media (min-width: 40rem)": gap.lg,
@@ -1011,119 +1040,126 @@ function ArticleViewBody({
   return (
     <div {...stylex.props(styles.root, readerActive && styles.rootReader)}>
       <div {...stylex.props(styles.stickyChrome)}>
-        <div {...stylex.props(styles.topBar)}>
-          <div {...stylex.props(styles.topLeft)}>
-            <IconButton
-              variant="secondary"
-              size="md"
-              label={t`Back`}
-              onPress={() => {
-                router.history.back();
-              }}
-            >
-              <DirectionalIcon as={ArrowLeft} size={18} />
-            </IconButton>
-
-            {pub ? (
-              <>
-                {pubParams ? (
-                  <Link
-                    to="/p/$did/$rkey"
-                    params={pubParams}
-                    {...stylex.props(styles.pubByline)}
-                  >
-                    <PublicationAvatar pub={pub} size="sm" />
-                    <span {...stylex.props(styles.pubBylineName)}>
-                      {pub.name}
-                    </span>
-                  </Link>
-                ) : pub.url ? (
-                  <AppLink href={pub.url} linkStyle={styles.pubByline}>
-                    <PublicationAvatar pub={pub} size="sm" />
-                    <span {...stylex.props(styles.pubBylineName)}>
-                      {pub.name}
-                    </span>
-                  </AppLink>
-                ) : (
-                  <span {...stylex.props(styles.pubByline)}>
-                    <PublicationAvatar pub={pub} size="sm" />
-                    <span {...stylex.props(styles.pubBylineName)}>
-                      {pub.name}
-                    </span>
-                  </span>
-                )}
-              </>
-            ) : null}
-          </div>
-
-          <div {...stylex.props(styles.topActs)}>
-            <TopListenButton article={article} />
-
-            {/* Secondary actions: individual buttons on desktop… */}
-            <div {...stylex.props(styles.topActsInline)}>
-              {handleOpenMagazine ? (
-                <IconButton
-                  variant="secondary"
-                  size="md"
-                  label={t`Open magazine edition`}
-                  onPress={handleOpenMagazine}
-                >
-                  <BookOpen size={18} />
-                </IconButton>
-              ) : null}
-              {handleOpenPublication ? (
-                <IconButton
-                  variant="secondary"
-                  size="md"
-                  label={
-                    pub ? t`Open on ${publicationName}` : t`Open on publication`
-                  }
-                  onPress={handleOpenPublication}
-                >
-                  <ExternalLink size={18} />
-                </IconButton>
-              ) : null}
-              {signedIn && trackReading ? (
-                <ReadToggleButton
-                  isRead={isRead}
-                  onToggle={toggleRead}
-                  isPending={readTogglePending}
-                />
-              ) : null}
-              <BookmarkButton
-                bookmarked={bookmarked}
-                onToggle={toggleBookmark}
-                isPending={bookmarkPending}
-              />
-            </div>
-
-            {/* …collapsed into an overflow menu on mobile. */}
-            <div {...stylex.props(styles.topActsOverflow)}>
-              <ReaderSecondaryActionsMenu
-                onOpenMagazine={handleOpenMagazine}
-                onOpenPublication={handleOpenPublication}
-                publicationName={publicationName}
-                showReadToggle={signedIn && trackReading}
-                isRead={isRead}
-                onToggleRead={toggleRead}
-                bookmarked={bookmarked}
-                onToggleBookmark={toggleBookmark}
-              />
-            </div>
-
-            <DocumentShareMenu
-              recordUri={article.uri}
-              title={article.title}
-              canonicalUrl={article.canonicalUrl}
-              description={article.description}
-              author={primaryAuthor(article)}
-              siteName={pub?.name}
-              imageUrl={article.coverImageUrl}
-            />
-          </div>
+        <div {...stylex.props(styles.stickyBlurContainer)} aria-hidden>
+          <div {...stylex.props(styles.stickyBlur)} />
         </div>
+        <div {...stylex.props(styles.stickyContent)}>
+          <div {...stylex.props(styles.topBar)}>
+            <div {...stylex.props(styles.topLeft)}>
+              <IconButton
+                variant="secondary"
+                size="md"
+                label={t`Back`}
+                onPress={() => {
+                  router.history.back();
+                }}
+              >
+                <DirectionalIcon as={ArrowLeft} size={18} />
+              </IconButton>
 
-        <ReaderProgress progress={progress} />
+              {pub ? (
+                <>
+                  {pubParams ? (
+                    <Link
+                      to="/p/$did/$rkey"
+                      params={pubParams}
+                      {...stylex.props(styles.pubByline)}
+                    >
+                      <PublicationAvatar pub={pub} size="sm" />
+                      <span {...stylex.props(styles.pubBylineName)}>
+                        {pub.name}
+                      </span>
+                    </Link>
+                  ) : pub.url ? (
+                    <AppLink href={pub.url} linkStyle={styles.pubByline}>
+                      <PublicationAvatar pub={pub} size="sm" />
+                      <span {...stylex.props(styles.pubBylineName)}>
+                        {pub.name}
+                      </span>
+                    </AppLink>
+                  ) : (
+                    <span {...stylex.props(styles.pubByline)}>
+                      <PublicationAvatar pub={pub} size="sm" />
+                      <span {...stylex.props(styles.pubBylineName)}>
+                        {pub.name}
+                      </span>
+                    </span>
+                  )}
+                </>
+              ) : null}
+            </div>
+
+            <div {...stylex.props(styles.topActs)}>
+              <TopListenButton article={article} />
+
+              {/* Secondary actions: individual buttons on desktop… */}
+              <div {...stylex.props(styles.topActsInline)}>
+                {handleOpenMagazine ? (
+                  <IconButton
+                    variant="secondary"
+                    size="md"
+                    label={t`Open magazine edition`}
+                    onPress={handleOpenMagazine}
+                  >
+                    <BookOpen size={18} />
+                  </IconButton>
+                ) : null}
+                {handleOpenPublication ? (
+                  <IconButton
+                    variant="secondary"
+                    size="md"
+                    label={
+                      pub
+                        ? t`Open on ${publicationName}`
+                        : t`Open on publication`
+                    }
+                    onPress={handleOpenPublication}
+                  >
+                    <ExternalLink size={18} />
+                  </IconButton>
+                ) : null}
+                {signedIn && trackReading ? (
+                  <ReadToggleButton
+                    isRead={isRead}
+                    onToggle={toggleRead}
+                    isPending={readTogglePending}
+                  />
+                ) : null}
+                <BookmarkButton
+                  bookmarked={bookmarked}
+                  onToggle={toggleBookmark}
+                  isPending={bookmarkPending}
+                />
+              </div>
+
+              {/* …collapsed into an overflow menu on mobile. */}
+              <div {...stylex.props(styles.topActsOverflow)}>
+                <ReaderSecondaryActionsMenu
+                  onOpenMagazine={handleOpenMagazine}
+                  onOpenPublication={handleOpenPublication}
+                  publicationName={publicationName}
+                  showReadToggle={signedIn && trackReading}
+                  isRead={isRead}
+                  onToggleRead={toggleRead}
+                  bookmarked={bookmarked}
+                  onToggleBookmark={toggleBookmark}
+                />
+              </div>
+
+              <DocumentShareMenu
+                recordUri={article.uri}
+                title={article.title}
+                canonicalUrl={article.canonicalUrl}
+                description={article.description}
+                author={primaryAuthor(article)}
+                siteName={pub?.name}
+                imageUrl={article.coverImageUrl}
+              />
+            </div>
+          </div>
+
+          <ReaderProgress progress={progress} />
+        </div>
       </div>
 
       <ReaderWordHighlighter rootRef={articleRef} articleUri={article.uri} />
