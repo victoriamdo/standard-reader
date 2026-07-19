@@ -74,6 +74,24 @@ const SERVICES_QUERY = `
   }
 `;
 
+const VARIABLES = `
+  query ($projectId: String!, $environmentId: String!, $serviceId: String!) {
+    variables(
+      projectId: $projectId
+      environmentId: $environmentId
+      serviceId: $serviceId
+    )
+  }
+`;
+
+const DEPLOYMENTS = `
+  query ($input: DeploymentListInput!) {
+    deployments(input: $input, first: 1) {
+      edges { node { id status } }
+    }
+  }
+`;
+
 const UPSERT = `
   mutation ($input: VariableUpsertInput!) {
     variableUpsert(input: $input)
@@ -116,6 +134,50 @@ async function findPrEnvironment() {
   return null;
 }
 
+/**
+ * A redeploy issued while Railway's own deploy is still building supersedes it,
+ * and Railway reports the superseded deployment to GitHub as a *failed* check
+ * even though nothing was wrong with it. Wait for whatever is in flight to
+ * settle before replacing it.
+ *
+ * Best-effort: if the status can't be read, proceed anyway rather than blocking
+ * the correction. A noisy check is better than a preview left on the prod DB.
+ */
+async function waitForIdle(environmentId, serviceId, serviceName) {
+  const TERMINAL = new Set([
+    "SUCCESS",
+    "FAILED",
+    "CRASHED",
+    "REMOVED",
+    "SKIPPED",
+  ]);
+
+  for (let attempt = 1; attempt <= 40; attempt++) {
+    let status;
+    try {
+      const data = await gql(DEPLOYMENTS, {
+        input: { projectId: RAILWAY_PROJECT_ID, environmentId, serviceId },
+      });
+      status = data.deployments.edges[0]?.node?.status;
+    } catch (error) {
+      console.log(
+        `Could not read ${serviceName} deploy status: ${error.message}`,
+      );
+      return;
+    }
+
+    if (!status || TERMINAL.has(status)) return;
+
+    console.log(
+      `${serviceName} deployment is ${status}; waiting before redeploy ` +
+        `(attempt ${attempt}/40)`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 15_000));
+  }
+
+  console.log(`${serviceName} never went idle; redeploying anyway.`);
+}
+
 const environment = await findPrEnvironment();
 
 if (environment) {
@@ -141,6 +203,27 @@ if (environment) {
   });
 
   for (const service of targets) {
+    // Every push to the PR re-runs this job, but the branch URL is stable, so
+    // after the first run there is nothing to change. Skipping keeps later
+    // pushes from redeploying — and superseding — Railway's own deploys.
+    let current;
+    try {
+      const data = await gql(VARIABLES, {
+        projectId: RAILWAY_PROJECT_ID,
+        environmentId: environment.id,
+        serviceId: service.id,
+      });
+      current = data.variables?.DATABASE_URL;
+    } catch (error) {
+      // Degrade to always writing rather than failing outright.
+      console.log(`Could not read ${service.name} variables: ${error.message}`);
+    }
+
+    if (current === DATABASE_URL) {
+      console.log(`${service.name} already points at the branch; skipping.`);
+      continue;
+    }
+
     await gql(UPSERT, {
       input: {
         projectId: RAILWAY_PROJECT_ID,
@@ -151,6 +234,8 @@ if (environment) {
       },
     });
     console.log(`Set DATABASE_URL on ${service.name}`);
+
+    await waitForIdle(environment.id, service.id, service.name);
 
     await gql(REDEPLOY, {
       serviceId: service.id,
