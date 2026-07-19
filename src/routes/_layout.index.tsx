@@ -76,14 +76,45 @@ export const Route = createFileRoute("/_layout/")({
   },
   loaderDeps: ({ search }) => ({ scope: search.scope }),
   loader: async ({ context, deps }) => {
+    const { queryClient } = context;
+
+    // Cache-first, mirroring /latest. Reading an article optimistically flips its
+    // card to read in the home-feed cache (see applyMarkReadOptimisticUpdate)
+    // without dropping it from the list. Blindly re-running getHomePage() on every
+    // navigation and overwriting the cache with setQueryData would clobber those
+    // edits and hand back a server-recomputed feed with the just-read article gone
+    // or reordered — so the list jumps under the reader on Back. When the feed is
+    // still fresh in the cache, reuse it and skip the fetch, so the just-read
+    // article stays put and the feed stays intact for browsing.
+    const session = queryClient.getQueryData(
+      user.getSessionQueryOptions.queryKey,
+    );
+    const readerScope = user.readerQueryScope(session);
+    const cachedScope = queryClient.getQueryData(
+      user.getHomeScopePreferenceQueryOptions.queryKey,
+    )?.scope;
+    const scope = deps.scope ?? cachedScope ?? "follows";
+
+    const feedOptions = feedApi.getHomeFeedQueryOptions({ scope, readerScope });
+    const feedStaleTime =
+      typeof feedOptions.staleTime === "number" ? feedOptions.staleTime : 0;
+    const feedQuery = queryClient.getQueryCache().find({
+      queryKey: feedOptions.queryKey,
+    });
+    if (
+      feedQuery?.state.data !== undefined &&
+      !feedQuery.isStaleByTime(feedStaleTime)
+    ) {
+      return { scope, readerScope };
+    }
+
     const page = await feedApi.getHomePage({
       data: { scope: deps.scope },
     });
-    context.queryClient.setQueryData(
-      user.getHomeScopePreferenceQueryOptions.queryKey,
-      { scope: page.scope },
-    );
-    context.queryClient.setQueryData(
+    queryClient.setQueryData(user.getHomeScopePreferenceQueryOptions.queryKey, {
+      scope: page.scope,
+    });
+    queryClient.setQueryData(
       feedApi.getHomeFeedQueryOptions({
         scope: page.scope,
         readerScope: page.readerScope,
