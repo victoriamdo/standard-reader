@@ -62,6 +62,10 @@
     "extension:zip:firefox": "pnpm --filter standard-reader-extension zip:firefox",
     "register-labelers": "pnpm exec tsx --env-file=.env scripts/register-labelers.ts",
     "sync-labels": "pnpm exec tsx --env-file=.env scripts/sync-labels.ts",
+    "feedback:poll": "pnpm exec tsx scripts/feedback-agent-poll.ts",
+    "feedback:poll:dev": "DRY_RUN=1 pnpm exec tsx --env-file=.env scripts/feedback-agent-poll.ts",
+    "feedback:status": "pnpm exec tsx scripts/feedback-agent-status.ts",
+    "feedback:status:dev": "pnpm exec tsx --env-file=.env scripts/feedback-agent-status.ts",
     "fonts:generate": "node scripts/generate-font-fallbacks.mjs"
   },
   "dependencies": {
