@@ -255,7 +255,9 @@ export const articleBodyStyles = stylex.create({
     borderColor: uiColor.border1,
     borderRadius: radius.md,
     borderStyle: "solid",
-    borderWidth: IFRAME_FRAME_BORDER_WIDTH,
+    // Keep in sync with `IFRAME_FRAME_BORDER_WIDTH`; the stylex lint rule
+    // can't resolve an identifier here.
+    borderWidth: 1,
     overflow: "hidden",
     backgroundColor: uiColor.component1,
     position: "relative",
