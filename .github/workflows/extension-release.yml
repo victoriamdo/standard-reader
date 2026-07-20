@@ -19,6 +19,17 @@
 #
 # Required repository secrets (Settings -> Secrets and variables -> Actions):
 #
+#   GitHub
+#     GH_TOKEN               PAT used by the `prepare` job to push the release
+#                            branch and open the PR. The built-in GITHUB_TOKEN
+#                            cannot open PRs unless "Allow GitHub Actions to
+#                            create and approve pull requests" is enabled under
+#                            Settings -> Actions -> General. Needs `repo` scope
+#                            (classic) or Contents + Pull requests read/write
+#                            (fine-grained). The release PR only touches
+#                            extension/package.json, so no `workflow` scope is
+#                            required. Falls back to GITHUB_TOKEN when unset.
+#
 #   Chrome Web Store  (https://wxt.dev/guide/essentials/publishing.html#chrome-web-store)
 #     CHROME_EXTENSION_ID    Item ID from the developer dashboard URL
 #     CHROME_CLIENT_ID       Google Cloud OAuth client id
@@ -76,8 +87,12 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && !inputs.dry_run
     runs-on: ubuntu-latest
     steps:
+      # Check out with the PAT so the release-branch push and `gh pr create`
+      # below both authenticate as a user rather than as GITHUB_TOKEN.
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -107,7 +122,7 @@ jobs:
 
       - name: Create release branch and open PR
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
           VERSION: ${{ steps.bump.outputs.version }}
           BASE: ${{ github.ref_name }}
         run: |
