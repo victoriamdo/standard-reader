@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Standard Reader · blog index</title>
+
+    <!--
+      Everything ships from jsDelivr's ESM CDN — no build step, no npm install.
+      We use the TYPED lexicon client to talk to the Standard Reader API:
+        · @standard-reader/lexicons  — the API as generated lexicon schemas
+        · @atproto/lex-client        — a standard AT Proto XRPC client
+      and lit for the little UI shell. The post viewer (post.html) adds the
+      @standard-reader/renderer-lit package to render article bodies.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "lit": "https://cdn.jsdelivr.net/npm/lit@3/+esm",
+          "@atproto/lex-client": "https://cdn.jsdelivr.net/npm/@atproto/lex-client@0.3.0/+esm",
+          "@standard-reader/lexicons": "https://cdn.jsdelivr.net/npm/@standard-reader/lexicons@0.1.0/+esm"
+        }
+      }
+    </script>
+
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #14161a;
+        --muted: #626873;
+        --line: #e4e7ec;
+        --accent: #3b5bdb;
+        --card: #fff;
+        --bg: #f7f8fa;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e6e8eb;
+          --muted: #9aa2ad;
+          --line: #2a2e35;
+          --accent: #8ea2ff;
+          --card: #191c21;
+          --bg: #101216;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+
+      .profile { display: flex; gap: 18px; align-items: center; margin-bottom: 8px; }
+      .profile img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: var(--line); }
+      .profile h1 { margin: 0; font-size: 26px; }
+      .profile .handle { color: var(--muted); }
+      .bio { color: var(--muted); margin: 4px 0 20px; }
+
+      .stats { display: flex; gap: 22px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 32px; }
+      .stats b { font-size: 18px; display: block; }
+      .stats span { color: var(--muted); font-size: 13px; }
+
+      .pub { margin-bottom: 40px; }
+      .pub-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+      .pub-head img { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; background: var(--line); }
+      .pub-head h2 { margin: 0; font-size: 19px; }
+      .pub-desc { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+
+      ul { list-style: none; margin: 0; padding: 0; }
+      li a {
+        display: flex; justify-content: space-between; gap: 16px; align-items: baseline;
+        padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px;
+        background: var(--card); color: inherit; text-decoration: none; transition: border-color .15s;
+      }
+      li a:hover { border-color: var(--accent); }
+      li a .t { font-weight: 550; }
+      li a time { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+      .switch { display: flex; gap: 8px; margin-bottom: 28px; font: 14px/1.6 system-ui, sans-serif; }
+      .switch input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: inherit; }
+      .switch input:focus { outline: none; border-color: var(--accent); }
+      .switch button { padding: 8px 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap; }
+
+      .status { color: var(--muted); padding: 40px 0; text-align: center; }
+    </style>
+  </head>
+
+  <body>
+    <blog-index></blog-index>
+
+    <script type="module">
+      import { LitElement, html, nothing } from "lit";
+      import { Client } from "@atproto/lex-client";
+      import { standardReader, STANDARD_READER_SERVICE } from "@standard-reader/lexicons";
+
+      // Which profile to show — pass ?handle=<handle-or-did> in the URL, e.g.
+      //   index.html?handle=cameron.stream
+      //   index.html?handle=did:plc:gfrmhdmjvxn2sjedzboeudef
+      // Defaults to a sample so the demo works with no query string.
+      const ACTOR = new URLSearchParams(location.search).get("handle")?.trim() || "cameron.stream";
+
+      const client = new Client(STANDARD_READER_SERVICE);
+
+      // getAuthor takes a DID, so resolve a handle first. DIDs pass through.
+      // com.atproto.identity.resolveHandle on Bluesky's public API is CORS-open
+      // and needs no auth — standard AT Proto identity resolution.
+      async function resolveDid(actor) {
+        if (actor.startsWith("did:")) return actor;
+        const res = await fetch(
+          "https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=" +
+            encodeURIComponent(actor),
+        );
+        if (!res.ok) throw new Error(`Couldn't resolve handle “${actor}”.`);
+        return (await res.json()).did;
+      }
+
+      const fmtDate = (iso) =>
+        new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+
+      class BlogIndex extends LitElement {
+        // Render into light DOM so the page's CSS above applies.
+        createRenderRoot() { return this; }
+
+        static properties = { author: { state: true }, error: { state: true } };
+
+        connectedCallback() {
+          super.connectedCallback();
+          this.load();
+        }
+
+        async load() {
+          try {
+            // Relax the typed client's two strict checks (see this example's
+            // README). Types are still fully inferred:
+            //  · validateResponse — the generated 0.1.0 schemas reject the
+            //    explicit `null`s the API sends for nullable fields.
+            //  · strictResponseProcessing — the client otherwise rejects the
+            //    image blob refs inside document content ("Invalid blob object").
+            const opts = { validateResponse: false, strictResponseProcessing: false };
+
+            // 1. Author profile, stats, and their publications.
+            const did = await resolveDid(ACTOR);
+            const author = await client.call(standardReader.getAuthor, { did }, opts);
+
+            // 2. A page of posts for each publication.
+            const withPosts = await Promise.all(
+              author.publications.map(async (pub) => {
+                const { items } = await client.call(
+                  standardReader.getPublicationDocuments,
+                  { publication: pub.uri, limit: 20 },
+                  opts,
+                );
+                return { pub, posts: items };
+              }),
+            );
+            this.author = { ...author, withPosts };
+          } catch (err) {
+            this.error = String(err?.message ?? err);
+          }
+        }
+
+        // Navigate to another profile by rewriting ?handle=.
+        _switch(e) {
+          e.preventDefault();
+          const v = new FormData(e.target).get("handle").trim();
+          if (v) location.search = "?handle=" + encodeURIComponent(v);
+        }
+
+        render() {
+          const switcher = html`
+            <form class="switch" @submit=${this._switch}>
+              <input name="handle" .value=${ACTOR} placeholder="handle or did"
+                spellcheck="false" autocapitalize="off" autocorrect="off" />
+              <button type="submit">View blog</button>
+            </form>
+          `;
+          if (this.error) return html`<main>${switcher}<p class="status">⚠ ${this.error}</p></main>`;
+          if (!this.author) return html`<main>${switcher}<p class="status">Loading…</p></main>`;
+
+          const { profile, stats, withPosts } = this.author;
+          return html`
+            <main>
+              ${switcher}
+              <header>
+                <div class="profile">
+                  ${profile.avatarUrl ? html`<img src=${profile.avatarUrl} alt="" />` : nothing}
+                  <div>
+                    <h1>${profile.displayName ?? profile.handle ?? "Author"}</h1>
+                    ${profile.handle ? html`<div class="handle">@${profile.handle}</div>` : nothing}
+                  </div>
+                </div>
+                ${profile.description ? html`<p class="bio">${profile.description}</p>` : nothing}
+                <div class="stats">
+                  <div><b>${stats.publicationCount ?? 0}</b><span>Publications</span></div>
+                  <div><b>${stats.documentCount ?? 0}</b><span>Posts</span></div>
+                  <div><b>${stats.subscriberCount ?? 0}</b><span>Subscribers</span></div>
+                </div>
+              </header>
+
+              ${withPosts.map(
+                ({ pub, posts }) => html`
+                  <section class="pub">
+                    <div class="pub-head">
+                      ${pub.iconUrl ? html`<img src=${pub.iconUrl} alt="" />` : nothing}
+                      <h2>${pub.name}</h2>
+                    </div>
+                    ${pub.description ? html`<p class="pub-desc">${pub.description}</p>` : nothing}
+                    <ul>
+                      ${posts.map(
+                        (post) => html`
+                          <li>
+                            <a href=${`post.html?uri=${encodeURIComponent(post.uri)}&handle=${encodeURIComponent(ACTOR)}`}>
+                              <span class="t">${post.title}</span>
+                              <time datetime=${post.publishedAt}>${fmtDate(post.publishedAt)}</time>
+                            </a>
+                          </li>
+                        `,
+                      )}
+                    </ul>
+                  </section>
+                `,
+              )}
+            </main>
+          `;
+        }
+      }
+
+      customElements.define("blog-index", BlogIndex);
+    </script>
+  </body>
+</html>

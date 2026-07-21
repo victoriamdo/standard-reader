@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Standard Reader · post</title>
+
+    <!--
+      Same typed lexicon client as index.html, plus the renderer package:
+        · @standard-reader/renderer-lit — turns a document's `content` payload
+          into an unstyled <standard-document> web component (registered on
+          import). It renders into light DOM, so the prose CSS below applies.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "lit": "https://cdn.jsdelivr.net/npm/lit@3/+esm",
+          "@atproto/lex-client": "https://cdn.jsdelivr.net/npm/@atproto/lex-client@0.3.0/+esm",
+          "@standard-reader/lexicons": "https://cdn.jsdelivr.net/npm/@standard-reader/lexicons@0.1.0/+esm",
+          "@standard-reader/renderer-lit": "https://cdn.jsdelivr.net/npm/@standard-reader/renderer-lit@0.1.0/+esm"
+        }
+      }
+    </script>
+
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #14161a;
+        --muted: #626873;
+        --line: #e4e7ec;
+        --accent: #3b5bdb;
+        --bg: #f7f8fa;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e6e8eb;
+          --muted: #9aa2ad;
+          --line: #2a2e35;
+          --accent: #8ea2ff;
+          --bg: #101216;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 18px/1.7 Georgia, "Iowan Old Style", serif;
+      }
+      main { max-width: 680px; margin: 0 auto; padding: 32px 20px 96px; }
+
+      .back { font: 14px/1.6 system-ui, sans-serif; color: var(--accent); text-decoration: none; }
+      .back:hover { text-decoration: underline; }
+      header { margin: 20px 0 32px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+      header h1 { margin: 0 0 8px; font-size: 32px; line-height: 1.2; }
+      header .meta { font: 14px/1.6 system-ui, sans-serif; color: var(--muted); }
+
+      /* Prose styling for the headless renderer's semantic HTML output. */
+      standard-document { display: block; }
+      standard-document :is(h1, h2, h3) { line-height: 1.25; margin: 1.6em 0 .5em; }
+      standard-document p { margin: 0 0 1.1em; }
+      standard-document a { color: var(--accent); }
+      standard-document img { max-width: 100%; height: auto; border-radius: 8px; }
+      standard-document figure { margin: 1.5em 0; }
+      standard-document figcaption { font: 14px/1.5 system-ui, sans-serif; color: var(--muted); text-align: center; margin-top: .5em; }
+      standard-document blockquote { margin: 1.5em 0; padding-left: 18px; border-left: 3px solid var(--line); color: var(--muted); }
+      standard-document pre { background: rgba(127,127,127,.12); padding: 14px; border-radius: 8px; overflow-x: auto; font-size: .85em; }
+      standard-document :not(pre) > code { background: rgba(127,127,127,.15); padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+
+      .status { color: var(--muted); padding: 60px 0; text-align: center; font: 15px/1.6 system-ui, sans-serif; }
+    </style>
+  </head>
+
+  <body>
+    <blog-post></blog-post>
+
+    <script type="module">
+      import { LitElement, html, nothing } from "lit";
+      import { Client } from "@atproto/lex-client";
+      import { standardReader, STANDARD_READER_SERVICE } from "@standard-reader/lexicons";
+      import "@standard-reader/renderer-lit"; // registers <standard-document>
+
+      const client = new Client(STANDARD_READER_SERVICE);
+
+      const fmtDate = (iso) =>
+        iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+
+      class BlogPost extends LitElement {
+        createRenderRoot() { return this; } // light DOM, so page CSS applies
+
+        static properties = { doc: { state: true }, error: { state: true } };
+
+        connectedCallback() {
+          super.connectedCallback();
+          const params = new URLSearchParams(location.search);
+          // Preserve the profile so "All posts" returns to the right index.
+          const handle = params.get("handle");
+          this.backHref = handle ? `index.html?handle=${encodeURIComponent(handle)}` : "index.html";
+          const uri = params.get("uri");
+          if (!uri) this.error = "Missing ?uri= parameter.";
+          else this.load(uri);
+        }
+
+        async load(uri) {
+          try {
+            // One call returns card metadata AND the renderable body (`content`).
+            // Relax the typed client's strict checks so it tolerates the API's
+            // nulls (validateResponse) and the image blob refs inside content
+            // (strictResponseProcessing). Types are still inferred. See README.
+            this.doc = await client.call(
+              standardReader.getDocument,
+              { document: uri },
+              { validateResponse: false, strictResponseProcessing: false },
+            );
+          } catch (err) {
+            this.error = String(err?.message ?? err);
+          }
+        }
+
+        render() {
+          if (this.error) return html`<main><p class="status">⚠ ${this.error}</p></main>`;
+          if (!this.doc) return html`<main><p class="status">Loading…</p></main>`;
+
+          const d = this.doc;
+          return html`
+            <main>
+              <a class="back" href=${this.backHref}>← All posts</a>
+              <header>
+                <h1>${d.title}</h1>
+                <div class="meta">
+                  ${d.publicationName ? html`${d.publicationName} · ` : nothing}${fmtDate(d.publishedAt)}
+                </div>
+              </header>
+
+              <!--
+                The renderer's document input lines up field-for-field with
+                getDocument's output: content + contentFormat + the author DID
+                (for resolving blob-backed images) + description.
+              -->
+              <standard-document
+                .document=${{
+                  content: d.content,
+                  contentFormat: d.contentFormat,
+                  authorDid: d.did,
+                  description: d.description,
+                }}
+                .options=${{ dropCap: true }}
+              ></standard-document>
+            </main>
+          `;
+        }
+      }
+
+      customElements.define("blog-post", BlogPost);
+    </script>
+  </body>
+</html>
