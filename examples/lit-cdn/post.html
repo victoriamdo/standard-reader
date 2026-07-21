@@ -77,6 +77,14 @@
       standard-document :not(pre) > code { background: rgba(127,127,127,.15); padding: .1em .35em; border-radius: 4px; font-size: .9em; }
 
       .status { color: var(--muted); padding: 60px 0; text-align: center; font: 15px/1.6 system-ui, sans-serif; }
+
+      .subscribe-foot { margin-top: 48px; padding-top: 28px; border-top: 1px solid var(--line); text-align: center; }
+      .subscribe {
+        display: inline-block; padding: 11px 22px; border-radius: 999px;
+        background: var(--accent); color: #fff; text-decoration: none;
+        font: 600 15px/1 system-ui, sans-serif;
+      }
+      .subscribe:hover { filter: brightness(1.08); }
     </style>
   </head>
 
@@ -91,6 +99,14 @@
       import "bluesky-post-embed"; // registers <bluesky-post>
 
       const client = new Client(STANDARD_READER_SERVICE);
+
+      // Standard Reader's per-publication subscribe page (a plain link — the
+      // reader handles sign-in + follow). did/rkey come from the publication's
+      // at-uri: at://<did>/site.standard.publication/<rkey>.
+      function subscribeUrl(pubUri) {
+        const m = /^at:\/\/([^/]+)\/[^/]+\/([^/]+)/.exec(pubUri || "");
+        return m ? `${STANDARD_READER_SERVICE}/subscribe/${m[1]}/${m[2]}` : null;
+      }
 
       // Plug the Bluesky embed web component into the renderer. `blueskyEmbed`
       // hands us the post's at:// URI, which <bluesky-post> takes as `src`.
@@ -159,6 +175,18 @@
                 .components=${components}
                 .options=${{ dropCap: true }}
               ></standard-document>
+
+              ${d.publicationUri && subscribeUrl(d.publicationUri)
+                ? html`<div class="subscribe-foot">
+                    <a
+                      class="subscribe"
+                      href=${subscribeUrl(d.publicationUri)}
+                      target="_blank"
+                      rel="noopener"
+                      >Subscribe${d.publicationName ? ` to ${d.publicationName}` : nothing}</a
+                    >
+                  </div>`
+                : nothing}
             </main>
           `;
         }

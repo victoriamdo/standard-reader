@@ -37,22 +37,3 @@ With no query string it defaults to a sample profile. There's also a small
 switcher input at the top of the page. Handles are resolved to a DID with
 `com.atproto.identity.resolveHandle` (Bluesky's public, CORS-open API); DIDs are
 used as-is. `getAuthor` itself takes a DID.
-
-## Note: no relaxed validation
-
-The `client.call(...)`s use the typed client's **default strict validation** —
-no `validateResponse` / `strictResponseProcessing` escape hatches. Two upstream
-fixes made that possible; both were needed because `@standard-reader/lexicons@0.1.0`
-was stricter than the live API:
-
-- **Nullable fields** — `@atproto/lex@0.3.0` dropped the lexicons'
-  `nullable: true` markers, so the schemas rejected the explicit `null`s the API
-  returns (e.g. `searchNameHtml`). Fixed in **`@standard-reader/lexicons@0.1.1`**,
-  whose codegen now emits `l.nullable(...)` for those fields (see the package's
-  `scripts/patch-nullable.mjs`). This example imports `@0.1.1`.
-
-- **Blob refs** — document `content` carried image blob CID links in the IPLD
-  dag-json form `{"/": cid}`, which a strict Lex parser rejects ("Invalid blob
-  object"). The AppView now normalizes them to the lex-JSON form `{"$link": cid}`
-  on output, so `getDocument` conforms to the wire format every atproto client
-  expects.

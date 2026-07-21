@@ -83,6 +83,13 @@
       .switch input:focus { outline: none; border-color: var(--accent); }
       .switch button { padding: 8px 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap; }
 
+      .subscribe {
+        display: inline-block; margin-top: 18px; padding: 10px 20px; border-radius: 999px;
+        background: var(--accent); color: #fff; text-decoration: none;
+        font: 600 14px/1 system-ui, sans-serif;
+      }
+      .subscribe:hover { filter: brightness(1.08); }
+
       .status { color: var(--muted); padding: 40px 0; text-align: center; }
     </style>
   </head>
@@ -102,6 +109,14 @@
       const ACTOR = new URLSearchParams(location.search).get("handle")?.trim() || "cameron.stream";
 
       const client = new Client(STANDARD_READER_SERVICE);
+
+      // Standard Reader's per-publication subscribe page (a plain link — the
+      // reader handles sign-in + follow). did/rkey come from the publication's
+      // at-uri: at://<did>/site.standard.publication/<rkey>.
+      function subscribeUrl(pubUri) {
+        const m = /^at:\/\/([^/]+)\/[^/]+\/([^/]+)/.exec(pubUri || "");
+        return m ? `${STANDARD_READER_SERVICE}/subscribe/${m[1]}/${m[2]}` : null;
+      }
 
       // getAuthor takes a DID, so resolve a handle first. DIDs pass through.
       // com.atproto.identity.resolveHandle on Bluesky's public API is CORS-open
@@ -188,6 +203,15 @@
                   <div><b>${stats.documentCount ?? 0}</b><span>Posts</span></div>
                   <div><b>${stats.subscriberCount ?? 0}</b><span>Subscribers</span></div>
                 </div>
+                ${withPosts[0]?.pub && subscribeUrl(withPosts[0].pub.uri)
+                  ? html`<a
+                      class="subscribe"
+                      href=${subscribeUrl(withPosts[0].pub.uri)}
+                      target="_blank"
+                      rel="noopener"
+                      >Subscribe to ${withPosts[0].pub.name}</a
+                    >`
+                  : nothing}
               </header>
 
               ${withPosts.map(
