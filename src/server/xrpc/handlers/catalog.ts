@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { searchApi } from "#/integrations/tanstack-query/api-search.functions";
 import { fetchBlueskyPublicProfileFields } from "#/lib/bluesky-public-profile";
 import { isUsableHandle, resolveIdentity } from "#/server/atproto/identity";
+import { ipldToLexJson } from "#/server/atproto/ipld-json";
 import { resolveAuthorDid } from "#/server/atproto/resolve-author-ref";
 import {
   resolvePageUrl,
@@ -194,7 +195,12 @@ export async function handleGetDocument(ctx: XrpcRequestContext) {
 
   return {
     ...view,
-    content: body?.contentJson ?? undefined,
+    // Normalize IPLD dag-json link/bytes forms (`{"/": cid}`) that content_json
+    // carries after its jsonb round-trip into the lex-JSON forms (`{$link}` /
+    // `{$bytes}`) that atproto XRPC clients expect — otherwise a strict lex
+    // parser rejects the blob refs with "Invalid blob object".
+    content:
+      body?.contentJson != null ? ipldToLexJson(body.contentJson) : undefined,
     contentFormat: body?.contentFormat ?? undefined,
   };
 }

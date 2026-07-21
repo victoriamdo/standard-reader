@@ -11,7 +11,9 @@ loads from [jsDelivr](https://www.jsdelivr.com/)'s ESM CDN via an import map.
 - **`post.html`** — the post viewer. Calls `getDocument` (one call returns
   metadata **and** the renderable body) and renders it with the
   [`@standard-reader/renderer-lit`](https://www.npmjs.com/package/@standard-reader/renderer-lit)
-  `<standard-document>` web component.
+  `<standard-document>` web component. Embedded Bluesky posts are rendered by
+  plugging the [`bluesky-post-embed`](https://www.npmjs.com/package/bluesky-post-embed)
+  `<bluesky-post>` element into the renderer's `blueskyEmbed` component slot.
 
 ## Run it
 
@@ -36,32 +38,21 @@ switcher input at the top of the page. Handles are resolved to a DID with
 `com.atproto.identity.resolveHandle` (Bluesky's public, CORS-open API); DIDs are
 used as-is. `getAuthor` itself takes a DID.
 
-## Note: relaxed client checks
+## Note: no relaxed validation
 
-Each `client.call(...)` passes `{ validateResponse: false, strictResponseProcessing: false }`.
-Inputs and outputs stay fully typed; only the client's two strict **runtime**
-checks are relaxed, because `@standard-reader/lexicons@0.1.0` (generated with
-`@atproto/lex@0.3.0`) is stricter than the live API's real responses:
+The `client.call(...)`s use the typed client's **default strict validation** —
+no `validateResponse` / `strictResponseProcessing` escape hatches. Two upstream
+fixes made that possible; both were needed because `@standard-reader/lexicons@0.1.0`
+was stricter than the live API:
 
-- **`validateResponse: false`** — the generator drops the lexicons'
-  `nullable: true` markers, so the schemas treat nullable fields as plain
-  (non-null) strings. The API legitimately returns explicit `null` (e.g.
-  `searchNameHtml` on non-search results), which otherwise fails with:
+- **Nullable fields** — `@atproto/lex@0.3.0` dropped the lexicons'
+  `nullable: true` markers, so the schemas rejected the explicit `null`s the API
+  returns (e.g. `searchNameHtml`). Fixed in **`@standard-reader/lexicons@0.1.1`**,
+  whose codegen now emits `l.nullable(...)` for those fields (see the package's
+  `scripts/patch-nullable.mjs`). This example imports `@0.1.1`.
 
-  ```
-  Invalid response payload: Expected string value type (got null) at $.publications[0].searchNameHtml
-  ```
-
-- **`strictResponseProcessing: false`** — document `content` embeds AT Proto
-  image **blob refs**, which the client's strict Lex processor rejects with:
-
-  ```
-  Unable to parse response payload: Invalid blob object
-  ```
-
-  Non-strict mode passes the blob refs through as-is — exactly what the renderer
-  needs to build image URLs from the blob CID + author DID.
-
-Relaxing these is the pragmatic fix for a demo. The real fix is in the package:
-regenerate so nullable fields accept `null` (and blob shapes match), then
-republish. Once that ships, drop these two arguments.
+- **Blob refs** — document `content` carried image blob CID links in the IPLD
+  dag-json form `{"/": cid}`, which a strict Lex parser rejects ("Invalid blob
+  object"). The AppView now normalizes them to the lex-JSON form `{"$link": cid}`
+  on output, so `getDocument` conforms to the wire format every atproto client
+  expects.

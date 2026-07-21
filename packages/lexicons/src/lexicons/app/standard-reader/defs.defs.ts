@@ -15,17 +15,17 @@ type PublicationView = {
   did: l.DidString
   name: string
   url: l.UriString
-  description?: string
-  iconUrl?: l.UriString
-  ownerAvatarUrl?: l.UriString
-  ownerHandle?: string
-  topic?: string
+  description?: string | null
+  iconUrl?: l.UriString | null
+  ownerAvatarUrl?: l.UriString | null
+  ownerHandle?: string | null
+  topic?: string | null
   verified?: boolean
   subscriberCount: number
   documentCount: number
-  lastDocumentAt?: l.DatetimeString
-  searchNameHtml?: string
-  searchSnippetHtml?: string
+  lastDocumentAt?: l.DatetimeString | null
+  searchNameHtml?: string | null
+  searchSnippetHtml?: string | null
 }
 
 export type { PublicationView }
@@ -39,31 +39,31 @@ const publicationView = /*#__PURE__*/ l.typedObject<PublicationView>(
     did: /*#__PURE__*/ l.string({ format: 'did' }),
     name: /*#__PURE__*/ l.string({ maxLength: 128 }),
     url: /*#__PURE__*/ l.string({ format: 'uri' }),
-    description: /*#__PURE__*/ l.optional(
+    description: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 4096 }),
-    ),
-    iconUrl: /*#__PURE__*/ l.optional(
+    )),
+    iconUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
-    ownerAvatarUrl: /*#__PURE__*/ l.optional(
+    )),
+    ownerAvatarUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
-    ownerHandle: /*#__PURE__*/ l.optional(
+    )),
+    ownerHandle: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 128 }),
-    ),
-    topic: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string({ maxLength: 128 })),
+    )),
+    topic: /*#__PURE__*/ l.nullable(l.optional(/*#__PURE__*/ l.string({ maxLength: 128 }))),
     verified: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.boolean()),
     subscriberCount: /*#__PURE__*/ l.integer(),
     documentCount: /*#__PURE__*/ l.integer(),
-    lastDocumentAt: /*#__PURE__*/ l.optional(
+    lastDocumentAt: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'datetime' }),
-    ),
-    searchNameHtml: /*#__PURE__*/ l.optional(
+    )),
+    searchNameHtml: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 512 }),
-    ),
-    searchSnippetHtml: /*#__PURE__*/ l.optional(
+    )),
+    searchSnippetHtml: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 8192 }),
-    ),
+    )),
   }),
 )
 
@@ -75,20 +75,20 @@ type DocumentView = {
   uri: l.AtUriString
   did: l.DidString
   title: string
-  description?: string
-  path?: string
-  canonicalUrl?: l.UriString
-  coverImageUrl?: l.UriString
+  description?: string | null
+  path?: string | null
+  canonicalUrl?: l.UriString | null
+  coverImageUrl?: l.UriString | null
   publishedAt: l.DatetimeString
   featured?: boolean
-  publicationUri?: l.AtUriString
-  publicationName?: string
-  publicationIconUrl?: l.UriString
-  publicationOwnerAvatarUrl?: l.UriString
-  publicationOwnerHandle?: string
-  publicationBannerUrl?: l.UriString
-  publicationTopic?: string
-  tags?: string[]
+  publicationUri?: l.AtUriString | null
+  publicationName?: string | null
+  publicationIconUrl?: l.UriString | null
+  publicationOwnerAvatarUrl?: l.UriString | null
+  publicationOwnerHandle?: string | null
+  publicationBannerUrl?: l.UriString | null
+  publicationTopic?: string | null
+  tags?: string[] | null
   recommendCount: number
   commentCount: number
   hasRenderableBody: boolean
@@ -103,8 +103,8 @@ type DocumentView = {
    */
   contentFormat?: string
   isRead: boolean
-  searchTitleHtml?: string
-  searchSnippetHtml?: string
+  searchTitleHtml?: string | null
+  searchSnippetHtml?: string | null
 }
 
 export type { DocumentView }
@@ -117,42 +117,42 @@ const documentView = /*#__PURE__*/ l.typedObject<DocumentView>(
     uri: /*#__PURE__*/ l.string({ format: 'at-uri' }),
     did: /*#__PURE__*/ l.string({ format: 'did' }),
     title: /*#__PURE__*/ l.string({ maxLength: 512 }),
-    description: /*#__PURE__*/ l.optional(
+    description: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 4096 }),
-    ),
-    path: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string({ maxLength: 2048 })),
-    canonicalUrl: /*#__PURE__*/ l.optional(
+    )),
+    path: /*#__PURE__*/ l.nullable(l.optional(/*#__PURE__*/ l.string({ maxLength: 2048 }))),
+    canonicalUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
-    coverImageUrl: /*#__PURE__*/ l.optional(
+    )),
+    coverImageUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
+    )),
     publishedAt: /*#__PURE__*/ l.string({ format: 'datetime' }),
     featured: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.boolean()),
-    publicationUri: /*#__PURE__*/ l.optional(
+    publicationUri: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'at-uri' }),
-    ),
-    publicationName: /*#__PURE__*/ l.optional(
+    )),
+    publicationName: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 128 }),
-    ),
-    publicationIconUrl: /*#__PURE__*/ l.optional(
+    )),
+    publicationIconUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
-    publicationOwnerAvatarUrl: /*#__PURE__*/ l.optional(
+    )),
+    publicationOwnerAvatarUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
-    publicationOwnerHandle: /*#__PURE__*/ l.optional(
+    )),
+    publicationOwnerHandle: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 128 }),
-    ),
-    publicationBannerUrl: /*#__PURE__*/ l.optional(
+    )),
+    publicationBannerUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
-    publicationTopic: /*#__PURE__*/ l.optional(
+    )),
+    publicationTopic: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 128 }),
-    ),
-    tags: /*#__PURE__*/ l.optional(
+    )),
+    tags: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.array(/*#__PURE__*/ l.string({ maxLength: 128 })),
-    ),
+    )),
     recommendCount: /*#__PURE__*/ l.integer(),
     commentCount: /*#__PURE__*/ l.integer(),
     hasRenderableBody: /*#__PURE__*/ l.boolean(),
@@ -161,12 +161,12 @@ const documentView = /*#__PURE__*/ l.typedObject<DocumentView>(
       /*#__PURE__*/ l.string({ maxLength: 256 }),
     ),
     isRead: /*#__PURE__*/ l.boolean(),
-    searchTitleHtml: /*#__PURE__*/ l.optional(
+    searchTitleHtml: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 1024 }),
-    ),
-    searchSnippetHtml: /*#__PURE__*/ l.optional(
+    )),
+    searchSnippetHtml: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 8192 }),
-    ),
+    )),
   }),
 )
 
@@ -175,11 +175,11 @@ export { documentView }
 type ProfileView = {
   $type?: 'app.standard-reader.defs#profileView'
   did: l.DidString
-  handle?: string
-  displayName?: string
-  description?: string
-  avatarUrl?: l.UriString
-  bannerUrl?: l.UriString
+  handle?: string | null
+  displayName?: string | null
+  description?: string | null
+  avatarUrl?: l.UriString | null
+  bannerUrl?: l.UriString | null
 }
 
 export type { ProfileView }
@@ -189,21 +189,21 @@ const profileView = /*#__PURE__*/ l.typedObject<ProfileView>(
   'profileView',
   /*#__PURE__*/ l.object({
     did: /*#__PURE__*/ l.string({ format: 'did' }),
-    handle: /*#__PURE__*/ l.optional(
+    handle: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 128 }),
-    ),
-    displayName: /*#__PURE__*/ l.optional(
+    )),
+    displayName: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 128 }),
-    ),
-    description: /*#__PURE__*/ l.optional(
+    )),
+    description: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 4096 }),
-    ),
-    avatarUrl: /*#__PURE__*/ l.optional(
+    )),
+    avatarUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
-    bannerUrl: /*#__PURE__*/ l.optional(
+    )),
+    bannerUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
+    )),
   }),
 )
 
@@ -211,7 +211,7 @@ export { profileView }
 
 type CursorPagePublications = {
   $type?: 'app.standard-reader.defs#cursorPagePublications'
-  cursor?: string
+  cursor?: string | null
   items: PublicationView[]
 }
 
@@ -222,9 +222,9 @@ const cursorPagePublications =
     $nsid,
     'cursorPagePublications',
     /*#__PURE__*/ l.object({
-      cursor: /*#__PURE__*/ l.optional(
+      cursor: /*#__PURE__*/ l.nullable(l.optional(
         /*#__PURE__*/ l.string({ maxLength: 8192 }),
-      ),
+      )),
       items: /*#__PURE__*/ l.array(
         /*#__PURE__*/ l.ref<PublicationView>((() => publicationView) as any),
       ),
@@ -235,7 +235,7 @@ export { cursorPagePublications }
 
 type CursorPageDocuments = {
   $type?: 'app.standard-reader.defs#cursorPageDocuments'
-  cursor?: string
+  cursor?: string | null
   items: DocumentView[]
 }
 
@@ -245,9 +245,9 @@ const cursorPageDocuments = /*#__PURE__*/ l.typedObject<CursorPageDocuments>(
   $nsid,
   'cursorPageDocuments',
   /*#__PURE__*/ l.object({
-    cursor: /*#__PURE__*/ l.optional(
+    cursor: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 8192 }),
-    ),
+    )),
     items: /*#__PURE__*/ l.array(
       /*#__PURE__*/ l.ref<DocumentView>((() => documentView) as any),
     ),
@@ -258,7 +258,7 @@ export { cursorPageDocuments }
 
 type CursorPageProfiles = {
   $type?: 'app.standard-reader.defs#cursorPageProfiles'
-  cursor?: string
+  cursor?: string | null
   items: ProfileView[]
 }
 
@@ -268,9 +268,9 @@ const cursorPageProfiles = /*#__PURE__*/ l.typedObject<CursorPageProfiles>(
   $nsid,
   'cursorPageProfiles',
   /*#__PURE__*/ l.object({
-    cursor: /*#__PURE__*/ l.optional(
+    cursor: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 8192 }),
-    ),
+    )),
     items: /*#__PURE__*/ l.array(
       /*#__PURE__*/ l.ref<ProfileView>((() => profileView) as any),
     ),
@@ -284,8 +284,8 @@ type ListView = {
   $type?: 'app.standard-reader.defs#listView'
   uri: l.AtUriString
   name: string
-  description?: string
-  createdAt?: l.DatetimeString
+  description?: string | null
+  createdAt?: l.DatetimeString | null
   publications: PublicationView[]
 }
 
@@ -298,12 +298,12 @@ const listView = /*#__PURE__*/ l.typedObject<ListView>(
   /*#__PURE__*/ l.object({
     uri: /*#__PURE__*/ l.string({ format: 'at-uri' }),
     name: /*#__PURE__*/ l.string({ maxLength: 128 }),
-    description: /*#__PURE__*/ l.optional(
+    description: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 4096 }),
-    ),
-    createdAt: /*#__PURE__*/ l.optional(
+    )),
+    createdAt: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'datetime' }),
-    ),
+    )),
     publications: /*#__PURE__*/ l.array(
       /*#__PURE__*/ l.ref<PublicationView>((() => publicationView) as any),
     ),
@@ -317,20 +317,20 @@ type ResolveViewArticle = {
   kind: 'article'
   documentUri: l.AtUriString
   title: string
-  publicationUri?: l.AtUriString
-  publicationName?: string
-  publicationHandle?: string
-  publicationIconUrl?: l.UriString
-  publicationOwnerAvatarUrl?: l.UriString
-  publicationSubscriberCount?: number
-  publicationReaderUrl?: l.UriString
-  publishedAt?: l.DatetimeString
-  readingMinutes?: number
-  authorName?: string
-  authorHandle?: string
-  authorAvatarUrl?: l.UriString
+  publicationUri?: l.AtUriString | null
+  publicationName?: string | null
+  publicationHandle?: string | null
+  publicationIconUrl?: l.UriString | null
+  publicationOwnerAvatarUrl?: l.UriString | null
+  publicationSubscriberCount?: number | null
+  publicationReaderUrl?: l.UriString | null
+  publishedAt?: l.DatetimeString | null
+  readingMinutes?: number | null
+  authorName?: string | null
+  authorHandle?: string | null
+  authorAvatarUrl?: l.UriString | null
   readerUrl: l.UriString
-  canonicalUrl?: l.UriString
+  canonicalUrl?: l.UriString | null
   isBookmarked?: boolean
   isRead?: boolean
   isFollowing?: boolean
@@ -347,44 +347,44 @@ const resolveViewArticle = /*#__PURE__*/ l.typedObject<ResolveViewArticle>(
     kind: /*#__PURE__*/ l.literal('article'),
     documentUri: /*#__PURE__*/ l.string({ format: 'at-uri' }),
     title: /*#__PURE__*/ l.string({ maxLength: 512 }),
-    publicationUri: /*#__PURE__*/ l.optional(
+    publicationUri: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'at-uri' }),
-    ),
-    publicationName: /*#__PURE__*/ l.optional(
+    )),
+    publicationName: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 128 }),
-    ),
-    publicationHandle: /*#__PURE__*/ l.optional(
+    )),
+    publicationHandle: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 128 }),
-    ),
-    publicationIconUrl: /*#__PURE__*/ l.optional(
+    )),
+    publicationIconUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
-    publicationOwnerAvatarUrl: /*#__PURE__*/ l.optional(
+    )),
+    publicationOwnerAvatarUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
-    publicationSubscriberCount: /*#__PURE__*/ l.optional(
+    )),
+    publicationSubscriberCount: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.integer(),
-    ),
-    publicationReaderUrl: /*#__PURE__*/ l.optional(
+    )),
+    publicationReaderUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
-    publishedAt: /*#__PURE__*/ l.optional(
+    )),
+    publishedAt: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'datetime' }),
-    ),
-    readingMinutes: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.integer()),
-    authorName: /*#__PURE__*/ l.optional(
+    )),
+    readingMinutes: /*#__PURE__*/ l.nullable(l.optional(/*#__PURE__*/ l.integer())),
+    authorName: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 128 }),
-    ),
-    authorHandle: /*#__PURE__*/ l.optional(
+    )),
+    authorHandle: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ maxLength: 128 }),
-    ),
-    authorAvatarUrl: /*#__PURE__*/ l.optional(
+    )),
+    authorAvatarUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
+    )),
     readerUrl: /*#__PURE__*/ l.string({ format: 'uri' }),
-    canonicalUrl: /*#__PURE__*/ l.optional(
+    canonicalUrl: /*#__PURE__*/ l.nullable(l.optional(
       /*#__PURE__*/ l.string({ format: 'uri' }),
-    ),
+    )),
     isBookmarked: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.boolean()),
     isRead: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.boolean()),
     isFollowing: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.boolean()),
@@ -400,13 +400,13 @@ type ResolveViewPublication = {
   kind: 'publication'
   publicationUri: l.AtUriString
   name: string
-  description?: string
-  handle?: string
-  iconUrl?: l.UriString
-  ownerAvatarUrl?: l.UriString
-  subscriberCount?: number
+  description?: string | null
+  handle?: string | null
+  iconUrl?: l.UriString | null
+  ownerAvatarUrl?: l.UriString | null
+  subscriberCount?: number | null
   readerUrl: l.UriString
-  siteUrl?: l.UriString
+  siteUrl?: l.UriString | null
   isFollowing?: boolean
 }
 
@@ -420,23 +420,23 @@ const resolveViewPublication =
       kind: /*#__PURE__*/ l.literal('publication'),
       publicationUri: /*#__PURE__*/ l.string({ format: 'at-uri' }),
       name: /*#__PURE__*/ l.string({ maxLength: 128 }),
-      description: /*#__PURE__*/ l.optional(
+      description: /*#__PURE__*/ l.nullable(l.optional(
         /*#__PURE__*/ l.string({ maxLength: 4096 }),
-      ),
-      handle: /*#__PURE__*/ l.optional(
+      )),
+      handle: /*#__PURE__*/ l.nullable(l.optional(
         /*#__PURE__*/ l.string({ maxLength: 128 }),
-      ),
-      iconUrl: /*#__PURE__*/ l.optional(
+      )),
+      iconUrl: /*#__PURE__*/ l.nullable(l.optional(
         /*#__PURE__*/ l.string({ format: 'uri' }),
-      ),
-      ownerAvatarUrl: /*#__PURE__*/ l.optional(
+      )),
+      ownerAvatarUrl: /*#__PURE__*/ l.nullable(l.optional(
         /*#__PURE__*/ l.string({ format: 'uri' }),
-      ),
-      subscriberCount: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.integer()),
+      )),
+      subscriberCount: /*#__PURE__*/ l.nullable(l.optional(/*#__PURE__*/ l.integer())),
       readerUrl: /*#__PURE__*/ l.string({ format: 'uri' }),
-      siteUrl: /*#__PURE__*/ l.optional(
+      siteUrl: /*#__PURE__*/ l.nullable(l.optional(
         /*#__PURE__*/ l.string({ format: 'uri' }),
-      ),
+      )),
       isFollowing: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.boolean()),
     }),
   )

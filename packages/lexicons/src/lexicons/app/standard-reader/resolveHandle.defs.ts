@@ -16,8 +16,8 @@ export const $params = /*#__PURE__*/ l.params({
 export type $Params = l.InferOutput<typeof $params>
 
 export const $output = /*#__PURE__*/ l.jsonPayload({
-  did: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string({ format: 'did' })),
-  handle: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string({ maxLength: 128 })),
+  did: /*#__PURE__*/ l.nullable(l.optional(/*#__PURE__*/ l.string({ format: 'did' }))),
+  handle: /*#__PURE__*/ l.nullable(l.optional(/*#__PURE__*/ l.string({ maxLength: 128 }))),
   publications: /*#__PURE__*/ l.array(
     /*#__PURE__*/ l.ref<StandardReaderDefs.PublicationView>(
       (() => StandardReaderDefs.publicationView) as any,

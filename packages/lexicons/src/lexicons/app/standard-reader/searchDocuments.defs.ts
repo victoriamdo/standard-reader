@@ -24,7 +24,7 @@ export type $Params = l.InferOutput<typeof $params>
 
 export const $output = /*#__PURE__*/ l.jsonPayload({
   query: /*#__PURE__*/ l.string({ maxLength: 256 }),
-  cursor: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string({ maxLength: 8192 })),
+  cursor: /*#__PURE__*/ l.nullable(l.optional(/*#__PURE__*/ l.string({ maxLength: 8192 }))),
   items: /*#__PURE__*/ l.array(
     /*#__PURE__*/ l.ref<StandardReaderDefs.DocumentView>(
       (() => StandardReaderDefs.documentView) as any,

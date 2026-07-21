@@ -26,9 +26,9 @@ export const $output = /*#__PURE__*/ l.jsonPayload({
   ),
   subscriberCount: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.integer()),
   documentCount: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.integer()),
-  lastDocumentAt: /*#__PURE__*/ l.optional(
+  lastDocumentAt: /*#__PURE__*/ l.nullable(l.optional(
     /*#__PURE__*/ l.string({ format: 'datetime' }),
-  ),
+  )),
 })
 
 export type $Output<B = l.BinaryData> = l.InferPayload<typeof $output, B>

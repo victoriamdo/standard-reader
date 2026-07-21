@@ -18,7 +18,7 @@
         "imports": {
           "lit": "https://cdn.jsdelivr.net/npm/lit@3/+esm",
           "@atproto/lex-client": "https://cdn.jsdelivr.net/npm/@atproto/lex-client@0.3.0/+esm",
-          "@standard-reader/lexicons": "https://cdn.jsdelivr.net/npm/@standard-reader/lexicons@0.1.0/+esm"
+          "@standard-reader/lexicons": "https://cdn.jsdelivr.net/npm/@standard-reader/lexicons@0.1.1/+esm"
         }
       }
     </script>
@@ -132,26 +132,17 @@
 
         async load() {
           try {
-            // Relax the typed client's two strict checks (see this example's
-            // README). Types are still fully inferred:
-            //  · validateResponse — the generated 0.1.0 schemas reject the
-            //    explicit `null`s the API sends for nullable fields.
-            //  · strictResponseProcessing — the client otherwise rejects the
-            //    image blob refs inside document content ("Invalid blob object").
-            const opts = { validateResponse: false, strictResponseProcessing: false };
-
             // 1. Author profile, stats, and their publications.
             const did = await resolveDid(ACTOR);
-            const author = await client.call(standardReader.getAuthor, { did }, opts);
+            const author = await client.call(standardReader.getAuthor, { did });
 
             // 2. A page of posts for each publication.
             const withPosts = await Promise.all(
               author.publications.map(async (pub) => {
-                const { items } = await client.call(
-                  standardReader.getPublicationDocuments,
-                  { publication: pub.uri, limit: 20 },
-                  opts,
-                );
+                const { items } = await client.call(standardReader.getPublicationDocuments, {
+                  publication: pub.uri,
+                  limit: 20,
+                });
                 return { pub, posts: items };
               }),
             );

@@ -18,9 +18,9 @@ export type $Params = l.InferOutput<typeof $params>
 export const $output = /*#__PURE__*/ l.jsonPayload({
   uri: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string({ format: 'at-uri' })),
   name: /*#__PURE__*/ l.string({ maxLength: 128 }),
-  description: /*#__PURE__*/ l.optional(
+  description: /*#__PURE__*/ l.nullable(l.optional(
     /*#__PURE__*/ l.string({ maxLength: 4096 }),
-  ),
+  )),
   publications: /*#__PURE__*/ l.array(
     /*#__PURE__*/ l.ref<StandardReaderDefs.PublicationView>(
       (() => StandardReaderDefs.publicationView) as any,
