@@ -84,9 +84,9 @@
       .switch button { padding: 8px 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap; }
 
       .subscribe {
-        display: inline-block; margin-top: 18px; padding: 10px 20px; border-radius: 999px;
-        background: var(--accent); color: #fff; text-decoration: none;
-        font: 600 14px/1 system-ui, sans-serif;
+        margin-left: auto; padding: 8px 16px; border-radius: 999px;
+        background: var(--accent); color: #fff; text-decoration: none; white-space: nowrap;
+        font: 600 13px/1 system-ui, sans-serif;
       }
       .subscribe:hover { filter: brightness(1.08); }
 
@@ -203,15 +203,6 @@
                   <div><b>${stats.documentCount ?? 0}</b><span>Posts</span></div>
                   <div><b>${stats.subscriberCount ?? 0}</b><span>Subscribers</span></div>
                 </div>
-                ${withPosts[0]?.pub && subscribeUrl(withPosts[0].pub.uri)
-                  ? html`<a
-                      class="subscribe"
-                      href=${subscribeUrl(withPosts[0].pub.uri)}
-                      target="_blank"
-                      rel="noopener"
-                      >Subscribe to ${withPosts[0].pub.name}</a
-                    >`
-                  : nothing}
               </header>
 
               ${withPosts.map(
@@ -220,6 +211,9 @@
                     <div class="pub-head">
                       ${pub.iconUrl ? html`<img src=${pub.iconUrl} alt="" />` : nothing}
                       <h2>${pub.name}</h2>
+                      ${subscribeUrl(pub.uri)
+                        ? html`<a class="subscribe" href=${subscribeUrl(pub.uri)} target="_blank" rel="noopener">Subscribe</a>`
+                        : nothing}
                     </div>
                     ${pub.description ? html`<p class="pub-desc">${pub.description}</p>` : nothing}
                     <ul>
