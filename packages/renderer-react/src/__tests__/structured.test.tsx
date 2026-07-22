@@ -75,4 +75,19 @@ describe("structured third-party formats", () => {
     });
     expect(blocks).toHaveLength(1);
   });
+
+  it("parses and renders a markdown-in-record document (Lemma)", () => {
+    // Markdown formats flow through the same buildRenderTree path as every
+    // other format, so the React renderer gets them for free.
+    const doc: StandardSiteDocument = {
+      content: {
+        $type: "pub.lemma.blog.entry",
+        content: "## Heading\n\nBody with **bold** text.",
+      },
+    };
+    expect(structuredFormatBlocks(doc.content)).not.toBeNull();
+    const { container } = render(<StandardDocumentRenderer document={doc} />);
+    expect(container.querySelector("h2")?.textContent).toBe("Heading");
+    expect(container.querySelector("strong")?.textContent).toBe("bold");
+  });
 });

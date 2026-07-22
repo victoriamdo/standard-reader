@@ -1,9 +1,10 @@
 # @standard-reader/renderer-core
 
 The **framework-agnostic core** behind the Standard Reader renderers. It parses a
-Standard Site document — Leaflet, pckt, Offprint, and every third-party block
-format Standard Reader understands — and normalizes it into a single render tree
-that any UI framework can walk.
+Standard Site document — Leaflet, pckt, Offprint, markdown (the canonical
+`site.standard.content.markdown` plus markdown-in-record formats like Lemma), and
+every third-party block format Standard Reader understands — and normalizes it
+into a single render tree that any UI framework can walk.
 
 You usually don't depend on this directly: pick a framework renderer instead
 (see the [renderers overview](../README.md)). Reach for the core when you want to
@@ -110,6 +111,7 @@ overview](../README.md) links the reference implementations.
 
 The raw per-format parsers and vocabulary types are available too:
 `leafletBlocks`, `pcktBlocks`, `offprintBlocks`, `structuredFormatBlocks`,
+`markdownBlocks` / `markdownText` / `MARKDOWN_FORMATS`,
 `collectLeafletFootnotes`, `segmentFacetedText`, `defaultImageUrlResolver`,
 `blobCid` / `cdnImageUrl`, and the `LeafletRenderableBlock` /
 `StructuredRenderableBlock` / `PcktRenderableBlock` types.

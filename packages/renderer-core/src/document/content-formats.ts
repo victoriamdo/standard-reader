@@ -9,6 +9,10 @@ import {
   ITEM_BLOCK_FORMATS,
   itemBlocks,
 } from "./structured-content/item-blocks";
+import {
+  MARKDOWN_FORMATS,
+  markdownBlocks,
+} from "./structured-content/markdown";
 import { OXA_CONTENT, oxaBlocks } from "./structured-content/oxa";
 import {
   PROSEMIRROR_CONTENT,
@@ -59,7 +63,7 @@ export function leafletDocumentContent(content: unknown): unknown {
 type BlockParser = (
   content: unknown,
   contentFormat?: string | null,
-) => Array<StructuredRenderableBlock>;
+) => Array<StructuredRenderableBlock> | null;
 
 const STRUCTURED_FORMAT_PARSERS: Record<string, BlockParser> = {
   [BLOCKNOTE_CONTENT]: blocknoteBlocks,
@@ -69,6 +73,9 @@ const STRUCTURED_FORMAT_PARSERS: Record<string, BlockParser> = {
 };
 for (const format of ITEM_BLOCK_FORMATS) {
   STRUCTURED_FORMAT_PARSERS[format] = itemBlocks;
+}
+for (const format of MARKDOWN_FORMATS) {
+  STRUCTURED_FORMAT_PARSERS[format] = markdownBlocks;
 }
 
 /** Every third-party block-based content format the structured parser knows. */

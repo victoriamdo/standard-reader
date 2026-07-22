@@ -54,6 +54,12 @@ export {
   leafletDocumentContent,
   LEAFLET_DOCUMENT_FORMAT,
 } from "./document/content-formats";
+export {
+  markdownBlocks,
+  markdownText,
+  isMarkdownFormat,
+  MARKDOWN_FORMATS,
+} from "./document/structured-content/markdown";
 export type {
   StructuredRenderableBlock,
   StructuredText,
