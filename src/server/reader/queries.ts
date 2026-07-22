@@ -75,6 +75,17 @@ const RECOMMENDATION_BLEND = {
   coReaderFollow: 2,
 } as const;
 
+/**
+ * When the subscription cutoff ("count old posts as unread" = off) is applied,
+ * each union branch over-fetches by this multiple so the page still fills after
+ * the cutoff removes pre-subscription rows. The cutoff is applied *after* the
+ * union on the bounded candidate pool (not inside each branch — see
+ * {@link buildFollowFeedCandidateSql}), so a small pool absorbs the removed rows
+ * without an extra round trip. 5× is generous for the perf account; the pool
+ * stays tiny (≤ 5·page) so the cutoff joins are cheap.
+ */
+const CUTOFF_POOL_MULT = 5;
+
 export interface ArticleCardQuery {
   /** Restrict to documents in these publications (e.g. a reader's follows). */
   publicationUris?: Array<string>;
@@ -140,6 +151,18 @@ export interface UnreadCutoffOpts {
  * `pubUriExpr` / `authorDidExpr` / `docUriExpr` are the outer publication-uri /
  * author-did / document-uri column expressions to correlate on (e.g.
  * `"documents"."publication_uri"`, or a CTE's `cand.publication_uri`).
+ *
+ * SLOW PER-ROW FORM. Because this is a correlated scalar subquery, Postgres
+ * can't combine it with an indexed `ORDER BY published_at DESC LIMIT` scan — it
+ * runs the 4-branch union once per candidate row and walks the whole `documents`
+ * table (verified ~1.6s for the perf account vs ~3.7ms without it). Retained
+ * only for the weekly digest ({@link documentUnreadWhere} /
+ * {@link documentReadExistsColumn} called with `countOldPostsAsUnread:false},
+ * which is a batched offline run, not a per-request feed read). The hot feed
+ * paths — {@link selectFollowFeedCandidateUris} and {@link countFollowedDocuments}
+ * — use the fast per-source-join equivalent (four small precomputed cutoff CTEs
+ * joined to the candidate set). Extend that join pattern for new feed-path
+ * cutoff work; do NOT add new hot-path callers of this subquery.
  */
 function readerSourceCutoffSql(
   schema: Schema,
@@ -185,6 +208,23 @@ function readerSourceCutoffSql(
 }
 
 /**
+ * `NOT EXISTS` predicate: the reader has no (non-deleted) `reads` row for
+ * `"documents"."uri"`. Cheap and index-served. Qualifies the outer
+ * `documents.uri` — unqualified `${d.uri}` in a subquery compiles to `"uri"`
+ * and breaks correlation.
+ */
+function documentNotReadWhere(schema: Schema, readForDid: string): SQL {
+  const r = schema.reads;
+  return sql`not exists(
+    select 1
+    from ${r}
+    where ${r.documentUri} = "documents"."uri"
+      and ${r.ownerDid} = ${readForDid}
+      and ${r.deleted} = false
+  )`;
+}
+
+/**
  * Inline `isRead` for a reader. Qualifies the outer `documents.uri` — unqualified
  * `${d.uri}` in a subquery compiles to `"uri"` and breaks correlation. When
  * `countOldPostsAsUnread` is false, also reports pre-subscription posts as read
@@ -195,14 +235,7 @@ function documentReadExistsColumn(
   readForDid: string,
   opts?: UnreadCutoffOpts,
 ): SQL<boolean> {
-  const r = schema.reads;
-  const readExists = sql`exists(
-    select 1
-    from ${r}
-    where ${r.documentUri} = "documents"."uri"
-      and ${r.ownerDid} = ${readForDid}
-      and ${r.deleted} = false
-  )`;
+  const readExists = sql`not (${documentNotReadWhere(schema, readForDid)})`;
   if (opts?.countOldPostsAsUnread === false) {
     const cutoff = readerSourceCutoffSql(
       schema,
@@ -225,20 +258,20 @@ function documentReadExistsColumn(
  * {@link documentReadExistsColumn} but as a WHERE condition — used by the weekly
  * digest so it never re-surfaces read articles. A no-op for readers who don't
  * track reading history (no `reads` rows exist).
+ *
+ * NOTE: the cutoff branch here is the slow per-row correlated form
+ * ({@link readerSourceCutoffSql}). It is fine for the weekly digest (one batched
+ * run per reader, not a per-request feed read), but the hot feed paths
+ * (`selectFollowFeedCandidateUris`, `countFollowedDocuments`) use the fast
+ * per-source-join equivalent instead. Extend that join pattern rather than
+ * calling this from a new hot path.
  */
 function documentUnreadWhere(
   schema: Schema,
   readForDid: string,
   opts?: UnreadCutoffOpts,
 ): SQL {
-  const r = schema.reads;
-  const notRead = sql`not exists(
-    select 1
-    from ${r}
-    where ${r.documentUri} = "documents"."uri"
-      and ${r.ownerDid} = ${readForDid}
-      and ${r.deleted} = false
-  )`;
+  const notRead = documentNotReadWhere(schema, readForDid);
   if (opts?.countOldPostsAsUnread === false) {
     const cutoff = readerSourceCutoffSql(
       schema,
@@ -349,6 +382,14 @@ function executeRows<T>(result: unknown): Array<T> {
  * Merging two `limit+offset`-capped branches sorts at most `2·(limit+offset)`
  * rows, turning a ~2s scan into a ~100ms keyset read. `feedAt` = the doc's
  * publish time for direct sources, the latest followed recommend time otherwise.
+ *
+ * Unread filter + cutoff: the `NOT EXISTS reads` predicate is cheap and always
+ * pushed into each branch's `WHERE` when `unreadForDid` is set. The subscription
+ * cutoff (`countOldPostsAsUnread === false`) is the expensive part — built only
+ * when `suppressOld`, via four small precomputed cutoff CTEs joined per branch
+ * (mirrors {@link countFollowedDocuments}). This replaces a per-row correlated
+ * subquery that defeated the `ORDER BY published_at DESC LIMIT` index scan
+ * (~1.6s → ~110ms for the perf account). The no-cutoff path is untouched.
  */
 async function selectFollowFeedCandidateUris(
   db: Db,
@@ -363,10 +404,45 @@ async function selectFollowFeedCandidateUris(
     offset: number;
   },
 ): Promise<Array<string>> {
+  const rows = await db.execute<{ uri: string }>(
+    buildFollowFeedCandidateSql(schema, opts),
+  );
+  return executeRows<{ uri: string }>(rows).map((row) => row.uri);
+}
+
+/**
+ * Builds the candidate-URI SQL for {@link selectFollowFeedCandidateUris}.
+ * Extracted so the same parameterized SQL can be wrapped in
+ * `EXPLAIN (ANALYZE, BUFFERS)` by the gated perf benchmark
+ * (`queries.explain.test.ts`) without reconstructing it by hand.
+ */
+export function buildFollowFeedCandidateSql(
+  schema: Schema,
+  opts: {
+    publicationUris: Array<string>;
+    followedUserDids: Array<string>;
+    featuredOnly?: boolean;
+    unreadForDid?: string;
+    countOldPostsAsUnread?: boolean;
+    limit: number;
+    offset: number;
+  },
+): SQL {
   const d = schema.documents;
   const rec = schema.recommends;
+  const sub = schema.subscriptions;
+  const uf = schema.userFollows;
+  const dc = schema.documentContributors;
   const { publicationUris, followedUserDids } = opts;
   const k = opts.limit + opts.offset;
+
+  // The unread filter has two concerns: (1) NOT EXISTS a reads row — cheap and
+  // index-served, pushed into `base` when `unreadForDid` is set; and (2) the
+  // subscription-cutoff ("count old posts as unread" = off), which is the
+  // expensive part. Splitting them keeps the common no-cutoff path (existing
+  // readers default `countOldPostsAsUnread=true`) on the fast ~3.7ms index scan.
+  const suppressOld =
+    Boolean(opts.unreadForDid) && opts.countOldPostsAsUnread === false;
 
   const base: Array<SQL> = [
     eq(d.deleted, false),
@@ -374,11 +450,7 @@ async function selectFollowFeedCandidateUris(
   ];
   if (opts.featuredOnly) base.push(eq(d.featured, true));
   if (opts.unreadForDid)
-    base.push(
-      documentUnreadWhere(schema, opts.unreadForDid, {
-        countOldPostsAsUnread: opts.countOldPostsAsUnread,
-      }),
-    );
+    base.push(documentNotReadWhere(schema, opts.unreadForDid));
   const baseWhere = and(...base) ?? sql`true`;
 
   const directParts: Array<SQL> = [inArray(d.did, followedUserDids)];
@@ -387,36 +459,105 @@ async function selectFollowFeedCandidateUris(
   }
   const directOr = or(...directParts) ?? sql`false`;
 
+  // Cutoff strategy: apply the cutoff AFTER the union, on a small bounded
+  // candidate pool — NOT inside each union branch. The union branches rely on an
+  // indexed `ORDER BY published_at DESC LIMIT k` scan (`documents_published_idx`)
+  // to stay cheap; joining the four cutoff CTEs *inside* each branch (the
+  // `countFollowedDocuments` shape) blocks that index pushdown and regresses to
+  // walking ~364K documents + joining the cutoffs per row (~1.8s, verified via
+  // EXPLAIN). `countFollowedDocuments` can use the in-branch join shape because
+  // it COUNTS all candidates (no LIMIT/ORDER BY); this query needs top-k, so the
+  // cutoff must move out here.
+  //
+  // So when `suppressOld`: over-fetch each branch by `CUTOFF_POOL_MULT` so the
+  // page still fills after the cutoff removes pre-subscription rows, dedupe,
+  // THEN join the four cutoff CTEs to the small deduped set and apply
+  // `published_at >= least(...)`. `least()` ignores NULLs, so a doc reached
+  // through only one followed source still gets that source's cutoff — matching
+  // `readerSourceCutoffSql`'s `min` over the union.
+  const poolK = suppressOld ? k * CUTOFF_POOL_MULT : k;
+
+  const cutoffCtes = suppressOld
+    ? sql`with
+      sc as (
+        select ${sub.publicationUri} as publication_uri,
+               min(coalesce(${sub.createdAt}, ${sub.indexedAt})) as cutoff
+        from ${sub}
+        where ${sub.subscriberDid} = ${opts.unreadForDid} and ${sub.deleted} = false
+        group by ${sub.publicationUri}
+      ),
+      uc as (
+        select ${uf.subjectDid} as subject_did,
+               min(coalesce(${uf.createdAt}, ${uf.indexedAt})) as cutoff
+        from ${uf}
+        where ${uf.followerDid} = ${opts.unreadForDid} and ${uf.deleted} = false
+        group by ${uf.subjectDid}
+      ),
+      cc as (
+        select ${dc.documentUri} as document_uri,
+               min(coalesce(${uf.createdAt}, ${uf.indexedAt})) as cutoff
+        from ${dc}
+        join ${uf} on ${uf.subjectDid} = ${dc.did}
+          and ${uf.followerDid} = ${opts.unreadForDid} and ${uf.deleted} = false
+        group by ${dc.documentUri}
+      ),
+      rc as (
+        select ${rec.documentUri} as document_uri,
+               min(coalesce(${uf.createdAt}, ${uf.indexedAt})) as cutoff
+        from ${rec}
+        join ${uf} on ${uf.subjectDid} = ${rec.recommenderDid}
+          and ${uf.followerDid} = ${opts.unreadForDid} and ${uf.deleted} = false
+        where ${rec.deleted} = false
+        group by ${rec.documentUri}
+      )`
+    : sql``;
+
   // `union all` + `distinct on (uri)` de-dupes by document (a doc that is both a
   // direct source and recommended by a followed user would otherwise appear
   // twice, since its two rows carry different `feed_at`). `src=0` (direct) sorts
   // before `src=1` (recommend), so a doc that is both keeps its publish time.
   // The contributor branch is `src=0` too: a guest post is a direct source, so
   // it belongs at its publish time, not at whenever someone recommended it.
-  const rows = await db.execute<{ uri: string }>(sql`
+  //
+  // The recommend branch keeps `recommends` aggregation in the `fr` subquery
+  // (joined to `documents` AFTER grouping). DO NOT inline the `GROUP BY` across
+  // the join (e.g. `GROUP BY d.uri`): that regresses to a ~30s seq scan via a
+  // 113M-row nested loop — Postgres plans the aggregation after the join
+  // instead of before. Any rewrite of this branch must keep the aggregation
+  // inside a subquery joined to `documents`.
+  return sql`
+    ${cutoffCtes}
     select deduped.uri from (
-      select distinct on (u.uri) u.uri as uri, u.feed_at as feed_at
+      select distinct on (u.uri)
+        u.uri as uri, u.feed_at as feed_at, u.published_at as published_at,
+        u.publication_uri as publication_uri, u.did as did
       from (
         (
-          select ${d.uri} as uri, ${d.publishedAt} as feed_at, 0 as src
+          select ${d.uri} as uri, ${d.publishedAt} as feed_at,
+                 ${d.publishedAt} as published_at, 0 as src,
+                 ${d.publicationUri} as publication_uri, ${d.did} as did
           from ${d}
           where ${baseWhere} and (${directOr})
           order by ${d.publishedAt} desc nulls last, ${d.uri} desc
-          limit ${k}
+          limit ${poolK}
         )
         union all
         (
-          select ${d.uri} as uri, ${d.publishedAt} as feed_at, 0 as src
+          select ${d.uri} as uri, ${d.publishedAt} as feed_at,
+                 ${d.publishedAt} as published_at, 0 as src,
+                 ${d.publicationUri} as publication_uri, ${d.did} as did
           from ${d}
           join ${creditedDocumentUrisSql(schema, followedUserDids)} fc
             on fc.document_uri = ${d.uri}
           where ${baseWhere}
           order by ${d.publishedAt} desc nulls last, ${d.uri} desc
-          limit ${k}
+          limit ${poolK}
         )
         union all
         (
-          select ${d.uri} as uri, fr.rec_at as feed_at, 1 as src
+          select ${d.uri} as uri, fr.rec_at as feed_at,
+                 ${d.publishedAt} as published_at, 1 as src,
+                 ${d.publicationUri} as publication_uri, ${d.did} as did
           from ${d}
           join (
             select ${rec.documentUri} as document_uri, max(${rec.createdAt}) as rec_at
@@ -426,16 +567,25 @@ async function selectFollowFeedCandidateUris(
           ) fr on fr.document_uri = ${d.uri}
           where ${baseWhere}
           order by fr.rec_at desc nulls last
-          limit ${k}
+          limit ${poolK}
         )
       ) u
       order by u.uri, u.src asc
     ) deduped
+    ${
+      suppressOld
+        ? sql`
+      left join sc on sc.publication_uri = deduped.publication_uri
+      left join uc on uc.subject_did = deduped.did
+      left join cc on cc.document_uri = deduped.uri
+      left join rc on rc.document_uri = deduped.uri
+      where least(sc.cutoff, uc.cutoff, cc.cutoff, rc.cutoff) is null
+        or deduped.published_at >= least(sc.cutoff, uc.cutoff, cc.cutoff, rc.cutoff)`
+        : sql``
+    }
     order by deduped.feed_at desc nulls last, deduped.uri desc
     limit ${opts.limit} offset ${opts.offset}
-  `);
-
-  return executeRows<{ uri: string }>(rows).map((row) => row.uri);
+  `;
 }
 
 /**
