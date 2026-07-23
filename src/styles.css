@@ -125,6 +125,18 @@ html:has([data-app-shell]) body {
   color: var(--current-word-highlight-color, inherit);
 }
 
+/* Retained text-selection highlight (CSS Custom Highlight API). Stands in for
+   the OS selection while the user operates the selection toolbar on touch — the
+   OS drops its own selection on the first tap. Same token caveat as above, so a
+   literal translucent blue that reads as a text selection in light and dark. */
+::highlight(selection-retain) {
+  background-color: var(
+    --selection-retain-background-color,
+    oklch(0.62 0.19 256 / 0.3)
+  );
+  color: var(--selection-retain-color, inherit);
+}
+
 /* Bluesky post embeds (vendored `bsky-react-post`).
  *
  * 1. Avatars: the package's <img>s carry no size of their own — it was written

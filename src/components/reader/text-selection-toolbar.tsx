@@ -24,6 +24,10 @@ import type { ArticleDetail } from "#/integrations/tanstack-query/api-publicatio
 import { quoteShareApi } from "#/integrations/tanstack-query/api-quote-share.functions";
 import { usePageReader } from "#/lib/page-reader/page-reader-context";
 import { buildQuoteShareUrl, normalizeQuoteText } from "#/lib/quote-share";
+import {
+  clearSelectionRetentionHighlight,
+  setSelectionRetentionHighlight,
+} from "#/lib/selection-retention-highlight";
 import { useCompactNav } from "#/lib/use-media-query";
 
 import { primaryAuthor } from "./format";
@@ -153,6 +157,9 @@ export function TextSelectionToolbar({
   // This flag marks that clear as toolbar-driven so `selectionchange` doesn't
   // read the now-empty selection as a deselect and hide the toolbar mid-share.
   const suppressDockedHideRef = useRef(false);
+  // Snapshot of the selected range, kept so we can re-paint it as a custom
+  // highlight once the OS drops the native selection on a toolbar tap (touch).
+  const retainedRangeRef = useRef<Range | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(
     null,
   );
@@ -181,6 +188,8 @@ export function TextSelectionToolbar({
   const hideToolbar = useCallback(() => {
     pinnedRef.current = false;
     suppressDockedHideRef.current = false;
+    retainedRangeRef.current = null;
+    clearSelectionRetentionHighlight();
     setShareMenuOpen(false);
     setToolbar(null);
   }, []);
@@ -188,6 +197,11 @@ export function TextSelectionToolbar({
   const openToolbar = useCallback((range: Range, text: string) => {
     const { x, y } = toolbarPosition(range);
     pinnedRef.current = true;
+    // Snapshot the range now, while the selection is live and the DOM matches
+    // the offsets — it's replayed as a custom highlight if the OS selection is
+    // later dropped by a toolbar tap. Any previously painted highlight is stale.
+    retainedRangeRef.current = range.cloneRange();
+    clearSelectionRetentionHighlight();
     setToolbar({ text, x, y });
   }, []);
 
@@ -337,13 +351,21 @@ export function TextSelectionToolbar({
       if (shareMenuOpen) return;
       if (eventTargets(event, anchorRef.current)) {
         // Docked, this tap will clear the OS selection as focus moves into the
-        // toolbar/menu; flag it so `selectionchange` keeps the toolbar up.
-        if (isDocked) suppressDockedHideRef.current = true;
+        // toolbar/menu; flag it so `selectionchange` keeps the toolbar up, and
+        // re-paint the passage ourselves so it stays visibly highlighted.
+        if (isDocked) {
+          suppressDockedHideRef.current = true;
+          if (retainedRangeRef.current) {
+            setSelectionRetentionHighlight(retainedRangeRef.current);
+          }
+        }
         return;
       }
       // Any tap outside the toolbar means the user has moved on — resume normal
-      // selection tracking so a real deselect can hide the toolbar again.
+      // selection tracking so a real deselect can hide the toolbar again, and
+      // drop our stand-in highlight so it can't linger behind a new selection.
       suppressDockedHideRef.current = false;
+      clearSelectionRetentionHighlight();
       // Docked, a touch inside the article is usually a selection-handle drag;
       // let `selectionchange` decide whether the selection actually went away.
       if (isDocked && eventTargets(event, rootRef.current)) return;
@@ -356,29 +378,8 @@ export function TextSelectionToolbar({
     };
   }, [hideToolbar, isDocked, rootRef, shareMenuOpen, toolbar]);
 
-  // Keep the underlying selection alive while the toolbar is used. Pressing a
-  // toolbar button is a tap outside the selection, so the browser collapses it
-  // by default (on mobile it also tears down the OS selection UI). Preventing
-  // the default on the pointer-down keeps the highlight — and the captured
-  // text — intact; react-aria fires its press on pointer-up, so buttons and the
-  // share menu still work. Native listeners (not React props) because React
-  // registers `touchstart` as passive, which would drop `preventDefault`.
-  useEffect(() => {
-    if (!toolbar) return;
-    const anchor = anchorRef.current;
-    if (!anchor) return;
-
-    const keepSelection = (event: Event) => {
-      event.preventDefault();
-    };
-
-    anchor.addEventListener("mousedown", keepSelection);
-    anchor.addEventListener("touchstart", keepSelection, { passive: false });
-    return () => {
-      anchor.removeEventListener("mousedown", keepSelection);
-      anchor.removeEventListener("touchstart", keepSelection);
-    };
-  }, [toolbar]);
+  // Drop the retained-selection highlight if the toolbar unmounts while shown.
+  useEffect(() => () => clearSelectionRetentionHighlight(), []);
 
   const onCopyLinkPress = useCallback(async () => {
     const url = await ensureShareUrl();
