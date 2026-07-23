@@ -194,16 +194,29 @@ export function TextSelectionToolbar({
     setToolbar(null);
   }, []);
 
-  const openToolbar = useCallback((range: Range, text: string) => {
-    const { x, y } = toolbarPosition(range);
-    pinnedRef.current = true;
-    // Snapshot the range now, while the selection is live and the DOM matches
-    // the offsets — it's replayed as a custom highlight if the OS selection is
-    // later dropped by a toolbar tap. Any previously painted highlight is stale.
-    retainedRangeRef.current = range.cloneRange();
-    clearSelectionRetentionHighlight();
-    setToolbar({ text, x, y });
-  }, []);
+  const openToolbar = useCallback(
+    (range: Range, text: string) => {
+      const { x, y } = toolbarPosition(range);
+      pinnedRef.current = true;
+      // Snapshot the range while the selection is live and the DOM still
+      // matches its offsets.
+      const retained = range.cloneRange();
+      retainedRangeRef.current = retained;
+      // Docked/touch: paint our stand-in highlight straight away and leave it up
+      // for as long as the toolbar is. `::selection` paints above custom
+      // highlights, so it stays invisible under the real selection — then the
+      // moment the OS drops that selection on the first toolbar tap, ours is
+      // already in place. Painting up front means this never depends on
+      // catching the tap that dismissed it.
+      if (isDocked) {
+        setSelectionRetentionHighlight(retained);
+      } else {
+        clearSelectionRetentionHighlight();
+      }
+      setToolbar({ text, x, y });
+    },
+    [isDocked],
+  );
 
   const syncToolbarToSelection = useCallback(() => {
     const root = rootRef.current;
@@ -350,15 +363,10 @@ export function TextSelectionToolbar({
       if (!pinnedRef.current) return;
       if (shareMenuOpen) return;
       if (eventTargets(event, anchorRef.current)) {
-        // Docked, this tap will clear the OS selection as focus moves into the
-        // toolbar/menu; flag it so `selectionchange` keeps the toolbar up, and
-        // re-paint the passage ourselves so it stays visibly highlighted.
-        if (isDocked) {
-          suppressDockedHideRef.current = true;
-          if (retainedRangeRef.current) {
-            setSelectionRetentionHighlight(retainedRangeRef.current);
-          }
-        }
+        // Docked, this tap makes the OS drop its selection as focus moves into
+        // the toolbar/menu; flag it so `selectionchange` keeps the toolbar up.
+        // The stand-in highlight is already painted (see `openToolbar`).
+        if (isDocked) suppressDockedHideRef.current = true;
         return;
       }
       // Any tap outside the toolbar means the user has moved on — resume normal
@@ -372,9 +380,15 @@ export function TextSelectionToolbar({
       hideToolbar();
     };
 
-    document.addEventListener("pointerdown", onPointerDown);
+    // Capture phase, and non-negotiably so: react-aria's `usePress` calls
+    // `stopPropagation()` on pointer-down, and because React dispatches at the
+    // root container that also stops the *native* event before it can reach a
+    // bubble-phase listener here. Every tap on a toolbar button would go unseen
+    // — no suppression flag, so the selection loss read as a deselect and tore
+    // the toolbar (and the share menu inside it) down on first press.
+    document.addEventListener("pointerdown", onPointerDown, true);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [hideToolbar, isDocked, rootRef, shareMenuOpen, toolbar]);
 
