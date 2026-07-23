@@ -157,9 +157,6 @@ export function TextSelectionToolbar({
   // This flag marks that clear as toolbar-driven so `selectionchange` doesn't
   // read the now-empty selection as a deselect and hide the toolbar mid-share.
   const suppressDockedHideRef = useRef(false);
-  // Snapshot of the selected range, kept so we can re-paint it as a custom
-  // highlight once the OS drops the native selection on a toolbar tap (touch).
-  const retainedRangeRef = useRef<Range | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(
     null,
   );
@@ -188,7 +185,6 @@ export function TextSelectionToolbar({
   const hideToolbar = useCallback(() => {
     pinnedRef.current = false;
     suppressDockedHideRef.current = false;
-    retainedRangeRef.current = null;
     clearSelectionRetentionHighlight();
     setShareMenuOpen(false);
     setToolbar(null);
@@ -198,18 +194,13 @@ export function TextSelectionToolbar({
     (range: Range, text: string) => {
       const { x, y } = toolbarPosition(range);
       pinnedRef.current = true;
-      // Snapshot the range while the selection is live and the DOM still
-      // matches its offsets.
-      const retained = range.cloneRange();
-      retainedRangeRef.current = retained;
-      // Docked/touch: paint our stand-in highlight straight away and leave it up
-      // for as long as the toolbar is. `::selection` paints above custom
-      // highlights, so it stays invisible under the real selection — then the
-      // moment the OS drops that selection on the first toolbar tap, ours is
-      // already in place. Painting up front means this never depends on
-      // catching the tap that dismissed it.
+      // Docked/touch: paint the stand-in highlight straight away and leave it up
+      // for as long as the toolbar is, so it never depends on catching the tap
+      // that dismissed the OS selection. Snapshot the range first — the live one
+      // moves with the selection. Not docked, drop any highlight left over from
+      // a previous compact layout.
       if (isDocked) {
-        setSelectionRetentionHighlight(retained);
+        setSelectionRetentionHighlight(range.cloneRange());
       } else {
         clearSelectionRetentionHighlight();
       }

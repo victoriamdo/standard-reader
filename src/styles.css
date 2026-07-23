@@ -127,8 +127,9 @@ html:has([data-app-shell]) body {
 
 /* Retained text-selection highlight (CSS Custom Highlight API). Stands in for
    the OS selection while the user operates the selection toolbar on touch — the
-   OS drops its own selection on the first tap. Same token caveat as above, so a
-   literal translucent blue that reads as a text selection in light and dark. */
+   OS drops its own selection on the first tap. Themed from the article body
+   (see `article-view.tsx`); the literal below is only a fallback, and carries
+   the same token caveat as the rule above. */
 ::highlight(selection-retain) {
   background-color: var(
     --selection-retain-background-color,
