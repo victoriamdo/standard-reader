@@ -148,6 +148,11 @@ export function TextSelectionToolbar({
   const anchorRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(false);
   const isSelectingRef = useRef(false);
+  // Docked, tapping the toolbar (opening the share menu, copying) moves focus
+  // out of the article and the mobile browser clears the OS text selection.
+  // This flag marks that clear as toolbar-driven so `selectionchange` doesn't
+  // read the now-empty selection as a deselect and hide the toolbar mid-share.
+  const suppressDockedHideRef = useRef(false);
   const syncTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(
     null,
   );
@@ -175,6 +180,7 @@ export function TextSelectionToolbar({
 
   const hideToolbar = useCallback(() => {
     pinnedRef.current = false;
+    suppressDockedHideRef.current = false;
     setShareMenuOpen(false);
     setToolbar(null);
   }, []);
@@ -277,6 +283,11 @@ export function TextSelectionToolbar({
         hideToolbar();
         return;
       }
+      // A toolbar tap (share menu, copy) clears the OS selection as focus
+      // leaves the article — don't sync that empty selection into a hide. The
+      // flag is lifted again by the next tap outside the toolbar (see the
+      // docked pointerdown handler below).
+      if (isDocked && suppressDockedHideRef.current) return;
       scheduleSyncToolbarToSelection();
     };
 
@@ -324,7 +335,15 @@ export function TextSelectionToolbar({
     const onPointerDown = (event: PointerEvent) => {
       if (!pinnedRef.current) return;
       if (shareMenuOpen) return;
-      if (eventTargets(event, anchorRef.current)) return;
+      if (eventTargets(event, anchorRef.current)) {
+        // Docked, this tap will clear the OS selection as focus moves into the
+        // toolbar/menu; flag it so `selectionchange` keeps the toolbar up.
+        if (isDocked) suppressDockedHideRef.current = true;
+        return;
+      }
+      // Any tap outside the toolbar means the user has moved on — resume normal
+      // selection tracking so a real deselect can hide the toolbar again.
+      suppressDockedHideRef.current = false;
       // Docked, a touch inside the article is usually a selection-handle drag;
       // let `selectionchange` decide whether the selection actually went away.
       if (isDocked && eventTargets(event, rootRef.current)) return;
