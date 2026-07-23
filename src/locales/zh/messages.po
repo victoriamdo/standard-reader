@@ -1791,6 +1791,7 @@ msgid "OAuth tokens so we can read and write records in your repository on your 
 msgstr "OAuth 令牌，使我们能代表你读写仓库中的记录（例如关注、点赞、保存和刊物列表）。"
 
 #: src/components/docs/api-docs-request-panel.tsx
+#: src/components/reader/text-selection-toolbar.tsx
 msgid "Copy"
 msgstr "复制"
 
@@ -3077,6 +3078,10 @@ msgstr "无法解析该 handle。"
 #: src/components/reader/atstore-review-prompt.tsx
 msgid "Sharing a review on the <0>ATStore</0> will help both us and other users see what you think about Standard Reader."
 msgstr "在 <0>ATStore</0> 上分享评价，能帮助我们和其他用户了解你对 Standard Reader 的看法。"
+
+#: src/components/reader/text-selection-toolbar.tsx
+msgid "Listen from here"
+msgstr ""
 
 #: src/components/onboarding/step-settings.tsx
 #: src/components/user-settings-view.tsx

@@ -1791,6 +1791,7 @@ msgid "OAuth tokens so we can read and write records in your repository on your 
 msgstr "Des jetons OAuth pour que nous puissions lire et écrire des enregistrements dans votre repository en votre nom (par exemple les suivis, les mentions J'aime, les enregistrements et les listes de publications)."
 
 #: src/components/docs/api-docs-request-panel.tsx
+#: src/components/reader/text-selection-toolbar.tsx
 msgid "Copy"
 msgstr "Copier"
 
@@ -3077,6 +3078,10 @@ msgstr "Impossible de résoudre cet identifiant."
 #: src/components/reader/atstore-review-prompt.tsx
 msgid "Sharing a review on the <0>ATStore</0> will help both us and other users see what you think about Standard Reader."
 msgstr "Partager un avis sur l'<0>ATStore</0> nous aidera, ainsi que les autres utilisateurs, à savoir ce que vous pensez de Standard Reader."
+
+#: src/components/reader/text-selection-toolbar.tsx
+msgid "Listen from here"
+msgstr ""
 
 #: src/components/onboarding/step-settings.tsx
 #: src/components/user-settings-view.tsx

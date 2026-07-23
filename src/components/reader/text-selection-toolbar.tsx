@@ -2,10 +2,17 @@
 
 import { Trans, useLingui } from "@lingui/react/macro";
 import * as stylex from "@stylexjs/stylex";
-import { Link as LinkIcon, Play, Share2, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Play, Share2, X } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
+import { Button } from "#/design-system/button";
 import { IconButton } from "#/design-system/icon-button";
 import { MenuItem, MenuSeparator } from "#/design-system/menu";
 import { animationDuration } from "#/design-system/theme/animations.stylex";
@@ -18,6 +25,12 @@ import {
 } from "#/design-system/theme/semantic-spacing.stylex";
 import { shadow } from "#/design-system/theme/shadow.stylex";
 import { spacing } from "#/design-system/theme/spacing.stylex";
+import {
+  fontFamily,
+  fontSize,
+  fontWeight,
+  tracking,
+} from "#/design-system/theme/typography.stylex";
 import { toasts } from "#/design-system/toast";
 import { Toolbar, ToolbarGroup } from "#/design-system/toolbar";
 import type { ArticleDetail } from "#/integrations/tanstack-query/api-publication.functions";
@@ -37,13 +50,15 @@ import { useSelectionDock } from "./selection-dock-context";
 
 const MIN_SELECTION_LENGTH = 3;
 const SYNC_SELECTION_DELAY_MS = 0;
+/** Breathing room kept between the docked bar and the screen edges. */
+const DOCK_EDGE_GUTTER_PX = 16;
 
 const styles = stylex.create({
   anchor: {
+    insetInlineStart: 0,
     position: "fixed",
     transform: "translate(-50%, calc(-100% - 12px))",
     zIndex: 1000,
-    insetInlineStart: 0,
     top: 0,
   },
   shell: {
@@ -53,12 +68,12 @@ const styles = stylex.create({
     borderWidth: 1,
     backgroundColor: uiColor.bg,
     boxShadow: shadow.lg,
+    paddingInlineEnd: horizontalSpace.xs,
+    paddingInlineStart: horizontalSpace.xs,
     transitionDuration: animationDuration.fast,
     transitionProperty: "opacity, transform",
     transitionTimingFunction: "ease-out",
     paddingBottom: verticalSpace.xs,
-    paddingInlineStart: horizontalSpace.xs,
-    paddingInlineEnd: horizontalSpace.xs,
     paddingTop: verticalSpace.xs,
   },
   shellVisible: {
@@ -85,10 +100,10 @@ const styles = stylex.create({
       "0 1px 1px oklch(0.3 0.03 60 / 0.04), 0 6px 18px -8px oklch(0.3 0.04 60 / 0.18), 0 14px 34px -18px oklch(0.3 0.05 60 / 0.22)",
     columnGap: gap.xxs,
     flexWrap: "nowrap",
+    paddingInlineEnd: spacing["1.5"],
+    paddingInlineStart: spacing["1.5"],
     rowGap: gap.xxs,
     paddingBottom: spacing["1.5"],
-    paddingInlineStart: spacing["1.5"],
-    paddingInlineEnd: spacing["1.5"],
     paddingTop: spacing["1.5"],
   },
   // Round, not the default squircle, and sized to the nav's `bottomItem`
@@ -96,10 +111,34 @@ const styles = stylex.create({
   // (`size="lg"` is 2.75rem, a quarter-rem short).
   dockedButton: {
     borderRadius: radius.full,
+    // Buttons default to a squircle, but the pill around them is a true
+    // stadium — at this radius the two curves visibly disagree. Match the
+    // container.
+    cornerShape: "normal",
     // Keyed on `[data-size=lg]` to match how IconButton declares its own
     // height/width, so this override can't lose on specificity.
     height: { default: spacing["12"], ":is([data-size=lg])": spacing["12"] },
     width: { default: spacing["12"], ":is([data-size=lg])": spacing["12"] },
+  },
+  // Labelled docked item: an auto-width pill rather than a circle, holding the
+  // same nav-item height so a labelled bar is still exactly as tall as the pill
+  // it replaces.
+  dockedLabelButton: {
+    borderRadius: radius.full,
+    cornerShape: "normal",
+    paddingInlineEnd: horizontalSpace.xl,
+    paddingInlineStart: horizontalSpace.xl,
+    height: { default: spacing["12"], ":is([data-size=lg])": spacing["12"] },
+  },
+  // Mirrors the bottom nav's `bottomLabel` type so the swap reads as the same
+  // control changing modes rather than a different surface appearing. No accent
+  // colour: nothing here is "current", and the accent stays rare by design.
+  dockedLabel: {
+    fontFamily: fontFamily.sans,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: tracking.wide,
+    whiteSpace: "nowrap",
   },
 });
 
@@ -135,6 +174,63 @@ function eventTargets(event: Event, anchor: HTMLElement | null): boolean {
   return path.includes(anchor);
 }
 
+/**
+ * One toolbar action, labelled or not.
+ *
+ * Docked on touch the icon carries a visible label, because there's no hover
+ * there to reveal a tooltip. Everywhere else — the desktop toolbar floating by
+ * the selection, or a docked bar too narrow for this locale's strings — it stays
+ * the icon button it has always been, explained on hover by IconButton's own
+ * tooltip. `accessibleName` must contain the visible label so voice control can
+ * address the control by what the user can see (WCAG 2.5.3).
+ */
+function ToolbarAction({
+  icon,
+  label,
+  accessibleName,
+  showLabel,
+  style,
+  isDisabled,
+  onPress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  accessibleName: string;
+  showLabel: boolean;
+  style?: stylex.StyleXStyles;
+  isDisabled?: boolean;
+  onPress?: () => void;
+}) {
+  if (!showLabel) {
+    return (
+      <IconButton
+        variant="tertiary"
+        size="lg"
+        label={accessibleName}
+        style={style}
+        isDisabled={isDisabled}
+        onPress={onPress}
+      >
+        {icon}
+      </IconButton>
+    );
+  }
+
+  return (
+    <Button
+      variant="tertiary"
+      size="lg"
+      aria-label={accessibleName}
+      style={style}
+      isDisabled={isDisabled}
+      onPress={onPress}
+    >
+      {icon}
+      <span {...stylex.props(styles.dockedLabel)}>{label}</span>
+    </Button>
+  );
+}
+
 export function TextSelectionToolbar({
   rootRef,
   article,
@@ -148,7 +244,7 @@ export function TextSelectionToolbar({
   did: string;
   rkey: string;
 }) {
-  const { t } = useLingui();
+  const { i18n, t } = useLingui();
   const anchorRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(false);
   const isSelectingRef = useRef(false);
@@ -162,8 +258,8 @@ export function TextSelectionToolbar({
   );
   const [toolbar, setToolbar] = useState<ToolbarState | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [sharePending, setSharePending] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const [dockedLabelsFit, setDockedLabelsFit] = useState(true);
   const [saveDialog, setSaveDialog] = useState<"margin" | "semble" | null>(
     null,
   );
@@ -248,13 +344,11 @@ export function TextSelectionToolbar({
   // only on the next explicit share action (not automatically on selection).
   useEffect(() => {
     setShareUrl(null);
-    setSharePending(false);
   }, [toolbar]);
 
   const ensureShareUrl = useCallback(async (): Promise<string | null> => {
     if (!toolbar) return null;
     if (shareUrl) return shareUrl;
-    setSharePending(true);
     try {
       const { id } = await quoteShareApi.createQuoteShare({
         data: { documentUri, quote: toolbar.text },
@@ -271,8 +365,6 @@ export function TextSelectionToolbar({
         { timeout: 3000 },
       );
       return null;
-    } finally {
-      setSharePending(false);
     }
   }, [did, documentUri, rkey, shareUrl, t, toolbar]);
 
@@ -386,21 +478,36 @@ export function TextSelectionToolbar({
   // Drop the retained-selection highlight if the toolbar unmounts while shown.
   useEffect(() => () => clearSelectionRetentionHighlight(), []);
 
-  const onCopyLinkPress = useCallback(async () => {
-    const url = await ensureShareUrl();
-    if (!url) return;
-    void navigator.clipboard.writeText(url).then(() => {
-      toasts.add(
-        {
-          title: t`Link copied`,
-          variant: "success",
-        },
-        {
-          timeout: 2000,
-        },
-      );
-    });
-  }, [ensureShareUrl, t]);
+  // Labels are the design on touch — there's no hover tooltip there to explain
+  // an icon. But a long locale ("Compartir", "Vorlesen") can push the row past
+  // a narrow phone, so measure the composed pill against the space the dock
+  // gives us and fall back to icon-only when it genuinely doesn't fit. Dropping
+  // the labels beats truncating a six-character word. This runs in a layout
+  // effect so the fallback lands before paint rather than as a visible reflow.
+  useLayoutEffect(() => {
+    if (!isDocked || !toolbar || !dockedLabelsFit) return;
+    const pill = anchorRef.current?.firstElementChild;
+    if (!pill) return;
+    // Measure against the viewport, not the anchor: the dock slot is a flex
+    // container that stretches to whatever the pill needs, so comparing the two
+    // always reports a fit. The docked bar is viewport-bounded by definition.
+    const available = globalThis.innerWidth - DOCK_EDGE_GUTTER_PX * 2;
+    if (pill.getBoundingClientRect().width > available) {
+      setDockedLabelsFit(false);
+    }
+  }, [dockedLabelsFit, isDocked, toolbar]);
+
+  // Re-test when the available width or the strings change: optimistically put
+  // the labels back so the measurement above gets to run against the new size.
+  useEffect(() => {
+    const restoreLabels = () => setDockedLabelsFit(true);
+    globalThis.addEventListener("resize", restoreLabels);
+    return () => globalThis.removeEventListener("resize", restoreLabels);
+  }, []);
+
+  useEffect(() => {
+    setDockedLabelsFit(true);
+  }, [i18n.locale]);
 
   const dismissAfterShare = useCallback(() => {
     hideToolbar();
@@ -455,6 +562,12 @@ export function TextSelectionToolbar({
   // Docked buttons round off and grow to the nav item's height so the pill
   // matches the bar it replaces.
   const buttonStyle = isDocked ? styles.dockedButton : undefined;
+  // Labels ride on the docked (touch) bar only, and only when they fit.
+  const showDockedLabels = isDocked && dockedLabelsFit;
+  // Labelled items trade the circle for an auto-width pill; the dismiss ✕ keeps
+  // its circle either way — the glyph is universally read, and leaving it bare
+  // keeps the row from getting wordy.
+  const actionStyle = showDockedLabels ? styles.dockedLabelButton : buttonStyle;
 
   const toolbarContent = toolbar ? (
     <Toolbar
@@ -467,27 +580,20 @@ export function TextSelectionToolbar({
     >
       <>
         <ToolbarGroup aria-label={t`Listen`}>
-          <IconButton
-            variant="tertiary"
-            size="lg"
-            label={t`Read from here`}
-            style={buttonStyle}
+          <ToolbarAction
+            icon={<Play size={18} />}
+            label={t`Listen`}
+            // Contains the visible "Listen" when labelled; keeps the fuller
+            // wording as the tooltip when it's an icon on its own.
+            accessibleName={
+              showDockedLabels ? t`Listen from here` : t`Read from here`
+            }
+            showLabel={showDockedLabels}
+            style={actionStyle}
             onPress={onPlayPress}
-          >
-            <Play size={18} />
-          </IconButton>
+          />
         </ToolbarGroup>
         <ToolbarGroup aria-label={t`Share`}>
-          <IconButton
-            variant="tertiary"
-            size="lg"
-            label={t`Copy link`}
-            style={buttonStyle}
-            isDisabled={sharePending}
-            onPress={onCopyLinkPress}
-          >
-            <LinkIcon size={18} />
-          </IconButton>
           <LinkShareMenu
             getLinkUrl={() => shareUrl}
             ensureLinkUrl={ensureShareUrl}
@@ -495,14 +601,13 @@ export function TextSelectionToolbar({
             onOpenChange={setShareMenuOpen}
             onShare={dismissAfterShare}
             trigger={
-              <IconButton
-                variant="tertiary"
-                size="lg"
+              <ToolbarAction
+                icon={<Share2 size={18} />}
                 label={t`Share`}
-                style={buttonStyle}
-              >
-                <Share2 size={18} />
-              </IconButton>
+                accessibleName={t`Share`}
+                showLabel={showDockedLabels}
+                style={actionStyle}
+              />
             }
           >
             <MenuSeparator />

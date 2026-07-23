@@ -1791,6 +1791,7 @@ msgid "OAuth tokens so we can read and write records in your repository on your 
 msgstr "회원님을 대신해 저장소의 레코드를 읽고 쓸 수 있도록 하는 OAuth 토큰(예: 팔로우, 좋아요, 저장, 발행물 리스트)."
 
 #: src/components/docs/api-docs-request-panel.tsx
+#: src/components/reader/text-selection-toolbar.tsx
 msgid "Copy"
 msgstr "복사"
 
@@ -3077,6 +3078,10 @@ msgstr "해당 핸들을 확인하지 못했습니다."
 #: src/components/reader/atstore-review-prompt.tsx
 msgid "Sharing a review on the <0>ATStore</0> will help both us and other users see what you think about Standard Reader."
 msgstr "<0>ATStore</0>에 리뷰를 남겨 주시면 저희와 다른 사용자 모두 Standard Reader에 대한 생각을 알 수 있습니다."
+
+#: src/components/reader/text-selection-toolbar.tsx
+msgid "Listen from here"
+msgstr ""
 
 #: src/components/onboarding/step-settings.tsx
 #: src/components/user-settings-view.tsx
