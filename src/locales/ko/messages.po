@@ -1395,7 +1395,7 @@ msgstr "오늘"
 msgid "Subscribe"
 msgstr "구독"
 
-#: src/components/reader/text-selection-toolbar.tsx
+#: src/components/reader/link-share-menu.tsx
 msgid "Link copied"
 msgstr "링크 복사됨"
 
@@ -1791,7 +1791,6 @@ msgid "OAuth tokens so we can read and write records in your repository on your 
 msgstr "회원님을 대신해 저장소의 레코드를 읽고 쓸 수 있도록 하는 OAuth 토큰(예: 팔로우, 좋아요, 저장, 발행물 리스트)."
 
 #: src/components/docs/api-docs-request-panel.tsx
-#: src/components/reader/text-selection-toolbar.tsx
 msgid "Copy"
 msgstr "복사"
 
@@ -4211,8 +4210,8 @@ msgstr "원하는 RSS 리더에서 {name}을(를) 구독하세요 — 새 글이
 msgid "For more about how {SITE_NAME} works, see the <0>About</0> page. For privacy questions about this deployment, contact the operator of the site at the URL above."
 msgstr "{SITE_NAME}의 작동 방식에 대한 자세한 내용은 <0>소개</0> 페이지를 참고하세요. 이 배포의 개인정보 관련 문의는 위 URL의 사이트 운영자에게 연락하세요."
 
+#: src/components/reader/link-share-menu.tsx
 #: src/components/reader/share-menu.tsx
-#: src/components/reader/text-selection-toolbar.tsx
 #: src/routes/_layout.l.$did.$rkey.tsx
 msgid "Copy link"
 msgstr "링크 복사"

@@ -1395,7 +1395,7 @@ msgstr "今天"
 msgid "Subscribe"
 msgstr "订阅"
 
-#: src/components/reader/text-selection-toolbar.tsx
+#: src/components/reader/link-share-menu.tsx
 msgid "Link copied"
 msgstr "链接已复制"
 
@@ -1791,7 +1791,6 @@ msgid "OAuth tokens so we can read and write records in your repository on your 
 msgstr "OAuth 令牌，使我们能代表你读写仓库中的记录（例如关注、点赞、保存和刊物列表）。"
 
 #: src/components/docs/api-docs-request-panel.tsx
-#: src/components/reader/text-selection-toolbar.tsx
 msgid "Copy"
 msgstr "复制"
 
@@ -4211,8 +4210,8 @@ msgstr "在任意 RSS 阅读器中订阅 {name}——新文章发布后即刻出
 msgid "For more about how {SITE_NAME} works, see the <0>About</0> page. For privacy questions about this deployment, contact the operator of the site at the URL above."
 msgstr "想进一步了解 {SITE_NAME} 的运作方式，请查看<0>关于</0>页面。有关本部署的隐私问题，请联系上述网址所属站点的运营者。"
 
+#: src/components/reader/link-share-menu.tsx
 #: src/components/reader/share-menu.tsx
-#: src/components/reader/text-selection-toolbar.tsx
 #: src/routes/_layout.l.$did.$rkey.tsx
 msgid "Copy link"
 msgstr "复制链接"

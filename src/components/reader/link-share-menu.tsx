@@ -57,7 +57,10 @@ export function LinkShareMenu({
     const linkUrl = ensureLinkUrl ? await ensureLinkUrl() : resolveLinkUrl();
     if (!linkUrl) return;
     await navigator.clipboard.writeText(linkUrl);
-    toasts.add({ title: t`Link copied`, variant: "success" }, { timeout: 2000 });
+    toasts.add(
+      { title: t`Link copied`, variant: "success" },
+      { timeout: 2000 },
+    );
   };
 
   // Three groups, by what the action actually does — separators mark those

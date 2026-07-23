@@ -1395,7 +1395,7 @@ msgstr "Today"
 msgid "Subscribe"
 msgstr "Subscribe"
 
-#: src/components/reader/text-selection-toolbar.tsx
+#: src/components/reader/link-share-menu.tsx
 msgid "Link copied"
 msgstr "Link copied"
 
@@ -1791,7 +1791,6 @@ msgid "OAuth tokens so we can read and write records in your repository on your 
 msgstr "OAuth tokens so we can read and write records in your repository on your behalf (for example follows, likes, saves, and publication lists)."
 
 #: src/components/docs/api-docs-request-panel.tsx
-#: src/components/reader/text-selection-toolbar.tsx
 msgid "Copy"
 msgstr "Copy"
 
@@ -4211,8 +4210,8 @@ msgstr "Subscribe to {name} in any RSS reader — new articles show up there as 
 msgid "For more about how {SITE_NAME} works, see the <0>About</0> page. For privacy questions about this deployment, contact the operator of the site at the URL above."
 msgstr "For more about how {SITE_NAME} works, see the <0>About</0> page. For privacy questions about this deployment, contact the operator of the site at the URL above."
 
+#: src/components/reader/link-share-menu.tsx
 #: src/components/reader/share-menu.tsx
-#: src/components/reader/text-selection-toolbar.tsx
 #: src/routes/_layout.l.$did.$rkey.tsx
 msgid "Copy link"
 msgstr "Copy link"
