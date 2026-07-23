@@ -1441,7 +1441,7 @@ msgstr "Today"
 msgid "Subscribe"
 msgstr "Subscribe"
 
-#: src/components/reader/text-selection-toolbar.tsx
+#: src/components/reader/link-share-menu.tsx
 msgid "Link copied"
 msgstr "Link copied"
 
@@ -3229,6 +3229,10 @@ msgstr "Couldn't resolve that handle."
 msgid "Sharing a review on the <0>ATStore</0> will help both us and other users see what you think about Standard Reader."
 msgstr "Sharing a review on the <0>ATStore</0> will help both us and other users see what you think about Standard Reader."
 
+#: src/components/reader/text-selection-toolbar.tsx
+msgid "Listen from here"
+msgstr "Listen from here"
+
 #: src/components/onboarding/step-settings.tsx
 #: src/components/user-settings-view.tsx
 msgid "Weekly digest email"
@@ -4375,8 +4379,8 @@ msgstr "Subscribe to {name} in any RSS reader — new articles show up there as 
 msgid "For more about how {SITE_NAME} works, see the <0>About</0> page. For privacy questions about this deployment, contact the operator of the site at the URL above."
 msgstr "For more about how {SITE_NAME} works, see the <0>About</0> page. For privacy questions about this deployment, contact the operator of the site at the URL above."
 
+#: src/components/reader/link-share-menu.tsx
 #: src/components/reader/share-menu.tsx
-#: src/components/reader/text-selection-toolbar.tsx
 #: src/routes/_layout.l.$did.$rkey.tsx
 msgid "Copy link"
 msgstr "Copy link"

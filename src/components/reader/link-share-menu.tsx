@@ -3,6 +3,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 
 import { Menu, MenuItem, MenuSeparator, SubMenu } from "#/design-system/menu";
+import { toasts } from "#/design-system/toast";
 import { shareLinkUrl, useNativeShareAvailable } from "#/lib/native-share";
 import {
   AT_PROTO_COMPOSE_CLIENTS,
@@ -49,8 +50,41 @@ export function LinkShareMenu({
     onShare?.();
   };
 
+  // Deliberately does not call `onShare`: copying doesn't navigate anywhere, so
+  // callers that dismiss on share (the selection toolbar) should stay put and
+  // let the toast be the confirmation.
+  const copyLinkUrl = async () => {
+    const linkUrl = ensureLinkUrl ? await ensureLinkUrl() : resolveLinkUrl();
+    if (!linkUrl) return;
+    await navigator.clipboard.writeText(linkUrl);
+    toasts.add(
+      { title: t`Link copied`, variant: "success" },
+      { timeout: 2000 },
+    );
+  };
+
+  // Three groups, by what the action actually does — separators mark those
+  // boundaries and nothing else. Punctuating every row (as this menu used to)
+  // reads as noise and stops communicating grouping at all.
+  //
+  //   1. keep it here          Copy link
+  //   2. send it somewhere     Bluesky · alternate client · Disperse · OS sheet
+  //   3. per-surface extras    {children} — each opens with its own separator
+  //
+  // The OS share sheet sits last in group 2 as the catch-all, after the named
+  // destinations it generalizes.
   return (
     <Menu trigger={trigger} isOpen={isOpen} onOpenChange={onOpenChange}>
+      <MenuItem
+        isDisabled={!canShare}
+        onPress={() => {
+          void copyLinkUrl();
+        }}
+        textValue={t`Copy link`}
+      >
+        <Trans>Copy link</Trans>
+      </MenuItem>
+      <MenuSeparator />
       <MenuItem
         isDisabled={!canShare}
         onPress={() => {
@@ -83,7 +117,6 @@ export function LinkShareMenu({
           </MenuItem>
         ))}
       </SubMenu>
-      <MenuSeparator />
       <MenuItem
         isDisabled={!canShare}
         onPress={() => {
@@ -95,7 +128,6 @@ export function LinkShareMenu({
       </MenuItem>
       {nativeShareAvailable ? (
         <>
-          <MenuSeparator />
           <MenuItem
             isDisabled={!canShare}
             onPress={() => {

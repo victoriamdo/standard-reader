@@ -127,6 +127,10 @@ const styles = stylex.create({
   root: {
     "--current-word-highlight-background-color": primaryColor.solid1,
     "--current-word-highlight-color": primaryColor.textContrast,
+    // Stand-in for the OS text selection while the selection toolbar is open on
+    // touch. Matches the quote-share mark so a held passage reads the same as a
+    // shared one; the text colour is left to the rule's `inherit` fallback.
+    "--selection-retain-background-color": primaryColor.component3,
     boxSizing: "border-box",
     maxWidth: "100%",
     minWidth: 0,

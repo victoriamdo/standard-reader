@@ -1441,7 +1441,7 @@ msgstr "오늘"
 msgid "Subscribe"
 msgstr "구독"
 
-#: src/components/reader/text-selection-toolbar.tsx
+#: src/components/reader/link-share-menu.tsx
 msgid "Link copied"
 msgstr "링크 복사됨"
 
@@ -3229,6 +3229,10 @@ msgstr "해당 핸들을 확인하지 못했습니다."
 msgid "Sharing a review on the <0>ATStore</0> will help both us and other users see what you think about Standard Reader."
 msgstr "<0>ATStore</0>에 리뷰를 남겨 주시면 저희와 다른 사용자 모두 Standard Reader에 대한 생각을 알 수 있습니다."
 
+#: src/components/reader/text-selection-toolbar.tsx
+msgid "Listen from here"
+msgstr ""
+
 #: src/components/onboarding/step-settings.tsx
 #: src/components/user-settings-view.tsx
 msgid "Weekly digest email"
@@ -4375,8 +4379,8 @@ msgstr "원하는 RSS 리더에서 {name}을(를) 구독하세요 — 새 글이
 msgid "For more about how {SITE_NAME} works, see the <0>About</0> page. For privacy questions about this deployment, contact the operator of the site at the URL above."
 msgstr "{SITE_NAME}의 작동 방식에 대한 자세한 내용은 <0>소개</0> 페이지를 참고하세요. 이 배포의 개인정보 관련 문의는 위 URL의 사이트 운영자에게 연락하세요."
 
+#: src/components/reader/link-share-menu.tsx
 #: src/components/reader/share-menu.tsx
-#: src/components/reader/text-selection-toolbar.tsx
 #: src/routes/_layout.l.$did.$rkey.tsx
 msgid "Copy link"
 msgstr "링크 복사"

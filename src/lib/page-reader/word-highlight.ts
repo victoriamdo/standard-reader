@@ -5,6 +5,8 @@
  * it's cheap to move the highlight every animation frame.
  */
 
+import { createSingleRangeHighlight } from "#/lib/custom-highlight";
+
 /** Registered name for the custom highlight (see the `::highlight()` rule). */
 const HIGHLIGHT_NAME = "reader-word";
 
@@ -41,16 +43,6 @@ export interface HighlightMap {
   tokens: Array<WordToken>;
   /** Per narration sentence: its word run (null if not found in the DOM). */
   sentenceTokens: Array<SentenceRun | null>;
-}
-
-interface HighlightLike {
-  add(range: Range): void;
-  clear(): void;
-}
-
-interface HighlightRegistryLike {
-  set(name: string, highlight: HighlightLike): void;
-  delete(name: string): void;
 }
 
 /**
@@ -265,35 +257,15 @@ export function rangeForSentence(
   return rangeFromOffsets(map.spans, first.start, last.end);
 }
 
-let activeHighlight: HighlightLike | null = null;
-
-function highlightRegistry(): HighlightRegistryLike | undefined {
-  return (globalThis.CSS as unknown as { highlights?: HighlightRegistryLike })
-    ?.highlights;
-}
+const highlight = createSingleRangeHighlight(HIGHLIGHT_NAME);
 
 /** Paint a single word; returns false when the browser lacks the API. */
 export function setWordHighlight(range: Range): boolean {
-  const registry = highlightRegistry();
-  const Ctor = (
-    globalThis as unknown as {
-      Highlight?: new (...ranges: Array<Range>) => HighlightLike;
-    }
-  ).Highlight;
-  if (!registry || !Ctor) return false;
-
-  if (!activeHighlight) {
-    activeHighlight = new Ctor();
-    registry.set(HIGHLIGHT_NAME, activeHighlight);
-  }
-  activeHighlight.clear();
-  activeHighlight.add(range);
-  return true;
+  return highlight.paint(range);
 }
 
 export function clearWordHighlight(): void {
-  highlightRegistry()?.delete(HIGHLIGHT_NAME);
-  activeHighlight = null;
+  highlight.clear();
 }
 
 /**

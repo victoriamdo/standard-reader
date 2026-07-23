@@ -1441,7 +1441,7 @@ msgstr "今日"
 msgid "Subscribe"
 msgstr "購読"
 
-#: src/components/reader/text-selection-toolbar.tsx
+#: src/components/reader/link-share-menu.tsx
 msgid "Link copied"
 msgstr "リンクをコピーしました"
 
@@ -3229,6 +3229,10 @@ msgstr "そのハンドルを解決できませんでした。"
 msgid "Sharing a review on the <0>ATStore</0> will help both us and other users see what you think about Standard Reader."
 msgstr "<0>ATStore</0> でレビューを共有していただくと、Standard Reader についてのご意見を私たちにも他のユーザーにも届けられます。"
 
+#: src/components/reader/text-selection-toolbar.tsx
+msgid "Listen from here"
+msgstr ""
+
 #: src/components/onboarding/step-settings.tsx
 #: src/components/user-settings-view.tsx
 msgid "Weekly digest email"
@@ -4375,8 +4379,8 @@ msgstr "{name} は好きな RSS リーダーで購読できます。新しい記
 msgid "For more about how {SITE_NAME} works, see the <0>About</0> page. For privacy questions about this deployment, contact the operator of the site at the URL above."
 msgstr "{SITE_NAME} の仕組みについて詳しくは <0>概要</0> ページをご覧ください。この環境のプライバシーに関するお問い合わせは、上記 URL のサイト運営者までご連絡ください。"
 
+#: src/components/reader/link-share-menu.tsx
 #: src/components/reader/share-menu.tsx
-#: src/components/reader/text-selection-toolbar.tsx
 #: src/routes/_layout.l.$did.$rkey.tsx
 msgid "Copy link"
 msgstr "リンクをコピー"
