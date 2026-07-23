@@ -60,6 +60,16 @@ export function LinkShareMenu({
     toasts.add({ title: t`Link copied`, variant: "success" }, { timeout: 2000 });
   };
 
+  // Three groups, by what the action actually does — separators mark those
+  // boundaries and nothing else. Punctuating every row (as this menu used to)
+  // reads as noise and stops communicating grouping at all.
+  //
+  //   1. keep it here          Copy link
+  //   2. send it somewhere     Bluesky · alternate client · Disperse · OS sheet
+  //   3. per-surface extras    {children} — each opens with its own separator
+  //
+  // The OS share sheet sits last in group 2 as the catch-all, after the named
+  // destinations it generalizes.
   return (
     <Menu trigger={trigger} isOpen={isOpen} onOpenChange={onOpenChange}>
       <MenuItem
@@ -104,7 +114,6 @@ export function LinkShareMenu({
           </MenuItem>
         ))}
       </SubMenu>
-      <MenuSeparator />
       <MenuItem
         isDisabled={!canShare}
         onPress={() => {
@@ -116,7 +125,6 @@ export function LinkShareMenu({
       </MenuItem>
       {nativeShareAvailable ? (
         <>
-          <MenuSeparator />
           <MenuItem
             isDisabled={!canShare}
             onPress={() => {
