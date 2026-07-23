@@ -356,6 +356,30 @@ export function TextSelectionToolbar({
     };
   }, [hideToolbar, isDocked, rootRef, shareMenuOpen, toolbar]);
 
+  // Keep the underlying selection alive while the toolbar is used. Pressing a
+  // toolbar button is a tap outside the selection, so the browser collapses it
+  // by default (on mobile it also tears down the OS selection UI). Preventing
+  // the default on the pointer-down keeps the highlight — and the captured
+  // text — intact; react-aria fires its press on pointer-up, so buttons and the
+  // share menu still work. Native listeners (not React props) because React
+  // registers `touchstart` as passive, which would drop `preventDefault`.
+  useEffect(() => {
+    if (!toolbar) return;
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+
+    const keepSelection = (event: Event) => {
+      event.preventDefault();
+    };
+
+    anchor.addEventListener("mousedown", keepSelection);
+    anchor.addEventListener("touchstart", keepSelection, { passive: false });
+    return () => {
+      anchor.removeEventListener("mousedown", keepSelection);
+      anchor.removeEventListener("touchstart", keepSelection);
+    };
+  }, [toolbar]);
+
   const onCopyLinkPress = useCallback(async () => {
     const url = await ensureShareUrl();
     if (!url) return;
